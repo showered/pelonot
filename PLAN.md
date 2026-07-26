@@ -29,12 +29,13 @@
 - [x] **1.6** Create `AppDatabase` with singleton pattern, version 1
 - [x] **1.7** Build verified — KSP processes Room annotations successfully
 
-### Supabase (Cloud) — SQL migration ready, awaiting credentials
+### Supabase (Cloud) ✅
 
-- [ ] **1.8** Create Supabase project and configure `supabaseUrl` + `supabaseAnonKey` in `local.properties` / `BuildConfig` — **NEEDS YOUR CREDS**
-- [x] **1.9** Write SQL migration scripts for Supabase tables: `profiles`, `class_templates`, `workouts` (with `metrics_payload JSONB` column) + RLS policies + 40 class template seed data
-- [ ] **1.10** Implement Supabase client initialization in the app using Supabase Kotlin SDK — **NEEDS YOUR CREDS**
-- [ ] **1.11** Implement `SupabaseSyncRepository` with methods: `syncWorkout()`, `syncProfile()`, `fetchClassTemplates()`
+- [x] **1.8** Supabase project created (`https://podsmtujqarlqhvorpdh.supabase.co`) with credentials configured
+- [x] **1.9** SQL migration script in `supabase/migration.sql` — run this in Supabase SQL Editor
+- [x] **1.10** `SupabaseClientProvider` with Postgrest installed
+- [x] **1.11** `SupabaseSyncRepository` with `syncWorkout()`, `syncProfile()`, `fetchClassTemplates()`
+- [x] Build verified — all Supabase dependencies resolve and compile
 
 ---
 
