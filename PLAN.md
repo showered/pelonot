@@ -39,25 +39,34 @@
 
 ---
 
-## Phase 2: Telemetry Engine — Serial Port & BLE
+## Phase 2: Telemetry Engine — Serial Port & BLE (in progress)
 
 **Goal:** Read real-time sensor data from the Peloton sensor board (serial) and BLE HR monitors.
 
-- [ ] **2.1** Create `SerialPortReader` class that opens `/dev/ttyS1` or `/dev/ttyUSB0` (or auto-detects) using raw `FileInputStream`
-- [ ] **2.2** Implement Grupetto-compatible tick parsing: extract cadence ticks, resistance ticks, compute instantaneous RPM and power
-- [ ] **2.3** Create `BleHeartRateManager` class:
-  - Scan for BLE HR devices using `BluetoothLeScanner`
-  - Connect via `BluetoothGatt`
-  - Subscribe to Heart Rate Measurement characteristic (`0x2A37`)
-  - Expose `heartRate: StateFlow<Int>`
-- [ ] **2.4** Create `SensorRepository` singleton:
-  - Merges serial + BLE data into `StateFlow<SensorReading>` (data class: `cadence`, `resistance`, `power`, `heartRate`, `timestamp`)
-  - Handles reconnection logic for BLE
-  - Handles serial port disconnection/reconnection
-- [ ] **2.5** Create `WorkoutMetricsCalculator`:
-  - Integrates power over time to compute total output (kJ)
-  - Computes rolling averages (1s, 5s, 30s)
-  - Computes distance from cadence + resistance model
+### 2.1 Serial Port Reader
+- [x] Create service directory and `SerialPortReader` class
+- [ ] Test — needs connecting to `/dev/ttyS1` on hardware
+
+### 2.2 Grupetto Tick Parsing
+- [x] Implement `SensorTick` data class and tick buffer logic
+- [x] Compute cadence (RPM) from tick intervals
+- [x] Compute instantaneous power from resistance + cadence model
+- [ ] Validate against known Grupetto power curve constants
+
+### 2.3 BLE Heart Rate
+- [x] Create `BleHeartRateManager` with scanning, GATT connect, characteristic subscription
+- [x] Expose `heartRate: StateFlow<Int>`
+- [ ] Manual pairing UI — deferred to Settings screen (Phase 6)
+
+### 2.4 Sensor Repository
+- [x] Create `SensorRepository` singleton merging serial + BLE into unified `StateFlow<SensorReading>`
+- [x] Auto-reconnect logic for BLE (retry with exponential backoff)
+- [x] Auto-reconnect logic for serial port
+
+### 2.5 Workout Metrics Calculator
+- [x] Implement total output integration (kJ)
+- [x] Implement rolling averages (1s, 30s)
+- [x] Implement distance estimation from cadence + resistance
 
 ---
 
