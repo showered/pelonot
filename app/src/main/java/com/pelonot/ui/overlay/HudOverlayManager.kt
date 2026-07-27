@@ -5,23 +5,15 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.*
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import androidx.savedstate.setViewTreeViewModelStoreOwner
+import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.ui.theme.PelonotTheme
 
 /**
@@ -69,8 +61,20 @@ class HudOverlayManager(private val context: Context) {
             })
 
             setContent {
+                val sensorRepository = SensorRepository.getInstance(context)
+                val reading by sensorRepository.sensorReading.collectAsState()
+
                 PelonotTheme {
-                    HudOverlayContent(
+                    HudOverlayMain(
+                        cadence = reading.cadenceRpm,
+                        resistance = reading.resistancePercent,
+                        power = reading.powerWatts,
+                        heartRate = reading.heartRateBpm,
+                        elapsedSeconds = 0, // In practice, bind this to WorkoutService state
+                        ftp = 200.0, // Default FTP
+                        onPause = {},
+                        onResume = {},
+                        onStop = {},
                         onDrag = { dx, dy ->
                             layoutParams.x += dx.toInt()
                             layoutParams.y += dy.toInt()
@@ -103,22 +107,5 @@ class HudOverlayManager(private val context: Context) {
 
         fun handleLifecycleEvent(event: Lifecycle.Event) = lifecycleRegistry.handleLifecycleEvent(event)
         fun performRestore(savedState: android.os.Bundle?) = savedStateRegistryController.performRestore(savedState)
-    }
-}
-
-@Composable
-fun HudOverlayContent(onDrag: (Float, Float) -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(width = 250.dp, height = 150.dp)
-            .background(Color.Black.copy(alpha = 0.7f))
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x, dragAmount.y)
-                }
-            }
-    ) {
-        Text(text = "HUD Overlay Placeholder", color = Color.White)
     }
 }
