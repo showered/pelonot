@@ -70,18 +70,18 @@
 
 ---
 
-## Phase 3: Foreground Service & Workout Lifecycle
+## Phase 3: Foreground Service & Workout Lifecycle ✅
 
 **Goal:** A persistent Android Foreground Service that manages workout state, even when the app is backgrounded.
 
-- [ ] **3.1** Create `WorkoutService` extending `Service()`:
+- [x] **3.1** Create `WorkoutService` extending `Service()`:
   - Start foreground with persistent notification ("Pelonot — Riding")
   - Bind to `SensorRepository` and collect `StateFlow<SensorReading>`
   - Expose `workoutState: StateFlow<WorkoutState>` (Idle / Active / Paused / Completed)
-- [ ] **3.2** Create `WorkoutSession` data class: `workoutId`, `classId`, `startTime`, `elapsedSeconds`, `metrics: List<WorkoutMetric>`, `intentModifier`
-- [ ] **3.3** Implement workout controls: `startWorkout()`, `pauseWorkout()`, `resumeWorkout()`, `stopWorkout()`
-- [ ] **3.4** Implement metric recording: every 1 second, insert a `WorkoutMetric` row into Room via `WorkoutMetricDao`
-- [ ] **3.5** Create notification channel and persistent notification with live metrics (cadence, power, HR, timer)
+- [x] **3.2** Create `WorkoutSession` data class: `workoutId`, `classId`, `startTime`, `elapsedSeconds`, `metrics: List<WorkoutMetric>`, `intentModifier`
+- [x] **3.3** Implement workout controls: `startWorkout()`, `pauseWorkout()`, `resumeWorkout()`, `stopWorkout()`
+- [x] **3.4** Implement metric recording: every 1 second, insert a `WorkoutMetric` row into Room via `WorkoutMetricDao`
+- [x] **3.5** Create notification channel and persistent notification with live metrics (cadence, power, HR, timer)
 
 ---
 
@@ -114,7 +114,7 @@
 - [x] **5.3** Create `TargetZoneIndicator` composable:
   - Shows target RPM range and target Power Zone
   - If current value is outside range, card turns red with spring bounce animation
-- [ ] **5.4** Create `LeaderboardPanel` composable (collapsible):
+- [x] **5.4** Create `LeaderboardPanel` composable (collapsible):
   - Shows PB, Personal Average, Household Best for current workout duration
   - Queries Room via `WorkoutDao` for leaderboard data
 - [x] **5.5** Create `HudControls` composable: Pause / Resume / Stop buttons

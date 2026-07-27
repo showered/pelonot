@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -262,6 +263,97 @@ fun TargetsPanel(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
+    }
+}
+
+/**
+ * Leaderboard panel showing PB, Personal Average, and Household Best.
+ */
+@Composable
+fun LeaderboardPanel(
+    elapsedSeconds: Int,
+    currentOutputKj: Double,
+    personalBest: Double?,
+    personalAverage: Double?,
+    householdBest: Double?,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(DarkSurface, RoundedCornerShape(12.dp))
+            .padding(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "LEADERBOARD",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary
+            )
+            Text(
+                text = if (expanded) "▼" else "▶",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+        }
+
+        if (expanded) {
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            LeaderboardRow(
+                label = "Current",
+                value = currentOutputKj,
+                isHighlight = true
+            )
+            LeaderboardRow(
+                label = "Personal Best",
+                value = personalBest,
+                isHighlight = false
+            )
+            LeaderboardRow(
+                label = "Personal Avg",
+                value = personalAverage,
+                isHighlight = false
+            )
+            LeaderboardRow(
+                label = "Household Best",
+                value = householdBest,
+                isHighlight = false
+            )
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardRow(
+    label: String,
+    value: Double?,
+    isHighlight: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isHighlight) CadenceCyan else TextSecondary
+        )
+        Text(
+            text = value?.let { "%.1f kJ".format(it) } ?: "--",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isHighlight) CadenceCyan else TextPrimary
+        )
     }
 }
 
