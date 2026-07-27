@@ -193,7 +193,7 @@
 - [x] **8.4** Handle guest mode workouts (no user ID) — prompt to save or discard post-ride
 - [x] **8.5** Add haptic feedback on HUD for zone alerts
 - [x] **8.6** Add audio cues (TTS) for zone changes if desired
-- [ ] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`
+- [x] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`
 - [ ] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
 
