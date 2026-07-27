@@ -122,8 +122,26 @@
  
 ---
  
+## Phase 7 — Auto-FTP Engine & Cloud Sync ✅
+ 
+**Goal:** Post-ride analysis, FTP auto-detection, and background sync to Supabase.
+ 
+**Files created:**
+ - `PostWorkoutAnalyzer.kt` — 20-min peak power, biometric decoupling, RPE analysis
+ - `FtpBreakthroughDialog.kt` — FTP update prompt dialog
+ - `WorkoutSyncWorker.kt` — Background sync worker for Supabase
+ - `ClassTemplateSeeder.kt` — Seeds class templates from assets
+ 
+**Features:**
+ - 20-minute peak power FTP estimation
+ - Biometric decoupling detection
+ - RPE-based FTP increase suggestions
+ - WorkManager-based sync with exponential backoff
+ 
+---
+ 
 ## GitHub
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 6 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog)
+- Commits: 7 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7)
