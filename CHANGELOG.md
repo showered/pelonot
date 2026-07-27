@@ -140,8 +140,17 @@
  
 ---
  
+## Phase 8 — Polish & Testing (in progress)
+ 
+**Goal:** Production readiness.
+ 
+**Files created:**
+ - `ZoneAlertManager.kt` — Haptic feedback and TTS audio cues for zone alerts
+ 
+---
+ 
 ## GitHub
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 7 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7)
+- Commits: 8 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts)
