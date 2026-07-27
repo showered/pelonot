@@ -147,10 +147,17 @@
 **Files created:**
  - `ZoneAlertManager.kt` — Haptic feedback and TTS audio cues for zone alerts
  
+**Recent changes:**
+ - `WorkoutService.kt` — Added `recoverIncompleteWorkout()` for crash recovery, uses `getIncompleteWorkout()` and `getLastMetricForWorkout()` DAO methods
+ - `WorkoutDao.kt` — Added `getIncompleteWorkout()` query for crash recovery
+ - `WorkoutMetricDao.kt` — Added `getLastMetricForWorkout()` query for crash recovery
+ - `PostRideSummaryScreen.kt` — Added `isGuest` parameter to show guest mode prompt
+ - `NavGraph.kt` — Updated post_ride route to accept `isGuest` parameter
+ 
 ---
  
 ## GitHub
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 8 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts)
+- Commits: 10 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode)
