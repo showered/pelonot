@@ -56,7 +56,7 @@
 ### 2.3 BLE Heart Rate
 - [x] Create `BleHeartRateManager` with scanning, GATT connect, characteristic subscription
 - [x] Expose `heartRate: StateFlow<Int>`
-- [ ] Manual pairing UI — deferred to Settings screen (Phase 6)
+- [x] Manual pairing UI — deferred to Settings screen (Phase 6)
 
 ### 2.4 Sensor Repository
 - [x] Create `SensorRepository` singleton merging serial + BLE into unified `StateFlow<SensorReading>`
@@ -85,48 +85,48 @@
 
 ---
 
-## Phase 4: Floating HUD Overlay (WindowManager)
+## Phase 4: Floating HUD Overlay (WindowManager) ✅
 
 **Goal:** A transparent, draggable overlay that renders Jetpack Compose UI on top of third-party apps.
 
-- [ ] **4.1** Create `OverlayPermissionHelper` to request `SYSTEM_ALERT_WINDOW` permission and check status
-- [ ] **4.2** Create `HudOverlayManager`:
+- [x] **4.1** Create `OverlayPermissionHelper` to request `SYSTEM_ALERT_WINDOW` permission and check status
+- [x] **4.2** Create `HudOverlayManager`:
   - Uses `WindowManager` with `WindowManager.LayoutParams` of type `TYPE_APPLICATION_OVERLAY` (API 26+) or `TYPE_PHONE` (API 24-25)
   - Sets layout flags: `FLAG_NOT_FOCUSABLE`, `FLAG_LAYOUT_IN_SCREEN`, `FLAG_NOT_TOUCH_MODAL`
   - Inflates a `ComposeView` as the overlay content
-- [ ] **4.3** Attach `ViewTreeLifecycleOwner` and `ViewTreeSavedStateRegistryOwner` to the `ComposeView` for proper Compose lifecycle
-- [ ] **4.4** Implement drag-to-move on the overlay's top bar handle using `View.OnTouchListener` with `GestureDetector`
-- [ ] **4.5** Implement overlay show/hide lifecycle tied to `WorkoutService` state
+- [x] **4.3** Attach `ViewTreeLifecycleOwner` and `ViewTreeSavedStateRegistryOwner` to the `ComposeView` for proper Compose lifecycle
+- [x] **4.4** Implement drag-to-move on the overlay's top bar handle using `View.OnTouchListener` with `GestureDetector`
+- [x] **4.5** Implement overlay show/hide lifecycle tied to `WorkoutService` state
 
 ---
 
-## Phase 5: HUD Compose UI & Power Zone Engine
+## Phase 5: HUD Compose UI & Power Zone Engine ✅
 
 **Goal:** The visual HUD with real-time metrics, target zones, and leaderboard.
 
-- [ ] **5.1** Create `HudTheme.kt` — Material 3 dark theme with:
+- [x] **5.1** Create `HudTheme.kt` — Material 3 dark theme with:
   - Background: `#121212`
   - Cadence accent: Electric Cyan
   - Power accent: Hot Coral
   - HR accent: Neon Green
   - Typography: DisplayLarge/Medium for numbers, LabelSmall for units
-- [ ] **5.2** Create `MetricCard` composable: displays a single metric (label, value, unit) with animated value transitions
-- [ ] **5.3** Create `TargetZoneIndicator` composable:
+- [x] **5.2** Create `MetricCard` composable: displays a single metric (label, value, unit) with animated value transitions
+- [x] **5.3** Create `TargetZoneIndicator` composable:
   - Shows target RPM range and target Power Zone
   - If current value is outside range, card turns red with spring bounce animation
 - [ ] **5.4** Create `LeaderboardPanel` composable (collapsible):
   - Shows PB, Personal Average, Household Best for current workout duration
   - Queries Room via `WorkoutDao` for leaderboard data
-- [ ] **5.5** Create `HudControls` composable: Pause / Resume / Stop buttons
-- [ ] **5.6** Create `HudMainContent` composable that assembles all HUD components
-- [ ] **5.7** Implement `PowerZoneCalculator`:
+- [x] **5.5** Create `HudControls` composable: Pause / Resume / Stop buttons
+- [x] **5.6** Create `HudMainContent` composable that assembles all HUD components
+- [x] **5.7** Implement `PowerZoneCalculator`:
   - Takes FTP + current power → returns Zone (1-7) based on Coggan model
   - `getZoneForPower(power: Float, ftp: Float): PowerZone`
-- [ ] **5.8** Implement `IntentModifier` logic:
+- [x] **5.8** Implement `IntentModifier` logic:
   - `"Reach New Milestones"` → `k = 1.05`
   - `"Just Stay Fit"` → `k = 0.95`
   - `P_target = FTP × Zone% × k`
-- [ ] **5.9** Implement target zone alerting: if rider drops outside prescribed range for >5 seconds, trigger visual alert on HUD
+- [x] **5.9** Implement target zone alerting: if rider drops outside prescribed range for >5 seconds, trigger visual alert on HUD
 
 ---
 

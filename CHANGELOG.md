@@ -66,9 +66,39 @@
 **Build status:** `./gradlew assembleDebug` — SUCCESSFUL (KSP processes Room, Supabase deps resolve)
 
 ---
-
+ 
+## Phase 2-5 — Telemetry, HUD Overlay & Power Zone Engine ✅
+ 
+**Goal:** Real-time sensor data collection, floating HUD overlay, and power zone calculations.
+ 
+### Telemetry Engine
+ 
+**Files created:**
+ - `SensorTick.kt` — Data classes for `SensorTick` and `SensorReading`
+ - `SerialPortReader.kt` — Reads telemetry from `/dev/ttyS1` with cadence/power calculation
+ - `BleHeartRateManager.kt` — BLE heart rate monitor scanning and GATT connection
+ - `SensorRepository.kt` — Singleton merging serial + BLE data with auto-reconnect
+ - `WorkoutMetricsCalculator.kt` — Rolling averages, total output, distance estimation
+ 
+### HUD Overlay
+ 
+**Files created:**
+ - `OverlayPermissionHelper.kt` — SYSTEM_ALERT_WINDOW permission check and request
+ - `HudOverlayManager.kt` — WindowManager-based floating overlay with ComposeView
+ - `PowerZoneCalculator.kt` — Coggan 7-zone power model with intent modifiers
+ - `HudOverlayMain.kt` — HUD UI with metrics, targets, and controls
+ 
+**Features:**
+ - Draggable overlay with drag handle
+ - Real-time cadence, power, and heart rate display
+ - Target zone indicators with alert animations
+ - Pause/Resume/Stop controls
+ - Power zone calculation based on FTP
+ 
+---
+ 
 ## GitHub
-
+ 
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 3 (scaffold, room-db, supabase-client)
+- Commits: 4 (scaffold, room-db, supabase-client, hud-overlay)
