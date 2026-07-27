@@ -154,10 +154,16 @@
  - `PostRideSummaryScreen.kt` — Added `isGuest` parameter to show guest mode prompt
  - `NavGraph.kt` — Updated post_ride route to accept `isGuest` parameter
  
+**Tests:**
+ - `PowerZoneCalculatorTest.kt` — Unit tests for all 7 zones, edge cases, and intent modifiers
+ - `PostWorkoutAnalyzerTest.kt` — Unit tests for FTP calculation, biometric decoupling, and RPE suggestions
+ - `WorkoutDaoTest.kt` — Instrumented tests for Room DAO operations
+ - `WorkoutServiceTest.kt` — Instrumented tests for WorkoutState and WorkoutSession
+ 
 ---
  
 ## GitHub
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 10 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode)
+- Commits: 12 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode, unit-tests, instrumented-tests)
