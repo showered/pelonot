@@ -18,6 +18,7 @@ fun PostRideSummaryScreen(
     avgCadence: Double,
     avgHeartRate: Int?,
     distanceKm: Double,
+    isGuest: Boolean = false,
     onSave: () -> Unit,
     onDiscard: () -> Unit
 ) {
@@ -91,6 +92,15 @@ fun PostRideSummaryScreen(
         
         Spacer(modifier = Modifier.height(32.dp))
         
+        if (isGuest) {
+            Text(
+                text = "Guest Mode: Save or discard this ride?",
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -99,7 +109,7 @@ fun PostRideSummaryScreen(
                 onClick = onSave,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Save")
+                Text(if (isGuest) "Save as Guest" else "Save")
             }
             
             Spacer(modifier = Modifier.width(16.dp))

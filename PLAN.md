@@ -190,7 +190,7 @@
 - [x] **8.1** Handle serial port disconnection gracefully (auto-reconnect with exponential backoff)
 - [x] **8.2** Handle BLE disconnection gracefully (auto-scan + reconnect)
 - [x] **8.3** Handle app crash during workout — recover state from last known good metrics in Room
-- [ ] **8.4** Handle guest mode workouts (no user ID) — prompt to save or discard post-ride
+- [x] **8.4** Handle guest mode workouts (no user ID) — prompt to save or discard post-ride
 - [x] **8.5** Add haptic feedback on HUD for zone alerts
 - [x] **8.6** Add audio cues (TTS) for zone changes if desired
 - [ ] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`

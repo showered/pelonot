@@ -101,7 +101,8 @@ fun PelonotNavGraph(
             )
         }
         
-        composable("post_ride") {
+        composable("post_ride/{isGuest}") { backStackEntry ->
+            val isGuest = backStackEntry.arguments?.getString("isGuest")?.toBoolean() ?: false
             PostRideSummaryScreen(
                 durationSec = 0,
                 totalOutputKj = 0.0,
@@ -109,6 +110,7 @@ fun PelonotNavGraph(
                 avgCadence = 0.0,
                 avgHeartRate = null,
                 distanceKm = 0.0,
+                isGuest = isGuest,
                 onSave = {
                     navController.popBackStack("dashboard", inclusive = false)
                 },
