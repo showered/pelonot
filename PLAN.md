@@ -194,7 +194,7 @@
 - [x] **8.5** Add haptic feedback on HUD for zone alerts
 - [x] **8.6** Add audio cues (TTS) for zone changes if desired
 - [x] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`
-- [ ] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
+- [x] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
 
 ---
