@@ -16,6 +16,7 @@ import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.sensor.SensorRepository
+import com.pelonot.ui.overlay.HudOverlayManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.*
@@ -38,6 +39,7 @@ class WorkoutService : Service() {
 
     private lateinit var sensorRepository: SensorRepository
     private lateinit var database: AppDatabase
+    private var hudOverlayManager: HudOverlayManager? = null
 
     private val _workoutState = MutableStateFlow(WorkoutState.Idle)
     val workoutState: StateFlow<WorkoutState> = _workoutState.asStateFlow()
@@ -53,6 +55,17 @@ class WorkoutService : Service() {
         super.onCreate()
         sensorRepository = SensorRepository.getInstance(this)
         database = AppDatabase.getDatabase(this)
+        hudOverlayManager = HudOverlayManager(this)
+
+        serviceScope.launch {
+            _workoutState.collect { state ->
+                when (state) {
+                    WorkoutState.Active -> hudOverlayManager?.show()
+                    WorkoutState.Idle, WorkoutState.Completed -> hudOverlayManager?.hide()
+                    else -> {} // Keep showing on Pause
+                }
+            }
+        }
         Log.d(TAG, "WorkoutService created")
     }
 
