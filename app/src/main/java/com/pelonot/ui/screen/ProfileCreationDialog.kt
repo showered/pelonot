@@ -1,0 +1,77 @@
+package com.pelonot.ui.screen
+
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import com.pelonot.ui.theme.TextPrimary
+
+@Composable
+fun ProfileCreationDialog(
+    onProfileCreated: (name: String, weightKg: Double?, ftpWatts: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var weight by remember { mutableStateOf("") }
+    var ftp by remember { mutableStateOf("200") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Create Profile",
+                color = TextPrimary
+            )
+        },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = { Text("Weight (kg)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = ftp,
+                    onValueChange = { ftp = it },
+                    label = { Text("FTP (Watts)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onProfileCreated(
+                            name,
+                            weight.toDoubleOrNull(),
+                            ftp.toIntOrNull() ?: 200
+                        )
+                    }
+                }
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}

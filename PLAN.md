@@ -135,7 +135,7 @@
 **Goal:** The full app experience — profile selection, dashboard, class library, settings.
 
 - [x] **6.1** Create `ProfileSelectorScreen` — Netflix-style grid of user profiles with "Guest Mode" option
-- [ ] **6.2** Create `ProfileCreationDialog` — enter name, weight, initial FTP
+- [x] **6.2** Create `ProfileCreationDialog` — enter name, weight, initial FTP
 - [x] **6.3** Create `MainDashboardScreen`:
   - "Just Ride" button (free ride, no class)
   - "Begin Class" button → navigates to class library
@@ -145,7 +145,7 @@
   - Lists all class templates from Room (pre-loaded from assets JSON)
   - Filterable by category (Aerobic, HIIT, Tabata, Threshold)
   - Shows duration, category badge, title
-- [ ] **6.6** Create `ClassDetailScreen` — shows interval breakdown, start button
+- [x] **6.6** Create `ClassDetailScreen` — shows interval breakdown, start button
 - [x] **6.7** Create `PostRideSummaryScreen`:
   - Displays total output, duration, avg power, avg HR, distance
   - Shows RPE prompt ("Rate this effort 1-10")
