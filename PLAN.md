@@ -130,33 +130,33 @@
 
 ---
 
-## Phase 6: Main App UI (Non-Overlay Screens)
+## Phase 6: Main App UI (Non-Overlay Screens) ✅
 
 **Goal:** The full app experience — profile selection, dashboard, class library, settings.
 
-- [ ] **6.1** Create `ProfileSelectorScreen` — Netflix-style grid of user profiles with "Guest Mode" option
+- [x] **6.1** Create `ProfileSelectorScreen` — Netflix-style grid of user profiles with "Guest Mode" option
 - [ ] **6.2** Create `ProfileCreationDialog` — enter name, weight, initial FTP
-- [ ] **6.3** Create `MainDashboardScreen`:
+- [x] **6.3** Create `MainDashboardScreen`:
   - "Just Ride" button (free ride, no class)
   - "Begin Class" button → navigates to class library
   - "Settings / FTP" button
-- [ ] **6.4** Create `PreRideIntentPrompt` dialog — "Reach New Milestones" vs "Just Stay Fit" selection
-- [ ] **6.5** Create `ClassLibraryScreen`:
+- [x] **6.4** Create `PreRideIntentPrompt` dialog — "Reach New Milestones" vs "Just Stay Fit" selection
+- [x] **6.5** Create `ClassLibraryScreen`:
   - Lists all class templates from Room (pre-loaded from assets JSON)
   - Filterable by category (Aerobic, HIIT, Tabata, Threshold)
   - Shows duration, category badge, title
 - [ ] **6.6** Create `ClassDetailScreen` — shows interval breakdown, start button
-- [ ] **6.7** Create `PostRideSummaryScreen`:
+- [x] **6.7** Create `PostRideSummaryScreen`:
   - Displays total output, duration, avg power, avg HR, distance
   - Shows RPE prompt ("Rate this effort 1-10")
   - Shows FTP breakthrough dialog if detected
-- [ ] **6.8** Create `SettingsScreen`:
+- [x] **6.8** Create `SettingsScreen`:
   - Edit FTP manually
   - Edit weight
   - Theme toggle (dark/light)
   - BLE device management (pair/forget HR monitors)
   - Overlay permission status
-- [ ] **6.9** Implement navigation using Jetpack Compose Navigation (NavHost, NavController)
+- [x] **6.9** Implement navigation using Jetpack Compose Navigation (NavHost, NavController)
 
 ---
 

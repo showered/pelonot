@@ -5,10 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
+import com.pelonot.data.local.AppDatabase
+import com.pelonot.ui.navigation.PelonotNavGraph
 import com.pelonot.ui.theme.PelonotTheme
 
 class MainActivity : ComponentActivity() {
@@ -17,13 +18,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PelonotTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Text("Pelonot")
-                }
+                MainScreen()
             }
         }
     }
+}
+
+@Composable
+private fun MainScreen() {
+    val navController = rememberNavController()
+    
+    // TODO: Replace with actual data from ViewModel
+    val users = emptyList<com.pelonot.data.local.entity.UserEntity>()
+    val classTemplates = emptyList<com.pelonot.data.local.entity.ClassTemplateEntity>()
+    
+    PelonotNavGraph(
+        navController = navController,
+        users = users,
+        classTemplates = classTemplates
+    )
 }
