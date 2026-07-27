@@ -61,7 +61,7 @@
 **Kotlin client:**
 - `SupabaseConfig.kt` — Project URL (`https://podsmtujqarlqhvorpdh.supabase.co`) + anon key
 - `SupabaseClient.kt` — SupabaseClient singleton with Postgrest, `MetricSnapshot` DTO
-- `SupabaseSyncRepository.kt` — `syncWorkout()` (with compressed JSON metrics payload), `syncProfile()`, `fetchClassTemplates()`
+- `SupabaseSyncRepository.kt` — `syncWorkout()`, `syncProfile()`, `fetchClassTemplates()`, `updateFtp()`
 
 **Build status:** `./gradlew assembleDebug` — SUCCESSFUL (KSP processes Room, Supabase deps resolve)
 
