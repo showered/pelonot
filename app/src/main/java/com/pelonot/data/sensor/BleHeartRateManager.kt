@@ -11,6 +11,7 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,11 @@ class BleHeartRateManager(context: Context) {
     private var device: BluetoothDevice? = null
     private var gatt: BluetoothGatt? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    private var reconnectJob: Job? = null
+    private var reconnectAttempts: Long = 0
+    private val maxReconnectAttempts = 10L
+    private val baseDelayMs = 1000L
 
     private val heartRateServiceUuid = UUID.fromString("0000180D-0000-1000-8000-00805F9B34FB")
     private val heartRateCharacteristicUuid = UUID.fromString("00002A37-0000-1000-8000-00805F9B34FB")
@@ -99,12 +105,61 @@ class BleHeartRateManager(context: Context) {
     fun disconnect() {
         gatt?.close()
         gatt = null
-        device = null
+        startAutoReconnect()
     }
 
     fun destroy() {
-        disconnect()
+        stopReconnect()
+        gatt?.close()
+        gatt = null
+        device = null
         scope.cancel()
+    }
+    
+    /**
+     * Start auto-reconnect with exponential backoff.
+     */
+    private fun startAutoReconnect() {
+        if (reconnectJob?.isActive == true) return
+        
+        reconnectJob = scope.launch {
+            while (isActive && reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++
+                val delayMs = baseDelayMs * (1L shl (reconnectAttempts - 1).coerceAtMost(5))
+                Log.i(TAG, "Attempting BLE reconnect (attempt $reconnectAttempts, delay ${delayMs}ms)")
+                
+                delay(delayMs)
+                
+                if (reconnectToDevice()) {
+                    Log.i(TAG, "BLE reconnected successfully")
+                    return@launch
+                }
+            }
+            Log.e(TAG, "Failed to reconnect BLE after $maxReconnectAttempts attempts")
+        }
+    }
+    
+    /**
+     * Attempt to reconnect to the last known device.
+     */
+    private fun reconnectToDevice(): Boolean {
+        val lastDevice = device ?: return false
+        return try {
+            gatt = lastDevice.connectGatt(null, false, gattCallback)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "BLE reconnect failed: ${e.message}")
+            false
+        }
+    }
+    
+    /**
+     * Stop any ongoing reconnect attempts.
+     */
+    fun stopReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+        reconnectAttempts = 0
     }
 
     private fun parseHeartRate(value: ByteArray): Int {
