@@ -109,6 +109,8 @@
  - `PostRideSummaryScreen.kt` — Ride summary with RPE selection
  - `SettingsScreen.kt` — Settings for FTP, weight, theme
  - `NavGraph.kt` — Navigation setup with NavHost
+ - `ProfileCreationDialog.kt` — Profile creation with name, weight, FTP
+ - `ClassDetailScreen.kt` — Class detail with interval breakdown
  
 **Screens:**
  - Profile selector with 2-column grid
@@ -124,4 +126,4 @@
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 5 (scaffold, room-db, supabase-client, hud-overlay, main-ui)
+- Commits: 6 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog)
