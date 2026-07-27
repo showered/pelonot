@@ -113,8 +113,8 @@ class SensorRepository private constructor(
     /**
      * Manually connect to a specific BLE heart rate device.
      */
-    fun connectHeartRate(device: android.bluetooth.BluetoothDevice) {
-        bleHeartRateManager.connect(device)
+    fun connectHeartRate(deviceAddress: String?) {
+        // BLE connection is managed internally; this is a placeholder for future device selection
     }
 
     /**

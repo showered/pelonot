@@ -1,12 +1,17 @@
 package com.pelonot.ui.screen
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.pelonot.ui.theme.TextPrimary
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun ProfileCreationDialog(
@@ -16,35 +21,35 @@ fun ProfileCreationDialog(
     var name by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var ftp by remember { mutableStateOf("200") }
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
                 text = "Create Profile",
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-                
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { weight = it },
                     label = { Text("Weight (kg)") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-                
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedTextField(
                     value = ftp,
                     onValueChange = { ftp = it },

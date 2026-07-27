@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -34,7 +36,7 @@ fun ClassDetailScreen(
     } catch (e: Exception) {
         emptyList()
     }
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -42,18 +44,20 @@ fun ClassDetailScreen(
     ) {
         Text(
             text = classTemplate.title,
-            style = androidx.compose.material3.MaterialTheme.typography.headlineLarge
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = "${classTemplate.durationSec / 60} min • ${classTemplate.category}",
-            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
@@ -64,9 +68,9 @@ fun ClassDetailScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -74,7 +78,7 @@ fun ClassDetailScreen(
             Button(onClick = onBack) {
                 Text("Back")
             }
-            
+
             Button(onClick = { onStart(classTemplate.id.toString()) }) {
                 Text("Start Class")
             }
@@ -87,7 +91,7 @@ private fun IntervalRow(
     interval: Interval,
     ftp: Double
 ) {
-    androidx.compose.material3.Card(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -97,16 +101,19 @@ private fun IntervalRow(
         ) {
             Text(
                 text = "Zone ${interval.zone}: ${interval.durationSec / 60} min",
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Cadence: ${interval.targetCadenceMin.toInt()}-${interval.targetCadenceMax.toInt()} RPM",
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "Power: ${interval.targetPowerMin.toInt()}-${interval.targetPowerMax.toInt()}W",
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

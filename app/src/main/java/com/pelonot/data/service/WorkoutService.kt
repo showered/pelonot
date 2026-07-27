@@ -29,7 +29,7 @@ class WorkoutService : Service() {
     companion object {
         private const val TAG = "WorkoutService"
         private const val NOTIFICATION_ID = 101
-        private const val CHANNEL_ID = PelonotApp.WORKOUT_CHANNEL_ID
+        private const val CHANNEL_ID = PelonotApp.NOTIFICATION_CHANNEL_WORKOUT
     }
 
     private val binder = WorkoutBinder()
@@ -54,7 +54,7 @@ class WorkoutService : Service() {
     override fun onCreate() {
         super.onCreate()
         sensorRepository = SensorRepository.getInstance(this)
-        database = AppDatabase.getDatabase(this)
+        database = AppDatabase.getInstance(this)
         hudOverlayManager = HudOverlayManager(this)
 
         // Check for incomplete workout (crash recovery)
@@ -86,10 +86,10 @@ class WorkoutService : Service() {
         
         val session = WorkoutSession(
             workoutId = incompleteWorkout.id,
-            classId = incompleteWorkout.classTemplateId ?: 0,
+            classId = incompleteWorkout.classId?.toIntOrNull() ?: 0,
             startTime = incompleteWorkout.timestamp,
             elapsedSeconds = lastMetric?.timestampSec ?: 0,
-            intentModifier = incompleteWorkout.intentModifier
+            intentModifier = incompleteWorkout.intentModifier.toString()
         )
         
         _currentSession.value = session
@@ -208,7 +208,7 @@ class WorkoutService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(content)
             .setOngoing(true)
@@ -262,7 +262,7 @@ class WorkoutService : Service() {
         )
 
         session.metrics.add(metric)
-        database.workoutMetricDao().insert(metric)
+        database.workoutMetricDao().insertMetric(metric)
     }
 
     private suspend fun saveWorkoutToDb(session: WorkoutSession) {
@@ -278,15 +278,15 @@ class WorkoutService : Service() {
 
         val workout = WorkoutEntity(
             id = session.workoutId,
-            localUserId = 1, // Default user for now
-            classTemplateId = if (session.classId > 0) session.classId else null,
+            userId = 1, // Default user for now
+            classId = if (session.classId > 0) session.classId.toString() else null,
             durationSec = session.elapsedSeconds,
             totalOutputKj = totalOutputKj,
             totalDistanceKm = 0.0, // Calculated later
             avgCadence = avgCadence,
             avgPower = avgPower,
-            avgHr = avgHr,
-            intentModifier = session.intentModifier,
+            avgHr = avgHr?.toDouble(),
+            intentModifier = 1.0,
             timestamp = System.currentTimeMillis()
         )
 

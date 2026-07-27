@@ -25,7 +25,7 @@ class ClassTemplateSeeder(
     )
      
     suspend fun seedIfEmpty() {
-        val database = AppDatabase.getDatabase(context)
+        val database = AppDatabase.getInstance(context)
         if (database.classTemplateDao().getTemplateCount() > 0) return
          
         // Try to fetch from Supabase first

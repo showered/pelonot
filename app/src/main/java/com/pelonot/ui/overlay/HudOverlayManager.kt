@@ -12,7 +12,6 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import androidx.savedstate.setViewTreeViewModelStoreOwner
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.ui.theme.PelonotTheme
 
@@ -54,9 +53,9 @@ class HudOverlayManager(private val context: Context) {
             lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
             lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
-            ViewTreeLifecycleOwner.set(this, lifecycleOwner)
+            setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
-            ViewTreeViewModelStoreOwner.set(this, object : ViewModelStoreOwner {
+            setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
                 override val viewModelStore = ViewModelStore()
             })
 
@@ -76,9 +75,9 @@ class HudOverlayManager(private val context: Context) {
                         onResume = {},
                         onStop = {},
                         onDrag = { dx, dy ->
-                            layoutParams.x += dx.toInt()
-                            layoutParams.y += dy.toInt()
-                            windowManager.updateViewLayout(this, layoutParams)
+                            this@HudOverlayManager.layoutParams.x += dx.toInt()
+                            this@HudOverlayManager.layoutParams.y += dy.toInt()
+                            windowManager.updateViewLayout(this@HudOverlayManager.composeView!!, this@HudOverlayManager.layoutParams)
                         }
                     )
                 }

@@ -2,13 +2,13 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pelonot.ui.theme.CadenceCyan
-import com.pelonot.ui.theme.TextPrimary
 
 @Composable
 fun PostRideSummaryScreen(
@@ -30,52 +30,52 @@ fun PostRideSummaryScreen(
     ) {
         Text(
             text = "Ride Summary",
-            style = androidx.compose.material3.MaterialTheme.typography.headlineLarge,
-            color = TextPrimary
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         SummaryRow(
             label = "Duration",
             value = formatDuration(durationSec)
         )
-        
+
         SummaryRow(
             label = "Total Output",
             value = "%.1f kJ".format(totalOutputKj)
         )
-        
+
         SummaryRow(
             label = "Avg Power",
             value = "%.0f W".format(avgPower)
         )
-        
+
         SummaryRow(
             label = "Avg Cadence",
             value = "%.0f RPM".format(avgCadence)
         )
-        
+
         SummaryRow(
             label = "Avg Heart Rate",
             value = avgHeartRate?.let { "%d BPM".format(it) } ?: "--"
         )
-        
+
         SummaryRow(
             label = "Distance",
             value = "%.2f km".format(distanceKm)
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Text(
             text = "Rate this effort (1-10)",
-            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-            color = TextPrimary
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -89,18 +89,18 @@ fun PostRideSummaryScreen(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         if (isGuest) {
             Text(
                 text = "Guest Mode: Save or discard this ride?",
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -111,9 +111,9 @@ fun PostRideSummaryScreen(
             ) {
                 Text(if (isGuest) "Save as Guest" else "Save")
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Button(
                 onClick = onDiscard,
                 modifier = Modifier.weight(1f)
@@ -134,12 +134,12 @@ private fun SummaryRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-            color = TextPrimary
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = value,
-            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge,
             color = CadenceCyan
         )
     }

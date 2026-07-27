@@ -13,6 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,8 +38,8 @@ class BleHeartRateManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     private var reconnectJob: Job? = null
-    private var reconnectAttempts: Long = 0
-    private val maxReconnectAttempts = 10L
+    private var reconnectAttempts: Int = 0
+    private val maxReconnectAttempts = 10
     private val baseDelayMs = 1000L
 
     private val heartRateServiceUuid = UUID.fromString("0000180D-0000-1000-8000-00805F9B34FB")
@@ -88,7 +92,7 @@ class BleHeartRateManager(context: Context) {
                         break
                     }
                 }
-                kotlinx.coroutines.delay(5000) // Scan every 5 seconds
+                delay(5000) // Scan every 5 seconds
             }
         }
     }
@@ -125,7 +129,7 @@ class BleHeartRateManager(context: Context) {
         reconnectJob = scope.launch {
             while (isActive && reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++
-                val delayMs = baseDelayMs * (1L shl (reconnectAttempts - 1).coerceAtMost(5))
+                val delayMs = baseDelayMs * (1 shl (reconnectAttempts - 1).coerceAtMost(5)).toLong()
                 Log.i(TAG, "Attempting BLE reconnect (attempt $reconnectAttempts, delay ${delayMs}ms)")
                 
                 delay(delayMs)

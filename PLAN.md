@@ -196,6 +196,9 @@
 - [x] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`
 - [x] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
+- [ ] **8.10** Guest post-ride prompt: save to new profile, existing profile, or discard
+- [ ] **8.11** Apply Material Expressive design language throughout the app (dynamic shapes, rich color, bold typography)
+- [x] **8.12** Fix light mode background — screens show dark grey instead of `LightBackground`
 
 ---
 

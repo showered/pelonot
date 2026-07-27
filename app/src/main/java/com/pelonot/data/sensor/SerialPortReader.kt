@@ -45,8 +45,8 @@ class SerialPortReader {
     private var currentResistance: Double = 0.0
     private var currentCadence: Double = 0.0
     private var reconnectJob: Job? = null
-    private var reconnectAttempts: Long = 0
-    private val maxReconnectAttempts = 10L
+    private var reconnectAttempts: Int = 0
+    private val maxReconnectAttempts = 10
     private val baseDelayMs = 1000L
     
     /**
@@ -200,7 +200,7 @@ class SerialPortReader {
         reconnectJob = scope.launch {
             while (isActive && reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++
-                val delayMs = baseDelayMs * (1L shl (reconnectAttempts - 1).coerceAtMost(5))
+                val delayMs = baseDelayMs * (1 shl (reconnectAttempts - 1).coerceAtMost(5)).toLong()
                 Log.i(TAG, "Attempting serial port reconnect (attempt $reconnectAttempts, delay ${delayMs}ms)")
                 
                 delay(delayMs)

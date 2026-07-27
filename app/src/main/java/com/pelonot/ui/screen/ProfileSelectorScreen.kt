@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,11 +28,12 @@ fun ProfileSelectorScreen(
     ) {
         Text(
             text = "Select Profile",
-            style = androidx.compose.material3.MaterialTheme.typography.headlineLarge
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f)
@@ -42,23 +44,23 @@ fun ProfileSelectorScreen(
                     onClick = { onProfileSelected(user) }
                 )
             }
-            
+
             // Guest mode card
             item {
                 ProfileCard(
                     user = UserEntity(
                         localUserId = -1,
                         name = "Guest",
-                        weightKg = null,
+                        weightKg = 70.0,
                         ftpWatts = 200
                     ),
                     onClick = onGuestSelected
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Button(
             onClick = onCreateProfile,
             modifier = Modifier
@@ -87,7 +89,8 @@ private fun ProfileCard(
         ) {
             Text(
                 text = user.name,
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

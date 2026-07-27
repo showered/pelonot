@@ -3,6 +3,7 @@ package com.pelonot.ui.theme
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
@@ -22,15 +23,31 @@ private val PelonotDarkColorScheme = darkColorScheme(
     error = ZoneAlertRed
 )
 
+private val PelonotLightColorScheme = lightColorScheme(
+    background = LightBackground,
+    surface = LightSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onBackground = DarkText,
+    onSurface = DarkText,
+    onSurfaceVariant = DarkTextSecondary,
+    primary = CadenceCyan,
+    secondary = PowerCoral,
+    tertiary = HeartRateGreen,
+    error = ZoneAlertRed
+)
+
 @Composable
-fun PelonotTheme(content: @Composable () -> Unit) {
-    val colorScheme = PelonotDarkColorScheme
+fun PelonotTheme(
+    darkTheme: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) PelonotDarkColorScheme else PelonotLightColorScheme
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

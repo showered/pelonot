@@ -1,9 +1,9 @@
 package com.pelonot.data.worker
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import androidx.work.ExponentialBackoffPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.pelonot.data.local.AppDatabase
@@ -20,8 +20,8 @@ class WorkoutSyncWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
     
-    private val database = AppDatabase.getDatabase(context)
-    private val syncRepository = SupabaseSyncRepository.getInstance(context)
+    private val database = AppDatabase.getInstance(context)
+    private val syncRepository = SupabaseSyncRepository()
     
     override suspend fun doWork(): Result {
         return try {
@@ -32,11 +32,8 @@ class WorkoutSyncWorker(
             val workout = database.workoutDao().getWorkoutById(workoutId) ?: return Result.failure()
             val metrics = database.workoutMetricDao().getMetricsForWorkout(workoutId)
             
-            // Compress metrics to JSON
-            val metricsJson = Json.encodeToString(metrics)
-            
             // Sync to Supabase
-            syncRepository.syncWorkout(workout, metricsJson)
+            syncRepository.syncWorkout(workout, metrics)
             
             Result.success()
         } catch (e: Exception) {
@@ -52,8 +49,11 @@ class WorkoutSyncWorker(
                         .putString("workout_id", workoutId)
                         .build()
                 )
-                .setBackoffPolicy(ExponentialBackoffPolicy())
-                .setBackoffDelay(10, TimeUnit.SECONDS)
+                .setBackoffCriteria(
+                    BackoffPolicy.EXPONENTIAL,
+                    10,
+                    TimeUnit.SECONDS
+                )
                 .build()
             
             WorkManager.getInstance(context).enqueue(workRequest)

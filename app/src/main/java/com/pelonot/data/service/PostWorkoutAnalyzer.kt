@@ -47,7 +47,7 @@ class PostWorkoutAnalyzer {
         
         for (metric in metrics) {
             val inZone4 = metric.power in zone4MinPower..zone4MaxPower
-            val lowHr = metric.heartRateBpm != null && metric.heartRateBpm < hrThreshold
+            val lowHr = metric.heartRate != null && metric.heartRate < hrThreshold
             
             if (inZone4) {
                 zone4Seconds++

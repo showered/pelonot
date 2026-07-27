@@ -3,15 +3,13 @@ package com.pelonot.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.pelonot.ui.theme.CadenceCyan
-import com.pelonot.ui.theme.DarkSurface
-import com.pelonot.ui.theme.TextPrimary
 
 @Composable
 fun PreRideIntentPrompt(
@@ -30,12 +28,12 @@ fun PreRideIntentPrompt(
             ) {
                 Text(
                     text = "What's your goal today?",
-                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                    color = TextPrimary
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Button(
                     onClick = { onIntentSelected("Reach New Milestones") },
                     modifier = Modifier
@@ -44,9 +42,9 @@ fun PreRideIntentPrompt(
                 ) {
                     Text("Reach New Milestones")
                 }
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 Button(
                     onClick = { onIntentSelected("Just Stay Fit") },
                     modifier = Modifier
