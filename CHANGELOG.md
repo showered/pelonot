@@ -97,8 +97,31 @@
  
 ---
  
+## Phase 6 — Main App UI ✅
+ 
+**Goal:** The full app experience — profile selection, dashboard, class library, settings.
+ 
+**Files created:**
+ - `ProfileSelectorScreen.kt` — Grid of user profiles with guest mode
+ - `MainDashboardScreen.kt` — Main dashboard with Just Ride, Begin Class, Settings buttons
+ - `PreRideIntentPrompt.kt` — Intent selection dialog
+ - `ClassLibraryScreen.kt` — List of class templates
+ - `PostRideSummaryScreen.kt` — Ride summary with RPE selection
+ - `SettingsScreen.kt` — Settings for FTP, weight, theme
+ - `NavGraph.kt` — Navigation setup with NavHost
+ 
+**Screens:**
+ - Profile selector with 2-column grid
+ - Dashboard with workout controls
+ - Intent prompt (Reach New Milestones / Just Stay Fit)
+ - Class library with duration display
+ - Post-ride summary with RPE buttons
+ - Settings with form inputs
+ 
+---
+ 
 ## GitHub
  
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 4 (scaffold, room-db, supabase-client, hud-overlay)
+- Commits: 5 (scaffold, room-db, supabase-client, hud-overlay, main-ui)
