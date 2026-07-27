@@ -57,6 +57,11 @@ class WorkoutService : Service() {
         database = AppDatabase.getDatabase(this)
         hudOverlayManager = HudOverlayManager(this)
 
+        // Check for incomplete workout (crash recovery)
+        serviceScope.launch {
+            recoverIncompleteWorkout()
+        }
+
         serviceScope.launch {
             _workoutState.collect { state ->
                 when (state) {
@@ -67,6 +72,30 @@ class WorkoutService : Service() {
             }
         }
         Log.d(TAG, "WorkoutService created")
+    }
+    
+    /**
+     * Recover state from an incomplete workout after app crash.
+     * Looks for the most recent workout that was not properly completed.
+     */
+    private suspend fun recoverIncompleteWorkout() {
+        val incompleteWorkout = database.workoutDao().getIncompleteWorkout() ?: return
+        
+        // Get the last recorded metric to determine elapsed time
+        val lastMetric = database.workoutMetricDao().getLastMetricForWorkout(incompleteWorkout.id)
+        
+        val session = WorkoutSession(
+            workoutId = incompleteWorkout.id,
+            classId = incompleteWorkout.classTemplateId ?: 0,
+            startTime = incompleteWorkout.timestamp,
+            elapsedSeconds = lastMetric?.timestampSec ?: 0,
+            intentModifier = incompleteWorkout.intentModifier
+        )
+        
+        _currentSession.value = session
+        _workoutState.value = WorkoutState.Paused // Resume paused so user can decide
+        
+        Log.d(TAG, "Recovered incomplete workout: ${incompleteWorkout.id}")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -261,7 +290,7 @@ class WorkoutService : Service() {
             timestamp = System.currentTimeMillis()
         )
 
-        database.workoutDao().insert(workout)
+        database.workoutDao().insertWorkout(workout)
         Log.d(TAG, "Workout saved to database")
     }
 

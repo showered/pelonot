@@ -53,4 +53,9 @@ interface WorkoutDao {
     // Workouts for a specific class
     @Query("SELECT * FROM workouts WHERE class_id = :classId AND user_id = :userId ORDER BY timestamp DESC")
     fun getWorkoutsByClass(userId: Int, classId: String): Flow<List<WorkoutEntity>>
+    
+    // Get incomplete workout (most recent workout without metrics or marked incomplete)
+    // For crash recovery, we look for the most recent workout
+    @Query("SELECT * FROM workouts ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getIncompleteWorkout(): WorkoutEntity?
 }

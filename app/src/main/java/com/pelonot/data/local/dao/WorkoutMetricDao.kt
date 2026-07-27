@@ -33,4 +33,8 @@ interface WorkoutMetricDao {
         ORDER BY timestamp_sec ASC
     """)
     suspend fun getPowerTimeSeries(workoutId: String): List<Double>
+    
+    // Get last metric for a workout (for crash recovery)
+    @Query("SELECT * FROM workout_metrics WHERE workout_id = :workoutId ORDER BY timestamp_sec DESC LIMIT 1")
+    suspend fun getLastMetricForWorkout(workoutId: String): WorkoutMetricEntity?
 }
