@@ -164,18 +164,18 @@
 
 **Goal:** Post-ride analysis, FTP auto-detection, and background sync to Supabase.
 
-- [ ] **7.1** Create `PostWorkoutAnalyzer`:
+- [x] **7.1** Create `PostWorkoutAnalyzer`:
   - **20-Min Peak Power:** Calculate max rolling 20-min average wattage from `WorkoutMetric` time-series → `FTP_est = P_20min_max × 0.95`
   - **Biometric Decoupling:** Detect if Zone 4 power sustained >10 min while HR <80% max HR
   - **RPE Survey:** If RPE ≤ 4 on a hard class, propose 3% FTP increase
-- [ ] **7.2** Create `FtpBreakthroughDialog` composable — shows current FTP, estimated new FTP, Accept/Decline buttons
+- [x] **7.2** Create `FtpBreakthroughDialog` composable — shows current FTP, estimated new FTP, Accept/Decline buttons
 - [ ] **7.3** Implement FTP update flow: on accept, update `User.ftpWatts` in Room + schedule sync
-- [ ] **7.4** Create `WorkoutSyncWorker` extending `CoroutineWorker`:
+- [x] **7.4** Create `WorkoutSyncWorker` extending `CoroutineWorker`:
   - On successful ride completion, enqueue sync via WorkManager
   - Compresses `WorkoutMetric` list into JSON array
   - Uploads workout + metrics payload to Supabase `workouts` table
   - Handles retry logic (3 retries with exponential backoff)
-- [ ] **7.5** Create `ClassTemplateSeeder`:
+- [x] **7.5** Create `ClassTemplateSeeder`:
   - Reads JSON files from `app/src/main/assets/classes/`
   - Parses into `ClassTemplate` objects
   - Inserts into Room `class_templates` table on first launch
