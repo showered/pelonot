@@ -179,7 +179,7 @@
   - Reads JSON files from `app/src/main/assets/classes/`
   - Parses into `ClassTemplate` objects
   - Inserts into Room `class_templates` table on first launch
-- [ ] **7.6** Create all class template JSON files in `assets/classes/`
+- [x] **7.6** Create all class template JSON files in `assets/classes/`
 
 ---
 
