@@ -191,8 +191,8 @@
 - [ ] **8.2** Handle BLE disconnection gracefully (auto-scan + reconnect)
 - [ ] **8.3** Handle app crash during workout — recover state from last known good metrics in Room
 - [ ] **8.4** Handle guest mode workouts (no user ID) — prompt to save or discard post-ride
-- [ ] **8.5** Add haptic feedback on HUD for zone alerts
-- [ ] **8.6** Add audio cues (TTS) for zone changes if desired
+- [x] **8.5** Add haptic feedback on HUD for zone alerts
+- [x] **8.6** Add audio cues (TTS) for zone changes if desired
 - [ ] **8.7** Write unit tests for: `PowerZoneCalculator`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `IntentModifier`
 - [ ] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
