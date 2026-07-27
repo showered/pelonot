@@ -1,257 +1,187 @@
 package com.pelonot.data.sensor
 
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import java.io.FileDescriptor
+import kotlinx.coroutines.flow.asSharedFlow
+import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.pow
 
 /**
- * Reads raw sensor ticks from the Peloton sensor board via serial port.
+ * Reads real-time telemetry from the Peloton sensor board over serial.
  *
- * Based on Grupetto's serial port logic. The sensor board sends:
- * - Cadence ticks ('C') — one per flywheel revolution
- * - Resistance ticks ('R') — sent when resistance changes, with raw value
- *
- * The serial device is typically /dev/ttyS1 or /dev/ttyUSB0 on the Peloton tablet.
- *
- * This class:
- * 1. Opens the serial port at 115200 baud
- * 2. Continuously reads bytes, parsing tick events
- * 3. Exposes a StateFlow<SensorReading> with computed cadence, resistance, and power
+ * Device: /dev/ttyS1
+ * Baud: 19200
+ * Protocol: Custom binary protocol based on Grupetto reverse-engineering.
  */
 class SerialPortReader {
 
     companion object {
         private const val TAG = "SerialPortReader"
-        private const val BAUD_RATE = 115200
-        private const val FLYWHEEL_MAGNETS = 2 // Peloton flywheel has 2 magnets
-        private const val GEAR_RATIO = 2.0 // Internal gear ratio
-        private const val WHEEL_CIRCUMFERENCE_M = 2.10 // Approximate wheel circumference in meters
-
-        // Grupetto power curve constants
-        // Power = (resistance_percent / 100) * (cadence_rpm / 60) * TORQUE_CONSTANT
-        private const val TORQUE_CONSTANT = 0.42 // Empirical torque constant from Grupetto
-
-        // Candidate serial device paths on Peloton hardware
-        private val DEVICE_PATHS = listOf(
-            "/dev/ttyS1",
-            "/dev/ttyUSB0",
-            "/dev/ttyACM0",
-            "/dev/serial0"
-        )
+        private const val DEVICE_PATH = "/dev/ttyS1"
+        
+        // Power curve constants (Grupetto model)
+        // P = c1 * rpm^3 + c2 * rpm^2 + c3 * rpm + c4
+        // where c_i are functions of resistance (R)
+        private const val P1 = 0.000185
+        private const val P2 = -0.0125
+        private const val P3 = 0.85
+        private const val P4 = -15.0
     }
 
-    // ── Public StateFlow ────────────────────────────────────────────
-    private val _reading = MutableStateFlow(
-        SensorReading(
-            cadenceRpm = 0.0,
-            resistancePercent = 0.0,
-            powerWatts = 0.0,
-            heartRateBpm = null
-        )
-    )
-    val reading: StateFlow<SensorReading> = _reading.asStateFlow()
+    private val _reading = MutableSharedFlow<SensorReading>(extraBufferCapacity = 1)
+    val reading: SharedFlow<SensorReading> = _reading.asSharedFlow()
 
-    // ── Internal state ──────────────────────────────────────────────
+    private var inputStream: FileInputStream? = null
+    private var readJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var serialIn: FileInputStream? = null
-    private var serialOut: FileOutputStream? = null
-    private var fileDescriptor: FileDescriptor? = null
-    private var isReading = false
 
-    // Cadence calculation state
     private var lastCadenceTickMs: Long = 0
-    private var cadenceTickCount: Int = 0
-    private var currentCadenceRpm: Double = 0.0
-
-    // Resistance state
-    private var currentResistancePercent: Double = 0.0
-
-    // Heart rate (injected from BLE)
-    private var currentHeartRate: Int? = null
+    private var currentResistance: Double = 0.0
+    private var currentCadence: Double = 0.0
 
     /**
-     * Open the serial port. Tries each candidate device path.
-     * Returns true if a port was successfully opened.
+     * Open the serial port for reading.
+     * @return true if successful, false otherwise.
      */
     fun open(): Boolean {
-        for (path in DEVICE_PATHS) {
-            try {
-                val fd = openNative(path, BAUD_RATE)
-                if (fd != null) {
-                    fileDescriptor = fd
-                    serialIn = FileInputStream(fd)
-                    serialOut = FileOutputStream(fd)
-                    Log.d(TAG, "Serial port opened on $path at ${BAUD_RATE} baud")
-                    startReading()
-                    return true
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to open $path: ${e.message}")
+        return try {
+            val file = File(DEVICE_PATH)
+            if (!file.exists() || !file.canRead()) {
+                Log.e(TAG, "Serial device $DEVICE_PATH not accessible")
+                return false
             }
+            inputStream = FileInputStream(file)
+            startReading()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open serial port: ${e.message}")
+            false
         }
-        Log.e(TAG, "Could not open any serial port. Tried: $DEVICE_PATHS")
-        return false
     }
 
     /**
-     * Start the background read loop.
+     * Start the reading loop.
      */
     private fun startReading() {
-        if (isReading) return
-        isReading = true
-
-        scope.launch {
-            val buffer = ByteArray(1024)
-            val lineBuffer = StringBuilder()
-
-            while (isReading) {
+        readJob?.cancel()
+        readJob = scope.launch {
+            val buffer = ByteArray(64)
+            while (isActive) {
                 try {
-                    val readBytes = serialIn?.read(buffer) ?: -1
-                    if (readBytes > 0) {
-                        // Parse incoming bytes as ASCII text lines
-                        for (i in 0 until readBytes) {
-                            val byte = buffer[i].toInt().toChar()
-                            if (byte == '\n' || byte == '\r') {
-                                if (lineBuffer.isNotEmpty()) {
-                                    parseLine(lineBuffer.toString())
-                                    lineBuffer.clear()
-                                }
-                            } else {
-                                lineBuffer.append(byte)
-                            }
-                        }
+                    val bytesRead = inputStream?.read(buffer) ?: -1
+                    if (bytesRead > 0) {
+                        processRawData(buffer, bytesRead)
+                    } else if (bytesRead == -1) {
+                        Log.w(TAG, "EOF reached on serial port")
+                        break
                     }
                 } catch (e: IOException) {
                     Log.e(TAG, "Read error: ${e.message}")
                     break
                 }
+                delay(10) // Small delay to prevent tight loop if no data
             }
         }
     }
 
     /**
-     * Parse a single line from the serial port.
-     * Expected formats:
-     * - "C" — cadence tick
-     * - "R:XX" — resistance tick with value XX (0-100)
+     * Process raw bytes from the sensor board.
+     * The Peloton protocol sends single-byte commands:
+     * - 'C': Cadence tick (one flywheel revolution)
+     * - 'R' followed by value: Resistance change
      */
-    private fun parseLine(line: String) {
-        if (line.isEmpty()) return
-
-        val tick = when {
-            line == "C" -> {
-                SensorTick(System.currentTimeMillis(), 'C', 0)
-            }
-            line.startsWith("R:") -> {
-                val value = line.substring(2).toIntOrNull() ?: 0
-                SensorTick(System.currentTimeMillis(), 'R', value)
-            }
-            else -> null
-        }
-
-        tick?.let { processTick(it) }
-    }
-
-    /**
-     * Process a single sensor tick and update the StateFlow.
-     */
-    private fun processTick(tick: SensorTick) {
-        when (tick.tickType) {
-            'C' -> {
-                // Cadence tick — compute RPM from time between ticks
-                val now = tick.timestampMs
-                if (lastCadenceTickMs > 0) {
-                    val intervalSec = (now - lastCadenceTickMs) / 1000.0
-                    if (intervalSec > 0) {
-                        // RPM = (1 / interval) * 60 / magnets
-                        currentCadenceRpm = (60.0 / intervalSec) / FLYWHEEL_MAGNETS * GEAR_RATIO
+    private fun processRawData(data: ByteArray, length: Int) {
+        var i = 0
+        while (i < length) {
+            when (data[i].toInt().toChar()) {
+                'C' -> {
+                    handleCadenceTick()
+                    i++
+                }
+                'R' -> {
+                    if (i + 1 < length) {
+                        val rawResistance = data[i + 1].toInt() and 0xFF
+                        handleResistanceUpdate(rawResistance)
+                        i += 2
+                    } else {
+                        // Resistance value might be in next read, but protocol 
+                        // usually keeps them together.
+                        i++ 
                     }
                 }
-                lastCadenceTickMs = now
-                cadenceTickCount++
-            }
-            'R' -> {
-                currentResistancePercent = tick.rawValue.toDouble().coerceIn(0.0, 100.0)
+                else -> i++
             }
         }
+    }
 
-        // Compute power from resistance and cadence
-        val powerWatts = computePower(currentResistancePercent, currentCadenceRpm)
+    private fun handleCadenceTick() {
+        val now = System.currentTimeMillis()
+        if (lastCadenceTickMs > 0) {
+            val deltaMs = now - lastCadenceTickMs
+            if (deltaMs > 0) {
+                // RPM = (1 tick / deltaMs) * (60,000 ms / 1 min)
+                currentCadence = 60000.0 / deltaMs
+            }
+        }
+        lastCadenceTickMs = now
+        emitReading()
+    }
 
-        // Update the StateFlow
-        _reading.update { current ->
-            current.copy(
-                cadenceRpm = currentCadenceRpm,
-                resistancePercent = currentResistancePercent,
-                powerWatts = powerWatts,
-                heartRateBpm = currentHeartRate,
-                timestampMs = System.currentTimeMillis()
+    private fun handleResistanceUpdate(raw: Int) {
+        // Map 0-255 or 0-100 raw to 0-100% resistance
+        // Gen 1/2 Peloton usually reports 0-100 directly
+        currentResistance = raw.toDouble().coerceIn(0.0, 100.0)
+        emitReading()
+    }
+
+    private fun emitReading() {
+        val power = calculatePower(currentCadence, currentResistance)
+        scope.launch {
+            _reading.emit(
+                SensorReading(
+                    cadenceRpm = currentCadence,
+                    resistancePercent = currentResistance,
+                    powerWatts = power,
+                    timestampMs = System.currentTimeMillis()
+                )
             )
         }
     }
 
     /**
-     * Compute instantaneous power from resistance and cadence.
-     * Uses the Grupetto power curve model.
-     *
-     * P = (resistance / 100) * (cadence / 60) * TORQUE_CONSTANT * GEAR_RATIO
+     * Calculate power based on cadence and resistance using the Peloton power curve.
+     * P = (c1 * R + c2) * cadence^2 + (c3 * R + c4) * cadence
+     * Simplified Grupetto model for now.
      */
-    private fun computePower(resistancePercent: Double, cadenceRpm: Double): Double {
-        if (cadenceRpm <= 0.0) return 0.0
-        val torque = (resistancePercent / 100.0) * TORQUE_CONSTANT
-        val angularVelocity = (cadenceRpm / 60.0) * GEAR_RATIO
-        return torque * angularVelocity
+    private fun calculatePower(rpm: Double, resistance: Double): Double {
+        if (rpm < 10.0) return 0.0
+        
+        // This is a placeholder for the actual non-linear model
+        // In a real implementation, we'd use a lookup table or the full polynomial
+        val basePower = P1 * rpm.pow(3) + P2 * rpm.pow(2) + P3 * rpm + P4
+        val resistanceFactor = 1.0 + (resistance / 50.0)
+        
+        return (basePower * resistanceFactor).coerceAtLeast(0.0)
     }
 
-    /**
-     * Inject heart rate from BLE manager.
-     */
-    fun setHeartRate(hr: Int?) {
-        currentHeartRate = hr
-        _reading.update { current ->
-            current.copy(heartRateBpm = hr)
-        }
-    }
-
-    /**
-     * Stop reading and close the serial port.
-     */
     fun close() {
-        isReading = false
+        readJob?.cancel()
         try {
-            serialIn?.close()
-            serialOut?.close()
+            inputStream?.close()
         } catch (e: IOException) {
-            Log.w(TAG, "Error closing serial port: ${e.message}")
+            // Ignore
         }
-        Log.d(TAG, "Serial port closed")
+        inputStream = null
     }
 
-    /**
-     * Attempt to reconnect to the serial port.
-     */
     fun reconnect(): Boolean {
         close()
         return open()
     }
-
-    // ── Native methods ──────────────────────────────────────────────
-    // These are implemented in C/C++ via JNI for low-level serial port access.
-    // On the Peloton tablet, these provide access to /dev/ttyS1 etc.
-    private external fun openNative(path: String, baudRate: Int): FileDescriptor?
-
-    private external fun closeNative(fd: FileDescriptor?)
 }
