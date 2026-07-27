@@ -169,7 +169,7 @@
   - **Biometric Decoupling:** Detect if Zone 4 power sustained >10 min while HR <80% max HR
   - **RPE Survey:** If RPE ≤ 4 on a hard class, propose 3% FTP increase
 - [x] **7.2** Create `FtpBreakthroughDialog` composable — shows current FTP, estimated new FTP, Accept/Decline buttons
-- [ ] **7.3** Implement FTP update flow: on accept, update `User.ftpWatts` in Room + schedule sync
+- [x] **7.3** Implement FTP update flow: on accept, update `User.ftpWatts` in Room + schedule sync
 - [x] **7.4** Create `WorkoutSyncWorker` extending `CoroutineWorker`:
   - On successful ride completion, enqueue sync via WorkManager
   - Compresses `WorkoutMetric` list into JSON array

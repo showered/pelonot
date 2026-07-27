@@ -75,4 +75,18 @@ class SupabaseSyncRepository {
         )
         client.from("profiles").upsert(payload)
     }
+    
+    /**
+     * Update user FTP in Supabase.
+     */
+    suspend fun updateFtp(
+        localUserId: Int,
+        newFtp: Int
+    ): Result<Unit> = runCatching {
+        val payload = mapOf(
+            "local_user_id" to localUserId,
+            "ftp_watts" to newFtp
+        )
+        client.from("profiles").upsert(payload)
+    }
 }
