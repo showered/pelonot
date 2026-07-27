@@ -187,7 +187,7 @@
 
 **Goal:** Production readiness.
 
-- [ ] **8.1** Handle serial port disconnection gracefully (auto-reconnect with exponential backoff)
+- [x] **8.1** Handle serial port disconnection gracefully (auto-reconnect with exponential backoff)
 - [ ] **8.2** Handle BLE disconnection gracefully (auto-scan + reconnect)
 - [ ] **8.3** Handle app crash during workout — recover state from last known good metrics in Room
 - [ ] **8.4** Handle guest mode workouts (no user ID) — prompt to save or discard post-ride

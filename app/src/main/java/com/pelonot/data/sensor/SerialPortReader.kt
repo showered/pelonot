@@ -44,7 +44,11 @@ class SerialPortReader {
     private var lastCadenceTickMs: Long = 0
     private var currentResistance: Double = 0.0
     private var currentCadence: Double = 0.0
-
+    private var reconnectJob: Job? = null
+    private var reconnectAttempts: Long = 0
+    private val maxReconnectAttempts = 10L
+    private val baseDelayMs = 1000L
+    
     /**
      * Open the serial port for reading.
      * @return true if successful, false otherwise.
@@ -58,6 +62,7 @@ class SerialPortReader {
             }
             inputStream = FileInputStream(file)
             startReading()
+            reconnectAttempts = 0
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to open serial port: ${e.message}")
@@ -178,10 +183,43 @@ class SerialPortReader {
             // Ignore
         }
         inputStream = null
+        startAutoReconnect()
     }
 
     fun reconnect(): Boolean {
         close()
         return open()
+    }
+    
+    /**
+     * Start auto-reconnect with exponential backoff.
+     */
+    private fun startAutoReconnect() {
+        if (reconnectJob?.isActive == true) return
+        
+        reconnectJob = scope.launch {
+            while (isActive && reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++
+                val delayMs = baseDelayMs * (1L shl (reconnectAttempts - 1).coerceAtMost(5))
+                Log.i(TAG, "Attempting serial port reconnect (attempt $reconnectAttempts, delay ${delayMs}ms)")
+                
+                delay(delayMs)
+                
+                if (reconnect()) {
+                    Log.i(TAG, "Serial port reconnected successfully")
+                    return@launch
+                }
+            }
+            Log.e(TAG, "Failed to reconnect after $maxReconnectAttempts attempts")
+        }
+    }
+    
+    /**
+     * Stop any ongoing reconnect attempts.
+     */
+    fun stopReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+        reconnectAttempts = 0
     }
 }
