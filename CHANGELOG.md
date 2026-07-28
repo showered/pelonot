@@ -91,7 +91,12 @@
 
 **Files created:**
  - `ProfileSelectorScreen.kt` — Grid of user profiles with guest mode
- - `MainDashboardScreen.kt` — Main dashboard with Just Ride, Begin Class, Settings buttons
+  - `MainDashboardScreen.kt` — **Redesigned** to use Material Expressive components:
+    - Hero card with FTP metric and start‑ride button
+    - Primary and secondary buttons with spring animations
+    - Metric cards for today’s progress and recent ride
+    - Status chip for FTP stability
+    - Subtle fade/scale animations for card entrance
  - `PreRideIntentPrompt.kt` — Intent selection dialog
  - `ClassLibraryScreen.kt` — List of class templates
  - `PostRideSummaryScreen.kt` — Ride summary with RPE selection
