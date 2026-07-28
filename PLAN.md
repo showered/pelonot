@@ -197,8 +197,115 @@
 - [x] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
 - [ ] **8.10** Guest post-ride prompt: save to new profile, existing profile, or discard
-- [ ] **8.11** Apply Material Expressive design language throughout the app (dynamic shapes, rich color, bold typography)
-- [x] **8.12** Fix light mode background — screens show dark grey instead of `LightBackground`
+- [ ] **8.11** Apply Material Expressive design language throughout the app
+
+### Design System
+- [ ] **8.11.1** Audit current color palette and define Material Expressive color tokens (primary, secondary, tertiary, error, surface, on-surface variants)
+- [ ] **8.11.2** Define dynamic color scheme for light and dark themes with proper tonal palettes
+- [ ] **8.11.3** Create extended color palette for fitness metrics (power zones, heart rate zones, cadence ranges)
+- [ ] **8.11.4** Define elevation and shadow tokens (Level 0-5) for consistent depth hierarchy
+- [ ] **8.11.5** Create shape tokens with expressive corner sizes (4dp, 8dp, 12dp, 16dp, 28dp, 32dp)
+- [ ] **8.11.6** Define motion duration tokens (short, medium, long) and easing curves
+
+### Material Expressive Theme
+- [ ] **8.11.7** Update `Color.kt` with Material Expressive color system (dynamic tonal palettes)
+- [ ] **8.11.8** Update `Type.kt` with expressive typography scale (DisplayLarge to LabelSmall with proper weights)
+- [ ] **8.11.9** Create `Shapes.kt` with expressive corner shapes (pill shapes, cut corners, rounded rectangles)
+- [ ] **8.11.10** Update `Theme.kt` to use Material Expressive components and dynamic shapes
+- [ ] **8.11.11** Add motion tokens to theme (standard, emphasized, decelerated, accelerated easing)
+
+### Navigation & Motion
+- [ ] **8.11.12** Implement shared element transitions between profile selector and dashboard
+- [ ] **8.11.13** Add fade-through animations for screen transitions
+- [ ] **8.11.14** Implement container transform for class library to class detail navigation
+- [ ] **8.11.15** Add predictive back gesture support for Android 14+
+- [ ] **8.11.16** Create navigation rail or bottom bar with expressive icon animations
+
+### Dashboard Redesign
+- [ ] **8.11.17** Redesign `MainDashboardScreen` with Material Expressive card layouts
+- [ ] **8.11.18** Add large expressive FAB for primary action (Just Ride)
+- [ ] **8.11.19** Implement dashboard cards with proper elevation and surface tonal variants
+- [ ] **8.11.20** Add micro-interactions for button presses and state changes
+- [ ] **8.11.21** Create dashboard loading states with skeleton screens
+
+### Profile Selection Redesign
+- [ ] **8.11.22** Redesign `ProfileSelectorScreen` with expressive profile cards
+- [ ] **8.11.23** Add profile avatar with dynamic color backgrounds
+- [ ] **8.11.24** Implement profile card hover/press states with expressive animations
+- [ ] **8.11.25** Add guest mode card with distinct visual treatment
+- [ ] **8.11.26** Create profile creation flow with expressive dialogs
+
+### Class Library Redesign
+- [ ] **8.11.27** Redesign `ClassLibraryScreen` with expressive list items
+- [ ] **8.11.28** Add category filter chips with dynamic selection states
+- [ ] **8.11.29** Implement class cards with duration badges and category tags
+- [ ] **8.11.30** Add search bar with expressive leading/trailing icons
+- [ ] **8.11.31** Create empty state illustrations for no classes found
+
+### Class Details Redesign
+- [ ] **8.11.32** Redesign `ClassDetailScreen` with interval timeline visualization
+- [ ] **8.11.33** Add sticky header for class title and metadata
+- [ ] **8.11.34** Implement interval cards with zone color coding
+- [ ] **8.11.35** Add start button with expressive loading state
+- [ ] **8.11.36** Create difficulty indicator with expressive progress visualization
+
+### Ride Preparation Flow
+- [ ] **8.11.37** Redesign `PreRideIntentPrompt` with expressive choice chips
+- [ ] **8.11.38** Add intent selection with iconography and descriptions
+- [ ] **8.11.39** Implement preparation checklist with progress indicator
+- [ ] **8.11.40** Add sensor connection status with expressive status indicators
+- [ ] **8.11.41** Create countdown animation before ride start
+
+### Workout HUD Redesign
+- [ ] **8.11.42** Redesign `HudOverlayMain` with expressive metric cards
+- [ ] **8.11.43** Add dynamic shape transitions for metric value changes
+- [ ] **8.11.44** Implement target zone indicator with expressive progress arcs
+- [ ] **8.11.45** Add zone alert with expressive color flash and haptic
+- [ ] **8.11.46** Create collapsible leaderboard with smooth expand/collapse
+- [ ] **8.11.47** Add pause overlay with expressive blur effect
+
+### Post Ride Summary Redesign
+- [ ] **8.11.48** Redesign `PostRideSummaryScreen` with summary cards
+- [ ] **8.11.49** Add achievement badges for workout milestones
+- [ ] **8.11.50** Implement RPE selection with expressive slider
+- [ ] **8.11.51** Add share button with expressive icon animation
+- [ ] **8.11.52** Create FTP breakthrough dialog with celebratory animation
+
+### Charts & Visualisations
+- [ ] **8.11.53** Add power output chart with zone color overlay
+- [ ] **8.11.54** Implement heart rate chart with time markers
+- [ ] **8.11.55** Create cadence distribution visualization
+- [ ] **8.11.56** Add workout comparison chart (current vs PB)
+- [ ] **8.11.57** Implement smooth chart animations on load
+
+### Component Library
+- [ ] **8.11.58** Create reusable `MetricCard` with expressive styling
+- [ ] **8.11.59** Add `ZoneBadge` composable for power zones
+- [ ] **8.11.60** Implement `ProgressArc` with expressive stroke and animation
+- [ ] **8.11.61** Create `FilterChip` with dynamic selection states
+- [ ] **8.11.62** Add `ExpressiveButton` with proper touch feedback
+- [ ] **8.11.63** Implement `ExpressiveDialog` with rounded top corners
+- [ ] **8.11.64** Create `SkeletonLoader` for loading states
+
+### Accessibility
+- [ ] **8.11.65** Add content descriptions for all interactive elements
+- [ ] **8.11.66** Implement proper touch target sizes (minimum 48dp)
+- [ ] **8.11.67** Add semantic headings for screen readers
+- [ ] **8.11.68** Implement high contrast mode support
+- [ ] **8.11.69** Add font scaling support for large text
+
+### Polish & Micro-interactions
+- [ ] **8.11.70** Add haptic feedback for all button interactions
+- [ ] **8.11.71** Implement spring animations for value changes
+- [ ] **8.11.72** Add staggered animations for list item appearance
+- [ ] **8.11.73** Create expressive ripple effects for touch feedback
+- [ ] **8.11.74** Add loading shimmer effects for async content
+- [ ] **8.11.75** Implement smooth state transitions for all UI elements
+- [ ] **8.11.76** Add adaptive iconography for different states
+- [ ] **8.11.77** Create consistent error states with expressive messaging
+- [ ] **8.11.78** Add success animations for completed actions
+- [ ] **8.11.79** Implement pull-to-refresh with expressive indicator
+- [ ] **8.11.80** Add scroll edge effects with tonal overlays
 
 ---
 
