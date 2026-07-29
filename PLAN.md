@@ -220,9 +220,9 @@
 - [x] **8.11.11** Add motion tokens to theme (standard, emphasized, decelerated, accelerated easing)
 
 ### Navigation & Motion
-- [ ] **8.11.12** Implement shared element transitions between profile selector and dashboard
-- [ ] **8.11.13** Add fade-through animations for screen transitions
-- [ ] **8.11.14** Implement container transform for class library to class detail navigation
+- [x] **8.11.12** Implement shared element transitions between profile selector and dashboard
+- [x] **8.11.13** Add fade-through animations for screen transitions
+- [x] **8.11.14** Implement container transform for class library to class detail navigation
 - [ ] **8.11.15** Add predictive back gesture support for Android 14+
 - [ ] **8.11.16** Create navigation rail or bottom bar with expressive icon animations
 
