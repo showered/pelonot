@@ -13,6 +13,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -118,6 +119,11 @@ val MaterialTheme.motionTokens: MotionTokens
     @ReadOnlyComposable
     get() = LocalMotion.current
 
+val MaterialTheme.expressiveShapes: ExpressiveShapes
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalExpressiveShapes.current
+
 // ==========================================
 // Material 3 Color Schemes (Calm, Premium)
 // ==========================================
@@ -174,7 +180,8 @@ fun PelonotTheme(
         LocalElevation provides Elevation(),
         LocalCornerRadius provides CornerRadius(),
         LocalIconSizes provides IconSizes(),
-        LocalMotion provides MotionTokens()
+        LocalMotion provides MotionTokens(),
+        LocalExpressiveShapes provides ExpressiveShapes()
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

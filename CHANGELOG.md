@@ -156,6 +156,33 @@
 
 ---
 
+## Design System: Material Expressive Shapes (added)
+
+**Goal:** Create a dedicated `Shapes.kt` with expressive corner shape tokens and migrate all hardcoded shape references to use the tokenized system.
+
+**Files created:**
+- `app/src/main/java/com/pelonot/ui/theme/Shapes.kt` — Expressive shape token system:
+  - Rounded rectangle shapes: `extraSmall` (4dp) through `container` (24dp)
+  - `pill` shape (999dp) for fully rounded elements
+  - Cut corner shapes: `cutCornerSmall`, `cutCornerMedium`, `cutCornerLarge`
+  - Top-only rounded shapes: `topRoundedSmall`, `topRoundedLarge` (for dialogs, bottom sheets)
+  - Bottom-only rounded shapes: `bottomRoundedSmall`, `bottomRoundedLarge` (for headers, top bars)
+  - `LocalExpressiveShapes` CompositionLocal for theme integration
+
+**Files modified:**
+- `Theme.kt` — Added `LocalExpressiveShapes` provider in `CompositionLocalProvider` and `MaterialTheme.expressiveShapes` extension property
+- `ExpressiveComponents.kt` — Replaced all hardcoded `RoundedCornerShape` and `CircleShape` references with `MaterialTheme.shapes.*` tokens
+- `HudOverlayMain.kt` — Replaced all hardcoded `RoundedCornerShape` references with `MaterialTheme.shapes.*` tokens
+
+**Design Philosophy:**
+- All shape values are centralized in `Shapes.kt` — no duplicated corner radius values
+- Consistent shape language across all components (cards, buttons, chips, dialogs, panels)
+- Cut corners provide premium visual variety for accent elements
+- Top/bottom-only rounded shapes enable proper dialog and sheet styling
+- Backward compatible — all existing composables continue to work with tokenized shapes
+
+---
+
 ## Design System: Material Expressive Foundation (added)
 
 **Goal:** Create a cohesive, reusable design system and visual language for the app, inspired by Google Health, Fitbit, WHOOP, and Garmin Connect.

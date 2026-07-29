@@ -1,4 +1,4 @@
-package com.pelonot.ui.components
+ package com.pelonot.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
@@ -55,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.ui.theme.FitnessTypography
 import com.pelonot.ui.theme.PelonotGradients
-import com.pelonot.ui.theme.cornerRadius
 import com.pelonot.ui.theme.elevationTokens
+import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.iconSizes
 import com.pelonot.ui.theme.spacing
 
@@ -90,7 +88,7 @@ fun PrimaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(MaterialTheme.cornerRadius.pill))
+            .clip(MaterialTheme.expressiveShapes.pill)
             .background(
                 brush = Brush.horizontalGradient(PelonotGradients.TealFlow),
                 alpha = buttonAlpha
@@ -160,12 +158,12 @@ fun SecondaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(MaterialTheme.cornerRadius.pill))
+            .clip(MaterialTheme.expressiveShapes.pill)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .border(
                 width = 1.dp,
                 color = if (isPressed) MaterialTheme.colorScheme.primary else borderColor,
-                shape = RoundedCornerShape(MaterialTheme.cornerRadius.pill)
+                shape = MaterialTheme.expressiveShapes.pill
             )
             .clickable(
                 enabled = enabled,
@@ -217,7 +215,7 @@ fun HeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(MaterialTheme.cornerRadius.container),
+        shape = MaterialTheme.expressiveShapes.container,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -259,7 +257,7 @@ fun HeroCard(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .clip(CircleShape)
+                            .clip(MaterialTheme.expressiveShapes.pill)
                             .clickable(onClick = onActionClick)
                             .padding(
                                 horizontal = MaterialTheme.spacing.small,
@@ -332,9 +330,9 @@ fun MetricCard(
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(MaterialTheme.cornerRadius.extraLarge))
+            .clip(MaterialTheme.expressiveShapes.extraLarge)
             .clickable(enabled = onValueClick != null, onClick = { onValueClick?.invoke() }),
-        shape = RoundedCornerShape(MaterialTheme.cornerRadius.extraLarge),
+        shape = MaterialTheme.expressiveShapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -472,12 +470,12 @@ fun StatusChip(
 
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(MaterialTheme.cornerRadius.medium))
+            .clip(MaterialTheme.expressiveShapes.medium)
             .background(containerBg)
             .border(
                 width = 1.dp,
                 color = color.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(MaterialTheme.cornerRadius.medium)
+                shape = MaterialTheme.expressiveShapes.medium
             )
             .padding(
                 horizontal = MaterialTheme.spacing.medium,
@@ -517,7 +515,7 @@ fun InfoCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(MaterialTheme.cornerRadius.large),
+        shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ),
@@ -637,12 +635,7 @@ fun BottomActionBar(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = MaterialTheme.elevationTokens.level3,
-        shape = RoundedCornerShape(
-            topStart = MaterialTheme.cornerRadius.container,
-            topEnd = MaterialTheme.cornerRadius.container,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        )
+        shape = MaterialTheme.expressiveShapes.topRoundedLarge
     ) {
         Box(
             modifier = Modifier

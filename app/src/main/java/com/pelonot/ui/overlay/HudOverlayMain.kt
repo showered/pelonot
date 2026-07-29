@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,7 +57,7 @@ fun HudOverlayMain(
                 }
             },
         colors = CardDefaults.cardColors(containerColor = DarkBackground.copy(alpha = 0.9f)),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.expressiveShapes.large,
         border = CardDefaults.outlinedCardBorder()
     ) {
         Column(
@@ -75,7 +74,7 @@ fun HudOverlayMain(
                 Box(
                     modifier = Modifier
                         .size(40.dp, 4.dp)
-                        .background(Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                        .background(Color.Gray.copy(alpha = 0.5f), MaterialTheme.expressiveShapes.extraSmall)
                 )
             }
 
@@ -198,7 +197,7 @@ fun MetricCard(
             .padding(4.dp)
             .scale(scaleFactor),
         colors = CardDefaults.cardColors(containerColor = animatedBgColor.takeIf { isAlert } ?: DarkSurface),
-        shape = RoundedCornerShape(12.dp)
+        shape = MaterialTheme.expressiveShapes.medium
     ) {
         Column(
             modifier = Modifier
@@ -239,7 +238,7 @@ fun TargetsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface, RoundedCornerShape(12.dp))
+            .background(DarkSurface, MaterialTheme.expressiveShapes.medium)
             .padding(8.dp)
     ) {
         Text(
@@ -283,7 +282,7 @@ fun LeaderboardPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(DarkSurface, RoundedCornerShape(12.dp))
+            .background(DarkSurface, MaterialTheme.expressiveShapes.medium)
             .padding(8.dp)
     ) {
         Row(
