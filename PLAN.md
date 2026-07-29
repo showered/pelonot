@@ -314,6 +314,48 @@
 
 ---
 
+---
+
+## Phase 9: Ride Integration — Service, HUD Overlay & Class Interval Engine
+
+**Goal:** Wire the existing WorkoutService, HUD overlay, and class interval timing into the navigation flow so rides actually work end-to-end.
+
+### 9.1 Launch WorkoutService on Ride Start
+- [ ] **9.1.1** In `NavGraph.kt`, when "Just Ride" or "Start Class" is clicked, start `WorkoutService` via `startForegroundService()` with an Intent containing the user's FTP and intent modifier
+- [ ] **9.1.2** Bind to `WorkoutService` from the composable layer to observe `workoutState: StateFlow<WorkoutState>` and `SensorReading` data
+- [ ] **9.1.3** Stop the service when "End Ride" is pressed and pass final metrics to `PostRideSummaryScreen`
+
+### 9.2 HUD Overlay Activation
+- [ ] **9.2.1** In `NavGraph.kt` or `MainActivity.kt`, instantiate `HudOverlayManager` and call `show()` when a ride starts, `hide()` when it ends
+- [ ] **9.2.2** Pass the `WorkoutService`'s `StateFlow<SensorReading>` to `HudOverlayManager` so the overlay displays live cadence, power, and HR
+- [ ] **9.2.3** Wire overlay pause/resume/stop buttons to `WorkoutService` controls
+
+### 9.3 Class Interval Engine
+- [ ] **9.3.1** Create a `ClassIntervalEngine` that takes the parsed `List<Interval>` from `ClassTemplateEntity.intervalsJson` and drives a timer
+- [ ] **9.3.2** Emit current interval state (current zone, target cadence range, target power range, elapsed time in interval, remaining time) as a `StateFlow<IntervalState>`
+- [ ] **9.3.3** Wire `ClassIntervalEngine` to `HudOverlayMain` so target zone indicators update as intervals progress
+- [ ] **9.3.4** When the class timer reaches 0, auto-complete the workout and navigate to post-ride summary
+
+### 9.3a Next Interval Preview & Countdown
+- [ ] **9.3a.1** In `IntervalState`, include a `nextInterval: Interval?` field so the UI can show what's coming up next (e.g. "Next: Zone 5 VO2 Max — 3 min")
+- [ ] **9.3a.2** During rest/recovery intervals, display a prominent countdown timer showing remaining rest time so the user knows how long they have to drink water or recover
+- [ ] **9.3a.3** Show the upcoming interval's zone color, target cadence range, and target power range as a preview card on the HUD — this helps the user mentally prepare for a hard effort
+- [ ] **9.3a.4** Add a 5-second warning animation (flash + haptic) when the current interval is about to end and the next interval is about to begin
+- [ ] **9.3a.5** Show "give it everything" messaging on the last hard interval, not necessarily the last interval overall. If the final interval is rest/recovery (Z1-Z2), show "Last hard effort — give it everything!" on the penultimate interval instead, then show "Cool down — ride easy" on the final rest interval. If the final interval is itself a hard effort (Z4+), show "Last interval — give it everything!" directly. Never show a next-interval preview on the final interval regardless of type.
+
+### 9.4 Sensor Data on Non-Peloton Devices
+- [ ] **9.4.1** Create a `SimulatedSensorProvider` that generates fake cadence/power/HR data for testing on phones
+- [ ] **9.4.2** Add a developer toggle in Settings to switch between real serial/BLE input and simulated data
+- [ ] **9.4.3** Ensure `SensorRepository` falls back gracefully when `/dev/ttyS1` is unavailable
+
+### 9.5 Post-Ride Data Flow
+- [ ] **9.5.1** Collect final `WorkoutSession` from `WorkoutService` on ride end
+- [ ] **9.5.2** Pass real metrics (duration, avg power, total output, distance) to `PostRideSummaryScreen` instead of hardcoded zeros
+- [ ] **9.5.3** Trigger `PostWorkoutAnalyzer` for FTP breakthrough detection after ride completion
+- [ ] **9.5.4** Enqueue `WorkoutSyncWorker` via WorkManager after ride save
+
+---
+
 ## How to Use This Plan
 
 1. **Each checkbox is a single, focused task** — small enough to complete in one AI session, large enough to be meaningful.

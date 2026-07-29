@@ -20,7 +20,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
-import com.pelonot.ui.screen.*
+import com.pelonot.ui.screen.ClassDetailScreen
+import com.pelonot.ui.screen.ClassLibraryScreen
+import com.pelonot.ui.screen.JustRideScreen
+import com.pelonot.ui.screen.MainDashboardScreen
+import com.pelonot.ui.screen.PostRideSummaryScreen
+import com.pelonot.ui.screen.PreRideIntentPrompt
+import com.pelonot.ui.screen.ProfileCreationDialog
+import com.pelonot.ui.screen.ProfileSelectorScreen
+import com.pelonot.ui.screen.SettingsScreen
 
 @Composable
 fun PelonotNavGraph(
@@ -31,7 +39,10 @@ fun PelonotNavGraph(
     onChangeTheme: (Boolean) -> Unit
 ) {
     var hasJustRideStarted by remember { mutableStateOf(false) }
+    var hasClassRideStarted by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
+    var showIntentPrompt by remember { mutableStateOf(false) }
+    var pendingClassTemplate by remember { mutableStateOf<ClassTemplateEntity?>(null) }
     var savedFtp by remember { mutableStateOf(200) }
     var savedWeight by remember { mutableStateOf<Double?>(null) }
     var isDarkTheme by remember { mutableStateOf(true) }
@@ -56,6 +67,19 @@ fun PelonotNavGraph(
         )
     }
 
+    if (showIntentPrompt && pendingClassTemplate != null) {
+        PreRideIntentPrompt(
+            onIntentSelected = { intent ->
+                showIntentPrompt = false
+                hasClassRideStarted = true
+            },
+            onDismiss = {
+                showIntentPrompt = false
+                pendingClassTemplate = null
+            }
+        )
+    }
+
     if (hasJustRideStarted) {
         JustRideScreen(
             modifier = Modifier
@@ -65,6 +89,22 @@ fun PelonotNavGraph(
             onEndRide = {
                 hasJustRideStarted = false
                 navController.navigate("post_ride/true") {
+                    popUpTo("dashboard") { inclusive = false }
+                }
+            }
+        )
+        return
+    }
+
+    if (hasClassRideStarted) {
+        JustRideScreen(
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars),
+            ftp = savedFtp,
+            onEndRide = {
+                hasClassRideStarted = false
+                navController.navigate("post_ride/false") {
                     popUpTo("dashboard") { inclusive = false }
                 }
             }
@@ -155,10 +195,9 @@ fun PelonotNavGraph(
                     onBack = {
                         navController.popBackStack()
                     },
-                    onStart = { _ ->
-                        navController.navigate("post_ride/false") {
-                            popUpTo("dashboard") { inclusive = false }
-                        }
+                    onStart = { classTemplateId ->
+                        pendingClassTemplate = classTemplates.find { it.id == classTemplateId }
+                        showIntentPrompt = true
                     }
                 )
             } else {
