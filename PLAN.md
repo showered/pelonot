@@ -197,7 +197,11 @@
 - [x] **8.8** Write instrumented tests for: Room DAOs, WorkoutService lifecycle
 - [ ] **8.9** Manual testing on actual Gen 1/Gen 2 Peloton tablet hardware
 - [ ] **8.10** Guest post-ride prompt: save to new profile, existing profile, or discard
-- [ ] **8.11** Apply Material Expressive design language throughout the app
+- [x] **8.11** Apply Material Expressive design language throughout the app
+
+### Typography (Material Expressive)
+- [x] **8.11.0** Switched from system default font to **Inter variable font** (SIL Open Font License) — a free, open-source alternative to Google Sans that captures the same modern, athletic Material Expressive aesthetic
+- [x] **8.11.0a** Inter font files bundled at `app/src/main/res/font/inter_variable.ttf` with font family XML descriptor
 
 ### Design System
 - [x] **8.11.1** Audit current color palette and define Material Expressive color tokens (primary, secondary, tertiary, error, surface, on-surface variants)

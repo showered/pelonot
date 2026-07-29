@@ -312,6 +312,28 @@
 
 ---
 
+## Design System: Material Expressive Typography — Inter Font (added)
+
+**Goal:** Replace system default font with Inter variable font (SIL Open Font License) for a Google Sans-like Material Expressive aesthetic that's free to use.
+
+**Files created:**
+- `app/src/main/res/font/inter_variable.ttf` — Inter variable font (one file covers all weights from Thin to Black)
+- `app/src/main/res/font/inter.xml` — Font family XML descriptor for Android resource system
+
+**Files modified:**
+- `Type.kt` — All `FontFamily.Default` references replaced with `InterFontFamily` (loaded from `R.font.inter_variable`), including `FitnessTypography` helper styles
+- `PLAN.md` — Added `8.11.0` and `8.11.0a` entries under "Typography (Material Expressive)" section
+
+**Design Philosophy:**
+- Inter is a free, open-source (SIL OFL) typeface designed by Rasmus Andersson — the same designer behind Google Sans
+- Variable font format means a single `.ttf` file covers all weights (100-900), reducing APK size vs. bundling individual weight files
+- Clean, modern, highly legible at both small body sizes and large display sizes — ideal for fitness metrics
+- No licensing restrictions: Inter is freely usable in any commercial or open-source project
+
+**Build status:** `./gradlew assembleDebug` — SUCCESSFUL
+
+---
+
 ## GitHub
 
 - Remote: `https://github.com/showered/pelonot.git`
