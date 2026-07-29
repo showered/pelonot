@@ -20,8 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.compose.rememberNavController
 import com.pelonot.data.local.AppDatabase
+import com.pelonot.data.local.ClassTemplateSeeder
 import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.ui.navigation.PelonotNavGraph
 import com.pelonot.ui.theme.PelonotTheme
 import com.pelonot.ui.theme.TextPrimary
@@ -58,6 +60,9 @@ private fun MainScreen(onThemeChanged: (Boolean) -> Unit) {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val db = AppDatabase.getInstance(context)
+            // Seed class templates from assets if database is empty
+            val seeder = ClassTemplateSeeder(context, SupabaseSyncRepository())
+            seeder.seedIfEmpty()
             users = db.userDao().getAllUsers().first()
             classTemplates = db.classTemplateDao().getAllTemplates().first()
         }
