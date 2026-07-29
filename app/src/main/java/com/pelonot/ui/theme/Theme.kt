@@ -247,3 +247,12 @@ fun PelonotTheme(
         )
     }
 }
+val Elevation0 = 0.dp  // Base level
+val Elevation1 = 4.dp  // Subtle
+val Elevation2 = 8.dp  // Moderate
+val Elevation3 = 12.dp // Strong
+val Elevation4 = 16.dp // Prominent
+val Elevation5 = 24.dp // Maximum
+
+// Follows Material Expressive Design System
+// Elevation hierarchy follows WHOOP's depth guidelines
