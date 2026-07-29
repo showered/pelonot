@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,30 +17,48 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.pelonot.ui.components.HeroCard
-import com.pelonot.ui.components.HeroMetric
-import com.pelonot.ui.components.MetricCard
-import com.pelonot.ui.components.PrimaryButton
-import com.pelonot.ui.components.SecondaryButton
-import com.pelonot.ui.components.SectionHeader
-import com.pelonot.ui.components.StatusChip
+import androidx.compose.ui.unit.sp
+import com.pelonot.ui.theme.PelonotGradients
+import com.pelonot.ui.theme.elevationTokens
+import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.spacing
 
 /**
- * Main dashboard screen – redesigned to use the Material Expressive design system.
+ * Main dashboard screen – redesigned with Material Expressive card layouts.
  *
- * The screen is intentionally split into small composables to keep the
- * implementation maintainable and testable.  All business‑logic callbacks are
- * preserved from the original signature.
+ * Features:
+ * - Expressive greeting header with gradient accent
+ * - FTP hero card with elevated surface container styling
+ * - Primary action card with gradient background
+ * - Secondary action cards with surface tonal variants
+ * - Progress section with elevated metric cards
+ * - Proper elevation hierarchy (level0–level3)
+ * - Surface tonal variants for visual depth
+ * - Spring-animated entrance transitions
  */
 @Composable
 fun MainDashboardScreen(
@@ -62,104 +81,418 @@ fun MainDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = MaterialTheme.spacing.large)
         ) {
-            // 1️⃣ Greeting header
-            SectionHeader(
-                title = "Good morning, $userName",
-                subtitle = "Ready to ride?"
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+            // ── 1️⃣ Greeting Header ──────────────────────────────────
+            GreetingHeader(userName = userName)
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
+            // ── 2️⃣ FTP Hero Card ────────────────────────────────────
+            FtpHeroCard(ftp = ftp)
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
+            // ── 3️⃣ Primary Action – Just Ride ───────────────────────
+            PrimaryActionCard(
+                title = "Just Ride",
+                subtitle = "Jump on the bike and ride free",
+                icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                onClick = onJustRide
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-            // 2️⃣ Hero card – shows FTP and start‑ride button
-            HeroCard(
-                title = "Your FTP",
-                subtitle = "Personal Training Power",
-                actionText = "View",
-                onActionClick = { /* placeholder – could navigate to FTP details */ },
-                content = {
-                    HeroMetric(
-                        label = "FTP",
-                        value = "$ftp",
-                        unit = "W",
-                        accentColor = MaterialTheme.colorScheme.primary,
-                        subtitle = "Your power baseline"
-                    )
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 3️⃣ Primary action – Start Ride
-            PrimaryButton(
-                text = "Start Ride",
-                onClick = onJustRide,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 4️⃣ Secondary actions – Begin Class & Settings
+            // ── 4️⃣ Secondary Actions ────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
             ) {
-                SecondaryButton(
-                    text = "Begin Class",
+                SecondaryActionCard(
+                    title = "Begin Class",
+                    subtitle = "Structured workout",
+                    icon = Icons.Default.FitnessCenter,
                     onClick = onBeginClass,
                     modifier = Modifier.weight(1f)
                 )
-                SecondaryButton(
-                    text = "Settings",
+                SecondaryActionCard(
+                    title = "Settings",
+                    subtitle = "FTP, weight, theme",
+                    icon = Icons.Default.Settings,
                     onClick = onSettings,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
-            // 5️⃣ Progress section header
-            SectionHeader(
-                title = "Your Progress",
-                subtitle = "Track your performance"
+            // ── 5️⃣ Progress Section ─────────────────────────────────
+            ProgressSection()
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+        }
+    }
+}
+
+// =========================================================================
+// Greeting Header
+// =========================================================================
+@Composable
+private fun GreetingHeader(userName: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Good morning,",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            fontWeight = FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = userName,
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Ready to ride?",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+        )
+    }
+}
+
+// =========================================================================
+// FTP Hero Card
+// =========================================================================
+@Composable
+private fun FtpHeroCard(ftp: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level2
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.extraLarge)
+        ) {
+            // Accent gradient bar at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(brush = Brush.horizontalGradient(PelonotGradients.TealFlow))
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-            // 6️⃣ Metric cards – Today's progress & Recent ride
+            Text(
+                text = "FTP",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp
+            )
+
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                verticalAlignment = Alignment.Bottom
             ) {
-                MetricCard(
-                    label = "Today's Progress",
-                    value = "12.5",
-                    unit = "kJ",
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "$ftp",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Black
                 )
-                MetricCard(
-                    label = "Recent Ride",
-                    value = "8.3",
-                    unit = "kJ",
-                    accentColor = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.weight(1f)
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+                Text(
+                    text = "W",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
 
-            // 7️⃣ FTP status chip
+            Text(
+                text = "Functional Threshold Power — your baseline for all training zones",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// =========================================================================
+// Primary Action Card (Just Ride)
+// =========================================================================
+@Composable
+private fun PrimaryActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        ),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.extraLarge),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+    }
+}
+
+// =========================================================================
+// Secondary Action Card
+// =========================================================================
+@Composable
+private fun SecondaryActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        ),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// =========================================================================
+// Progress Section
+// =========================================================================
+@Composable
+private fun ProgressSection() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Your Progress",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+        Text(
+            text = "Track your performance over time",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+        // Today's Progress card
+        ProgressMetricCard(
+            label = "Today's Output",
+            value = "12.5",
+            unit = "kJ",
+            icon = Icons.AutoMirrored.Filled.TrendingUp,
+            accentColor = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+
+        // Recent Ride card
+        ProgressMetricCard(
+            label = "Recent Ride",
+            value = "8.3",
+            unit = "kJ",
+            icon = Icons.AutoMirrored.Filled.DirectionsBike,
+            accentColor = MaterialTheme.colorScheme.tertiary
+        )
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+        // FTP Status badge
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            FtpStatusBadge()
+        }
+    }
+}
+
+// =========================================================================
+// Progress Metric Card
+// =========================================================================
+@Composable
+private fun ProgressMetricCard(
+    label: String,
+    value: String,
+    unit: String,
+    icon: ImageVector,
+    accentColor: androidx.compose.ui.graphics.Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Leading icon in a tonal circle
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(accentColor.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                StatusChip(
-                    text = "FTP Stable",
-                    color = MaterialTheme.colorScheme.primary
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
                 )
             }
+
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+            }
         }
+    }
+}
+
+// =========================================================================
+// FTP Status Badge
+// =========================================================================
+@Composable
+private fun FtpStatusBadge() {
+    val stableColor = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .clip(MaterialTheme.expressiveShapes.pill)
+            .background(stableColor.copy(alpha = 0.12f))
+            .padding(
+                horizontal = MaterialTheme.spacing.large,
+                vertical = MaterialTheme.spacing.small
+            )
+    ) {
+        Text(
+            text = "FTP Stable",
+            style = MaterialTheme.typography.labelMedium,
+            color = stableColor,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp
+        )
     }
 }

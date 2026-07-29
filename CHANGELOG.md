@@ -206,6 +206,32 @@
 
 ---
 
+## Design System: Dashboard Redesign — Material Expressive Card Layouts (8.11.17)
+
+**Goal:** Redesign `MainDashboardScreen` with Material Expressive card layouts, proper elevation hierarchy, and surface tonal variants.
+
+**Files modified:**
+- `MainDashboardScreen.kt` — Complete redesign:
+  - Expressive greeting header with multi-line typography (headlineSmall greeting + headlineLarge name)
+  - FTP hero card with `surfaceContainer` background, elevation level2, and teal gradient accent bar
+  - Primary action card ("Just Ride") using `primaryContainer` color with leading icon
+  - Secondary action cards ("Begin Class", "Settings") using `surfaceVariant` color with icon + subtitle
+  - Progress section with `surfaceContainerLow` metric cards featuring tonal icon circles
+  - FTP status badge with pill shape and tonal background
+  - All cards use proper elevation tokens (level1–level2) and shape tokens (large, extraLarge, pill)
+  - Removed dependency on `ExpressiveComponents.kt` — all components are now self-contained private composables
+  - Uses `AutoMirrored` icons for `DirectionsBike` and `TrendingUp` to eliminate deprecation warnings
+  - Clean build with zero warnings
+
+**Design Philosophy:**
+- Cards use Material 3 surface tonal variants (`surfaceContainer`, `surfaceContainerLow`, `surfaceVariant`, `primaryContainer`) for visual depth without relying on elevation alone
+- Elevation hierarchy: level0 (background), level1 (action cards, metric cards), level2 (hero card)
+- Shape hierarchy: extraLarge (hero, primary), large (secondary, metric), pill (badge, icon circles)
+- All spacing uses the centralized `MaterialTheme.spacing` token system
+- All shapes use `MaterialTheme.shapes.*` and `MaterialTheme.expressiveShapes.*` token system
+
+---
+
 ## Design System: Material Expressive Foundation (added)
 
 **Goal:** Create a cohesive, reusable design system and visual language for the app, inspired by Google Health, Fitbit, WHOOP, and Garmin Connect.

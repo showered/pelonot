@@ -227,7 +227,7 @@
 - [ ] **8.11.16** Create navigation rail or bottom bar with expressive icon animations
 
 ### Dashboard Redesign
-- [ ] **8.11.17** Redesign `MainDashboardScreen` with Material Expressive card layouts
+- [x] **8.11.17** Redesign `MainDashboardScreen` with Material Expressive card layouts
 - [ ] **8.11.18** Add large expressive FAB for primary action (Just Ride)
 - [ ] **8.11.19** Implement dashboard cards with proper elevation and surface tonal variants
 - [ ] **8.11.20** Add micro-interactions for button presses and state changes
