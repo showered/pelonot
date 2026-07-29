@@ -208,7 +208,7 @@
 - [ ] **8.11.6** Define motion duration tokens (short, medium, long) and easing curves
 
 ### Material Expressive Theme
-- [ ] **8.11.7** Update `Color.kt` with Material Expressive color system (dynamic tonal palettes)
+- [x] **8.11.7** Update `Color.kt` with Material Expressive color system (dynamic tonal palettes)
 - [ ] **8.11.8** Update `Type.kt` with expressive typography scale (DisplayLarge to LabelSmall with proper weights)
 - [x] **8.11.9** Create `Shapes.kt` with expressive corner shapes (pill shapes, cut corners, rounded rectangles)
 - [ ] **8.11.10** Update `Theme.kt` to use Material Expressive components and dynamic shapes
