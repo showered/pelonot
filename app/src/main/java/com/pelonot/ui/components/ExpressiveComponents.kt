@@ -1,4 +1,4 @@
- package com.pelonot.ui.components
+package com.pelonot.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,11 +32,15 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailDefaults
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.NavigationRail
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -46,100 +51,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.tween
 import com.pelonot.ui.theme.FitnessTypography
 import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
-import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.iconSizes
+import com.pelonot.ui.theme.motionTokens
 import com.pelonot.ui.theme.spacing
 
 // ==========================================
-// ExpressiveNavigationRail component
+// PrimaryButton
 // ==========================================
-@Composable
-fun ExpressiveNavigationRail(
-    destinations: List<NavigationDestination>,
-    selectedDestination: NavigationDestination,
-    onDestinationClick: (NavigationDestination) -> Unit,
-    modifier: Modifier = Modifier,
-    elevation: Int = elevationTokens.navigationRailElevation,
-    shape: Shape = expressiveShapes.navigationRailShape
-) {
-    NavigationRail(
-        modifier = modifier
-            .fillMaxHeight()
-            .width(NavigationRailDefaults.Width)
-            .clip(shape)
-            .background(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = shape
-            ),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        icon = { _, _ ->ndiceDestinationItem(
-            icon = icons.info,
-            label = "Test",
-            destination = destinations[0]
-        )},
-        itemContent = { index, isSelected ->
-            val destination = destinations[index]
-            val isItemSelected = destination == selectedDestination
-                  
-            NavigationRailItem(
-                selected = isItemSelected,
-                onClick = { onDestinationClick(destination) },
-                icon = {
-                    Icon(
-                        imageVector = destination.icon,
-                        contentDescription = destination.label,
-                        modifier = Modifier
-                            .size(iconSizes.navigationRailIcon)
-                            .align(Alignment.CenterHorizontally)
-                    )
-                },
-                label = {
-                    Text(
-                        text = destination.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = spacing.xs, bottom = spacing.xs)
-                    )
-                },
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedLabelColor = MaterialTheme.colorScheme.primary,
-                    unselectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedIndicatorColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spacing.xs, vertical = spacing.xs)
-            )
-        },
-        contentPadding = NavigationRailDefaults.ContentPadding
-    )
-}
-
-// Elevation tokens
-object elevationTokens {
-    const val navigationRailElevation = 3 // dp
-}
-
-// Expressive shapes
-object expressiveShapes {
-    val navigationRailShape = MaterialTheme.shapes.roundedRect(28.dp)
-}
 @Composable
 fun PrimaryButton(
     text: String,
@@ -167,7 +97,7 @@ fun PrimaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(MaterialTheme.expressiveShapes.pill)
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(
                 brush = Brush.horizontalGradient(PelonotGradients.TealFlow),
                 alpha = buttonAlpha
@@ -237,12 +167,12 @@ fun SecondaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .clip(MaterialTheme.expressiveShapes.pill)
+            .clip(MaterialTheme.shapes.extraLarge)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .border(
                 width = 1.dp,
                 color = if (isPressed) MaterialTheme.colorScheme.primary else borderColor,
-                shape = MaterialTheme.expressiveShapes.pill
+                shape = MaterialTheme.shapes.extraLarge
             )
             .clickable(
                 enabled = enabled,
@@ -294,7 +224,7 @@ fun HeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.expressiveShapes.container,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -336,7 +266,7 @@ fun HeroCard(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .clip(MaterialTheme.expressiveShapes.pill)
+                            .clip(MaterialTheme.shapes.extraLarge)
                             .clickable(onClick = onActionClick)
                             .padding(
                                 horizontal = MaterialTheme.spacing.small,
@@ -409,9 +339,9 @@ fun MetricCard(
 ) {
     Card(
         modifier = modifier
-            .clip(MaterialTheme.expressiveShapes.extraLarge)
+            .clip(MaterialTheme.shapes.medium)
             .clickable(enabled = onValueClick != null, onClick = { onValueClick?.invoke() }),
-        shape = MaterialTheme.expressiveShapes.extraLarge,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -549,12 +479,12 @@ fun StatusChip(
 
     Row(
         modifier = modifier
-            .clip(MaterialTheme.expressiveShapes.medium)
+            .clip(MaterialTheme.shapes.small)
             .background(containerBg)
             .border(
                 width = 1.dp,
                 color = color.copy(alpha = 0.3f),
-                shape = MaterialTheme.expressiveShapes.medium
+                shape = MaterialTheme.shapes.small
             )
             .padding(
                 horizontal = MaterialTheme.spacing.medium,
@@ -594,7 +524,7 @@ fun InfoCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.expressiveShapes.large,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         ),
@@ -714,7 +644,7 @@ fun BottomActionBar(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = MaterialTheme.elevationTokens.level3,
-        shape = MaterialTheme.expressiveShapes.topRoundedLarge
+        shape = MaterialTheme.shapes.medium
     ) {
         Box(
             modifier = Modifier
@@ -734,6 +664,11 @@ fun BottomActionBar(
  * Expressive navigation rail with animated icon states.
  * Supports hover/press animations with spring-based transitions.
  */
+data class NavRailItem(
+    val icon: ImageVector,
+    val label: String
+)
+
 @Composable
 fun ExpressiveNavigationRail(
     modifier: Modifier = Modifier,
@@ -757,8 +692,7 @@ fun ExpressiveNavigationRail(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .padding(MaterialTheme.spacing.small),
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = MaterialTheme.elevationTokens.level2
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -793,7 +727,7 @@ fun ExpressiveNavigationRail(
                         modifier = Modifier
                             .size(48.dp)
                             .graphicsLayer { scaleX = iconScale; scaleY = iconScale }
-                            .clip(MaterialTheme.expressiveShapes.small)
+                            .clip(MaterialTheme.shapes.extraSmall)
                     ) {
                         Icon(
                             imageVector = item.icon,
@@ -817,8 +751,3 @@ fun ExpressiveNavigationRail(
         }
     }
 }
-
-data class NavRailItem(
-    val icon: ImageVector,
-    val label: String
-)
