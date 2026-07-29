@@ -725,3 +725,100 @@ fun BottomActionBar(
         }
     }
 }
+
+// ==========================================
+// ExpressiveNavigationRail (8.11.16)
+// ==========================================
+
+/**
+ * Expressive navigation rail with animated icon states.
+ * Supports hover/press animations with spring-based transitions.
+ */
+@Composable
+fun ExpressiveNavigationRail(
+    modifier: Modifier = Modifier,
+    navItems: List<NavRailItem>,
+    selectedIndex: Int,
+    onItemClick: (Int) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "NavRailScale"
+    )
+    
+    NavigationRail(
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .padding(MaterialTheme.spacing.small),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = MaterialTheme.elevationTokens.level2
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            navItems.forEachIndexed { index, item ->
+                val isSelected = index == selectedIndex
+                val iconColor by animateColorAsState(
+                    targetValue = if (isSelected) MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(MaterialTheme.motionTokens.durationMedium1),
+                    label = "IconColor"
+                )
+                
+                val iconScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.15f else 1.0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "SelectedIconScale"
+                )
+                
+                IconButton(
+                    interactionSource = interactionSource,
+                    onClick = { onItemClick(index) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .graphicsLayer { scaleX = iconScale; scaleY = iconScale }
+                            .clip(MaterialTheme.expressiveShapes.small)
+                    ) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.label,
+                            tint = iconColor,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                
+                Text(
+                    text = item.label,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    ),
+                    modifier = Modifier.padding(top = MaterialTheme.spacing.extraSmall)
+                )
+            }
+        }
+    }
+}
+
+data class NavRailItem(
+    val icon: ImageVector,
+    val label: String
+)
