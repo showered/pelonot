@@ -200,7 +200,7 @@
 - [ ] **8.11** Apply Material Expressive design language throughout the app
 
 ### Design System
-- [ ] **8.11.1** Audit current color palette and define Material Expressive color tokens (primary, secondary, tertiary, error, surface, on-surface variants)
+- [x] **8.11.1** Audit current color palette and define Material Expressive color tokens (primary, secondary, tertiary, error, surface, on-surface variants)
 - [x] **8.11.2** Define dynamic color scheme for light and dark themes with proper tonal palettes
 - [ ] **8.11.3** Create extended color palette for fitness metrics (power zones, heart rate zones, cadence ranges)
 - [ ] **8.11.4** Define elevation and shadow tokens (Level 0-5) for consistent depth hierarchy

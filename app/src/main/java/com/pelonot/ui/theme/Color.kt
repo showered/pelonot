@@ -30,10 +30,17 @@ val SecondarySlateLight = Color(0xFF455A64)   // Deep slate blue (Light Mode sec
 val TertiaryAmberDark = Color(0xFFFFB74D)     // Warm honey gold
 val TertiaryAmberLight = Color(0xFFE65100)    // Deep, energetic orange-amber
 
-// --- Text and Content Colors ---
+// --- On-Color Tokens (content placed on top of role colors) ---
 val OnPrimaryDark = Color(0xFF00332C)
 val OnPrimaryLight = Color(0xFFFFFFFF)
 
+val OnSecondaryDark = Color(0xFF1C1B1F)       // Dark text on slate secondary
+val OnSecondaryLight = Color(0xFFFFFFFF)      // Light text on deep slate secondary
+
+val OnTertiaryDark = Color(0xFF3E2723)        // Dark text on amber tertiary
+val OnTertiaryLight = Color(0xFFFFFFFF)       // Light text on deep amber tertiary
+
+// --- Text and Content Colors ---
 val DarkTextPrimary = Color(0xFFF4F4F5)      // Zinc 50 - extreme readability
 val DarkTextSecondary = Color(0xFFA1A1AA)    // Zinc 400 - supporting information
 val DarkTextDim = Color(0xFF71717A)          // Zinc 500 - deactivated/extremely secondary
@@ -41,6 +48,37 @@ val DarkTextDim = Color(0xFF71717A)          // Zinc 500 - deactivated/extremely
 val LightTextPrimary = Color(0xFF1C1B1F)     // Material 3 default high contrast
 val LightTextSecondary = Color(0xFF4A454F)   // Muted supporting info
 val LightTextDim = Color(0xFF79747E)         // De-emphasized details
+
+// --- On-Surface Container Tokens ---
+// Content colors for surface containers at various elevation levels
+val OnSurfaceContainerDark = Color(0xFFE0E0E0)       // High-emphasis on containers
+val OnSurfaceContainerLight = Color(0xFF121212)      // High-emphasis on light containers
+val OnSurfaceContainerLowDark = Color(0xFFE0E0E0)
+val OnSurfaceContainerLowLight = Color(0xFF121212)
+val OnSurfaceContainerHighDark = Color(0xFFE0E0E0)
+val OnSurfaceContainerHighLight = Color(0xFF121212)
+val OnSurfaceContainerLowestDark = Color(0xFFE0E0E0)
+val OnSurfaceContainerLowestLight = Color(0xFF121212)
+
+// --- Inverse Surface Tokens ---
+val InverseOnSurfaceDark = Color(0xFF121212)        // Dark content on inverse (light) surface
+val InverseOnSurfaceLight = Color(0xFFF4F4F5)       // Light content on inverse (dark) surface
+
+// --- Outline Tokens ---
+val OutlineDark = Color(0xFF616161)                 // Borders and dividers (dark)
+val OutlineLight = Color(0xFFBDBDBD)                // Borders and dividers (light)
+val OutlineVariantDark = Color(0xFF424242)          // Subtle borders (dark)
+val OutlineVariantLight = Color(0xFFE0E0E0)         // Subtle borders (light)
+
+// --- Error Color Tokens ---
+val ErrorDark = Color(0xFFFF1744)                   // Bright error (dark theme)
+val ErrorLight = Color(0xFFFF1744)                  // Bright error (light theme)
+val ErrorContainerDark = Color(0xFF7F0000)          // Muted error container (dark)
+val ErrorContainerLight = Color(0xFFFFEBEE)         // Muted error container (light)
+val OnErrorDark = Color(0xFF000000)                 // Content on error (dark)
+val OnErrorLight = Color(0xFF000000)                // Content on error (light)
+val OnErrorContainerDark = Color(0xFFE0E0E0)        // Content on error container (dark)
+val OnErrorContainerLight = Color(0xFF3E2723)       // Content on error container (light)
 
 // --- Live Workout Metric Accent Colors (Reserved exclusively for live stats!) ---
 // Avoid neon overload: we use glowing colors strictly for live metric visualizations

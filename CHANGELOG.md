@@ -156,6 +156,29 @@
 
 ---
 
+## Design System: Material Expressive Color Tokens (completed)
+
+**Goal:** Audit current color palette and define Material Expressive color tokens for primary, secondary, tertiary, error, surface, and on-surface variants.
+
+**Files modified:**
+- `Color.kt` — Complete Material Expressive color system:
+  - Added comprehensive color tokens for all Material 3 roles (primary, secondary, tertiary, error, surface, on-surface variants)
+  - Added on-color tokens: `OnPrimary`, `OnSecondary`, `OnTertiary`
+  - Added on-surface container tokens for elevation hierarchy
+  - Added inverse surface tokens for inverted UI states
+  - Added proper error color tokens with containers
+  - Added outline tokens for borders and dividers
+  - Maintained existing live workout metrics and power zone colors
+  - Backward-compatible aliases preserved for existing code
+
+- `Theme.kt` — Updated Material 3 color schemes:
+  - Dark scheme now uses explicit tokens (`OnSecondaryDark`, `OnTertiaryDark`, `ErrorDark`, `OutlineDark`, etc.)
+  - Light scheme now uses explicit tokens (`OnSecondaryLight`, `OnTertiaryLight`, `ErrorLight`, `OutlineLight`, etc.)
+  - Proper tonal palette implementation for all color roles
+
+**Build status:** `./gradlew assembleDebug` — SUCCESSFUL
+
+
 ## Design System: Material Expressive Shapes (added)
 
 **Goal:** Create a dedicated `Shapes.kt` with expressive corner shape tokens and migrate all hardcoded shape references to use the tokenized system.
