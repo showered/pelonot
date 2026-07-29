@@ -236,8 +236,35 @@
 
 ---
 
+## Design System: Dynamic Color Scheme (added)
+
+**Goal:** Implement Material 3 dynamic color scheme with proper tonal palettes for light and dark themes.
+
+**Files modified:**
+- `Theme.kt` — Dynamic color scheme implementation:
+  - Added `dynamicDarkColorScheme`/`dynamicLightColorScheme` support for Android 12+ (API 31+)
+  - Falls back to static Pelonot color schemes on older APIs (minSdk 24)
+  - Expanded both dark and light color schemes with full tonal palette roles:
+    - `primaryContainer`/`onPrimaryContainer` for elevated primary surfaces
+    - `secondaryContainer`/`onSecondaryContainer` for elevated secondary surfaces
+    - `tertiaryContainer`/`onTertiaryContainer` for elevated tertiary surfaces
+    - `surfaceContainer`/`surfaceContainerLow`/`surfaceContainerHigh`/`surfaceContainerLowest` for consistent depth hierarchy
+    - `inverseOnSurface`/`inverseSurface`/`inversePrimary` for inverted UI states
+    - `onError`/`errorContainer`/`onErrorContainer` for complete error color roles
+    - `outline`/`outlineVariant` for borders and dividers
+  - Added `LocalContext` import for dynamic color scheme resolution
+  - Added `Build.VERSION.SDK_INT` check for API-level conditional dynamic color
+
+**Design Philosophy:**
+- Dynamic color adapts to system wallpaper on Android 12+ for personalized theming
+- Static fallback ensures consistent branding on older Android versions
+- Full tonal palette ensures proper contrast and visual hierarchy across all components
+- Container roles enable Material 3's elevated surface system for depth
+
+---
+
 ## GitHub
 
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
-- Commits: 13 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode, unit-tests, instrumented-tests)
+- Commits: 14 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode, unit-tests, instrumented-tests, dynamic-color)

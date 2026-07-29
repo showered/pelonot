@@ -1,8 +1,11 @@
 package com.pelonot.ui.theme
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -12,6 +15,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -82,7 +86,7 @@ data class MotionTokens(
     val durationMedium2: Int = 250,
     val durationLong1: Int = 300,
     val durationLong2: Int = 400,
-    
+
     val easingEmphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
     val easingDecelerated: Easing = CubicBezierEasing(0f, 0f, 0f, 1f),
     val easingAccelerated: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f),
@@ -131,29 +135,69 @@ val MaterialTheme.expressiveShapes: ExpressiveShapes
 private val PelonotDarkColorScheme = darkColorScheme(
     primary = PrimaryTealDark,
     onPrimary = OnPrimaryDark,
+    primaryContainer = PrimaryTealDark.copy(alpha = 0.3f),
+    onPrimaryContainer = OnPrimaryDark.copy(alpha = 0.9f),
     secondary = SecondarySlateDark,
+    onSecondary = DarkTextPrimary,
+    secondaryContainer = SecondarySlateDark.copy(alpha = 0.3f),
+    onSecondaryContainer = DarkTextPrimary.copy(alpha = 0.9f),
     tertiary = TertiaryAmberDark,
+    onTertiary = DarkBackground,
+    tertiaryContainer = TertiaryAmberDark.copy(alpha = 0.3f),
+    onTertiaryContainer = DarkBackground,
     background = DarkBackground,
     surface = DarkSurface,
     surfaceVariant = DarkSurfaceVariant,
     onBackground = DarkTextPrimary,
     onSurface = DarkTextPrimary,
     onSurfaceVariant = DarkTextSecondary,
-    error = AlertRed
+    surfaceContainer = DarkSurfaceContainer,
+    surfaceContainerLow = DarkSurface.copy(alpha = 0.95f),
+    surfaceContainerHigh = DarkSurface.copy(alpha = 0.85f),
+    surfaceContainerLowest = DarkSurface.copy(alpha = 0.98f),
+    inverseOnSurface = DarkBackground,
+    inverseSurface = LightSurface,
+    inversePrimary = PrimaryTealLight,
+    error = AlertRed,
+    onError = DarkBackground,
+    errorContainer = AlertRed.copy(alpha = 0.2f),
+    onErrorContainer = AlertRed.copy(alpha = 0.9f),
+    outline = DarkTextSecondary.copy(alpha = 0.5f),
+    outlineVariant = DarkSurfaceVariant.copy(alpha = 0.5f)
 )
 
 private val PelonotLightColorScheme = lightColorScheme(
     primary = PrimaryTealLight,
     onPrimary = OnPrimaryLight,
+    primaryContainer = PrimaryTealLight.copy(alpha = 0.15f),
+    onPrimaryContainer = PrimaryTealLight.copy(alpha = 0.9f),
     secondary = SecondarySlateLight,
+    onSecondary = LightTextPrimary,
+    secondaryContainer = SecondarySlateLight.copy(alpha = 0.15f),
+    onSecondaryContainer = LightTextPrimary.copy(alpha = 0.9f),
     tertiary = TertiaryAmberLight,
+    onTertiary = LightBackground,
+    tertiaryContainer = TertiaryAmberLight.copy(alpha = 0.15f),
+    onTertiaryContainer = LightBackground,
     background = LightBackground,
     surface = LightSurface,
     surfaceVariant = LightSurfaceVariant,
     onBackground = LightTextPrimary,
     onSurface = LightTextPrimary,
     onSurfaceVariant = LightTextSecondary,
-    error = AlertRed
+    surfaceContainer = LightSurfaceContainer,
+    surfaceContainerLow = LightSurface.copy(alpha = 0.98f),
+    surfaceContainerHigh = LightSurface.copy(alpha = 0.85f),
+    surfaceContainerLowest = LightSurface.copy(alpha = 0.95f),
+    inverseOnSurface = LightTextPrimary,
+    inverseSurface = DarkBackground,
+    inversePrimary = PrimaryTealDark,
+    error = AlertRed,
+    onError = LightBackground,
+    errorContainer = AlertRed.copy(alpha = 0.1f),
+    onErrorContainer = AlertRed.copy(alpha = 0.9f),
+    outline = LightTextSecondary.copy(alpha = 0.5f),
+    outlineVariant = LightSurfaceVariant.copy(alpha = 0.5f)
 )
 
 // ==========================================
@@ -165,8 +209,21 @@ fun PelonotTheme(
     darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) PelonotDarkColorScheme else PelonotLightColorScheme
+    val context = LocalContext.current
     val view = LocalView.current
+
+    // Use dynamic color scheme on Android 12+ (API 31+), fall back to
+    // static Pelonot color schemes on older APIs.
+    val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) {
+            dynamicDarkColorScheme(context)
+        } else {
+            dynamicLightColorScheme(context)
+        }
+    } else {
+        if (darkTheme) PelonotDarkColorScheme else PelonotLightColorScheme
+    }
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
