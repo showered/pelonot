@@ -277,7 +277,7 @@
 - [ ] **8.11.52** Create FTP breakthrough dialog with celebratory animation
 
 ### Charts & Visualisations
-- [ ] **8.11.53** Add power output chart with zone color overlay
+- [x] **8.11.53** Add power output chart with zone color overlay
 - [ ] **8.11.54** Implement heart rate chart with time markers
 - [ ] **8.11.55** Create cadence distribution visualization
 - [ ] **8.11.56** Add workout comparison chart (current vs PB)

@@ -27,6 +27,12 @@ data class ExpressiveShapes(
     val large: Shape = RoundedCornerShape(16.dp),
     val extraLarge: Shape = RoundedCornerShape(24.dp),
     val container: Shape = RoundedCornerShape(24.dp),
+val fourDp: Shape = RoundedCornerShape(4.dp),
+val eightDp: Shape = RoundedCornerShape(8.dp),
+val twelveDp: Shape = RoundedCornerShape(12.dp),
+val sixteenDp: Shape = RoundedCornerShape(16.dp),
+val twentyEightDp: Shape = RoundedCornerShape(28.dp),
+val thirtyTwoDp: Shape = RoundedCornerShape(32.dp),
 
     // --- Pill Shape (fully rounded) ---
     val pill: Shape = RoundedCornerShape(999.dp),
