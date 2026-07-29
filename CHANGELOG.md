@@ -291,3 +291,4 @@
 - Remote: `https://github.com/showered/pelonot.git`
 - Branch: `setup`
 - Commits: 14 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode, unit-tests, instrumented-tests, dynamic-color)
+CHANGELOG update\n\n[Task 8.11.3]\n- Added extended color palette for fitness metrics (power zones, heart rate zones, cadence ranges)
