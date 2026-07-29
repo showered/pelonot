@@ -99,6 +99,22 @@ val PowerZone4_Threshold = Color(0xFFFFA726)     // Soft Orange
 val PowerZone5_VO2Max = Color(0xFFEF5350)        // Soft Red
 val PowerZone6_Anaerobic = Color(0xFFAB47BC)     // Soft Purple
 val PowerZone7_Neuromuscular = Color(0xFFD81B60)  // Deep Pink
+val PowerZone8_Recovery = Color(0xFFE0E0E0)  // Light recovery shade
+val PowerZone9_Light = Color(0xFFF5F5F5)  // Very light recovery shade
+
+// --- Heart Rate Zones ---
+val HeartRateZone1_Resting = Color(0xFFE0E0E0)      // Light gray - resting
+val HeartRateZone2_Light = Color(0xFFB8E986)        // Light green - light activity
+val HeartRateZone3_Moderate = Color(0xFF66BB6A)      // Medium green - moderate activity
+val HeartRateZone4_High = Color(0xFF2E7D32)         // Deep green - high intensity
+val HeartRateZone5_Max = Color(0xFF1B5E20)          // Dark green - max effort
+
+// --- Cadence Zones ---
+val CadenceZone1_Easy = Color(0xFFBBDEFB)          // Light blue - easy pace
+val CadenceZone2_Casual = Color(0xFF42A5F5)        // Medium blue - casual
+val CadenceZone3_Comfortable = Color(0xFF1E88E5)    // Dark blue - comfortable
+val CadenceZone4_Threshold = Color(0xFF1565C0)     // Deep blue - threshold
+val CadenceZone5_VO2Max = Color(0xFF0D47A1)        // Navy blue - VO2 max
 
 // --- Premium Reusable Gradients ---
 object PelonotGradients {
