@@ -60,8 +60,86 @@ import com.pelonot.ui.theme.iconSizes
 import com.pelonot.ui.theme.spacing
 
 // ==========================================
-// PrimaryButton (with spring-based tactile feedback)
+// ExpressiveNavigationRail component
 // ==========================================
+@Composable
+fun ExpressiveNavigationRail(
+    destinations: List<NavigationDestination>,
+    selectedDestination: NavigationDestination,
+    onDestinationClick: (NavigationDestination) -> Unit,
+    modifier: Modifier = Modifier,
+    elevation: Int = elevationTokens.navigationRailElevation,
+    shape: Shape = expressiveShapes.navigationRailShape
+) {
+    NavigationRail(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(NavigationRailDefaults.Width)
+            .clip(shape)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = shape
+            ),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        icon = { _, _ ->ndiceDestinationItem(
+            icon = icons.info,
+            label = "Test",
+            destination = destinations[0]
+        )},
+        itemContent = { index, isSelected ->
+            val destination = destinations[index]
+            val isItemSelected = destination == selectedDestination
+                  
+            NavigationRailItem(
+                selected = isItemSelected,
+                onClick = { onDestinationClick(destination) },
+                icon = {
+                    Icon(
+                        imageVector = destination.icon,
+                        contentDescription = destination.label,
+                        modifier = Modifier
+                            .size(iconSizes.navigationRailIcon)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                },
+                label = {
+                    Text(
+                        text = destination.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = spacing.xs, bottom = spacing.xs)
+                    )
+                },
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedLabelColor = MaterialTheme.colorScheme.primary,
+                    unselectedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedIndicatorColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spacing.xs, vertical = spacing.xs)
+            )
+        },
+        contentPadding = NavigationRailDefaults.ContentPadding
+    )
+}
+
+// Elevation tokens
+object elevationTokens {
+    const val navigationRailElevation = 3 // dp
+}
+
+// Expressive shapes
+object expressiveShapes {
+    val navigationRailShape = MaterialTheme.shapes.roundedRect(28.dp)
+}
 @Composable
 fun PrimaryButton(
     text: String,
