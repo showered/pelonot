@@ -210,11 +210,11 @@
 * All colors follow Material Expressive Design System with calm premium aesthetic
 - [x] **8.11.4** Define elevation and shadow tokens (Level 0-5) for consistent depth hierarchy
 - [ ] **8.11.5** Create shape tokens with expressive corner sizes (4dp, 8dp, 12dp, 16dp, 28dp, 32dp)
-- [ ] **8.11.6** Define motion duration tokens (short, medium, long) and easing curves
+- [x] **8.11.6** Define motion duration tokens (short, medium, long) and easing curves
 
 ### Material Expressive Theme
 - [x] **8.11.7** Update `Color.kt` with Material Expressive color system (dynamic tonal palettes)
-- [ ] **8.11.8** Update `Type.kt` with expressive typography scale (DisplayLarge to LabelSmall with proper weights)
+- [x] **8.11.8** Update `Type.kt` with expressive typography scale (DisplayLarge to LabelSmall with proper weights)
 - [x] **8.11.9** Create `Shapes.kt` with expressive corner shapes (pill shapes, cut corners, rounded rectangles)
 - [ ] **8.11.10** Update `Theme.kt` to use Material Expressive components and dynamic shapes
 - [ ] **8.11.11** Add motion tokens to theme (standard, emphasized, decelerated, accelerated easing)
