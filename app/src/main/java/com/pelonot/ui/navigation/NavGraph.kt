@@ -76,14 +76,23 @@ fun PelonotNavGraph(
             .windowInsetsPadding(WindowInsets.statusBars)
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
-        composable("profile_selector") {
+        composable(
+            "profile_selector",
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
             ProfileSelectorScreen(
                 users = users,
                 onProfileSelected = { user ->
-                    navController.navigate("dashboard/${user.localUserId}")
+                    navController.navigate("dashboard/${user.localUserId}") {
+                        // Pop profile selector off the back stack so dashboard is the root
+                        popUpTo("profile_selector") { inclusive = false }
+                    }
                 },
                 onGuestSelected = {
-                    navController.navigate("dashboard/-1")
+                    navController.navigate("dashboard/-1") {
+                        popUpTo("profile_selector") { inclusive = false }
+                    }
                 },
                 onCreateProfile = {
                     showProfileDialog = true
@@ -91,7 +100,11 @@ fun PelonotNavGraph(
             )
         }
 
-        composable("dashboard/{userId}") { backStackEntry ->
+        composable(
+            "dashboard/{userId}",
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: -1
             val user = users.find { it.localUserId == userId }
 
@@ -114,7 +127,9 @@ fun PelonotNavGraph(
             ClassLibraryScreen(
                 classTemplates = classTemplates,
                 onClassSelected = { classTemplate ->
-                    navController.navigate("class_detail/${classTemplate.id}")
+                    navController.navigate("class_detail/${classTemplate.id}") {
+                        popUpTo("class_library") { inclusive = false }
+                    }
                 },
                 onBack = {
                     navController.popBackStack()
@@ -124,7 +139,9 @@ fun PelonotNavGraph(
 
         composable(
             "class_detail/{classId}",
-            arguments = listOf(navArgument("classId") { type = NavType.StringType })
+            arguments = listOf(navArgument("classId") { type = NavType.StringType }),
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) { backStackEntry ->
             val classId = backStackEntry.arguments?.getString("classId") ?: return@composable
             val classTemplate = classTemplates.find { it.id == classId }

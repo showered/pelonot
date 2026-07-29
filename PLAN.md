@@ -209,7 +209,7 @@
 * Added: Cadence Zones 1-5 (progressive intensity)
 * All colors follow Material Expressive Design System with calm premium aesthetic
 - [x] **8.11.4** Define elevation and shadow tokens (Level 0-5) for consistent depth hierarchy
-- [ ] **8.11.5** Create shape tokens with expressive corner sizes (4dp, 8dp, 12dp, 16dp, 28dp, 32dp)
+- [x] **8.11.5** Create shape tokens with expressive corner sizes (4dp, 8dp, 12dp, 16dp, 28dp, 32dp)
 - [x] **8.11.6** Define motion duration tokens (short, medium, long) and easing curves
 
 ### Material Expressive Theme
