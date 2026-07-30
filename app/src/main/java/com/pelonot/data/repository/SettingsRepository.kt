@@ -1,0 +1,93 @@
+package com.pelonot.data.repository
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.pelonot.data.sensor.SensorMode
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
+
+/** How the app chooses between light and dark. */
+enum class ThemeMode { System, Light, Dark }
+
+/**
+ * User preferences that are not part of a rider profile.
+ *
+ * These previously lived in `remember { mutableStateOf(...) }` inside the
+ * navigation graph, so the chosen theme and FTP were discarded on rotation,
+ * on process death, and whenever the user navigated back past the screen that
+ * happened to own the state.
+ */
+data class AppSettings(
+    val themeMode: ThemeMode = ThemeMode.Dark,
+    val useDynamicColor: Boolean = false,
+    val sensorMode: SensorMode = SensorMode.Auto,
+    val lastProfileId: Int? = null,
+    val heartRateDeviceAddress: String? = null,
+    val cloudSyncEnabled: Boolean = true
+)
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "pelonot_settings")
+
+class SettingsRepository(context: Context) {
+
+    private val dataStore = context.applicationContext.dataStore
+
+    val settings: Flow<AppSettings> = dataStore.data
+        .catch { throwable ->
+            // A corrupt preferences file must not take the app down on launch.
+            if (throwable is IOException) emit(emptyPreferences()) else throw throwable
+        }
+        .map { prefs ->
+            AppSettings(
+                themeMode = prefs[Keys.THEME_MODE]
+                    ?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
+                    ?: ThemeMode.Dark,
+                useDynamicColor = prefs[Keys.DYNAMIC_COLOR] ?: false,
+                sensorMode = prefs[Keys.SENSOR_MODE]
+                    ?.let { name -> SensorMode.entries.firstOrNull { it.name == name } }
+                    ?: SensorMode.Auto,
+                lastProfileId = prefs[Keys.LAST_PROFILE_ID]?.takeIf { it >= 0 },
+                heartRateDeviceAddress = prefs[Keys.HR_DEVICE_ADDRESS],
+                cloudSyncEnabled = prefs[Keys.CLOUD_SYNC_ENABLED] ?: true
+            )
+        }
+
+    suspend fun setThemeMode(mode: ThemeMode) = edit { it[Keys.THEME_MODE] = mode.name }
+
+    suspend fun setDynamicColor(enabled: Boolean) = edit { it[Keys.DYNAMIC_COLOR] = enabled }
+
+    suspend fun setSensorMode(mode: SensorMode) = edit { it[Keys.SENSOR_MODE] = mode.name }
+
+    suspend fun setLastProfileId(id: Int?) = edit { prefs ->
+        if (id == null) prefs.remove(Keys.LAST_PROFILE_ID) else prefs[Keys.LAST_PROFILE_ID] = id
+    }
+
+    suspend fun setHeartRateDeviceAddress(address: String?) = edit { prefs ->
+        if (address == null) prefs.remove(Keys.HR_DEVICE_ADDRESS)
+        else prefs[Keys.HR_DEVICE_ADDRESS] = address
+    }
+
+    suspend fun setCloudSyncEnabled(enabled: Boolean) = edit { it[Keys.CLOUD_SYNC_ENABLED] = enabled }
+
+    private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        dataStore.edit(block)
+    }
+
+    private object Keys {
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val SENSOR_MODE = stringPreferencesKey("sensor_mode")
+        val LAST_PROFILE_ID = intPreferencesKey("last_profile_id")
+        val HR_DEVICE_ADDRESS = stringPreferencesKey("hr_device_address")
+        val CLOUD_SYNC_ENABLED = booleanPreferencesKey("cloud_sync_enabled")
+    }
+}

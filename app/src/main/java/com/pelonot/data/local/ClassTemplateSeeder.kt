@@ -1,86 +1,102 @@
 package com.pelonot.data.local
 
 import android.content.Context
+import android.util.Log
+import com.pelonot.data.local.dao.ClassTemplateDao
 import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.SyncOutcome
+import com.pelonot.data.remote.dto.ClassTemplateDto
+import com.pelonot.domain.model.IntervalParser
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.Serializable
 
 /**
- * Seeds class templates from Supabase into Room database.
- * Falls back to local assets if Supabase is unavailable.
+ * Populates the class library on first launch: from Supabase when it is
+ * configured and reachable, otherwise from the bundled assets.
  */
 class ClassTemplateSeeder(
     private val context: Context,
+    private val classTemplateDao: ClassTemplateDao,
     private val syncRepository: SupabaseSyncRepository
 ) {
-    
-    @Serializable
-    data class ClassTemplateJson(
-        val id: String,
-        val title: String,
-        val category: String,
-        val duration_sec: Int,
-        val intervals_json: String
-    )
-     
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /** No-op when the library is already populated. */
     suspend fun seedIfEmpty() {
-        val database = AppDatabase.getInstance(context)
-        if (database.classTemplateDao().getTemplateCount() > 0) return
-         
-        // Try to fetch from Supabase first
-        val result = syncRepository.fetchClassTemplates()
-        if (result.isSuccess) {
-            val templates = result.getOrNull() ?: return
-            for (template in templates) {
-                val entity = ClassTemplateEntity(
-                    id = template["id"] as? String ?: continue,
-                    title = template["title"] as? String ?: continue,
-                    category = template["category"] as? String ?: continue,
-                    durationSec = (template["duration_sec"] as? Number)?.toInt() ?: continue,
-                    intervalsJson = (template["intervals_json"] as? String) ?: continue
-                )
-                database.classTemplateDao().insert(entity)
+        if (classTemplateDao.getTemplateCount() > 0) return
+
+        when (val outcome = syncRepository.fetchClassTemplates()) {
+            is SyncOutcome.Success -> {
+                val templates = outcome.value.map(ClassTemplateDto::toEntity)
+                if (templates.isNotEmpty()) {
+                    classTemplateDao.insertAll(templates)
+                    Log.i(TAG, "Seeded ${templates.size} class templates from Supabase")
+                    return
+                }
+                Log.i(TAG, "Supabase returned no templates; falling back to assets")
             }
-            return
+
+            SyncOutcome.Disabled -> Log.i(TAG, "Cloud sync disabled; seeding from assets")
+            is SyncOutcome.Failed -> Log.w(TAG, "Supabase seed failed; using assets", outcome.cause)
         }
-        
-        // Fallback to assets if Supabase fails
-        seedFromAssets(database)
+
+        seedFromAssets()
     }
-    
-    private suspend fun seedFromAssets(database: AppDatabase) {
-        val assetManager = context.assets
-        val categories = listOf("endurance", "sweet_spot", "threshold", "vo2_max", "hiit_heavy_climbs", "tabata_bursts", "recovery")
-         
-        for (category in categories) {
-            val files = try {
-                assetManager.list("classes/$category")?.toList() ?: continue
-            } catch (e: Exception) {
-                continue
+
+    /**
+     * Reads every `.json` under `assets/classes/`.
+     *
+     * The previous version iterated a hardcoded list of seven category
+     * directory names, four of which do not exist and three of which were
+     * missing, so adding a class folder silently did nothing. Listing the
+     * directory means the bundled library is whatever is actually shipped.
+     */
+    private suspend fun seedFromAssets() {
+        val assets = context.assets
+        val categories = runCatching { assets.list(ASSET_ROOT)?.toList().orEmpty() }
+            .getOrElse { error ->
+                Log.e(TAG, "Could not list $ASSET_ROOT", error)
+                emptyList()
             }
-             
-            for (file in files) {
-                if (!file.endsWith(".json")) continue
-                 
-                try {
-                    val inputStream = assetManager.open("classes/$category/$file")
-                    val jsonString = inputStream.bufferedReader().use { it.readText() }
-                    val template = Json.decodeFromString(ClassTemplateJson.serializer(), jsonString)
-                     
-                    val entity = ClassTemplateEntity(
-                        id = template.id,
-                        title = template.title,
-                        category = template.category,
-                        durationSec = template.duration_sec,
-                        intervalsJson = template.intervals_json
-                    )
-                     
-                    database.classTemplateDao().insert(entity)
-                } catch (e: Exception) {
-                    // Log error but continue seeding
+
+        val templates = buildList {
+            for (category in categories) {
+                val files = runCatching { assets.list("$ASSET_ROOT/$category")?.toList().orEmpty() }
+                    .getOrDefault(emptyList())
+
+                for (fileName in files.filter { it.endsWith(".json") }) {
+                    val path = "$ASSET_ROOT/$category/$fileName"
+                    val entity = runCatching {
+                        val raw = assets.open(path).bufferedReader().use { it.readText() }
+                        json.decodeFromString<ClassTemplateDto>(raw).toEntity()
+                    }.getOrElse { error ->
+                        Log.e(TAG, "Skipping malformed class template $path", error)
+                        null
+                    } ?: continue
+
+                    // Catch authoring mistakes at seed time rather than
+                    // rendering a class with no intervals in it.
+                    IntervalParser.parse(entity.intervalsJson).onFailure { error ->
+                        Log.e(TAG, "Class ${entity.id} has unreadable intervals_json", error)
+                    }
+
+                    add(entity)
                 }
             }
         }
+
+        if (templates.isEmpty()) {
+            Log.w(TAG, "No class templates found under assets/$ASSET_ROOT")
+            return
+        }
+
+        classTemplateDao.insertAll(templates)
+        Log.i(TAG, "Seeded ${templates.size} class templates from assets")
+    }
+
+    private companion object {
+        const val TAG = "ClassTemplateSeeder"
+        const val ASSET_ROOT = "classes"
     }
 }

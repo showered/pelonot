@@ -1,166 +1,173 @@
 package com.pelonot.data.sensor
 
-import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Which telemetry source to ride with. */
+enum class SensorMode {
+    /** Use the sensor board when present, otherwise simulate. */
+    Auto,
+
+    /** Require the real sensor board; retry it rather than falling back. */
+    Hardware,
+
+    /** Always simulate, even on a real bike. For development. */
+    Simulated
+}
+
+/** What the telemetry pipeline is currently doing. */
+sealed interface SensorStatus {
+    data object Stopped : SensorStatus
+    data class Streaming(val sourceId: String, val simulated: Boolean) : SensorStatus
+    data class Reconnecting(val sourceId: String, val attempt: Int, val cause: String) : SensorStatus
+}
+
 /**
- * Singleton repository that merges serial port sensor data and BLE heart rate
- * into a single unified StateFlow<SensorReading>.
+ * Single source of truth for live telemetry, merging a bike [SensorSource]
+ * with the BLE heart-rate strap.
  *
- * This is the single source of truth for real-time telemetry during a workout.
- * The WorkoutService collects from this flow to record metrics every second.
- *
- * Auto-reconnect logic:
- * - Serial port: retries every 5 seconds with exponential backoff (max 30s)
- * - BLE: retries every 2 seconds with exponential backoff (max 30s)
+ * This owns **all** retry policy. Previously reconnection was implemented
+ * three times over — in `SerialPortReader`, in `BleHeartRateManager`, and
+ * again here — with `close()` triggering a reconnect, so the schedules fought
+ * each other and stopping a workout started an endless retry loop.
  */
-class SensorRepository private constructor(
-    private val context: Context
+class SensorRepository(
+    private val serialSource: SensorSource,
+    private val simulatedSource: SensorSource,
+    private val bleHeartRateManager: BleHeartRateManager,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) {
 
-    companion object {
-        private const val TAG = "SensorRepository"
-        private const val SERIAL_RECONNECT_DELAY_MS = 5000L
-        private const val MAX_SERIAL_RECONNECT_DELAY_MS = 30000L
+    private val _sensorReading = MutableStateFlow(SensorReading.EMPTY)
+    val sensorReading: StateFlow<SensorReading> = _sensorReading.asStateFlow()
 
-        @Volatile
-        private var INSTANCE: SensorRepository? = null
+    private val _status = MutableStateFlow<SensorStatus>(SensorStatus.Stopped)
+    val status: StateFlow<SensorStatus> = _status.asStateFlow()
 
-        fun getInstance(context: Context): SensorRepository {
-            return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: SensorRepository(context.applicationContext).also { INSTANCE = it }
-            }
+    val heartRateStatus: StateFlow<HeartRateStatus> get() = bleHeartRateManager.status
+    val discoveredHeartRateDevices: StateFlow<List<HeartRateDevice>>
+        get() = bleHeartRateManager.discoveredDevices
+
+    private var telemetryJob: Job? = null
+    private var heartRateJob: Job? = null
+
+    @Volatile
+    private var mode: SensorMode = SensorMode.Auto
+
+    /**
+     * Picks the source for a ride. Changing this mid-ride restarts the
+     * pipeline, so it is a settings-time decision rather than a live toggle.
+     */
+    fun setMode(newMode: SensorMode) {
+        if (mode == newMode) return
+        mode = newMode
+        if (telemetryJob?.isActive == true) {
+            stop()
+            start()
         }
     }
 
-    // ── Public StateFlow ────────────────────────────────────────────
-    private val _sensorReading = MutableStateFlow(
-        SensorReading(
-            cadenceRpm = 0.0,
-            resistancePercent = 0.0,
-            powerWatts = 0.0,
-            heartRateBpm = null
-        )
-    )
-    val sensorReading: StateFlow<SensorReading> = _sensorReading.asStateFlow()
+    fun currentMode(): SensorMode = mode
 
-    // ── Internal components ─────────────────────────────────────────
-    private val serialPortReader = SerialPortReader()
-    private val bleHeartRateManager = BleHeartRateManager(context)
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    /** The source [mode] resolves to right now. */
+    fun activeSource(): SensorSource = when (mode) {
+        SensorMode.Simulated -> simulatedSource
+        SensorMode.Hardware -> serialSource
+        SensorMode.Auto -> if (serialSource.isAvailable()) serialSource else simulatedSource
+    }
 
-    // Reconnect state
-    private var serialReconnectAttempt = 0
-    private var serialReconnectScheduled = false
+    fun start() {
+        if (telemetryJob?.isActive == true) return
 
-    init {
-        // Collect serial port readings
-        scope.launch {
-            serialPortReader.reading.collect { reading ->
-                // Merge with current heart rate
-                val currentHr = _sensorReading.value.heartRateBpm
-                _sensorReading.value = reading.copy(heartRateBpm = currentHr)
-            }
+        val source = activeSource()
+        val simulated = source === simulatedSource
+        Log.i(TAG, "Starting telemetry from ${source.id} (mode=$mode)")
+
+        telemetryJob = scope.launch {
+            source.readings()
+                .retryWhen { cause, attempt ->
+                    // Deliberately does not fall back to simulated data on a
+                    // hardware failure: silently substituting fake telemetry
+                    // mid-ride would write fabricated numbers into the rider's
+                    // permanent workout record.
+                    val attemptNumber = (attempt + 1).toInt()
+                    val delayMs = backoffDelayMs(attempt)
+                    _status.value = SensorStatus.Reconnecting(
+                        sourceId = source.id,
+                        attempt = attemptNumber,
+                        cause = cause.message ?: cause::class.java.simpleName
+                    )
+                    Log.w(TAG, "Telemetry failed (attempt $attemptNumber), retrying in ${delayMs}ms", cause)
+                    delay(delayMs)
+                    true // retry indefinitely; the rider may reconnect the board
+                }
+                .collect { reading ->
+                    _status.value = SensorStatus.Streaming(source.id, simulated)
+                    _sensorReading.value = reading.copy(
+                        // A live strap always wins over a simulated value.
+                        heartRateBpm = bleHeartRateManager.heartRate.value ?: reading.heartRateBpm
+                    )
+                }
         }
 
-        // Collect BLE heart rate
-        scope.launch {
-            bleHeartRateManager.heartRate.collect { hr ->
-                _sensorReading.update { current ->
-                    current.copy(heartRateBpm = hr)
+        heartRateJob = scope.launch {
+            bleHeartRateManager.heartRate.collect { bpm ->
+                if (bpm != null) {
+                    _sensorReading.update { it.copy(heartRateBpm = bpm) }
                 }
             }
         }
-    }
 
-    // ── Public API ──────────────────────────────────────────────────
-
-    /**
-     * Start all sensor data collection.
-     * Opens the serial port and starts BLE scanning.
-     */
-    fun start() {
-        Log.d(TAG, "Starting sensor repository")
-
-        // Open serial port
-        if (!serialPortReader.open()) {
-            Log.w(TAG, "Serial port not available, scheduling reconnect")
-            scheduleSerialReconnect()
-        }
-
-        // Start BLE scanning for heart rate monitors
         bleHeartRateManager.startScan()
     }
 
-    /**
-     * Stop all sensor data collection.
-     */
     fun stop() {
-        Log.d(TAG, "Stopping sensor repository")
-        serialPortReader.close()
+        Log.i(TAG, "Stopping telemetry")
+        telemetryJob?.cancel()
+        telemetryJob = null
+        heartRateJob?.cancel()
+        heartRateJob = null
         bleHeartRateManager.stopScan()
         bleHeartRateManager.disconnect()
+        _sensorReading.value = SensorReading.EMPTY
+        _status.value = SensorStatus.Stopped
     }
 
-    /**
-     * Manually connect to a specific BLE heart rate device.
-     */
-    fun connectHeartRate(deviceAddress: String?) {
-        // BLE connection is managed internally; this is a placeholder for future device selection
-    }
+    /** Targets a specific strap by address, or null for the first found. */
+    fun selectHeartRateDevice(address: String?) =
+        bleHeartRateManager.selectDevice(address)
 
-    /**
-     * Disconnect from the current BLE heart rate device.
-     */
-    fun disconnectHeartRate() {
-        bleHeartRateManager.disconnect()
-    }
+    fun scanForHeartRateDevices() = bleHeartRateManager.startScan()
 
-    /**
-     * Get the BLE heart rate manager for UI integration (device list, etc.).
-     */
-    fun getBleHeartRateManager(): BleHeartRateManager = bleHeartRateManager
+    fun stopHeartRateScan() = bleHeartRateManager.stopScan()
 
-    // ── Serial port reconnect logic ─────────────────────────────────
+    fun heartRatePermissions(): List<String> = bleHeartRateManager.requiredPermissions
 
-    private fun scheduleSerialReconnect() {
-        if (serialReconnectScheduled) return
-
-        serialReconnectScheduled = true
-        serialReconnectAttempt++
-
-        val delayMs = (SERIAL_RECONNECT_DELAY_MS * (1L shl (serialReconnectAttempt - 1)))
-            .coerceAtMost(MAX_SERIAL_RECONNECT_DELAY_MS)
-
-        Log.d(TAG, "Scheduling serial reconnect attempt $serialReconnectAttempt in ${delayMs}ms")
-
-        scope.launch {
-            kotlinx.coroutines.delay(delayMs)
-            serialReconnectScheduled = false
-
-            if (serialPortReader.reconnect()) {
-                Log.d(TAG, "Serial port reconnected successfully")
-                serialReconnectAttempt = 0
-            } else {
-                Log.w(TAG, "Serial reconnect failed, will retry")
-                scheduleSerialReconnect()
-            }
-        }
-    }
-
-    /**
-     * Clean up all resources.
-     */
     fun destroy() {
         stop()
         bleHeartRateManager.destroy()
+    }
+
+    /** Exponential backoff, capped, so a missing board does not spin the CPU. */
+    private fun backoffDelayMs(attempt: Long): Long {
+        val exponent = attempt.coerceAtMost(MAX_BACKOFF_SHIFT).toInt()
+        return (BASE_RETRY_DELAY_MS shl exponent).coerceAtMost(MAX_RETRY_DELAY_MS)
+    }
+
+    private companion object {
+        const val TAG = "SensorRepository"
+        const val BASE_RETRY_DELAY_MS = 1_000L
+        const val MAX_RETRY_DELAY_MS = 30_000L
+        const val MAX_BACKOFF_SHIFT = 5L
     }
 }

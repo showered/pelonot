@@ -17,11 +17,13 @@ data class UserEntity(
     val weightKg: Double = 70.0,
 
     @ColumnInfo(name = "ftp_watts")
-    val ftpWatts: Int = 150,
-
-    @ColumnInfo(name = "theme_preference")
-    val themePreference: String = "DARK",
+    val ftpWatts: Int = DEFAULT_FTP,
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    companion object {
+        const val DEFAULT_FTP = 150
+        const val DEFAULT_WEIGHT_KG = 70.0
+    }
+}

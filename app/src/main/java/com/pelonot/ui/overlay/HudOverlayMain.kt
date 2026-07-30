@@ -1,5 +1,6 @@
 package com.pelonot.ui.overlay
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -7,28 +8,62 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.pelonot.R
+import com.pelonot.core.Formatters
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
-import com.pelonot.core.Formatters
-import com.pelonot.ui.theme.*
+import com.pelonot.ui.theme.AlertRed
+import com.pelonot.ui.theme.MetricCadenceCyan
+import com.pelonot.ui.theme.MetricHeartRateGreen
+import com.pelonot.ui.theme.MetricPowerCoral
+import com.pelonot.ui.theme.color
+import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.spacing
 
+/**
+ * The floating heads-up display shown over a third-party video app.
+ *
+ * Colours come from the theme's `colorScheme` rather than the hardcoded
+ * `DarkBackground` / `TextPrimary` constants this used previously, which meant
+ * the HUD ignored the theme entirely and rendered dark-on-dark in light mode.
+ */
 @Composable
 fun HudOverlayMain(
     cadence: Double,
@@ -37,8 +72,9 @@ fun HudOverlayMain(
     heartRate: Int?,
     elapsedSeconds: Int,
     ftp: Double,
-    targetCadenceMin: Double = 80.0,
-    targetCadenceMax: Double = 100.0,
+    isPaused: Boolean = false,
+    targetCadenceMin: Double = DEFAULT_TARGET_CADENCE_MIN,
+    targetCadenceMax: Double = DEFAULT_TARGET_CADENCE_MAX,
     targetZone: PowerZone = PowerZone.Z3,
     intent: RideIntent = RideIntent.DEFAULT,
     onPause: () -> Unit,
@@ -46,42 +82,52 @@ fun HudOverlayMain(
     onStop: () -> Unit,
     onDrag: (Float, Float) -> Unit
 ) {
-    val targetPowerRange = targetZone.targetPowerRange(ftp, intent)
-    val isCadenceAlert = cadence < targetCadenceMin || cadence > targetCadenceMax
-    val isPowerAlert = power < targetPowerRange.start || power > targetPowerRange.endInclusive
+    val targetPower = targetZone.targetPowerRange(ftp, intent)
+    // Only flag a cadence miss once the rider is actually pedalling; a
+    // stationary bike is not "below target".
+    val cadenceAlert = cadence > 1.0 && (cadence < targetCadenceMin || cadence > targetCadenceMax)
+    val powerAlert = power > 1.0 && power !in targetPower
+    val currentZone = PowerZone.forPower(power, ftp)
 
     Card(
-        modifier = Modifier
-            .width(280.dp)
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x, dragAmount.y)
-                }
-            },
-        colors = CardDefaults.cardColors(containerColor = DarkBackground.copy(alpha = 0.9f)),
+        modifier = Modifier.width(300.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+        ),
         shape = MaterialTheme.expressiveShapes.large,
         border = CardDefaults.outlinedCardBorder()
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(MaterialTheme.spacing.medium),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag handle / Title bar
+            // Drag handle. The gesture detector lives here rather than on the
+            // whole card, so dragging cannot be swallowed by the buttons.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp),
+                    .height(24.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x, dragAmount.y)
+                        }
+                    }
+                    .semantics {
+                        contentDescription = "Drag to reposition the heads-up display"
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp, 4.dp)
-                        .background(Color.Gray.copy(alpha = 0.5f), MaterialTheme.expressiveShapes.extraSmall)
+                        .size(width = 40.dp, height = 4.dp)
+                        .background(
+                            MaterialTheme.colorScheme.outline,
+                            MaterialTheme.expressiveShapes.pill
+                        )
                 )
             }
 
-            // Timer & Power Zone Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -89,85 +135,95 @@ fun HudOverlayMain(
             ) {
                 Text(
                     text = Formatters.duration(elapsedSeconds),
-                    color = TextPrimary,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    text = "Zone ${PowerZone.forPower(power, ftp).number}",
-                    color = PowerCoral,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    text = "Z${currentZone.number}",
+                    color = currentZone.color,
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-            // Real-time metrics grid
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
-                MetricCard(
+                HudMetric(
                     label = "CADENCE",
                     value = cadence.toInt().toString(),
                     unit = "RPM",
-                    color = CadenceCyan,
-                    isAlert = isCadenceAlert,
+                    accent = MetricCadenceCyan,
+                    isAlert = cadenceAlert,
                     modifier = Modifier.weight(1f)
                 )
-                MetricCard(
+                HudMetric(
                     label = "POWER",
                     value = power.toInt().toString(),
-                    unit = "WATTS",
-                    color = PowerCoral,
-                    isAlert = isPowerAlert,
+                    unit = "W",
+                    accent = MetricPowerCoral,
+                    isAlert = powerAlert,
                     modifier = Modifier.weight(1f)
                 )
-                MetricCard(
-                    label = "HEART RATE",
+                HudMetric(
+                    label = "HR",
                     value = heartRate?.toString() ?: "--",
                     unit = "BPM",
-                    color = HeartRateGreen,
+                    accent = MetricHeartRateGreen,
                     isAlert = false,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
 
-            // Targets indicator Panel
             TargetsPanel(
                 targetCadenceMin = targetCadenceMin,
                 targetCadenceMax = targetCadenceMax,
-                targetPowerRange = targetPowerRange,
-                targetZone = targetZone
+                targetPowerRange = targetPower,
+                targetZone = targetZone,
+                resistance = resistance
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-            // HUD Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(
+                    MaterialTheme.spacing.medium,
+                    Alignment.CenterHorizontally
+                )
             ) {
-                Button(
-                    onClick = onPause,
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
+                // A single toggle rather than separate Pause and Resume
+                // buttons, one of which was always a no-op.
+                FilledIconButton(
+                    onClick = if (isPaused) onResume else onPause,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 ) {
-                    Text("Pause", color = TextPrimary)
+                    Icon(
+                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        contentDescription = stringResource(
+                            if (isPaused) R.string.cd_resume_ride else R.string.cd_pause_ride
+                        )
+                    )
                 }
-                Button(
-                    onClick = onResume,
-                    colors = ButtonDefaults.buttonColors(containerColor = CadenceCyan)
-                ) {
-                    Text("Resume", color = DarkBackground)
-                }
-                Button(
+
+                FilledIconButton(
                     onClick = onStop,
-                    colors = ButtonDefaults.buttonColors(containerColor = ZoneAlertRed)
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 ) {
-                    Text("Stop", color = TextPrimary)
+                    Icon(
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = stringResource(R.string.cd_end_ride)
+                    )
                 }
             }
         }
@@ -175,109 +231,132 @@ fun HudOverlayMain(
 }
 
 @Composable
-fun MetricCard(
+private fun HudMetric(
     label: String,
     value: String,
     unit: String,
-    color: Color,
+    accent: Color,
     isAlert: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val animatedBgColor by animateColorAsState(
-        targetValue = if (isAlert) ZoneAlertRed.copy(alpha = 0.2f) else Color.Transparent,
+    val containerColor by animateColorAsState(
+        targetValue = if (isAlert) {
+            AlertRed.copy(alpha = 0.25f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
         animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "MetricCardBgColor"
+        label = "HudMetricContainer"
     )
 
-    val scaleFactor by animateFloatAsState(
-        targetValue = if (isAlert) 1.05f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "MetricCardScale"
+    val scale by animateFloatAsState(
+        targetValue = if (isAlert) ALERT_SCALE else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "HudMetricScale"
     )
 
     Card(
         modifier = modifier
-            .padding(4.dp)
-            .scale(scaleFactor),
-        colors = CardDefaults.cardColors(containerColor = animatedBgColor.takeIf { isAlert } ?: DarkSurface),
+            .scale(scale)
+            .clearAndSetSemantics { contentDescription = "$label $value $unit" },
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = MaterialTheme.expressiveShapes.medium
     ) {
         Column(
             modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.small),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
-                fontSize = 10.sp
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
+                // Was typography.displayLarge — 72sp — inside a 300dp-wide card
+                // split three ways, so every value was clipped.
                 text = value,
-                style = PelonotTypography.displayLarge,
-                color = if (isAlert) ZoneAlertRed else color,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (isAlert) AlertRed else accent,
+                maxLines = 1
             )
-            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = unit,
-                style = PelonotTypography.labelSmall,
-                color = TextSecondary
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
 @Composable
-fun TargetsPanel(
+private fun TargetsPanel(
     targetCadenceMin: Double,
     targetCadenceMax: Double,
-    targetPowerRange: ClosedRange<Double>,
-    targetZone: PowerZone
+    targetPowerRange: ClosedFloatingPointRange<Double>,
+    targetZone: PowerZone,
+    resistance: Double
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface, MaterialTheme.expressiveShapes.medium)
-            .padding(8.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceContainerLow,
+                MaterialTheme.expressiveShapes.medium
+            )
+            .padding(MaterialTheme.spacing.small)
     ) {
-        Text(
-            text = "TARGETS",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Cadence: ${targetCadenceMin.toInt()}-${targetCadenceMax.toInt()} RPM",
-                color = CadenceCyan,
-                style = MaterialTheme.typography.bodyMedium
+                text = "TARGET · ${targetZone.displayName}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Power: ${targetPowerRange.start.toInt()}-${targetPowerRange.endInclusive.toInt()}W (${targetZone.displayName})",
-                color = PowerCoral,
-                style = MaterialTheme.typography.bodyMedium
+                text = "RES ${resistance.toInt()}%",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "${targetCadenceMin.toInt()}–${targetCadenceMax.toInt()} RPM",
+                color = MetricCadenceCyan,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                text = "${targetPowerRange.start.toInt()}–" +
+                    "${targetPowerRange.endInclusive.toInt()} W",
+                color = MetricPowerCoral,
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }
 }
 
 /**
- * Leaderboard panel showing PB, Personal Average, and Household Best.
+ * Personal best, personal average and household best for the current ride
+ * length. Collapsible, since the HUD sits over video the rider is watching.
  */
 @Composable
 fun LeaderboardPanel(
-    elapsedSeconds: Int,
     currentOutputKj: Double,
-    personalBest: Double?,
-    personalAverage: Double?,
-    householdBest: Double?,
+    personalBestKj: Double?,
+    personalAverageKj: Double?,
+    householdBestKj: Double?,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(true) }
@@ -285,61 +364,48 @@ fun LeaderboardPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(DarkSurface, MaterialTheme.expressiveShapes.medium)
-            .padding(8.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceContainerLow,
+                MaterialTheme.expressiveShapes.medium
+            )
+            .padding(MaterialTheme.spacing.small)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded },
+                .clickable { expanded = !expanded }
+                .semantics {
+                    contentDescription =
+                        if (expanded) "Collapse leaderboard" else "Expand leaderboard"
+                },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "LEADERBOARD",
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = if (expanded) "▼" else "▶",
-                color = TextSecondary,
-                fontSize = 12.sp
+                text = if (expanded) "▾" else "▸",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        if (expanded) {
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            LeaderboardRow(
-                label = "Current",
-                value = currentOutputKj,
-                isHighlight = true
-            )
-            LeaderboardRow(
-                label = "Personal Best",
-                value = personalBest,
-                isHighlight = false
-            )
-            LeaderboardRow(
-                label = "Personal Avg",
-                value = personalAverage,
-                isHighlight = false
-            )
-            LeaderboardRow(
-                label = "Household Best",
-                value = householdBest,
-                isHighlight = false
-            )
+        AnimatedVisibility(visible = expanded) {
+            Column {
+                LeaderboardRow("Current", currentOutputKj, isHighlight = true)
+                LeaderboardRow("Personal best", personalBestKj, isHighlight = false)
+                LeaderboardRow("Personal average", personalAverageKj, isHighlight = false)
+                LeaderboardRow("Household best", householdBestKj, isHighlight = false)
+            }
         }
     }
 }
 
 @Composable
-private fun LeaderboardRow(
-    label: String,
-    value: Double?,
-    isHighlight: Boolean
-) {
+private fun LeaderboardRow(label: String, value: Double?, isHighlight: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -348,14 +414,21 @@ private fun LeaderboardRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isHighlight) CadenceCyan else TextSecondary
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isHighlight) {
+                MetricCadenceCyan
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
         )
         Text(
-            text = value?.let { "%.1f kJ".format(it) } ?: "--",
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isHighlight) CadenceCyan else TextPrimary
+            text = value?.let(Formatters::kilojoules) ?: "--",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isHighlight) MetricCadenceCyan else MaterialTheme.colorScheme.onSurface
         )
     }
 }
 
+private const val ALERT_SCALE = 1.05f
+private const val DEFAULT_TARGET_CADENCE_MIN = 80.0
+private const val DEFAULT_TARGET_CADENCE_MAX = 100.0

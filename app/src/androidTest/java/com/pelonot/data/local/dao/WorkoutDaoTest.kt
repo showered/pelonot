@@ -4,157 +4,211 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pelonot.data.local.AppDatabase
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.data.local.entity.WorkoutMetricEntity
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.*
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.Assert.*
 
+/**
+ * DAO behaviour against a real in-memory SQLite database.
+ *
+ * The previous version of this file did not compile: it constructed
+ * `WorkoutEntity` with `localUserId`, `classTemplateId` and a String
+ * `intentModifier`, none of which have ever been fields on that entity. PLAN
+ * item 8.8 was ticked regardless.
+ */
 @RunWith(AndroidJUnit4::class)
 class WorkoutDaoTest {
 
     private lateinit var database: AppDatabase
     private lateinit var workoutDao: WorkoutDao
+    private lateinit var metricDao: WorkoutMetricDao
+    private lateinit var userDao: UserDao
 
     @Before
-    fun setup() {
+    fun setup() = runBlocking {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             AppDatabase::class.java
         ).allowMainThreadQueries().build()
+
         workoutDao = database.workoutDao()
+        metricDao = database.workoutMetricDao()
+        userDao = database.userDao()
+
+        // workouts.user_id is a foreign key, so profiles must exist first.
+        userDao.insertUser(UserEntity(localUserId = USER_ID, name = "Test Rider"))
+        userDao.insertUser(UserEntity(localUserId = OTHER_USER_ID, name = "Housemate"))
     }
 
     @After
-    fun teardown() {
-        database.close()
-    }
+    fun teardown() = database.close()
+
+    private fun workout(
+        id: String,
+        userId: Int = USER_ID,
+        durationSec: Int = 1800,
+        outputKj: Double = 150.0,
+        isComplete: Boolean = true,
+        timestamp: Long = System.currentTimeMillis()
+    ) = WorkoutEntity(
+        id = id,
+        userId = userId,
+        classId = null,
+        durationSec = durationSec,
+        totalOutputKj = outputKj,
+        totalDistanceKm = 10.0,
+        avgCadence = 90.0,
+        avgPower = 200.0,
+        avgHr = 150.0,
+        intentModifier = 1.05,
+        isComplete = isComplete,
+        timestamp = timestamp
+    )
 
     @Test
-    fun `insertWorkout and getWorkoutById returns correct workout`() = runBlocking {
-        val workout = WorkoutEntity(
-            id = "test-workout-1",
-            localUserId = 1,
-            classTemplateId = 1,
-            durationSec = 1800,
-            totalOutputKj = 150.0,
-            totalDistanceKm = 10.0,
-            avgCadence = 90.0,
-            avgPower = 200.0,
-            avgHr = 150,
-            intentModifier = "Reach New Milestones",
-            timestamp = System.currentTimeMillis()
-        )
+    fun insertAndReadBackAWorkout() = runBlocking {
+        workoutDao.insertWorkout(workout("w1"))
 
-        workoutDao.insertWorkout(workout)
-        val retrieved = workoutDao.getWorkoutById("test-workout-1")
+        val retrieved = workoutDao.getWorkoutById("w1")
 
         assertNotNull(retrieved)
-        assertEquals("test-workout-1", retrieved?.id)
-        assertEquals(1, retrieved?.localUserId)
-        assertEquals(1800, retrieved?.durationSec)
-        assertEquals(150.0, retrieved?.totalOutputKj, 0.01)
+        assertEquals(1800, retrieved!!.durationSec)
+        assertEquals(150.0, retrieved.totalOutputKj, 0.001)
+        assertEquals(USER_ID, retrieved.userId)
     }
 
     @Test
-    fun `getLatestWorkout returns most recent workout`() = runBlocking {
-        val workout1 = WorkoutEntity(
-            id = "workout-1",
-            localUserId = 1,
-            durationSec = 1000,
-            totalOutputKj = 100.0,
-            totalDistanceKm = 5.0,
-            avgCadence = 80.0,
-            avgPower = 180.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 1000L
-        )
-        val workout2 = WorkoutEntity(
-            id = "workout-2",
-            localUserId = 1,
-            durationSec = 2000,
-            totalOutputKj = 200.0,
-            totalDistanceKm = 10.0,
-            avgCadence = 90.0,
-            avgPower = 200.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 2000L
+    fun metricsCanBeWrittenOnceTheParentWorkoutExists() = runBlocking {
+        // Regression: metrics were previously written every second during a
+        // ride while the workout row was only inserted at the end, so this
+        // foreign key was always violated and no time series was ever stored.
+        workoutDao.insertWorkout(workout("w1", isComplete = false))
+
+        metricDao.insertMetrics(
+            (0 until 10).map { second ->
+                WorkoutMetricEntity(
+                    workoutId = "w1",
+                    timestampSec = second,
+                    cadence = 90.0,
+                    resistance = 40.0,
+                    power = 200.0,
+                    heartRate = 140
+                )
+            }
         )
 
-        workoutDao.insertWorkout(workout1)
-        workoutDao.insertWorkout(workout2)
-
-        val latest = workoutDao.getLatestWorkout(1)
-        assertEquals("workout-2", latest?.id)
+        assertEquals(10, metricDao.getMetricCountForWorkout("w1"))
     }
 
     @Test
-    fun `getPersonalBestOutput returns max output in duration range`() = runBlocking {
-        val workout1 = WorkoutEntity(
-            id = "workout-1",
-            localUserId = 1,
-            durationSec = 1800,
-            totalOutputKj = 150.0,
-            totalDistanceKm = 10.0,
-            avgCadence = 90.0,
-            avgPower = 200.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 1000L
-        )
-        val workout2 = WorkoutEntity(
-            id = "workout-2",
-            localUserId = 1,
-            durationSec = 2000,
-            totalOutputKj = 200.0,
-            totalDistanceKm = 12.0,
-            avgCadence = 85.0,
-            avgPower = 190.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 2000L
+    fun deletingAWorkoutCascadesToItsMetrics() = runBlocking {
+        workoutDao.insertWorkout(workout("w1"))
+        metricDao.insertMetric(
+            WorkoutMetricEntity(workoutId = "w1", timestampSec = 0, power = 100.0)
         )
 
-        workoutDao.insertWorkout(workout1)
-        workoutDao.insertWorkout(workout2)
+        workoutDao.deleteWorkout("w1")
 
-        val pb = workoutDao.getPersonalBestOutput(1, 1500, 2500)
-        assertEquals(200.0, pb, 0.01)
+        assertEquals(0, metricDao.getMetricCountForWorkout("w1"))
     }
 
     @Test
-    fun `getPersonalAverageOutput returns average output in duration range`() = runBlocking {
-        val workout1 = WorkoutEntity(
-            id = "workout-1",
-            localUserId = 1,
-            durationSec = 1800,
-            totalOutputKj = 150.0,
-            totalDistanceKm = 10.0,
-            avgCadence = 90.0,
-            avgPower = 200.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 1000L
+    fun inProgressRidesAreExcludedFromHistoryAndLeaderboards() = runBlocking {
+        workoutDao.insertWorkout(workout("finished", outputKj = 150.0))
+        workoutDao.insertWorkout(workout("in-progress", outputKj = 0.0, isComplete = false))
+
+        val history = workoutDao.getWorkoutsByUser(USER_ID).first()
+        assertEquals(listOf("finished"), history.map { it.id })
+
+        // Without the is_complete filter, the 0 kJ in-progress ride would drag
+        // the personal average down.
+        assertEquals(150.0, workoutDao.getPersonalAverageOutput(USER_ID, 0, 9999)!!, 0.001)
+    }
+
+    @Test
+    fun personalBestOnlyConsidersComparableDurations() = runBlocking {
+        workoutDao.insertWorkout(workout("30min", durationSec = 1800, outputKj = 150.0))
+        workoutDao.insertWorkout(workout("90min", durationSec = 5400, outputKj = 400.0))
+
+        val best = workoutDao.getPersonalBestOutput(USER_ID, 1620, 1980)
+
+        assertEquals(150.0, best!!, 0.001)
+    }
+
+    @Test
+    fun householdBestSpansEveryProfile() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", outputKj = 150.0))
+        workoutDao.insertWorkout(workout("theirs", userId = OTHER_USER_ID, outputKj = 220.0))
+
+        assertEquals(150.0, workoutDao.getPersonalBestOutput(USER_ID, 0, 9999)!!, 0.001)
+        assertEquals(220.0, workoutDao.getHouseholdBestOutput(0, 9999)!!, 0.001)
+    }
+
+    @Test
+    fun onlyAnUnfinishedRideIsOfferedForRecovery() = runBlocking {
+        workoutDao.insertWorkout(workout("finished"))
+
+        // Regression: the old query was `ORDER BY timestamp DESC LIMIT 1` with
+        // no completion filter, so the app offered to resume the ride the user
+        // had just finished, on every single launch.
+        assertNull(workoutDao.getIncompleteWorkout())
+
+        workoutDao.insertWorkout(
+            workout("crashed", isComplete = false, timestamp = System.currentTimeMillis() + 1000)
         )
-        val workout2 = WorkoutEntity(
-            id = "workout-2",
-            localUserId = 1,
-            durationSec = 2000,
-            totalOutputKj = 200.0,
-            totalDistanceKm = 12.0,
-            avgCadence = 85.0,
-            avgPower = 190.0,
-            avgHr = null,
-            intentModifier = "Just Stay Fit",
-            timestamp = 2000L
+        assertEquals("crashed", workoutDao.getIncompleteWorkout()?.id)
+
+        workoutDao.deleteIncompleteWorkouts()
+        assertNull(workoutDao.getIncompleteWorkout())
+        assertNotNull(workoutDao.getWorkoutById("finished"))
+    }
+
+    @Test
+    fun recentWorkoutsAreOrderedNewestFirst() = runBlocking {
+        val now = System.currentTimeMillis()
+        workoutDao.insertWorkout(workout("old", timestamp = now - 10_000))
+        workoutDao.insertWorkout(workout("new", timestamp = now))
+
+        val recent = workoutDao.getRecentWorkouts(USER_ID, limit = 10)
+
+        assertEquals(listOf("new", "old"), recent.map { it.id })
+    }
+
+    @Test
+    fun rpeCanBeRecordedAfterTheRide() = runBlocking {
+        workoutDao.insertWorkout(workout("w1"))
+
+        workoutDao.setRpeRating("w1", 7)
+
+        assertEquals(7, workoutDao.getWorkoutById("w1")?.rpeRating)
+    }
+
+    @Test
+    fun powerTimeSeriesComesBackInChronologicalOrder() = runBlocking {
+        workoutDao.insertWorkout(workout("w1"))
+        // Inserted out of order on purpose.
+        metricDao.insertMetrics(
+            listOf(
+                WorkoutMetricEntity(workoutId = "w1", timestampSec = 2, power = 300.0),
+                WorkoutMetricEntity(workoutId = "w1", timestampSec = 0, power = 100.0),
+                WorkoutMetricEntity(workoutId = "w1", timestampSec = 1, power = 200.0)
+            )
         )
 
-        workoutDao.insertWorkout(workout1)
-        workoutDao.insertWorkout(workout2)
+        assertEquals(listOf(100.0, 200.0, 300.0), metricDao.getPowerTimeSeries("w1"))
+    }
 
-        val avg = workoutDao.getPersonalAverageOutput(1, 1500, 2500)
-        assertEquals(175.0, avg, 0.01)
+    private companion object {
+        const val USER_ID = 1
+        const val OTHER_USER_ID = 2
     }
 }

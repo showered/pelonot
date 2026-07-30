@@ -1,134 +1,139 @@
 package com.pelonot.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.pelonot.domain.model.PowerZone
 
 // ==========================================
-// Material Expressive - Color System
-// Inspired by Google Health, WHOOP, and Fitbit
+// Pelonot colour system
+//
+// Calm, desaturated surfaces so the saturated metric accents carry all the
+// visual weight — a rider glancing down mid-effort should find the number
+// they need instantly.
 // ==========================================
 
-// --- Calm Base Palette (Dark Theme) ---
-val DarkBackground = Color(0xFF09090B)       // Zinc 950 - elegant, deep dark
-val DarkSurface = Color(0xFF18181B)          // Zinc 900 - calm, premium container bg
-val DarkSurfaceVariant = Color(0xFF27272A)   // Zinc 800 - subtle divider or input bg
-val DarkSurfaceContainer = Color(0xFF1F1F23)  // Zinc 850 - intermediate container level
+// --- Neutral surfaces: dark ---
+val DarkBackground = Color(0xFF09090B)
+val DarkSurface = Color(0xFF141417)
+val DarkSurfaceVariant = Color(0xFF27272A)
+val DarkSurfaceContainerLowest = Color(0xFF0C0C0E)
+val DarkSurfaceContainerLow = Color(0xFF141417)
+val DarkSurfaceContainer = Color(0xFF1B1B1F)
+val DarkSurfaceContainerHigh = Color(0xFF232327)
+val DarkSurfaceContainerHighest = Color(0xFF2C2C31)
 
-// --- Calm Base Palette (Light Theme) ---
-val LightBackground = Color(0xFFF8F9FA)      // Very light warm grey
-val LightSurface = Color(0xFFFFFFFF)         // Pure white
-val LightSurfaceVariant = Color(0xFFF1F3F4)  // Google style light grey
-val LightSurfaceContainer = Color(0xFFE8EAED) // Light container background
+// --- Neutral surfaces: light ---
+val LightBackground = Color(0xFFF8F9FA)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFECEEF0)
+val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
+val LightSurfaceContainerLow = Color(0xFFF6F7F8)
+val LightSurfaceContainer = Color(0xFFF1F3F4)
+val LightSurfaceContainerHigh = Color(0xFFEAECEE)
+val LightSurfaceContainerHighest = Color(0xFFE3E6E8)
 
-// --- Premium Branding Accent Roles ---
-// Warm, calm, sophisticated theme branding
-val PrimaryTealDark = Color(0xFF80CBC4)      // Soft, calm teal (Dark Mode primary)
-val PrimaryTealLight = Color(0xFF00695C)     // Deep, trustworthy teal (Light Mode primary)
-
-val SecondarySlateDark = Color(0xFF90A4AE)    // Cool slate blue (Dark Mode secondary)
-val SecondarySlateLight = Color(0xFF455A64)   // Deep slate blue (Light Mode secondary)
-
-val TertiaryAmberDark = Color(0xFFFFB74D)     // Warm honey gold
-val TertiaryAmberLight = Color(0xFFE65100)    // Deep, energetic orange-amber
-
-// --- On-Color Tokens (content placed on top of role colors) ---
+// --- Brand roles ---
+// Container colours are solid tones rather than `primary.copy(alpha = 0.3f)`.
+// A translucent container composites against whatever happens to sit behind
+// it, so the same component rendered on `background` and on an elevated card
+// produced two different colours, and the paired `onPrimaryContainer` was only
+// legible against one of them.
+val PrimaryTealDark = Color(0xFF80CBC4)
+val PrimaryTealLight = Color(0xFF00695C)
+val PrimaryTealContainerDark = Color(0xFF00504A)
+val PrimaryTealContainerLight = Color(0xFFB2DFDB)
 val OnPrimaryDark = Color(0xFF00332C)
 val OnPrimaryLight = Color(0xFFFFFFFF)
+val OnPrimaryContainerDark = Color(0xFFA7F3EB)
+val OnPrimaryContainerLight = Color(0xFF00201C)
 
-val OnSecondaryDark = Color(0xFF1C1B1F)       // Dark text on slate secondary
-val OnSecondaryLight = Color(0xFFFFFFFF)      // Light text on deep slate secondary
+val SecondarySlateDark = Color(0xFF90A4AE)
+val SecondarySlateLight = Color(0xFF455A64)
+val SecondarySlateContainerDark = Color(0xFF35444C)
+val SecondarySlateContainerLight = Color(0xFFCFD8DC)
+val OnSecondaryDark = Color(0xFF17232A)
+val OnSecondaryLight = Color(0xFFFFFFFF)
+val OnSecondaryContainerDark = Color(0xFFD3E2EA)
+val OnSecondaryContainerLight = Color(0xFF16242B)
 
-val OnTertiaryDark = Color(0xFF3E2723)        // Dark text on amber tertiary
-val OnTertiaryLight = Color(0xFFFFFFFF)       // Light text on deep amber tertiary
+val TertiaryAmberDark = Color(0xFFFFB74D)
+val TertiaryAmberLight = Color(0xFFB44B00)
+val TertiaryAmberContainerDark = Color(0xFF5C3A00)
+val TertiaryAmberContainerLight = Color(0xFFFFDDB8)
+val OnTertiaryDark = Color(0xFF3E2723)
+val OnTertiaryLight = Color(0xFFFFFFFF)
+val OnTertiaryContainerDark = Color(0xFFFFDDB8)
+val OnTertiaryContainerLight = Color(0xFF2E1500)
 
-// --- Text and Content Colors ---
-val DarkTextPrimary = Color(0xFFF4F4F5)      // Zinc 50 - extreme readability
-val DarkTextSecondary = Color(0xFFA1A1AA)    // Zinc 400 - supporting information
-val DarkTextDim = Color(0xFF71717A)          // Zinc 500 - deactivated/extremely secondary
+// --- Text ---
+val DarkTextPrimary = Color(0xFFF4F4F5)
+val DarkTextSecondary = Color(0xFFA1A1AA)
+val LightTextPrimary = Color(0xFF1C1B1F)
+val LightTextSecondary = Color(0xFF4A454F)
 
-val LightTextPrimary = Color(0xFF1C1B1F)     // Material 3 default high contrast
-val LightTextSecondary = Color(0xFF4A454F)   // Muted supporting info
-val LightTextDim = Color(0xFF79747E)         // De-emphasized details
+val InverseOnSurfaceDark = Color(0xFF121212)
+val InverseOnSurfaceLight = Color(0xFFF4F4F5)
 
-// --- On-Surface Container Tokens ---
-// Content colors for surface containers at various elevation levels
-val OnSurfaceContainerDark = Color(0xFFE0E0E0)       // High-emphasis on containers
-val OnSurfaceContainerLight = Color(0xFF121212)      // High-emphasis on light containers
-val OnSurfaceContainerLowDark = Color(0xFFE0E0E0)
-val OnSurfaceContainerLowLight = Color(0xFF121212)
-val OnSurfaceContainerHighDark = Color(0xFFE0E0E0)
-val OnSurfaceContainerHighLight = Color(0xFF121212)
-val OnSurfaceContainerLowestDark = Color(0xFFE0E0E0)
-val OnSurfaceContainerLowestLight = Color(0xFF121212)
+// --- Outlines ---
+val OutlineDark = Color(0xFF6B6B72)
+val OutlineLight = Color(0xFF79747E)
+val OutlineVariantDark = Color(0xFF3A3A3F)
+val OutlineVariantLight = Color(0xFFD5D2DA)
 
-// --- Inverse Surface Tokens ---
-val InverseOnSurfaceDark = Color(0xFF121212)        // Dark content on inverse (light) surface
-val InverseOnSurfaceLight = Color(0xFFF4F4F5)       // Light content on inverse (dark) surface
+// --- Error ---
+// Was #FF1744 on both themes, which fails contrast against a white surface.
+val ErrorDark = Color(0xFFFF6B7E)
+val ErrorLight = Color(0xFFB3261E)
+val ErrorContainerDark = Color(0xFF601410)
+val ErrorContainerLight = Color(0xFFF9DEDC)
+val OnErrorDark = Color(0xFF3A0A0C)
+val OnErrorLight = Color(0xFFFFFFFF)
+val OnErrorContainerDark = Color(0xFFFFDAD6)
+val OnErrorContainerLight = Color(0xFF410E0B)
 
-// --- Outline Tokens ---
-val OutlineDark = Color(0xFF616161)                 // Borders and dividers (dark)
-val OutlineLight = Color(0xFFBDBDBD)                // Borders and dividers (light)
-val OutlineVariantDark = Color(0xFF424242)          // Subtle borders (dark)
-val OutlineVariantLight = Color(0xFFE0E0E0)         // Subtle borders (light)
+// --- Live metric accents ---
+// Reserved exclusively for live telemetry, so a saturated colour on screen
+// always means "this is a number changing right now".
+val MetricCadenceCyan = Color(0xFF00E5FF)
+val MetricPowerCoral = Color(0xFFFF5252)
+val MetricHeartRateGreen = Color(0xFF00E676)
 
-// --- Error Color Tokens ---
-val ErrorDark = Color(0xFFFF1744)                   // Bright error (dark theme)
-val ErrorLight = Color(0xFFFF1744)                  // Bright error (light theme)
-val ErrorContainerDark = Color(0xFF7F0000)          // Muted error container (dark)
-val ErrorContainerLight = Color(0xFFFFEBEE)         // Muted error container (light)
-val OnErrorDark = Color(0xFF000000)                 // Content on error (dark)
-val OnErrorLight = Color(0xFF000000)                // Content on error (light)
-val OnErrorContainerDark = Color(0xFFE0E0E0)        // Content on error container (dark)
-val OnErrorContainerLight = Color(0xFF3E2723)       // Content on error container (light)
+// --- Alerts ---
+val AlertRed = Color(0xFFFF1744)
+val AlertAmber = Color(0xFFFF9100)
+val AlertGreen = Color(0xFF00E676)
 
-// --- Live Workout Metric Accent Colors (Reserved exclusively for live stats!) ---
-// Avoid neon overload: we use glowing colors strictly for live metric visualizations
-val MetricCadenceCyan = Color(0xFF00E5FF)    // Cyan A400 - high visibility cadence
-val MetricPowerCoral = Color(0xFFFF5252)     // Red A200 - vibrant power
-val MetricHeartRateGreen = Color(0xFF00E676) // Green A400 - clinical/fitness HR green
+// --- Power zone colours (Coggan 7-zone) ---
+// Cool through warm, so intensity reads without needing the number.
+val PowerZone1Recovery = Color(0xFF9E9E9E)
+val PowerZone2Endurance = Color(0xFF5C6BC0)
+val PowerZone3Tempo = Color(0xFF26A69A)
+val PowerZone4Threshold = Color(0xFFFFA726)
+val PowerZone5VO2Max = Color(0xFFEF5350)
+val PowerZone6Anaerobic = Color(0xFFAB47BC)
+val PowerZone7Neuromuscular = Color(0xFFD81B60)
 
-// --- Zone and Alert Colors ---
-val AlertRed = Color(0xFFFF1744)             // Bright warning
-val AlertOrange = Color(0xFFFF9100)          // Caution
-val AlertGreen = Color(0xFF00E676)           // Success / Safe zone
-
-// --- Power Zone Colors (Coggan 7-Zone) ---
-val PowerZone1_Recovery = Color(0xFF9E9E9E)      // Grey
-val PowerZone2_Endurance = Color(0xFF5C6BC0)     // Muted Blue
-val PowerZone3_Tempo = Color(0xFF26A69A)         // Soft Teal
-val PowerZone4_Threshold = Color(0xFFFFA726)     // Soft Orange
-val PowerZone5_VO2Max = Color(0xFFEF5350)        // Soft Red
-val PowerZone6_Anaerobic = Color(0xFFAB47BC)     // Soft Purple
-val PowerZone7_Neuromuscular = Color(0xFFD81B60)  // Deep Pink
-val PowerZone8_Recovery = Color(0xFFE0E0E0)  // Light recovery shade
-val PowerZone9_Light = Color(0xFFF5F5F5)  // Very light recovery shade
-
-// --- Heart Rate Zones ---
-val HeartRateZone1_Resting = Color(0xFFE0E0E0)      // Light gray - resting
-val HeartRateZone2_Light = Color(0xFFB8E986)        // Light green - light activity
-val HeartRateZone3_Moderate = Color(0xFF66BB6A)      // Medium green - moderate activity
-val HeartRateZone4_High = Color(0xFF2E7D32)         // Deep green - high intensity
-val HeartRateZone5_Max = Color(0xFF1B5E20)          // Dark green - max effort
-
-// --- Cadence Zones ---
-val CadenceZone1_Easy = Color(0xFFBBDEFB)          // Light blue - easy pace
-val CadenceZone2_Casual = Color(0xFF42A5F5)        // Medium blue - casual
-val CadenceZone3_Comfortable = Color(0xFF1E88E5)    // Dark blue - comfortable
-val CadenceZone4_Threshold = Color(0xFF1565C0)     // Deep blue - threshold
-val CadenceZone5_VO2Max = Color(0xFF0D47A1)        // Navy blue - VO2 max
-
-// --- Premium Reusable Gradients ---
+/** Gradients for hero surfaces, kept as pairs so they stay two-stop and calm. */
 object PelonotGradients {
     val TealFlow = listOf(Color(0xFF00695C), Color(0xFF00897B))
-    val DarkFlow = listOf(Color(0xFF18181B), Color(0xFF09090B))
-    val PowerZone = listOf(Color(0xFFFF5252), Color(0xFFFF7A00))
-    val HeartRate = listOf(Color(0xFF00E676), Color(0xFF00B0FF))
-    val PremiumOverlay = listOf(Color(0xFF27272A), Color(0xFF18181B))
+    val DarkFlow = listOf(DarkSurface, DarkBackground)
+    val PowerFlow = listOf(MetricPowerCoral, Color(0xFFFF7A00))
+    val HeartRateFlow = listOf(MetricHeartRateGreen, Color(0xFF00B0FF))
 }
 
-// --- Backward-compatible aliases for existing code ---
-val CadenceCyan = MetricCadenceCyan
-val PowerCoral = MetricPowerCoral
-val HeartRateGreen = MetricHeartRateGreen
-val ZoneAlertRed = AlertRed
-val TextPrimary = DarkTextPrimary
-val TextSecondary = DarkTextSecondary
+/**
+ * The colour for a [PowerZone].
+ *
+ * Replaces a loose set of `PowerZone1_Recovery`-style vals that each caller
+ * mapped by hand — including two extra shades, `PowerZone8_Recovery` and
+ * `PowerZone9_Light`, for zones that do not exist in a 7-zone model.
+ */
+val PowerZone.color: Color
+    get() = when (this) {
+        PowerZone.Z1 -> PowerZone1Recovery
+        PowerZone.Z2 -> PowerZone2Endurance
+        PowerZone.Z3 -> PowerZone3Tempo
+        PowerZone.Z4 -> PowerZone4Threshold
+        PowerZone.Z5 -> PowerZone5VO2Max
+        PowerZone.Z6 -> PowerZone6Anaerobic
+        PowerZone.Z7 -> PowerZone7Neuromuscular
+    }

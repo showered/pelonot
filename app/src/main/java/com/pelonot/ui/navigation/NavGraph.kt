@@ -1,245 +1,224 @@
 package com.pelonot.ui.navigation
 
-import android.content.Intent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.pelonot.data.local.entity.ClassTemplateEntity
-import com.pelonot.data.local.entity.UserEntity
-import com.pelonot.data.service.WorkoutService
+import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
-import com.pelonot.ui.screen.JustRideScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
 import com.pelonot.ui.screen.PreRideIntentPrompt
 import com.pelonot.ui.screen.ProfileCreationDialog
 import com.pelonot.ui.screen.ProfileSelectorScreen
+import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.SettingsScreen
+import com.pelonot.ui.viewmodel.AppUiState
 
+private const val TRANSITION_MS = 300
+
+/**
+ * The app's navigation graph.
+ *
+ * Ride screens are real destinations. Previously the graph checked two
+ * `remember`ed booleans *before* the `NavHost` and, when either was set,
+ * rendered the ride screen and `return`ed — so the ride existed entirely
+ * outside navigation. Nothing was on the back stack, system back dropped
+ * straight out of the app mid-workout, and the state was lost on rotation.
+ */
 @Composable
 fun PelonotNavGraph(
     navController: NavHostController,
-    users: List<UserEntity>,
-    classTemplates: List<ClassTemplateEntity>,
-    onSaveUser: (UserEntity) -> Unit,
-    onChangeTheme: (Boolean) -> Unit
+    uiState: AppUiState,
+    onCreateProfile: (name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) -> Unit,
+    onSelectProfile: (Int?) -> Unit
 ) {
-    var hasJustRideStarted by remember { mutableStateOf(false) }
-    var hasClassRideStarted by remember { mutableStateOf(false) }
-    var showProfileDialog by remember { mutableStateOf(false) }
-    var showIntentPrompt by remember { mutableStateOf(false) }
-    var pendingClassTemplate by remember { mutableStateOf<ClassTemplateEntity?>(null) }
-    var savedFtp by remember { mutableStateOf(200) }
-    var savedWeight by remember { mutableStateOf<Double?>(null) }
-    var isDarkTheme by remember { mutableStateOf(true) }
+    var showProfileDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showIntentPrompt by rememberSaveable { mutableStateOf(false) }
+
+    val contentModifier = Modifier
+        .windowInsetsPadding(WindowInsets.statusBars)
+        .windowInsetsPadding(WindowInsets.navigationBars)
 
     if (showProfileDialog) {
         ProfileCreationDialog(
             onProfileCreated = { name, weightKg, ftpWatts ->
-                val nextId = users.maxOfOrNull { it.localUserId }?.plus(1) ?: 1
-                val newUser = UserEntity(
-                    localUserId = nextId,
-                    name = name,
-                    weightKg = weightKg ?: 70.0,
-                    ftpWatts = ftpWatts
-                )
-                onSaveUser(newUser)
-                showProfileDialog = false
-                navController.navigate("dashboard/${newUser.localUserId}") {
-                    popUpTo("profile_selector") { inclusive = false }
+                onCreateProfile(name, weightKg, ftpWatts) {
+                    showProfileDialog = false
+                    navController.navigate(Destination.Dashboard.route) {
+                        popUpTo(Destination.ProfileSelector.route) { inclusive = false }
+                    }
                 }
             },
             onDismiss = { showProfileDialog = false }
         )
     }
 
-    if (showIntentPrompt && pendingClassTemplate != null) {
+    if (showIntentPrompt) {
         PreRideIntentPrompt(
             onIntentSelected = { intent ->
                 showIntentPrompt = false
-                hasClassRideStarted = true
+                val classId = pendingClassId
+                pendingClassId = null
+                navController.navigate(Destination.Ride.of(classId, intent.id))
             },
             onDismiss = {
                 showIntentPrompt = false
-                pendingClassTemplate = null
+                pendingClassId = null
             }
         )
-    }
-
-    if (hasJustRideStarted) {
-        JustRideScreen(
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars),
-            ftp = savedFtp,
-            onEndRide = {
-                hasJustRideStarted = false
-                navController.navigate("post_ride/true") {
-                    popUpTo("dashboard") { inclusive = false }
-                }
-            }
-        )
-        return
-    }
-
-    if (hasClassRideStarted) {
-        JustRideScreen(
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars),
-            ftp = savedFtp,
-            onEndRide = {
-                hasClassRideStarted = false
-                navController.navigate("post_ride/false") {
-                    popUpTo("dashboard") { inclusive = false }
-                }
-            }
-        )
-        return
     }
 
     NavHost(
         navController = navController,
-        startDestination = "profile_selector",
-        modifier = Modifier
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
+        startDestination = Destination.ProfileSelector.route,
+        modifier = contentModifier,
+        enterTransition = { fadeIn(tween(TRANSITION_MS)) },
+        exitTransition = { fadeOut(tween(TRANSITION_MS)) }
     ) {
-        composable(
-            "profile_selector",
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(300)) }
-        ) {
+
+        composable(Destination.ProfileSelector.route) {
             ProfileSelectorScreen(
-                users = users,
+                profiles = uiState.profiles,
                 onProfileSelected = { user ->
-                    navController.navigate("dashboard/${user.localUserId}") {
-                        // Pop profile selector off the back stack so dashboard is the root
-                        popUpTo("profile_selector") { inclusive = false }
-                    }
+                    onSelectProfile(user.localUserId)
+                    navController.navigate(Destination.Dashboard.route)
                 },
                 onGuestSelected = {
-                    navController.navigate("dashboard/-1") {
-                        popUpTo("profile_selector") { inclusive = false }
-                    }
+                    onSelectProfile(null)
+                    navController.navigate(Destination.Dashboard.route)
                 },
-                onCreateProfile = {
-                    showProfileDialog = true
-                }
+                onCreateProfile = { showProfileDialog = true }
             )
         }
 
-        composable(
-            "dashboard/{userId}",
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(300)) }
-        ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull() ?: -1
-            val user = users.find { it.localUserId == userId }
-
+        composable(Destination.Dashboard.route) {
             MainDashboardScreen(
-                userName = user?.name ?: "Guest",
-                ftp = user?.ftpWatts ?: savedFtp,
+                userName = uiState.selectedProfile?.name ?: "Guest",
+                ftp = uiState.selectedProfile?.ftpWatts
+                    ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 onJustRide = {
-                    hasJustRideStarted = true
+                    pendingClassId = null
+                    showIntentPrompt = true
                 },
-                onBeginClass = {
-                    navController.navigate("class_library")
-                },
-                onSettings = {
-                    navController.navigate("settings")
-                }
+                onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
+                onSettings = { navController.navigate(Destination.Settings.route) }
             )
         }
 
-        composable("class_library") {
+        composable(Destination.ClassLibrary.route) {
             ClassLibraryScreen(
-                classTemplates = classTemplates,
-                onClassSelected = { classTemplate ->
-                    navController.navigate("class_detail/${classTemplate.id}") {
-                        popUpTo("class_library") { inclusive = false }
-                    }
+                classes = uiState.classes,
+                onClassSelected = { plan ->
+                    navController.navigate(Destination.ClassDetail.of(plan.id))
                 },
-                onBack = {
-                    navController.popBackStack()
+                onBack = navController::popBackStack
+            )
+        }
+
+        composable(
+            route = Destination.ClassDetail.route,
+            arguments = listOf(
+                navArgument(Destination.ARG_CLASS_ID) { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val classId = backStackEntry.arguments?.getString(Destination.ARG_CLASS_ID)
+            val plan = remember(classId, uiState.classes) {
+                uiState.classes.firstOrNull { it.id == classId }
+            }
+
+            ClassDetailScreen(
+                plan = plan,
+                ftp = (uiState.selectedProfile?.ftpWatts
+                    ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP).toDouble(),
+                onBack = navController::popBackStack,
+                onStart = {
+                    pendingClassId = plan?.id
+                    showIntentPrompt = true
                 }
             )
         }
 
         composable(
-            "class_detail/{classId}",
-            arguments = listOf(navArgument("classId") { type = NavType.StringType }),
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(300)) }
-        ) { backStackEntry ->
-            val classId = backStackEntry.arguments?.getString("classId") ?: return@composable
-            val classTemplate = classTemplates.find { it.id == classId }
-            if (classTemplate != null) {
-                ClassDetailScreen(
-                    classTemplate = classTemplate,
-                    ftp = savedFtp.toDouble(),
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onStart = { classTemplateId ->
-                        pendingClassTemplate = classTemplates.find { it.id == classTemplateId }
-                        showIntentPrompt = true
-                    }
-                )
-            } else {
-                navController.popBackStack()
-            }
-        }
-
-        composable("settings") {
-            SettingsScreen(
-                currentFtp = savedFtp,
-                currentWeight = savedWeight,
-                isDarkTheme = isDarkTheme,
-                onFtpChange = { newFtp -> savedFtp = newFtp },
-                onWeightChange = { newWeight -> savedWeight = newWeight },
-                onThemeToggle = { dark ->
-                    isDarkTheme = dark
-                    onChangeTheme(dark)
+            route = Destination.Ride.route,
+            arguments = listOf(
+                navArgument(Destination.ARG_CLASS_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 },
-                onBack = {
-                    navController.popBackStack()
+                navArgument(Destination.ARG_INTENT_ID) {
+                    type = NavType.StringType
+                    defaultValue = RideIntent.DEFAULT.id
+                }
+            )
+        ) { backStackEntry ->
+            val classId = backStackEntry.arguments
+                ?.getString(Destination.ARG_CLASS_ID)
+                ?.takeIf { it.isNotBlank() }
+            val intent = RideIntent.fromId(
+                backStackEntry.arguments?.getString(Destination.ARG_INTENT_ID)
+            )
+            val plan = remember(classId, uiState.classes) {
+                uiState.classes.firstOrNull { it.id == classId }
+            }
+
+            RideScreen(
+                plan = plan,
+                intent = intent,
+                ftp = uiState.selectedProfile?.ftpWatts
+                    ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
+                userId = uiState.selectedProfile?.localUserId,
+                onEndRide = { workoutId ->
+                    if (workoutId != null) {
+                        navController.navigate(Destination.PostRide.of(workoutId)) {
+                            // Drop the ride off the back stack so system back
+                            // from the summary cannot re-enter a finished ride.
+                            popUpTo(Destination.Dashboard.route) { inclusive = false }
+                        }
+                    } else {
+                        navController.popBackStack(Destination.Dashboard.route, inclusive = false)
+                    }
                 }
             )
         }
 
-        composable("post_ride/{isGuest}") { backStackEntry ->
-            val isGuest = backStackEntry.arguments?.getString("isGuest")?.toBoolean() ?: false
+        composable(Destination.Settings.route) {
+            SettingsScreen(onBack = navController::popBackStack)
+        }
+
+        composable(
+            route = Destination.PostRide.route,
+            arguments = listOf(
+                navArgument(Destination.ARG_WORKOUT_ID) { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val workoutId = backStackEntry.arguments
+                ?.getString(Destination.ARG_WORKOUT_ID)
+                .orEmpty()
+
             PostRideSummaryScreen(
-                durationSec = 0,
-                totalOutputKj = 0.0,
-                avgPower = 0.0,
-                avgCadence = 0.0,
-                avgHeartRate = null,
-                distanceKm = 0.0,
-                isGuest = isGuest,
-                onSave = {
-                    navController.popBackStack("dashboard", inclusive = false)
-                },
-                onDiscard = {
-                    navController.popBackStack("dashboard", inclusive = false)
+                workoutId = workoutId,
+                isGuest = uiState.selectedProfile == null,
+                onDone = {
+                    navController.popBackStack(Destination.Dashboard.route, inclusive = false)
                 }
             )
         }

@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pelonot</string>
+
+    <!-- Notification channels -->
+    <string name="channel_workout_name">Workout tracking</string>
+    <string name="channel_workout_description">Ongoing notification while a ride is in progress</string>
+    <string name="channel_sync_name">Data sync</string>
+    <string name="channel_sync_description">Background upload of completed rides</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_add_profile">Create a new profile</string>
+    <string name="cd_guest_profile">Ride as a guest without saving to a profile</string>
+    <string name="cd_pause_ride">Pause ride</string>
+    <string name="cd_resume_ride">Resume ride</string>
+    <string name="cd_end_ride">End ride</string>
+    <string name="cd_drag_handle">Drag to reposition the heads-up display</string>
 </resources>

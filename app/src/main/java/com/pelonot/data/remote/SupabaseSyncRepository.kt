@@ -1,92 +1,74 @@
 package com.pelonot.data.remote
 
-import com.pelonot.data.local.entity.ClassTemplateEntity
+import android.util.Log
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.remote.dto.ClassTemplateDto
+import com.pelonot.data.remote.dto.ProfileDto
+import com.pelonot.data.remote.dto.WorkoutDto
 import io.github.jan.supabase.postgrest.from
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 
 /**
- * Repository for syncing local data to Supabase cloud.
+ * Pushes completed rides and profiles to Supabase and pulls the shared class
+ * library down.
+ *
+ * Every method returns a [SyncOutcome] rather than throwing, and reports
+ * [SyncOutcome.Disabled] when no credentials are configured, so cloud sync is
+ * genuinely optional rather than a silent failure path.
  */
-class SupabaseSyncRepository {
+class SupabaseSyncRepository(
+    private val enabled: () -> Boolean = { true }
+) {
 
-    private val client = SupabaseClientProvider.client
-    private val json = SupabaseClientProvider.json
+    private val client get() = SupabaseModule.client
 
-    /**
-     * Sync a completed workout (with compressed metrics) to Supabase.
-     */
+    val isConfigured: Boolean get() = SupabaseModule.isConfigured
+
+    /** Uploads a workout with its full metric time series. */
     suspend fun syncWorkout(
         workout: WorkoutEntity,
         metrics: List<WorkoutMetricEntity>
-    ): Result<Unit> = runCatching {
-        val metricSnapshots = metrics.map { m ->
-            mapOf(
-                "timestamp_sec" to m.timestampSec,
-                "cadence" to m.cadence,
-                "resistance" to m.resistance,
-                "power" to m.power,
-                "heart_rate" to (m.heartRate ?: 0)
-            )
+    ): SyncOutcome<Unit> = execute("syncWorkout") { supabase ->
+        supabase.from(TABLE_WORKOUTS).insert(WorkoutDto.from(workout, metrics))
+    }
+
+    /** Creates or updates the rider's cloud profile. */
+    suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> = execute("syncProfile") { supabase ->
+        supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user))
+    }
+
+    /** Fetches the shared class library for seeding. */
+    suspend fun fetchClassTemplates(): SyncOutcome<List<ClassTemplateDto>> =
+        executeReturning("fetchClassTemplates") { supabase ->
+            supabase.from(TABLE_CLASS_TEMPLATES)
+                .select()
+                .decodeList<ClassTemplateDto>()
         }
 
-        val payload = mapOf(
-            "id" to workout.id,
-            "duration_sec" to workout.durationSec,
-            "total_output_kj" to workout.totalOutputKj,
-            "total_distance_km" to workout.totalDistanceKm,
-            "avg_cadence" to (workout.avgCadence ?: 0),
-            "avg_power" to (workout.avgPower ?: 0),
-            "avg_hr" to (workout.avgHr ?: 0),
-            "intent_modifier" to workout.intentModifier,
-            "rpe_rating" to (workout.rpeRating ?: 0),
-            "metrics_payload" to metricSnapshots
-        )
+    private suspend inline fun execute(
+        operation: String,
+        crossinline block: suspend (io.github.jan.supabase.SupabaseClient) -> Unit
+    ): SyncOutcome<Unit> = executeReturning(operation) { block(it) }
 
-        client.from("workouts").insert(payload)
+    private suspend inline fun <T> executeReturning(
+        operation: String,
+        crossinline block: suspend (io.github.jan.supabase.SupabaseClient) -> T
+    ): SyncOutcome<T> {
+        if (!enabled()) return SyncOutcome.Disabled
+        val supabase = client ?: return SyncOutcome.Disabled
+        return try {
+            SyncOutcome.Success(block(supabase))
+        } catch (e: Exception) {
+            Log.w(TAG, "Supabase $operation failed", e)
+            SyncOutcome.Failed(e)
+        }
     }
 
-    /**
-     * Fetch all class templates from Supabase (for initial seeding).
-     */
-    suspend fun fetchClassTemplates(): Result<List<Map<String, Any?>>> = runCatching {
-        client.from("class_templates").select().decodeList()
-    }
-
-    /**
-     * Update user profile in Supabase.
-     */
-    suspend fun syncProfile(
-        localUserId: Int,
-        name: String,
-        ftpWatts: Int,
-        weightKg: Double
-    ): Result<Unit> = runCatching {
-        val payload = mapOf(
-            "local_user_id" to localUserId,
-            "name" to name,
-            "ftp_watts" to ftpWatts,
-            "weight_kg" to weightKg
-        )
-        client.from("profiles").upsert(payload)
-    }
-    
-    /**
-     * Update user FTP in Supabase.
-     */
-    suspend fun updateFtp(
-        localUserId: Int,
-        newFtp: Int
-    ): Result<Unit> = runCatching {
-        val payload = mapOf(
-            "local_user_id" to localUserId,
-            "ftp_watts" to newFtp
-        )
-        client.from("profiles").upsert(payload)
+    private companion object {
+        const val TAG = "SupabaseSync"
+        const val TABLE_WORKOUTS = "workouts"
+        const val TABLE_PROFILES = "profiles"
+        const val TABLE_CLASS_TEMPLATES = "class_templates"
     }
 }

@@ -1,94 +1,219 @@
 package com.pelonot.ui.screen
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.pelonot.data.local.entity.ClassTemplateEntity
+import com.pelonot.R
+import com.pelonot.core.Formatters
+import com.pelonot.data.repository.ClassPlan
+import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.spacing
 
+/**
+ * Browsable class library with category filtering — PLAN.md item 6.5, which
+ * called for a filterable list but shipped as a flat unfiltered one.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ClassLibraryScreen(
-    classTemplates: List<ClassTemplateEntity>,
-    onClassSelected: (ClassTemplateEntity) -> Unit,
-    onBack: () -> Unit
+    classes: List<ClassPlan>,
+    onClassSelected: (ClassPlan) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Class Library",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
-        Spacer(modifier = Modifier.height(16.dp))
+    val categories = remember(classes) {
+        classes.map { it.category }.distinct().sorted()
+    }
+    val visibleClasses = remember(classes, selectedCategory) {
+        selectedCategory?.let { category -> classes.filter { it.category == category } }
+            ?: classes
+    }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f)
-        ) {
-            items(classTemplates) { classTemplate ->
-                ClassCard(
-                    classTemplate = classTemplate,
-                    onClick = { onClassSelected(classTemplate) }
-                )
-            }
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Class Library") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
+                    }
+                }
+            )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = onBack,
+    ) { padding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            Text("Back")
+            if (categories.size > 1) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.large),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    FilterChip(
+                        selected = selectedCategory == null,
+                        onClick = { selectedCategory = null },
+                        label = { Text("All") }
+                    )
+                    categories.forEach { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = {
+                                selectedCategory = if (selectedCategory == category) null else category
+                            },
+                            label = { Text(category) }
+                        )
+                    }
+                }
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+            }
+
+            if (visibleClasses.isEmpty()) {
+                EmptyLibraryMessage(hasFilter = selectedCategory != null)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = MaterialTheme.spacing.large,
+                        vertical = MaterialTheme.spacing.small
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    items(visibleClasses, key = { it.id }) { plan ->
+                        ClassCard(plan = plan, onClick = { onClassSelected(plan) })
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ClassCard(
-    classTemplate: ClassTemplateEntity,
-    onClick: () -> Unit
-) {
+private fun EmptyLibraryMessage(hasFilter: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(MaterialTheme.spacing.doubleExtraLarge),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (hasFilter) {
+                "No classes in this category yet."
+            } else {
+                "No classes are installed. They are seeded from the bundled " +
+                    "library on first launch."
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ClassCard(plan: ClassPlan, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        onClick = onClick
+            .semantics {
+                contentDescription =
+                    "${plan.title}, ${plan.category}, ${Formatters.minutes(plan.durationSec)}"
+            },
+        onClick = onClick,
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp),
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = classTemplate.title,
+                    text = plan.title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = classTemplate.category,
+                    text = plan.category,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (plan.isMalformed) {
+                    // Surfaced rather than silently rendering an empty class.
+                    Text(
+                        text = "Interval data unreadable",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
+
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
             Text(
-                text = "${classTemplate.durationSec / 60} min",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = Formatters.minutes(plan.durationSec),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.expressiveShapes.pill
+                    )
+                    .padding(
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.extraSmall
+                    )
             )
         }
     }

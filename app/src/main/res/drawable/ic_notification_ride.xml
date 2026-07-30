@@ -1,0 +1,36 @@
+<!--
+  Status-bar notification icon.
+
+  Notification icons are rendered as a monochrome silhouette: the system keeps
+  the alpha channel and discards colour, so this is drawn entirely in opaque
+  white. A stock android.R.drawable was used before, which showed as a generic
+  grey blob.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- Rear wheel -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5.5,20.5m-3.5,0a3.5,3.5 0 1,1 7,0a3.5,3.5 0 1,1 -7,0M5.5,20.5m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+
+    <!-- Front wheel -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18.5,20.5m-3.5,0a3.5,3.5 0 1,1 7,0a3.5,3.5 0 1,1 -7,0M18.5,20.5m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+
+    <!-- Frame, cranks and bars -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.3,5.3a1.4,1.4 0 1,0 0,-2.8a1.4,1.4 0 1,0 0,2.8Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.6,9.1l2.6,2.4v5.9h1.8v-6.7l-2.5,-2.3l2.2,-2.4l1.7,1.9h3.1v-1.7h-2.4l-2.3,-2.5c-0.3,-0.3 -0.8,-0.4 -1.2,-0.1l-3.6,3.2c-0.6,0.5 -0.5,1.4 0.1,1.9z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5.5,19.6h-0.9l2.6,-6.4l1.6,0.6l-2.4,5.8z" />
+</vector>

@@ -1,50 +1,70 @@
 package com.pelonot.data.service
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.pelonot.MainActivity
 import com.pelonot.PelonotApp
 import com.pelonot.R
-import com.pelonot.data.local.AppDatabase
+import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.SensorRepository
-import com.pelonot.ui.overlay.HudOverlayManager
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import java.util.*
+import com.pelonot.data.sensor.WorkoutMetricsCalculator
+import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.model.RideIntent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.util.UUID
 
 /**
- * Foreground Service that manages workout state, telemetry collection, and metric recording.
+ * Foreground service owning workout lifecycle, telemetry collection and
+ * per-second metric recording.
+ *
+ * Two structural fixes over the previous implementation:
+ *
+ *  - **Elapsed time is measured, not counted.** It used to increment a counter
+ *    inside a `while (true) { delay(1000) }` loop, which drifts — `delay` is a
+ *    lower bound, and the loop body's own cost accumulates. Over an hour that
+ *    is tens of seconds of error, and any missed tick was lost outright.
+ *    Elapsed time is now derived from [SystemClock.elapsedRealtime].
+ *  - **Metrics are buffered and written in batches.** One insert per second on
+ *    the IO dispatcher for the length of a ride is a lot of individual
+ *    transactions on tablet-grade flash.
  */
 class WorkoutService : Service() {
 
-    companion object {
-        private const val TAG = "WorkoutService"
-        private const val NOTIFICATION_ID = 101
-        private const val CHANNEL_ID = PelonotApp.NOTIFICATION_CHANNEL_WORKOUT
-        
-        // Action and extras for starting workout
-        const val ACTION_START_WORKOUT = "com.pelonot.START_WORKOUT"
-        const val EXTRA_CLASS_ID = "class_id"
-        const val EXTRA_INTENT_MODIFIER = "intent_modifier"
-    }
-
     private val binder = WorkoutBinder()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var metricsJob: Job? = null
-    private var timerJob: Job? = null
 
     private lateinit var sensorRepository: SensorRepository
-    private lateinit var database: AppDatabase
-    private var hudOverlayManager: HudOverlayManager? = null
+    private lateinit var workoutRepository: WorkoutRepository
+    private val metricsCalculator = WorkoutMetricsCalculator()
+
+    private var tickerJob: Job? = null
 
     private val _workoutState = MutableStateFlow(WorkoutState.Idle)
     val workoutState: StateFlow<WorkoutState> = _workoutState.asStateFlow()
@@ -52,272 +72,327 @@ class WorkoutService : Service() {
     private val _currentSession = MutableStateFlow<WorkoutSession?>(null)
     val currentSession: StateFlow<WorkoutSession?> = _currentSession.asStateFlow()
 
+    /** Set when a previous run was killed mid-ride; the UI offers to resume. */
+    private val _recoverableWorkout = MutableStateFlow<WorkoutEntity?>(null)
+    val recoverableWorkout: StateFlow<WorkoutEntity?> = _recoverableWorkout.asStateFlow()
+
+    // Monotonic timing. elapsedRealtime survives sleep and is immune to the
+    // wall clock being adjusted mid-ride.
+    private var rideStartedAtRealtimeMs = 0L
+    private var accumulatedPausedMs = 0L
+    private var pausedAtRealtimeMs = 0L
+
+    private val pendingMetrics = mutableListOf<WorkoutMetricEntity>()
+
     inner class WorkoutBinder : Binder() {
         fun getService(): WorkoutService = this@WorkoutService
     }
 
     override fun onCreate() {
         super.onCreate()
-        sensorRepository = SensorRepository.getInstance(this)
-        database = AppDatabase.getInstance(this)
-        hudOverlayManager = HudOverlayManager(this)
-
-        // Check for incomplete workout (crash recovery)
-        serviceScope.launch {
-            recoverIncompleteWorkout()
-        }
+        sensorRepository = ServiceLocator.sensorRepository
+        workoutRepository = ServiceLocator.workoutRepository
 
         serviceScope.launch {
-            _workoutState.collect { state ->
-                when (state) {
-                    WorkoutState.Active -> hudOverlayManager?.show()
-                    WorkoutState.Idle, WorkoutState.Completed -> hudOverlayManager?.hide()
-                    else -> {} // Keep showing on Pause
-                }
-            }
+            _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
         }
         Log.d(TAG, "WorkoutService created")
     }
-    
-    /**
-     * Recover state from an incomplete workout after app crash.
-     * Looks for the most recent workout that was not properly completed.
-     */
-    private suspend fun recoverIncompleteWorkout() {
-        val incompleteWorkout = database.workoutDao().getIncompleteWorkout() ?: return
-        
-        // Get the last recorded metric to determine elapsed time
-        val lastMetric = database.workoutMetricDao().getLastMetricForWorkout(incompleteWorkout.id)
-        
-        val session = WorkoutSession(
-            workoutId = incompleteWorkout.id,
-            classId = incompleteWorkout.classId?.toIntOrNull() ?: 0,
-            startTime = incompleteWorkout.timestamp,
-            elapsedSeconds = lastMetric?.timestampSec ?: 0,
-            intentModifier = incompleteWorkout.intentModifier.toString()
-        )
-        
-        _currentSession.value = session
-        _workoutState.value = WorkoutState.Paused // Resume paused so user can decide
-        
-        Log.d(TAG, "Recovered incomplete workout: ${incompleteWorkout.id}")
-    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "WorkoutService started with intent: ${intent?.action}")
-        
-        intent?.let {
-            if (it.action == ACTION_START_WORKOUT) {
-                val classId = it.getIntExtra(EXTRA_CLASS_ID, 0)
-                val intentModifier = it.getStringExtra(EXTRA_INTENT_MODIFIER) ?: "Unknown"
-                Log.d(TAG, "Starting workout: classId=$classId, modifier=$intentModifier")
-                startWorkout(classId, intentModifier)
-            }
+        if (intent?.action == ACTION_START_WORKOUT) {
+            startWorkout(
+                userId = intent.getIntExtra(EXTRA_USER_ID, GUEST_USER_ID)
+                    .takeIf { it != GUEST_USER_ID },
+                classId = intent.getStringExtra(EXTRA_CLASS_ID),
+                intent = RideIntent.fromId(intent.getStringExtra(EXTRA_INTENT_ID)),
+                ftpWatts = intent.getIntExtra(EXTRA_FTP_WATTS, WorkoutSession.DEFAULT_FTP)
+            )
         }
-        
-        return START_STICKY
+
+        // NOT_STICKY: if the system kills us mid-ride we must not silently
+        // restart with a null Intent and begin recording a phantom workout.
+        // Recovery is offered explicitly through [recoverableWorkout].
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
-    /**
-     * Start a new workout session.
-     */
-    fun startWorkout(classId: Int, intentModifier: String) {
+    // ── Controls ────────────────────────────────────────────────────
+
+    fun startWorkout(
+        userId: Int?,
+        classId: String?,
+        intent: RideIntent,
+        ftpWatts: Int
+    ) {
         if (_workoutState.value != WorkoutState.Idle) return
 
-        val workoutId = UUID.randomUUID().toString()
         val session = WorkoutSession(
-            workoutId = workoutId,
+            workoutId = UUID.randomUUID().toString(),
+            userId = userId,
             classId = classId,
-            startTime = System.currentTimeMillis(),
-            intentModifier = intentModifier
+            startedAtEpochMs = System.currentTimeMillis(),
+            intent = intent,
+            ftpWatts = ftpWatts
         )
+
+        rideStartedAtRealtimeMs = SystemClock.elapsedRealtime()
+        accumulatedPausedMs = 0L
+        pausedAtRealtimeMs = 0L
+        metricsCalculator.reset()
+        pendingMetrics.clear()
 
         _currentSession.value = session
         _workoutState.value = WorkoutState.Active
 
-        startForegroundService()
-        sensorRepository.start()
-        startMetricsCollection()
-        startTimer()
-
-        Log.d(TAG, "Workout started: $workoutId")
-    }
-
-    /**
-     * Pause the current workout session.
-     */
-    fun pauseWorkout() {
-        if (_workoutState.value != WorkoutState.Active) return
-        _workoutState.value = WorkoutState.Paused
-        updateNotification()
-        Log.d(TAG, "Workout paused")
-    }
-
-    /**
-     * Resume the current workout session.
-     */
-    fun resumeWorkout() {
-        if (_workoutState.value != WorkoutState.Paused) return
-        _workoutState.value = WorkoutState.Active
-        updateNotification()
-        Log.d(TAG, "Workout resumed")
-    }
-
-    /**
-     * Stop and save the current workout session.
-     */
-    fun stopWorkout() {
-        if (_workoutState.value == WorkoutState.Idle) return
-
-        val session = _currentSession.value ?: return
-        _workoutState.value = WorkoutState.Completed
-
-        metricsJob?.cancel()
-        timerJob?.cancel()
-        sensorRepository.stop()
+        startForegroundNotification()
 
         serviceScope.launch {
-            saveWorkoutToDb(session)
-            _workoutState.value = WorkoutState.Idle
-            _currentSession.value = null
-            stopForeground(true)
+            // The workout row must exist before any metric references it.
+            workoutRepository.beginWorkout(session.toEntity())
+        }
+
+        sensorRepository.start()
+        startTicker()
+
+        Log.i(TAG, "Workout started: ${session.workoutId}")
+    }
+
+    fun pauseWorkout() {
+        if (_workoutState.value != WorkoutState.Active) return
+        pausedAtRealtimeMs = SystemClock.elapsedRealtime()
+        _workoutState.value = WorkoutState.Paused
+        updateNotification()
+    }
+
+    fun resumeWorkout() {
+        if (_workoutState.value != WorkoutState.Paused) return
+        if (pausedAtRealtimeMs > 0) {
+            accumulatedPausedMs += SystemClock.elapsedRealtime() - pausedAtRealtimeMs
+            pausedAtRealtimeMs = 0L
+        }
+        _workoutState.value = WorkoutState.Active
+        updateNotification()
+    }
+
+    /** Finalises and persists the ride, then stops the service. */
+    fun stopWorkout() {
+        val session = _currentSession.value ?: return
+        if (_workoutState.value == WorkoutState.Idle) return
+
+        tickerJob?.cancel()
+        tickerJob = null
+        sensorRepository.stop()
+
+        val finalSession = session.copy(elapsedSeconds = elapsedSeconds())
+        _currentSession.value = finalSession
+        _workoutState.value = WorkoutState.Completed
+
+        serviceScope.launch {
+            flushPendingMetrics()
+            workoutRepository.finaliseWorkout(finalSession.toEntity())
+            Log.i(TAG, "Workout saved: ${finalSession.workoutId}")
+
+            ServiceCompat.stopForeground(this@WorkoutService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
-
-        Log.d(TAG, "Workout stopped: ${session.workoutId}")
     }
 
-    private fun startForegroundService() {
-        val notification = createNotification("Pelonot — Riding", "Ready to start...")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+    /** Discards a recovered ride the user chose not to resume. */
+    fun discardRecoverableWorkout() {
+        serviceScope.launch {
+            workoutRepository.clearRecoverableWorkouts()
+            _recoverableWorkout.value = null
         }
     }
 
-    private fun updateNotification() {
-        val session = _currentSession.value ?: return
-        val state = _workoutState.value
-        val title = if (state == WorkoutState.Paused) "Pelonot — Paused" else "Pelonot — Riding"
-        val reading = sensorRepository.sensorReading.value
-        val content = "Time: ${formatDuration(session.elapsedSeconds)} | Power: ${reading.powerWatts.toInt()}W | Cadence: ${reading.cadenceRpm.toInt()} RPM"
-        
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, createNotification(title, content))
-    }
+    // ── Recording loop ──────────────────────────────────────────────
 
-    private fun createNotification(title: String, content: String): Notification {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-    }
-
-    private fun startMetricsCollection() {
-        metricsJob?.cancel()
-        metricsJob = serviceScope.launch {
+    private fun startTicker() {
+        tickerJob?.cancel()
+        tickerJob = serviceScope.launch {
+            var lastRecordedSecond = -1
             while (isActive) {
                 if (_workoutState.value == WorkoutState.Active) {
-                    recordMetric()
-                }
-                delay(1000) // Record every 1 second
-            }
-        }
-    }
-
-    private fun startTimer() {
-        timerJob?.cancel()
-        timerJob = serviceScope.launch {
-            while (isActive) {
-                if (_workoutState.value == WorkoutState.Active) {
-                    _currentSession.value?.let { session ->
-                        session.elapsedSeconds++
-                        _currentSession.value = session.copy() // Trigger state update
-                        if (session.elapsedSeconds % 5 == 0) {
-                            updateNotification()
-                        }
+                    val elapsed = elapsedSeconds()
+                    // Guard against recording the same second twice if a tick
+                    // runs early, and backfill if one runs late.
+                    if (elapsed > lastRecordedSecond) {
+                        recordMetric(elapsed)
+                        lastRecordedSecond = elapsed
                     }
+                    if (elapsed % NOTIFICATION_REFRESH_SEC == 0) updateNotification()
                 }
-                delay(1000)
+                delay(TICK_INTERVAL_MS)
             }
         }
     }
 
-    private suspend fun recordMetric() {
+    private suspend fun recordMetric(elapsedSec: Int) {
         val session = _currentSession.value ?: return
         val reading = sensorRepository.sensorReading.value
+        val derived = metricsCalculator.processReading(reading, session.ftpWatts)
 
-        val metric = WorkoutMetricEntity(
+        pendingMetrics += WorkoutMetricEntity(
             workoutId = session.workoutId,
-            timestampSec = session.elapsedSeconds,
+            timestampSec = elapsedSec,
             cadence = reading.cadenceRpm,
             resistance = reading.resistancePercent,
             power = reading.powerWatts,
             heartRate = reading.heartRateBpm
         )
 
-        session.metrics.add(metric)
-        database.workoutMetricDao().insertMetric(metric)
+        val samples = session.sampleCount + 1
+        _currentSession.update { current ->
+            current?.copy(
+                elapsedSeconds = elapsedSec,
+                totalOutputKj = derived.totalOutputKj,
+                distanceKm = derived.distanceKm,
+                // Running means, so the whole ride never has to be held in memory.
+                avgPower = runningMean(current.avgPower, reading.powerWatts, samples),
+                avgCadence = runningMean(current.avgCadence, reading.cadenceRpm, samples),
+                avgHeartRate = reading.heartRateBpm?.let { bpm ->
+                    val previous = current.avgHeartRate?.toDouble() ?: bpm.toDouble()
+                    runningMean(previous, bpm.toDouble(), samples).toInt()
+                } ?: current.avgHeartRate,
+                sampleCount = samples
+            )
+        }
+
+        if (pendingMetrics.size >= METRIC_BATCH_SIZE) flushPendingMetrics()
     }
 
-    private suspend fun saveWorkoutToDb(session: WorkoutSession) {
-        val metrics = session.metrics
-        if (metrics.isEmpty()) return
+    private suspend fun flushPendingMetrics() {
+        if (pendingMetrics.isEmpty()) return
+        val batch = pendingMetrics.toList()
+        pendingMetrics.clear()
+        runCatching { workoutRepository.recordMetrics(batch) }
+            .onFailure { Log.e(TAG, "Failed to persist ${batch.size} metrics", it) }
+    }
 
-        val avgCadence = metrics.map { it.cadence }.average()
-        val avgPower = metrics.map { it.power }.average()
-        val avgHr = metrics.mapNotNull { it.heartRate }.average().takeIf { !it.isNaN() }?.toInt()
-        
-        // Basic kJ calculation: sum of power per second / 1000
-        val totalOutputKj = metrics.sumOf { it.power } / 1000.0
+    private fun runningMean(previousMean: Double, sample: Double, count: Int): Double =
+        previousMean + (sample - previousMean) / count
 
-        val workout = WorkoutEntity(
-            id = session.workoutId,
-            userId = 1, // Default user for now
-            classId = if (session.classId > 0) session.classId.toString() else null,
-            durationSec = session.elapsedSeconds,
-            totalOutputKj = totalOutputKj,
-            totalDistanceKm = 0.0, // Calculated later
-            avgCadence = avgCadence,
-            avgPower = avgPower,
-            avgHr = avgHr?.toDouble(),
-            intentModifier = 1.0,
-            timestamp = System.currentTimeMillis()
+    /** Ride time excluding paused periods, from the monotonic clock. */
+    private fun elapsedSeconds(): Int {
+        if (rideStartedAtRealtimeMs == 0L) return 0
+        val now = SystemClock.elapsedRealtime()
+        val pausedSoFar = accumulatedPausedMs +
+            if (pausedAtRealtimeMs > 0) now - pausedAtRealtimeMs else 0L
+        return ((now - rideStartedAtRealtimeMs - pausedSoFar) / 1000L).toInt().coerceAtLeast(0)
+    }
+
+    private fun WorkoutSession.toEntity() = WorkoutEntity(
+        id = workoutId,
+        userId = userId,
+        classId = classId,
+        durationSec = elapsedSeconds,
+        totalOutputKj = totalOutputKj,
+        totalDistanceKm = distanceKm,
+        avgCadence = avgCadence,
+        avgPower = avgPower,
+        avgHr = avgHeartRate?.toDouble(),
+        intentModifier = intent.multiplier,
+        timestamp = startedAtEpochMs
+    )
+
+    // ── Notification ────────────────────────────────────────────────
+
+    private fun startForegroundNotification() {
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        } else {
+            0
+        }
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+    }
+
+    private fun updateNotification() {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        manager.notify(NOTIFICATION_ID, buildNotification())
+    }
+
+    private fun buildNotification(): Notification {
+        val session = _currentSession.value
+        val paused = _workoutState.value == WorkoutState.Paused
+        val reading = sensorRepository.sensorReading.value
+
+        val title = if (paused) "Pelonot — Paused" else "Pelonot — Riding"
+        val content = if (session == null) {
+            "Ready to start"
+        } else {
+            "${Formatters.duration(session.elapsedSeconds)}  ·  " +
+                "${reading.powerWatts.toInt()} W  ·  " +
+                "${reading.cadenceRpm.toInt()} RPM"
+        }
+
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        database.workoutDao().insertWorkout(workout)
-        Log.d(TAG, "Workout saved to database")
-    }
-
-    private fun formatDuration(seconds: Int): String {
-        val mins = seconds / 60
-        val secs = seconds % 60
-        return "%02d:%02d".format(mins, secs)
+        return NotificationCompat.Builder(this, PelonotApp.NOTIFICATION_CHANNEL_WORKOUT)
+            // Was android.R.drawable.ic_dialog_info — a stock system icon that
+            // renders as a grey blob in the status bar.
+            .setSmallIcon(R.drawable.ic_notification_ride)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setContentIntent(contentIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .build()
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        // A ride still in flight when the service dies must not lose the
+        // metrics already buffered in memory.
+        if (pendingMetrics.isNotEmpty()) {
+            runCatching {
+                runBlocking { flushPendingMetrics() }
+            }.onFailure { Log.e(TAG, "Failed to flush metrics on destroy", it) }
+        }
         serviceScope.cancel()
+        super.onDestroy()
         Log.d(TAG, "WorkoutService destroyed")
+    }
+
+    companion object {
+        private const val TAG = "WorkoutService"
+        private const val NOTIFICATION_ID = 101
+
+        private const val TICK_INTERVAL_MS = 250L
+        private const val NOTIFICATION_REFRESH_SEC = 5
+        private const val METRIC_BATCH_SIZE = 15
+
+        /** Sentinel for "no profile", since Intent extras cannot carry null Ints. */
+        const val GUEST_USER_ID = -1
+
+        const val ACTION_START_WORKOUT = "com.pelonot.action.START_WORKOUT"
+        const val EXTRA_USER_ID = "com.pelonot.extra.USER_ID"
+        const val EXTRA_CLASS_ID = "com.pelonot.extra.CLASS_ID"
+        const val EXTRA_INTENT_ID = "com.pelonot.extra.INTENT_ID"
+        const val EXTRA_FTP_WATTS = "com.pelonot.extra.FTP_WATTS"
+
+        fun startIntent(
+            context: Context,
+            userId: Int?,
+            classId: String?,
+            intent: RideIntent,
+            ftpWatts: Int
+        ): Intent = Intent(context, WorkoutService::class.java).apply {
+            action = ACTION_START_WORKOUT
+            putExtra(EXTRA_USER_ID, userId ?: GUEST_USER_ID)
+            putExtra(EXTRA_CLASS_ID, classId)
+            putExtra(EXTRA_INTENT_ID, intent.id)
+            putExtra(EXTRA_FTP_WATTS, ftpWatts)
+        }
     }
 }

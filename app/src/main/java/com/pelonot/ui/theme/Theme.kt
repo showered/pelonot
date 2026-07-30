@@ -4,31 +4,27 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
 // ==========================================
-// Design Tokens - Systems Definitions
+// Design tokens
 // ==========================================
 
-/**
- * Spacing System
- */
+/** Consistent spacing steps. */
 data class Spacing(
     val extraSmall: Dp = 4.dp,
     val small: Dp = 8.dp,
@@ -37,10 +33,14 @@ data class Spacing(
     val extraLarge: Dp = 24.dp,
     val doubleExtraLarge: Dp = 32.dp
 )
-val LocalSpacing = staticCompositionLocalOf { Spacing() }
 
 /**
- * Elevation System
+ * Depth steps, following the Material 3 elevation scale.
+ *
+ * There used to be two competing sets: this class, and a series of loose
+ * top-level `Elevation0`–`Elevation5` vals with entirely different values
+ * (0/4/8/12/16/24dp against 0/1/3/6/8/12dp). Components picked whichever was
+ * in scope, so nominally equal surfaces rendered at different depths.
  */
 data class Elevation(
     val level0: Dp = 0.dp,
@@ -50,35 +50,15 @@ data class Elevation(
     val level4: Dp = 8.dp,
     val level5: Dp = 12.dp
 )
-val LocalElevation = staticCompositionLocalOf { Elevation() }
 
-/**
- * Corner Radius System (Expressive Shapes)
- */
-data class CornerRadius(
-    val small: Dp = 4.dp,
-    val medium: Dp = 8.dp,
-    val large: Dp = 12.dp,
-    val extraLarge: Dp = 16.dp,
-    val container: Dp = 24.dp,
-    val pill: Dp = 999.dp
-)
-val LocalCornerRadius = staticCompositionLocalOf { CornerRadius() }
-
-/**
- * Icon Sizing System
- */
 data class IconSizes(
     val small: Dp = 16.dp,
     val medium: Dp = 24.dp,
     val large: Dp = 32.dp,
     val extraLarge: Dp = 48.dp
 )
-val LocalIconSizes = staticCompositionLocalOf { IconSizes() }
 
-/**
- * Motion System - Durations and Easings
- */
+/** Durations in milliseconds and the standard Material easing curves. */
 data class MotionTokens(
     val durationShort1: Int = 50,
     val durationShort2: Int = 100,
@@ -87,76 +67,62 @@ data class MotionTokens(
     val durationLong1: Int = 300,
     val durationLong2: Int = 400,
 
+    val easingStandard: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
     val easingEmphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
     val easingDecelerated: Easing = CubicBezierEasing(0f, 0f, 0f, 1f),
-    val easingAccelerated: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f),
-    val easingStandard: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+    val easingAccelerated: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f)
 )
+
+val LocalSpacing = staticCompositionLocalOf { Spacing() }
+val LocalElevation = staticCompositionLocalOf { Elevation() }
+val LocalIconSizes = staticCompositionLocalOf { IconSizes() }
 val LocalMotion = staticCompositionLocalOf { MotionTokens() }
 
-// ==========================================
-// Theme Extension Properties
-// ==========================================
-
 val MaterialTheme.spacing: Spacing
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalSpacing.current
+    @Composable @ReadOnlyComposable get() = LocalSpacing.current
 
 val MaterialTheme.elevationTokens: Elevation
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalElevation.current
-
-val MaterialTheme.cornerRadius: CornerRadius
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalCornerRadius.current
+    @Composable @ReadOnlyComposable get() = LocalElevation.current
 
 val MaterialTheme.iconSizes: IconSizes
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalIconSizes.current
+    @Composable @ReadOnlyComposable get() = LocalIconSizes.current
 
 val MaterialTheme.motionTokens: MotionTokens
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalMotion.current
+    @Composable @ReadOnlyComposable get() = LocalMotion.current
 
 val MaterialTheme.expressiveShapes: ExpressiveShapes
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalExpressiveShapes.current
+    @Composable @ReadOnlyComposable get() = LocalExpressiveShapes.current
 
 // ==========================================
-// Material 3 Color Schemes (Calm, Premium)
+// Colour schemes
 // ==========================================
 
 private val PelonotDarkColorScheme = darkColorScheme(
     primary = PrimaryTealDark,
     onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryTealDark.copy(alpha = 0.3f),
-    onPrimaryContainer = OnPrimaryDark.copy(alpha = 0.9f),
+    primaryContainer = PrimaryTealContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
     secondary = SecondarySlateDark,
     onSecondary = OnSecondaryDark,
-    secondaryContainer = SecondarySlateDark.copy(alpha = 0.3f),
-    onSecondaryContainer = OnSecondaryDark.copy(alpha = 0.9f),
+    secondaryContainer = SecondarySlateContainerDark,
+    onSecondaryContainer = OnSecondaryContainerDark,
     tertiary = TertiaryAmberDark,
     onTertiary = OnTertiaryDark,
-    tertiaryContainer = TertiaryAmberDark.copy(alpha = 0.3f),
-    onTertiaryContainer = OnTertiaryDark.copy(alpha = 0.9f),
+    tertiaryContainer = TertiaryAmberContainerDark,
+    onTertiaryContainer = OnTertiaryContainerDark,
     background = DarkBackground,
-    surface = DarkSurface,
-    surfaceVariant = DarkSurfaceVariant,
     onBackground = DarkTextPrimary,
+    surface = DarkSurface,
     onSurface = DarkTextPrimary,
+    surfaceVariant = DarkSurfaceVariant,
     onSurfaceVariant = DarkTextSecondary,
+    surfaceContainerLowest = DarkSurfaceContainerLowest,
+    surfaceContainerLow = DarkSurfaceContainerLow,
     surfaceContainer = DarkSurfaceContainer,
-    surfaceContainerLow = DarkSurface.copy(alpha = 0.95f),
-    surfaceContainerHigh = DarkSurface.copy(alpha = 0.85f),
-    surfaceContainerLowest = DarkSurface.copy(alpha = 0.98f),
-    inverseOnSurface = InverseOnSurfaceDark,
+    surfaceContainerHigh = DarkSurfaceContainerHigh,
+    surfaceContainerHighest = DarkSurfaceContainerHighest,
     inverseSurface = LightSurface,
+    inverseOnSurface = InverseOnSurfaceDark,
     inversePrimary = PrimaryTealLight,
     error = ErrorDark,
     onError = OnErrorDark,
@@ -169,28 +135,29 @@ private val PelonotDarkColorScheme = darkColorScheme(
 private val PelonotLightColorScheme = lightColorScheme(
     primary = PrimaryTealLight,
     onPrimary = OnPrimaryLight,
-    primaryContainer = PrimaryTealLight.copy(alpha = 0.15f),
-    onPrimaryContainer = OnPrimaryLight.copy(alpha = 0.9f),
+    primaryContainer = PrimaryTealContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
     secondary = SecondarySlateLight,
     onSecondary = OnSecondaryLight,
-    secondaryContainer = SecondarySlateLight.copy(alpha = 0.15f),
-    onSecondaryContainer = OnSecondaryLight.copy(alpha = 0.9f),
+    secondaryContainer = SecondarySlateContainerLight,
+    onSecondaryContainer = OnSecondaryContainerLight,
     tertiary = TertiaryAmberLight,
     onTertiary = OnTertiaryLight,
-    tertiaryContainer = TertiaryAmberLight.copy(alpha = 0.15f),
-    onTertiaryContainer = OnTertiaryLight.copy(alpha = 0.9f),
+    tertiaryContainer = TertiaryAmberContainerLight,
+    onTertiaryContainer = OnTertiaryContainerLight,
     background = LightBackground,
-    surface = LightSurface,
-    surfaceVariant = LightSurfaceVariant,
     onBackground = LightTextPrimary,
+    surface = LightSurface,
     onSurface = LightTextPrimary,
+    surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightTextSecondary,
+    surfaceContainerLowest = LightSurfaceContainerLowest,
+    surfaceContainerLow = LightSurfaceContainerLow,
     surfaceContainer = LightSurfaceContainer,
-    surfaceContainerLow = LightSurface.copy(alpha = 0.98f),
-    surfaceContainerHigh = LightSurface.copy(alpha = 0.85f),
-    surfaceContainerLowest = LightSurface.copy(alpha = 0.95f),
-    inverseOnSurface = InverseOnSurfaceLight,
+    surfaceContainerHigh = LightSurfaceContainerHigh,
+    surfaceContainerHighest = LightSurfaceContainerHighest,
     inverseSurface = DarkBackground,
+    inverseOnSurface = InverseOnSurfaceLight,
     inversePrimary = PrimaryTealDark,
     error = ErrorLight,
     onError = OnErrorLight,
@@ -200,42 +167,51 @@ private val PelonotLightColorScheme = lightColorScheme(
     outlineVariant = OutlineVariantLight
 )
 
-// ==========================================
-// Pelonot Theme Composable
-// ==========================================
-
+/**
+ * The Pelonot theme.
+ *
+ * @param useDynamicColor Opt in to Material You wallpaper colours on API 31+.
+ *   Defaults to **off**. Previously dynamic colour was applied unconditionally
+ *   on API 31+, which meant the entire hand-built Pelonot palette was dead
+ *   code on any modern device, and the app's identity changed with the user's
+ *   wallpaper — including the metric accent colours the HUD relies on for
+ *   at-a-glance readability while riding.
+ */
 @Composable
 fun PelonotTheme(
     darkTheme: Boolean = true,
+    useDynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val view = LocalView.current
 
-    // Use dynamic color scheme on Android 12+ (API 31+), fall back to
-    // static Pelonot color schemes on older APIs.
-    val colorScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (darkTheme) {
-            dynamicDarkColorScheme(context)
-        } else {
-            dynamicLightColorScheme(context)
-        }
-    } else {
-        if (darkTheme) PelonotDarkColorScheme else PelonotLightColorScheme
+    val colorScheme = when {
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+
+        darkTheme -> PelonotDarkColorScheme
+        else -> PelonotLightColorScheme
     }
 
-    if (!view.isInEditMode) {
+    // The system bar appearance can only be set from an Activity window. This
+    // block used to cast unconditionally — `(view.context as Activity)` — which
+    // threw ClassCastException when the theme was applied inside the HUD
+    // overlay's ComposeView, whose context is the Service. That crashed the
+    // overlay every time a ride started.
+    val activity = view.context as? Activity
+    if (!view.isInEditMode && activity != null) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(activity.window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
         LocalElevation provides Elevation(),
-        LocalCornerRadius provides CornerRadius(),
         LocalIconSizes provides IconSizes(),
         LocalMotion provides MotionTokens(),
         LocalExpressiveShapes provides ExpressiveShapes()
@@ -243,16 +219,8 @@ fun PelonotTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = PelonotTypography,
+            shapes = PelonotShapes,
             content = content
         )
     }
 }
-val Elevation0 = 0.dp  // Base level
-val Elevation1 = 4.dp  // Subtle
-val Elevation2 = 8.dp  // Moderate
-val Elevation3 = 12.dp // Strong
-val Elevation4 = 16.dp // Prominent
-val Elevation5 = 24.dp // Maximum
-
-// Follows Material Expressive Design System
-// Elevation hierarchy follows WHOOP's depth guidelines

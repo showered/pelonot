@@ -63,6 +63,22 @@ data class WorkoutEntity(
     @ColumnInfo(name = "rpe_rating")
     val rpeRating: Int? = null,
 
+    /**
+     * False while a ride is in progress, true once it has been finalised.
+     *
+     * The row is inserted when the workout *starts*, not when it ends, because
+     * `workout_metrics` has a foreign key onto this table: writing a metric
+     * every second against a parent row that did not exist yet raised a
+     * constraint violation and killed the recording coroutine, so no ride ever
+     * captured a time series.
+     *
+     * It doubles as the crash-recovery marker. The previous
+     * `getIncompleteWorkout()` simply returned the most recent workout, so on
+     * every launch the app offered to resume the ride you had just finished.
+     */
+    @ColumnInfo(name = "is_complete")
+    val isComplete: Boolean = false,
+
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis()
 )
