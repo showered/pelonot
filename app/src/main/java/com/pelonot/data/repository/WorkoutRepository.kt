@@ -5,6 +5,22 @@ import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import java.util.Calendar
+
+/**
+ * Headline figures for the dashboard.
+ *
+ * These replace hardcoded literals — "12.5" kJ today, "8.3" kJ last ride and a
+ * permanent "FTP Stable" badge — which were shown to the rider as their own
+ * statistics on a device that had never recorded a single workout.
+ */
+data class DashboardStats(
+    val todayOutputKj: Double = 0.0,
+    val lastRide: WorkoutEntity? = null
+) {
+    val hasRidden: Boolean get() = lastRide != null
+}
 
 /** Leaderboard figures for a ride of a given length. */
 data class LeaderboardStats(
@@ -20,6 +36,30 @@ class WorkoutRepository(
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
         workoutDao.getWorkoutsByUser(userId)
+
+    /**
+     * Headline figures for the dashboard.
+     *
+     * "Today" is measured from local midnight rather than a rolling 24 hours,
+     * because a rider comparing this morning's ride against yesterday's
+     * expects the number to reset overnight.
+     */
+    fun observeDashboardStats(userId: Int): Flow<DashboardStats> = combine(
+        workoutDao.observeOutputSince(userId, startOfToday()),
+        workoutDao.observeLatestWorkout(userId)
+    ) { todayKj, latest ->
+        DashboardStats(
+            todayOutputKj = todayKj,
+            lastRide = latest
+        )
+    }
+
+    private fun startOfToday(): Long = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 
     suspend fun getWorkout(id: String): WorkoutEntity? = workoutDao.getWorkoutById(id)
 

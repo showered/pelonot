@@ -7,12 +7,17 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.repository.ClassRepository
+import com.pelonot.data.repository.DashboardStats
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
+import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.di.ServiceLocator
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -28,6 +33,7 @@ data class AppUiState(
     val settings: AppSettings = AppSettings(),
     val profiles: List<UserEntity> = emptyList(),
     val classes: List<ClassPlan> = emptyList(),
+    val dashboardStats: DashboardStats = DashboardStats(),
     val isLoading: Boolean = true
 ) {
     val selectedProfile: UserEntity?
@@ -38,21 +44,33 @@ data class AppUiState(
  * Replaces reading Room directly from inside composables, which ran database
  * queries on every recomposition path and lost all its state on rotation.
  */
+@Suppress("OPT_IN_USAGE") // flatMapLatest
 class AppViewModel(
     private val settingsRepository: SettingsRepository,
     private val userRepository: UserRepository,
-    classRepository: ClassRepository
+    classRepository: ClassRepository,
+    workoutRepository: WorkoutRepository
 ) : ViewModel() {
+
+    private val dashboardStats = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            // A guest has no history to summarise.
+            if (profileId == null) flowOf(DashboardStats())
+            else workoutRepository.observeDashboardStats(profileId)
+        }
 
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
         userRepository.allUsers,
-        classRepository.allPlans
-    ) { settings, profiles, classes ->
+        classRepository.allPlans,
+        dashboardStats
+    ) { settings, profiles, classes, stats ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
+            dashboardStats = stats,
             isLoading = false
         )
     }.stateIn(
@@ -89,7 +107,8 @@ class AppViewModel(
             AppViewModel(
                 settingsRepository = ServiceLocator.settingsRepository,
                 userRepository = ServiceLocator.userRepository,
-                classRepository = ServiceLocator.classRepository
+                classRepository = ServiceLocator.classRepository,
+                workoutRepository = ServiceLocator.workoutRepository
             )
         }
     }

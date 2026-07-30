@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.data.repository.DashboardStats
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -64,6 +65,7 @@ import com.pelonot.ui.theme.spacing
 fun MainDashboardScreen(
     userName: String,
     ftp: Int,
+    stats: DashboardStats,
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
     onSettings: () -> Unit
@@ -129,7 +131,7 @@ fun MainDashboardScreen(
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
             // ── 5️⃣ Progress Section ─────────────────────────────────
-            ProgressSection()
+            ProgressSection(stats = stats)
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
         }
@@ -348,7 +350,7 @@ private fun SecondaryActionCard(
 // Progress Section
 // =========================================================================
 @Composable
-private fun ProgressSection() {
+private fun ProgressSection(stats: DashboardStats) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Your Progress",
@@ -365,10 +367,22 @@ private fun ProgressSection() {
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-        // Today's Progress card
+        if (!stats.hasRidden) {
+            // An honest empty state. This section used to show "12.5 kJ" today
+            // and "8.3 kJ" last ride as hardcoded literals, on a device that
+            // had never recorded a workout.
+            Text(
+                text = "No rides recorded yet — your output and recent rides " +
+                    "will appear here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+            return@Column
+        }
+
         ProgressMetricCard(
             label = "Today's Output",
-            value = "12.5",
+            value = String.format(java.util.Locale.US, "%.1f", stats.todayOutputKj),
             unit = "kJ",
             icon = Icons.AutoMirrored.Filled.TrendingUp,
             accentColor = MaterialTheme.colorScheme.primary
@@ -376,23 +390,14 @@ private fun ProgressSection() {
 
         Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
-        // Recent Ride card
-        ProgressMetricCard(
-            label = "Recent Ride",
-            value = "8.3",
-            unit = "kJ",
-            icon = Icons.AutoMirrored.Filled.DirectionsBike,
-            accentColor = MaterialTheme.colorScheme.tertiary
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-        // FTP Status badge
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            FtpStatusBadge()
+        stats.lastRide?.let { lastRide ->
+            ProgressMetricCard(
+                label = "Recent Ride",
+                value = String.format(java.util.Locale.US, "%.1f", lastRide.totalOutputKj),
+                unit = "kJ",
+                icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                accentColor = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }
@@ -472,27 +477,7 @@ private fun ProgressMetricCard(
     }
 }
 
-// =========================================================================
-// FTP Status Badge
-// =========================================================================
-@Composable
-private fun FtpStatusBadge() {
-    val stableColor = MaterialTheme.colorScheme.primary
-    Box(
-        modifier = Modifier
-            .clip(MaterialTheme.expressiveShapes.pill)
-            .background(stableColor.copy(alpha = 0.12f))
-            .padding(
-                horizontal = MaterialTheme.spacing.large,
-                vertical = MaterialTheme.spacing.small
-            )
-    ) {
-        Text(
-            text = "FTP Stable",
-            style = MaterialTheme.typography.labelMedium,
-            color = stableColor,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
-        )
-    }
-}
+// The "FTP Stable" badge that used to sit here was a constant string with no
+// input — it read "FTP Stable" whether the rider had ridden once or a hundred
+// times, and whether their FTP had just jumped or not. FTP changes are now
+// surfaced where they are actually detected, in the post-ride summary.

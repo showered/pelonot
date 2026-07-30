@@ -89,6 +89,24 @@ interface WorkoutDao {
     )
     fun getWorkoutsByClass(userId: Int, classId: String): Flow<List<WorkoutEntity>>
 
+    /** Total output since [sinceEpochMs], for the dashboard's "today" figure. */
+    @Query(
+        """
+        SELECT COALESCE(SUM(total_output_kj), 0) FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND timestamp >= :sinceEpochMs
+        """
+    )
+    fun observeOutputSince(userId: Int, sinceEpochMs: Long): Flow<Double>
+
+    @Query(
+        """
+        SELECT * FROM workouts
+        WHERE user_id = :userId AND is_complete = 1
+        ORDER BY timestamp DESC LIMIT 1
+        """
+    )
+    fun observeLatestWorkout(userId: Int): Flow<WorkoutEntity?>
+
     /**
      * The most recent ride that was never finalised — i.e. the app was killed
      * mid-workout. Returns null in the normal case.
