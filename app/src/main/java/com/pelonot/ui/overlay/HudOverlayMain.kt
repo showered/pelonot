@@ -23,7 +23,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pelonot.data.sensor.PowerZoneCalculator
+import com.pelonot.domain.model.PowerZone
+import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.targetPowerRange
+import com.pelonot.core.Formatters
 import com.pelonot.ui.theme.*
 
 @Composable
@@ -36,14 +39,14 @@ fun HudOverlayMain(
     ftp: Double,
     targetCadenceMin: Double = 80.0,
     targetCadenceMax: Double = 100.0,
-    targetZone: PowerZoneCalculator.PowerZone = PowerZoneCalculator.PowerZone.Z3,
-    intentModifier: String = "Just Stay Fit",
+    targetZone: PowerZone = PowerZone.Z3,
+    intent: RideIntent = RideIntent.DEFAULT,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
     onDrag: (Float, Float) -> Unit
 ) {
-    val targetPowerRange = PowerZoneCalculator.getTargetPower(targetZone, ftp, intentModifier)
+    val targetPowerRange = targetZone.targetPowerRange(ftp, intent)
     val isCadenceAlert = cadence < targetCadenceMin || cadence > targetCadenceMax
     val isPowerAlert = power < targetPowerRange.start || power > targetPowerRange.endInclusive
 
@@ -85,13 +88,13 @@ fun HudOverlayMain(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatDuration(elapsedSeconds),
+                    text = Formatters.duration(elapsedSeconds),
                     color = TextPrimary,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Zone ${PowerZoneCalculator.getZoneForPower(power, ftp).number}",
+                    text = "Zone ${PowerZone.forPower(power, ftp).number}",
                     color = PowerCoral,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
@@ -233,7 +236,7 @@ fun TargetsPanel(
     targetCadenceMin: Double,
     targetCadenceMax: Double,
     targetPowerRange: ClosedRange<Double>,
-    targetZone: PowerZoneCalculator.PowerZone
+    targetZone: PowerZone
 ) {
     Column(
         modifier = Modifier
@@ -356,8 +359,3 @@ private fun LeaderboardRow(
     }
 }
 
-private fun formatDuration(seconds: Int): String {
-    val mins = seconds / 60
-    val secs = seconds % 60
-    return "%02d:%02d".format(mins, secs)
-}

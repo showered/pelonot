@@ -1,200 +1,138 @@
 package com.pelonot.data.sensor
 
-import android.util.Log
-import kotlin.math.max
-import kotlin.math.roundToInt
+import com.pelonot.domain.model.PowerZone
 
 /**
- * Calculates derived workout metrics from raw SensorReading data.
+ * Derives cumulative and rolling workout metrics from the raw [SensorReading]
+ * stream.
  *
- * Responsibilities:
- * - Total Output (kJ): Integrate power over time using discrete 1-second samples
- * - Rolling Averages: 1s, 5s, 30s windows for power and cadence
- * - Distance Estimation: Derived from cadence + resistance model
- * - Current Power Zone: Based on FTP and Coggan 7-zone model
+ * Everything here is pure Kotlin with no Android dependencies so it can be
+ * covered by fast JVM unit tests.
  *
- * Formula for Total Output:
- *   Output(kJ) = sum(P_i for i in 1..T) / 1000
- *   where P_i is power in watts at second i, T is total seconds
+ * Total output is the integral of power over time, `∫P dt`, approximated with
+ * the trapezoidal rule between consecutive samples. The previous version
+ * multiplied each trapezoid by `powerHistory.size - 1` instead of the elapsed
+ * time between samples, so reported energy grew with the square of ride
+ * duration — a 45-minute ride over-reported by three orders of magnitude.
  */
 class WorkoutMetricsCalculator {
 
-    companion object {
-        private const val TAG = "WorkoutMetricsCalculator"
-        private const val MS_PER_SECOND = 1000L
-        private const val SECONDS_PER_MINUTE = 60.0
-        private const val WHEEL_CIRCUMFERENCE_KM = 0.0021 // 2.1 meters in km
+    private data class Sample(val timestampMs: Long, val power: Double, val cadence: Double)
 
-        /** Coggan 7-zone boundaries (% of FTP) */
-        val ZONE_BOUNDARIES = listOf(
-            0.0 to 0.55,   // Z1: Active Recovery
-            0.56 to 0.75,  // Z2: Endurance
-            0.76 to 0.90,  // Z3: Tempo
-            0.91 to 1.05,  // Z4: Lactate Threshold
-            1.06 to 1.20,  // Z5: VO2 Max
-            1.21 to 1.50,  // Z6: Anaerobic Capacity
-            1.51 to 99.0   // Z7: Neuromuscular Power
-        )
-    }
-
-    // ── Internal state ──────────────────────────────────────────────
-    private val powerHistory = mutableListOf<Double>()
-    private val cadenceHistory = mutableListOf<Double>()
-    private val timestampHistory = mutableListOf<Long>()
-    private var totalEnergyJoules = 0.0 // Running sum of power samples
+    private val samples = ArrayDeque<Sample>()
+    private var totalEnergyJoules = 0.0
+    private var totalDistanceKm = 0.0
+    private var lastSample: Sample? = null
 
     /**
-     * Process a new sensor reading and return updated metrics.
-     *
-     * @param reading The current SensorReading from SensorRepository
-     * @param ftpWatts The user's Functional Threshold Power
-     * @return CalculatedMetrics with all derived values
+     * Folds a new reading into the running totals and returns the current
+     * metric snapshot.
      */
     fun processReading(reading: SensorReading, ftpWatts: Int): CalculatedMetrics {
-        val now = reading.timestampMs
+        val sample = Sample(reading.timestampMs, reading.powerWatts, reading.cadenceRpm)
+        val previous = lastSample
 
-        // Add to history
-        powerHistory.add(reading.powerWatts)
-        cadenceHistory.add(reading.cadenceRpm)
-        timestampHistory.add(now)
+        if (previous != null) {
+            // Clamp the step so a backgrounded app or a stalled sensor cannot
+            // integrate a long gap as though the rider pedalled through it.
+            val dtSec = ((sample.timestampMs - previous.timestampMs) / 1000.0)
+                .coerceIn(0.0, MAX_SAMPLE_GAP_SEC)
 
-        // Integrate power (trapezoidal rule for better accuracy)
-        if (powerHistory.size >= 2) {
-            val dtSec = (powerHistory.size - 1).toDouble() // 1-second samples
-            val avgPower = (powerHistory[powerHistory.size - 2] + reading.powerWatts) / 2.0
-            totalEnergyJoules += avgPower * dtSec
-        } else {
-            totalEnergyJoules += reading.powerWatts
+            totalEnergyJoules += (previous.power + sample.power) / 2.0 * dtSec
+
+            val avgCadence = (previous.cadence + sample.cadence) / 2.0
+            totalDistanceKm += (avgCadence / SECONDS_PER_MINUTE) * KM_PER_REVOLUTION * dtSec
         }
 
-        // Trim history to last 30 seconds for rolling averages
-        val cutoff = now - 30_000L
-        while (timestampHistory.isNotEmpty() && timestampHistory.first() < cutoff) {
-            powerHistory.removeAt(0)
-            cadenceHistory.removeAt(0)
-            timestampHistory.removeAt(0)
-        }
-
-        // Calculate rolling averages
-        val avgPower1s = rollingAverage(powerHistory, 1)
-        val avgPower5s = rollingAverage(powerHistory, 5)
-        val avgPower30s = rollingAverage(powerHistory, 30)
-        val avgCadence30s = rollingAverage(cadenceHistory, 30)
-
-        // Calculate distance (estimated from cadence + resistance model)
-        val distanceKm = estimateDistance(reading.cadenceRpm, reading.resistancePercent)
-
-        // Calculate current power zone
-        val powerZone = getPowerZone(reading.powerWatts, ftpWatts.toDouble())
-
-        // Total output in kJ
-        val totalOutputKj = totalEnergyJoules / 1000.0
+        lastSample = sample
+        samples.addLast(sample)
+        trimTo(sample.timestampMs)
 
         return CalculatedMetrics(
-            totalOutputKj = totalOutputKj,
-            avgPower1s = avgPower1s,
-            avgPower5s = avgPower5s,
-            avgPower30s = avgPower30s,
-            avgCadence30s = avgCadence30s,
-            distanceKm = distanceKm,
-            currentPowerZone = powerZone,
-            currentFtpPercentage = if (ftpWatts > 0) reading.powerWatts / ftpWatts * 100.0 else 0.0
+            totalOutputKj = totalEnergyJoules / 1000.0,
+            distanceKm = totalDistanceKm,
+            avgPower1s = averagePowerOver(1),
+            avgPower5s = averagePowerOver(5),
+            avgPower30s = averagePowerOver(30),
+            avgCadence30s = averageCadenceOver(30),
+            currentPowerZone = PowerZone.forPower(reading.powerWatts, ftpWatts.toDouble()),
+            currentFtpPercentage = if (ftpWatts > 0) {
+                reading.powerWatts / ftpWatts * 100.0
+            } else {
+                0.0
+            }
         )
     }
 
-    /**
-     * Calculate rolling average over the last N samples.
-     */
-    private fun rollingAverage(history: List<Double>, windowSize: Int): Double {
-        if (history.isEmpty()) return 0.0
-        val start = max(0, history.size - windowSize)
-        val window = history.subList(start, history.size)
-        return window.average()
-    }
+    /** Mean power over the trailing [windowSec] seconds of samples. */
+    fun averagePowerOver(windowSec: Int): Double = averageOver(windowSec) { it.power }
 
-    /**
-     * Estimate distance traveled using cadence and resistance.
-     *
-     * Uses a simplified model: distance = cadence * time * wheel_circumference
-     * adjusted by a resistance factor (higher resistance = slightly less distance
-     * per revolution due to slip, but this is negligible for estimation).
-     */
-    private fun estimateDistance(cadenceRpm: Double, resistancePercent: Double): Double {
-        if (cadenceRpm <= 0.0) return 0.0
+    /** Mean cadence over the trailing [windowSec] seconds of samples. */
+    fun averageCadenceOver(windowSec: Int): Double = averageOver(windowSec) { it.cadence }
 
-        // Each cadence tick represents one flywheel revolution
-        // Distance per revolution = wheel circumference
-        // We use the last sample's contribution (per-second)
-        val revsPerSecond = cadenceRpm / SECONDS_PER_MINUTE
-        val distanceThisSecondKm = revsPerSecond * WHEEL_CIRCUMFERENCE_KM
-
-        // Accumulate (this is a simplified per-sample estimate)
-        // In practice, the service accumulates this over time
-        return distanceThisSecondKm
-    }
-
-    /**
-     * Get the Coggan power zone (1-7) for a given power and FTP.
-     */
-    fun getPowerZone(powerWatts: Double, ftpWatts: Double): Int {
-        if (ftpWatts <= 0.0 || powerWatts <= 0.0) return 1
-
-        val ratio = powerWatts / ftpWatts
-        for ((index, range) in ZONE_BOUNDARIES.withIndex()) {
-            if (ratio >= range.first && ratio <= range.second) {
-                return index + 1
+    private fun averageOver(windowSec: Int, selector: (Sample) -> Double): Double {
+        val newest = samples.lastOrNull() ?: return 0.0
+        val cutoff = newest.timestampMs - windowSec * 1000L
+        // Inclusive of the lower edge, so a 1s window over 1 Hz samples still
+        // sees the two readings that bracket that second.
+        var sum = 0.0
+        var count = 0
+        for (sample in samples) {
+            if (sample.timestampMs >= cutoff) {
+                sum += selector(sample)
+                count++
             }
         }
-        return 7 // Above Z7
+        return if (count == 0) 0.0 else sum / count
     }
 
-    /**
-     * Get the zone name for a given zone number.
-     */
-    fun getZoneName(zone: Int): String {
-        return when (zone) {
-            1 -> "Active Recovery"
-            2 -> "Endurance"
-            3 -> "Tempo"
-            4 -> "Lactate Threshold"
-            5 -> "VO2 Max"
-            6 -> "Anaerobic Capacity"
-            7 -> "Neuromuscular Power"
-            else -> "Unknown"
+    private fun trimTo(nowMs: Long) {
+        val cutoff = nowMs - ROLLING_WINDOW_SEC * 1000L
+        while (samples.size > 1 && samples.first().timestampMs < cutoff) {
+            samples.removeFirst()
         }
     }
 
-    /**
-     * Reset all accumulated state (call when starting a new workout).
-     */
+    /** Clears all accumulated state. Call when starting a new workout. */
     fun reset() {
-        powerHistory.clear()
-        cadenceHistory.clear()
-        timestampHistory.clear()
+        samples.clear()
         totalEnergyJoules = 0.0
-        Log.d(TAG, "Metrics calculator reset")
+        totalDistanceKm = 0.0
+        lastSample = null
+    }
+
+    companion object {
+        private const val SECONDS_PER_MINUTE = 60.0
+        private const val ROLLING_WINDOW_SEC = 30
+
+        /**
+         * Rough distance model: one flywheel revolution is treated as 2.1 m of
+         * road. Peloton's own "distance" is a similar fiction — there is no
+         * wheel — so this exists for comparability between rides, not accuracy.
+         */
+        private const val KM_PER_REVOLUTION = 0.0021
+
+        /** Longest gap between samples that still counts as continuous riding. */
+        private const val MAX_SAMPLE_GAP_SEC = 5.0
     }
 }
 
 /**
- * All calculated metrics for the current workout state.
+ * A snapshot of everything derived from the telemetry stream at one instant.
  *
- * @property totalOutputKj Total energy output in kilojoules
- * @property avgPower1s Rolling 1-second average power (watts)
- * @property avgPower5s Rolling 5-second average power (watts)
- * @property avgPower30s Rolling 30-second average power (watts)
- * @property avgCadence30s Rolling 30-second average cadence (RPM)
- * @property distanceKm Estimated distance traveled (km)
- * @property currentPowerZone Current Coggan power zone (1-7)
- * @property currentFtpPercentage Current power as percentage of FTP
+ * @property totalOutputKj Cumulative energy output in kilojoules.
+ * @property distanceKm Cumulative estimated distance. This is a running total;
+ *   the previous version returned only the latest sample's contribution while
+ *   naming it as a total.
+ * @property currentFtpPercentage Instantaneous power as a percentage of FTP.
  */
 data class CalculatedMetrics(
     val totalOutputKj: Double,
+    val distanceKm: Double,
     val avgPower1s: Double,
     val avgPower5s: Double,
     val avgPower30s: Double,
     val avgCadence30s: Double,
-    val distanceKm: Double,
-    val currentPowerZone: Int,
+    val currentPowerZone: PowerZone,
     val currentFtpPercentage: Double
 )
