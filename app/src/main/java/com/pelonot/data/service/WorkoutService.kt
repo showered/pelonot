@@ -30,6 +30,11 @@ class WorkoutService : Service() {
         private const val TAG = "WorkoutService"
         private const val NOTIFICATION_ID = 101
         private const val CHANNEL_ID = PelonotApp.NOTIFICATION_CHANNEL_WORKOUT
+        
+        // Action and extras for starting workout
+        const val ACTION_START_WORKOUT = "com.pelonot.START_WORKOUT"
+        const val EXTRA_CLASS_ID = "class_id"
+        const val EXTRA_INTENT_MODIFIER = "intent_modifier"
     }
 
     private val binder = WorkoutBinder()
@@ -99,7 +104,17 @@ class WorkoutService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "WorkoutService started")
+        Log.d(TAG, "WorkoutService started with intent: ${intent?.action}")
+        
+        intent?.let {
+            if (it.action == ACTION_START_WORKOUT) {
+                val classId = it.getIntExtra(EXTRA_CLASS_ID, 0)
+                val intentModifier = it.getStringExtra(EXTRA_INTENT_MODIFIER) ?: "Unknown"
+                Log.d(TAG, "Starting workout: classId=$classId, modifier=$intentModifier")
+                startWorkout(classId, intentModifier)
+            }
+        }
+        
         return START_STICKY
     }
 

@@ -31,7 +31,7 @@
         </activity>
 
         <service
-            android:name=".service.WorkoutService"
+            android:name=".data.service.WorkoutService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 

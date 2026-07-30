@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
+import android.provider.Settings
+import android.util.Log
 import android.view.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.ComposeView
@@ -37,54 +39,92 @@ class HudOverlayManager(private val context: Context) {
         width = WindowManager.LayoutParams.WRAP_CONTENT
         height = WindowManager.LayoutParams.WRAP_CONTENT
         gravity = Gravity.TOP or Gravity.START
-        x = 100
-        y = 100
+        x = 200  // Moved from 100 to better center overlay
+        y = 200  // Moved from 100 to better center overlay
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun show() {
-        if (composeView != null) return
+    fun show(
+        onPause: () -> Unit = {},
+        onResume: () -> Unit = {},
+        onStop: () -> Unit = {},
+        ftp: Double = 200.0,
+        elapsedSecondsFlow: kotlinx.coroutines.flow.StateFlow<Int>? = null
+    ) {
+        Log.d("HudOverlayManager", "show() called - composeView: $composeView")
+        if (composeView != null) {
+            Log.d("HudOverlayManager", "Overlay already showing - returning early")
+            return
+        }
 
-        composeView = ComposeView(context).apply {
-            // Attach lifecycle owners so Compose works correctly in a Service/Window
-            val lifecycleOwner = OverlayLifecycleOwner()
-            lifecycleOwner.performRestore(null)
-            lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-            lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
-            lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
-            setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
-                override val viewModelStore = ViewModelStore()
-            })
-
-            setContent {
-                val sensorRepository = SensorRepository.getInstance(context)
-                val reading by sensorRepository.sensorReading.collectAsState()
-
-                PelonotTheme {
-                    HudOverlayMain(
-                        cadence = reading.cadenceRpm,
-                        resistance = reading.resistancePercent,
-                        power = reading.powerWatts,
-                        heartRate = reading.heartRateBpm,
-                        elapsedSeconds = 0, // In practice, bind this to WorkoutService state
-                        ftp = 200.0, // Default FTP
-                        onPause = {},
-                        onResume = {},
-                        onStop = {},
-                        onDrag = { dx, dy ->
-                            this@HudOverlayManager.layoutParams.x += dx.toInt()
-                            this@HudOverlayManager.layoutParams.y += dy.toInt()
-                            windowManager.updateViewLayout(this@HudOverlayManager.composeView!!, this@HudOverlayManager.layoutParams)
-                        }
-                    )
-                }
+        // Check if we have overlay permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(context)) {
+                Log.e("HudOverlayManager", "SYSTEM_ALERT_WINDOW permission not granted - cannot show overlay!")
+                return
             }
         }
 
-        windowManager.addView(composeView, layoutParams)
+        try {
+            composeView = ComposeView(context).apply {
+                Log.d("HudOverlayManager", "ComposeView created, attaching lifecycle")
+                // Attach lifecycle owners so Compose works correctly in a Service/Window
+                val lifecycleOwner = OverlayLifecycleOwner()
+                lifecycleOwner.performRestore(null)
+                lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+                lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
+                lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+
+                setViewTreeLifecycleOwner(lifecycleOwner)
+                setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+                setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
+                    override val viewModelStore = ViewModelStore()
+                })
+
+                Log.d("HudOverlayManager", "Setting content with sensor data collection")
+                setContent {
+                    Log.d("HudOverlayManager", "Content being set, collecting sensor data")
+                    val sensorRepository = SensorRepository.getInstance(context)
+                    val reading by sensorRepository.sensorReading.collectAsState()
+
+                    // Collect elapsed seconds from the provided flow, or default to 0
+                    val elapsedSeconds by if (elapsedSecondsFlow != null) {
+                        elapsedSecondsFlow.collectAsState()
+                    } else {
+                        androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+                    }
+
+                    Log.d("HudOverlayManager", "Current reading: cadence=${reading.cadenceRpm}, resistance=${reading.resistancePercent}, power=${reading.powerWatts}, elapsed=$elapsedSeconds")
+
+                    PelonotTheme {
+                        HudOverlayMain(
+                            cadence = reading.cadenceRpm,
+                            resistance = reading.resistancePercent,
+                            power = reading.powerWatts,
+                            heartRate = reading.heartRateBpm,
+                            elapsedSeconds = elapsedSeconds,
+                            ftp = ftp,
+                            onPause = onPause,
+                            onResume = onResume,
+                            onStop = onStop,
+                            onDrag = { dx, dy ->
+                                Log.d("HudOverlayManager", "Drag detected: dx=$dx, dy=$dy")
+                                this@HudOverlayManager.layoutParams.x += dx.toInt()
+                                this@HudOverlayManager.layoutParams.y += dy.toInt()
+                                windowManager.updateViewLayout(composeView, layoutParams)
+                            }
+                        )
+                    }
+                }
+            }
+
+            Log.d("HudOverlayManager", "Adding view to WindowManager at x=${layoutParams.x}, y=${layoutParams.y}")
+            windowManager.addView(composeView, layoutParams)
+            Log.d("HudOverlayManager", "Overlay view added to WindowManager successfully!")
+        } catch (e: Exception) {
+            Log.e("HudOverlayManager", "Failed to show overlay: ${e.message}", e)
+            composeView = null
+        }
     }
 
     fun hide() {

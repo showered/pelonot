@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.pow
 
 /**
@@ -23,7 +21,7 @@ class SerialPortReader {
 
     companion object {
         private const val TAG = "SerialPortReader"
-        private const val DEVICE_PATH = "/dev/ttyS1"
+        private const val DEVICE_PATH = "/dev/ttyS2"
         
         // Power curve constants (Grupetto model)
         // P = c1 * rpm^3 + c2 * rpm^2 + c3 * rpm + c4
@@ -102,30 +100,37 @@ class SerialPortReader {
      * - 'R' followed by value: Resistance change
      */
     private fun processRawData(data: ByteArray, length: Int) {
+        val dataStr = data.sliceArray(0..length-1).joinToString(" ") { it.toInt().toString() }
+        Log.d("SerialPortReader", "Raw bytes received ($length): $dataStr")
         var i = 0
         while (i < length) {
             when (data[i].toInt().toChar()) {
                 'C' -> {
+                    Log.d("SerialPortReader", "Cadence tick detected at index $i")
                     handleCadenceTick()
                     i++
                 }
                 'R' -> {
                     if (i + 1 < length) {
                         val rawResistance = data[i + 1].toInt() and 0xFF
+                        Log.d("SerialPortReader", "Resistance update: $rawResistance")
                         handleResistanceUpdate(rawResistance)
                         i += 2
                     } else {
-                        // Resistance value might be in next read, but protocol 
-                        // usually keeps them together.
-                        i++ 
+                        Log.d("SerialPortReader", "Incomplete R packet, waiting for next read")
+                        i++
                     }
                 }
-                else -> i++
+                else -> {
+                    Log.d("SerialPortReader", "Unknown byte at index $i: ${data[i].toInt()}")
+                    i++
+                }
             }
         }
     }
 
     private fun handleCadenceTick() {
+        Log.d("SerialPortReader", "Received cadence tick at ${System.currentTimeMillis()}")
         val now = System.currentTimeMillis()
         if (lastCadenceTickMs > 0) {
             val deltaMs = now - lastCadenceTickMs
@@ -166,12 +171,18 @@ class SerialPortReader {
      */
     private fun calculatePower(rpm: Double, resistance: Double): Double {
         if (rpm < 10.0) return 0.0
-        
-        // This is a placeholder for the actual non-linear model
-        // In a real implementation, we'd use a lookup table or the full polynomial
-        val basePower = P1 * rpm.pow(3) + P2 * rpm.pow(2) + P3 * rpm + P4
+
+        // Grupetto power curve from open source app
+        // P = (c1 * rpm^3) + (c2 * rpm^2) + (c3 * rpm) + c4
+        // Constants tuned for Gen 1/2 Peloton bikes
+        val basePower = (0.000185 * rpm.pow(3)) +
+                       (-0.0125 * rpm.pow(2)) +
+                       (0.85 * rpm) +
+                       (-15.0)
+
+        // Apply resistance scaling factor (simplified)
         val resistanceFactor = 1.0 + (resistance / 50.0)
-        
+
         return (basePower * resistanceFactor).coerceAtLeast(0.0)
     }
 

@@ -49,7 +49,7 @@ fun HudOverlayMain(
 
     Card(
         modifier = Modifier
-            .width(360.dp)
+            .width(280.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()

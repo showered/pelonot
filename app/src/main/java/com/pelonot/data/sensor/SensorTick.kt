@@ -16,21 +16,3 @@ data class SensorTick(
     val tickType: Char,
     val rawValue: Int = 0
 )
-
-/**
- * Parsed sensor reading combining cadence, resistance, power, and heart rate.
- * This is the unified data class exposed by SensorRepository.
- *
- * @property cadenceRpm Current cadence in revolutions per minute
- * @property resistancePercent Current resistance as a percentage (0-100)
- * @property powerWatts Instantaneous power output in watts
- * @property heartRateBpm Current heart rate in beats per minute (null if no HR monitor connected)
- * @property timestampMs System clock when this reading was generated
- */
-data class SensorReading(
-    val cadenceRpm: Double,
-    val resistancePercent: Double,
-    val powerWatts: Double,
-    val heartRateBpm: Int? = null,
-    val timestampMs: Long = System.currentTimeMillis()
-)

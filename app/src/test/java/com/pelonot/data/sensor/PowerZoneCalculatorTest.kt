@@ -1,12 +1,11 @@
-package com.pelonot.data.sensor
-
 import org.junit.Test
 import org.junit.Assert.*
+import com.pelonot.data.sensor.PowerZoneCalculator
 
 class PowerZoneCalculatorTest {
 
     @Test
-    fun `getZoneForPower returns Z1 for power below 55 percent of FTP`() {
+    fun `getZoneForPower returns correct zone for power less than 55% of FTP`() {
         val ftp = 200.0
         val power = 100.0 // 50% of FTP
         val zone = PowerZoneCalculator.getZoneForPower(power, ftp)
@@ -75,32 +74,42 @@ class PowerZoneCalculatorTest {
     fun `getTargetPower with Reach New Milestones intent scales up by 5 percent`() {
         val ftp = 200.0
         val zone = PowerZoneCalculator.PowerZone.Z4
-        val targetRange = PowerZoneCalculator.getTargetPower(zone, ftp, "Reach New Milestones")
+        val targetRange = PowerZoneCalculator.getTargetPower(
+            zone, ftp, "Reach New Milestones"
+        )
         
-        // Z4 range: 91-105% of FTP, scaled by 1.05
-        assertEquals(182.0, targetRange.start, 0.01) // 200 * 0.91 * 1.05
-        assertEquals(220.5, targetRange.endInclusive, 0.01) // 200 * 1.05 * 1.05
+        // Z4 base range is 91-105% of FTP
+        // Start: 200 * 0.91 = 182, scaled by 1.05 = 191.1
+        // End: 200 * 1.05 = 210, scaled by 1.05 = 220.5
+        assertEquals(191.1, targetRange.start, 0.01)
+        assertEquals(220.5, targetRange.endInclusive, 0.01)
     }
 
     @Test
     fun `getTargetPower with Just Stay Fit intent scales down by 5 percent`() {
         val ftp = 200.0
         val zone = PowerZoneCalculator.PowerZone.Z4
-        val targetRange = PowerZoneCalculator.getTargetPower(zone, ftp, "Just Stay Fit")
+        val targetRange = PowerZoneCalculator.getTargetPower(
+            zone, ftp, "Just Stay Fit"
+        )
         
-        // Z4 range: 91-105% of FTP, scaled by 0.95
-        assertEquals(171.8, targetRange.start, 0.01) // 200 * 0.91 * 0.95
-        assertEquals(199.0, targetRange.endInclusive, 0.01) // 200 * 1.05 * 0.95
+        // Z4 base range is 91-105% of FTP
+        // Start: 200 * 0.91 = 182, scaled by 0.95 = 172.9
+        // End: 200 * 1.05 = 210, scaled by 0.95 = 199.5
+        assertEquals(172.9, targetRange.start, 0.01)
+        assertEquals(199.5, targetRange.endInclusive, 0.01)
     }
 
     @Test
     fun `getTargetPower with unknown intent uses 1x multiplier`() {
         val ftp = 200.0
         val zone = PowerZoneCalculator.PowerZone.Z4
-        val targetRange = PowerZoneCalculator.getTargetPower(zone, ftp, "Unknown Intent")
+        val targetRange = PowerZoneCalculator.getTargetPower(
+            zone, ftp, "Unknown Intent"
+        )
         
-        // Z4 range: 91-105% of FTP, no scaling
-        assertEquals(182.0, targetRange.start, 0.01) // 200 * 0.91
-        assertEquals(210.0, targetRange.endInclusive, 0.01) // 200 * 1.05
+        // Z4 base range is 91-105% of FTP
+        assertEquals(182.0, targetRange.start, 0.01)
+        assertEquals(210.0, targetRange.endInclusive, 0.01)
     }
 }
