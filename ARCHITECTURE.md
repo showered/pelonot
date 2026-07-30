@@ -1,498 +1,319 @@
-# Pelonot Application Architecture
+# Pelonot — Technical Overview
 
-> **Open-Source Peloton Client** — A subscription-free fitness app for jailbroken Peloton bikes (Gen 1/Gen 2).
+How data gets into the app, what happens to it, and where it goes.
 
----
-
-## Overview
-
-Pelonot is an Android application built with Jetpack Compose that provides a complete cycling workout experience for Peloton bikes. The app reads real-time sensor data, displays a floating HUD overlay, tracks workouts, and syncs data to the cloud.
-
-**Target SDK:** API 24 (Android 7.0) - API 34  
-**Language:** Kotlin  
-**Architecture:** MVVM with Repository pattern, Foreground Service, and Jetpack Compose UI
+**Target:** API 24 (Android 7.0) – API 34 · **Kotlin** · **Jetpack Compose**
 
 ---
 
-## Project Structure
+## The one-paragraph version
 
-```
-pelonot/
-├── PLAN.md                    # Implementation roadmap with phases
-├── CHANGELOG.md               # Development history
-├── build.gradle.kts           # Root Gradle build file
-├── settings.gradle.kts          # Project settings
-├── gradle.properties            # Gradle configuration
-├── local.properties           # SDK path
-├── .gitignore                 # Git ignore rules
-├── LICENSE                    # MIT License
-│
-├── app/
-│   ├── build.gradle.kts       # App-level dependencies
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── AndroidManifest.xml
-│   │   │   ├── java/com/pelonot/
-│   │   │   │   ├── MainActivity.kt
-│   │   │   │   ├── PelonotApp.kt
-│   │   │   │   │
-│   │   │   │   ├── data/
-│   │   │   │   │   ├── local/
-│   │   │   │   │   │   ├── AppDatabase.kt
-│   │   │   │   │   │   ├── ClassTemplateSeeder.kt
-│   │   │   │   │   │   │
-│   │   │   │   │   │   ├── dao/
-│   │   │   │   │   │   │   ├── UserDao.kt
-│   │   │   │   │   │   │   ├── ClassTemplateDao.kt
-│   │   │   │   │   │   │   ├── WorkoutDao.kt
-│   │   │   │   │   │   │   └── WorkoutMetricDao.kt
-│   │   │   │   │   │   │
-│   │   │   │   │   │   └── entity/
-│   │   │   │   │   │       ├── UserEntity.kt
-│   │   │   │   │   │       ├── ClassTemplateEntity.kt
-│   │   │   │   │   │       ├── WorkoutEntity.kt
-│   │   │   │   │   │       └── WorkoutMetricEntity.kt
-│   │   │   │   │   │
-│   │   │   │   │   ├── remote/
-│   │   │   │   │   │   ├── SupabaseClient.kt
-│   │   │   │   │   │   ├── SupabaseConfig.kt
-│   │   │   │   │   │   └── SupabaseSyncRepository.kt
-│   │   │   │   │   │
-│   │   │   │   │   ├── sensor/
-│   │   │   │   │   │   ├── SensorTick.kt
-│   │   │   │   │   │   ├── SerialPortReader.kt
-│   │   │   │   │   │   ├── BleHeartRateManager.kt
-│   │   │   │   │   │   ├── SensorRepository.kt
-│   │   │   │   │   │   ├── PowerZoneCalculator.kt
-│   │   │   │   │   │   └── WorkoutMetricsCalculator.kt
-│   │   │   │   │   │
-│   │   │   │   │   ├── service/
-│   │   │   │   │   │   ├── WorkoutService.kt
-│   │   │   │   │   │   ├── WorkoutSession.kt
-│   │   │   │   │   │   └── PostWorkoutAnalyzer.kt
-│   │   │   │   │   │
-│   │   │   │   │   └── worker/
-│   │   │   │   │       └── WorkoutSyncWorker.kt
-│   │   │   │   │
-│   │   │   │   ├── ui/
-│   │   │   │   │   ├── navigation/
-│   │   │   │   │   │   └── NavGraph.kt
-│   │   │   │   │   │
-│   │   │   │   │   ├── overlay/
-│   │   │   │   │   │   ├── HudOverlayManager.kt
-│   │   │   │   │   │   ├── HudOverlayMain.kt
-│   │   │   │   │   │   ├── OverlayPermissionHelper.kt
-│   │   │   │   │   │   └── ZoneAlertManager.kt
-│   │   │   │   │   │
-│   │   │   │   │   ├── screen/
-│   │   │   │   │   │   ├── ProfileSelectorScreen.kt
-│   │   │   │   │   │   ├── MainDashboardScreen.kt
-│   │   │   │   │   │   ├── PreRideIntentPrompt.kt
-│   │   │   │   │   │   ├── ClassLibraryScreen.kt
-│   │   │   │   │   │   ├── ClassDetailScreen.kt
-│   │   │   │   │   │   ├── PostRideSummaryScreen.kt
-│   │   │   │   │   │   ├── SettingsScreen.kt
-│   │   │   │   │   │   ├── ProfileCreationDialog.kt
-│   │   │   │   │   │   ├── FtpBreakthroughDialog.kt
-│   │   │   │   │   │   └── JustRideScreen.kt
-│   │   │   │   │   │
-│   │   │   │   │   └── theme/
-│   │   │   │   │       ├── Color.kt
-│   │   │   │   │       ├── Theme.kt
-│   │   │   │   │       └── Type.kt
-│   │   │   │   │
-│   │   │   ├── res/
-│   │   │   │   ├── values/
-│   │   │   │   │   ├── strings.xml
-│   │   │   │   │   ├── themes.xml
-│   │   │   │   │   └── ic_launcher_background.xml
-│   │   │   │   ├── drawable/
-│   │   │   │   │   └── ic_launcher_foreground.xml
-│   │   │   │   └── mipmap-*/
-│   │   │   │       └── ic_launcher.xml
-│   │   │   │
-│   │   │   └── assets/
-│   │   │       └── classes/
-│   │   │           ├── endurance/
-│   │   │           │   ├── ae-01.json
-│   │   │           │   └── ae-02.json
-│   │   │           ├── hiit_heavy_climbs/
-│   │   │           │   └── hc-01.json
-│   │   │           ├── tabata_bursts/
-│   │   │           │   └── tb-01.json
-│   │   │           └── threshold/
-│   │   │               └── tp-01.json
-│   │   │
-│   │   ├── test/
-│   │   │   └── java/com/pelonot/
-│   │   │       ├── data/
-│   │   │       │   ├── sensor/
-│   │   │       │   │   └── PowerZoneCalculatorTest.kt
-│   │   │       │   └── service/
-│   │   │       │       └── PostWorkoutAnalyzerTest.kt
-│   │   │
-│   │   └── androidTest/
-│   │       └── java/com/pelonot/
-│   │           ├── data/
-│   │           │   ├── local/
-│   │           │   │   └── dao/
-│   │           │   │       └── WorkoutDaoTest.kt
-│   │           │   └── service/
-│   │           │       └── WorkoutServiceTest.kt
-│   │
-└── supabase/
-    └── migration.sql          # Database schema and seed data
+Bytes arrive from the bike's sensor board over a serial character device. They
+are decoded into cadence ticks and resistance readings, turned into a power
+estimate, merged with heart rate from a Bluetooth strap, and published as a
+single `StateFlow<SensorReading>`. A foreground service samples that flow once a
+second, writes each sample to SQLite, and keeps running totals. When the ride
+ends the totals are finalised on the workout row, analysed for an FTP
+breakthrough, and optionally uploaded. Everything works with no network; the
+cloud is a mirror, never a dependency.
+
+---
+
+## 1. Data coming in
+
+There are three independent inputs. Nothing else enters the app.
+
+```mermaid
+flowchart LR
+    A["/dev/ttyS2<br/>raw bytes"] --> B[SerialSensorSource]
+    C["BLE strap<br/>GATT notifications"] --> D[BleHeartRateManager]
+    E["Simulated rider<br/>(no hardware)"] --> F[SimulatedSensorSource]
+
+    B --> G[SensorRepository]
+    F --> G
+    D --> G
+    G --> H["StateFlow&lt;SensorReading&gt;"]
 ```
 
----
+### 1a. The bike — serial
 
-## Core Components
+The Gen 1/Gen 2 sensor board exposes a UART as a character device. It is read as
+a plain file; baud rate and line discipline are whatever the kernel already has
+configured at boot.
 
-### 1. Application Entry Point
+The wire protocol is single-byte commands:
 
-| File | Purpose |
-|------|---------|
-| `MainActivity.kt` | Main entry point, sets up Compose content with navigation |
-| `PelonotApp.kt` | Application class that creates notification channels for workout and sync |
-
----
-
-### 2. Data Layer
-
-#### Local Database (Room)
-
-The local database provides offline-first data persistence with 4 entities:
-
-| Entity | Table | Description |
-|--------|-------|-------------|
-| `UserEntity` | `profiles` | User profiles with name, weight, FTP, and theme preference |
-| `ClassTemplateEntity` | `class_templates` | Workout class templates with interval definitions |
-| `WorkoutEntity` | `workouts` | Completed workout records with summary metrics |
-| `WorkoutMetricEntity` | `workout_metrics` | Time-series metrics (1-second intervals) during workouts |
-
-**Key DAOs:**
-
-- `UserDao` - CRUD operations and Flow queries for user profiles
-- `ClassTemplateDao` - Batch insert, category filtering, template count
-- `WorkoutDao` - Leaderboard queries (PB, average, household best), recent workouts, crash recovery
-- `WorkoutMetricDao` - Time-series insert/get, power array extraction for FTP calculation
-
-#### Remote (Supabase)
-
-Cloud synchronization for data backup and cross-device access:
-
-| File | Purpose |
-|------|---------|
-| `SupabaseConfig.kt` | Supabase project URL and anonymous key configuration |
-| `SupabaseClient.kt` | Supabase client singleton with Postgrest client |
-| `SupabaseSyncRepository.kt` | Sync operations: workouts, profiles, FTP updates |
-
----
-
-### 3. Sensor Layer
-
-Real-time telemetry collection from the Peloton bike:
-
-| File | Purpose |
-|------|---------|
-| `SensorTick.kt` | Data classes for raw sensor ticks and parsed readings |
-| `SerialPortReader.kt` | Reads telemetry from `/dev/ttyS1` (cadence ticks, resistance) |
-| `BleHeartRateManager.kt` | BLE heart rate monitor scanning and GATT connection |
-| `SensorRepository.kt` | Singleton merging serial + BLE data with auto-reconnect |
-| `PowerZoneCalculator.kt` | Coggan 7-zone power model calculations |
-| `WorkoutMetricsCalculator.kt` | Rolling averages, total output, distance estimation |
-
-**Sensor Data Flow:**
-1. `SerialPortReader` reads raw ticks from `/dev/ttyS1`
-2. Cadence is calculated from tick intervals (RPM)
-3. Power is calculated from resistance + cadence model
-4. `BleHeartRateManager` provides heart rate from BLE monitors
-5. `SensorRepository` merges all data into unified `SensorReading`
-6. `WorkoutService` collects readings and records metrics
-
----
-
-### 4. Workout Service
-
-Foreground service managing workout lifecycle:
-
-| File | Purpose |
-|------|---------|
-| `WorkoutService.kt` | Foreground service with workout state management |
-| `WorkoutSession.kt` | Data class for active workout session |
-| `PostWorkoutAnalyzer.kt` | FTP auto-detection, biometric decoupling analysis |
-
-**Workout States:**
-- `Idle` - No active workout
-- `Active` - Workout in progress
-- `Paused` - Workout paused
-- `Completed` - Workout finished
-
-**Key Features:**
-- Persistent notification with live metrics
-- 1-second metric recording to Room
-- Crash recovery for incomplete workouts
-- Auto-reconnect for sensor disconnections
-
----
-
-### 5. UI Layer
-
-#### Navigation
-
-| File | Purpose |
-|------|---------|
-| `NavGraph.kt` | Jetpack Compose Navigation setup with all screen routes |
-
-**Routes:**
-- `profile_selector` - User profile selection
-- `dashboard/{userId}` - Main dashboard
-- `class_library` - Class template list
-- `class_detail/{classId}` - Class detail view
-- `settings` - Settings screen
-- `post_ride/{isGuest}` - Post-ride summary
-
-#### Screens
-
-| File | Purpose |
-|------|---------|
-| `ProfileSelectorScreen.kt` | Grid of user profiles with guest mode option |
-| `MainDashboardScreen.kt` | Main dashboard with Just Ride, Begin Class, Settings buttons |
-| `PreRideIntentPrompt.kt` | Intent selection dialog (Reach New Milestones / Just Stay Fit) |
-| `ClassLibraryScreen.kt` | Filterable list of class templates |
-| `ClassDetailScreen.kt` | Interval breakdown and start button |
-| `PostRideSummaryScreen.kt` | Ride summary with RPE selection and FTP breakthrough detection |
-| `SettingsScreen.kt` | FTP, weight, theme, and BLE device management |
-| `ProfileCreationDialog.kt` | Create new user profile |
-| `FtpBreakthroughDialog.kt` | Prompt to accept/reject FTP increase |
-| `JustRideScreen.kt` | Free ride without class structure |
-
-#### Overlay HUD
-
-| File | Purpose |
-|------|---------|
-| `HudOverlayManager.kt` | WindowManager-based floating overlay with ComposeView |
-| `HudOverlayMain.kt` | HUD UI with metrics, targets, and controls |
-| `OverlayPermissionHelper.kt` | SYSTEM_ALERT_WINDOW permission handling |
-| `ZoneAlertManager.kt` | Haptic feedback and TTS for zone alerts |
-
-**HUD Features:**
-- Real-time cadence, power, and heart rate display
-- Target zone indicators with alert animations
-- Draggable overlay with drag handle
-- Pause/Resume/Stop controls
-
----
-
-### 6. Background Sync
-
-| File | Purpose |
-|------|---------|
-| `WorkoutSyncWorker.kt` | WorkManager worker for syncing workouts to Supabase |
-
-**Sync Features:**
-- Compresses metrics into JSON payload
-- Exponential backoff retry (3 retries)
-- Triggered on workout completion
-
----
-
-## Data Models
-
-### UserEntity
-```kotlin
-- localUserId: Int (PK)
-- name: String
-- weightKg: Double
-- ftpWatts: Int
-- themePreference: String
-- createdAt: Long
+```
+'C'          one flywheel revolution
+'R' <value>  resistance knob position (0–100)
 ```
 
-### ClassTemplateEntity
-```kotlin
-- id: String (PK)
-- title: String
-- category: String
-- durationSec: Int
-- intervalsJson: String
-- createdAt: Long
-```
+Reads are **not framed**. A 64-byte read can end on an `R` whose value byte
+arrives in the next read, so `SerialProtocolParser` is a stateful stream parser
+that carries the partial command across the boundary. It also has to treat the
+byte after `R` as a value even when it happens to equal `'C'` (67).
 
-### WorkoutEntity
-```kotlin
-- id: String (PK)
-- userId: Int (FK → User)
-- classId: String? (FK → ClassTemplate)
-- durationSec: Int
-- totalOutputKj: Double
-- totalDistanceKm: Double
-- avgCadence: Double
-- avgPower: Double
-- avgHr: Double?
-- intentModifier: Double
-- rpeRating: Int?
-- timestamp: Long
-```
+`SensorSource` exposes this as a **cold flow**: collecting opens the port,
+cancelling closes it, and transport errors are *thrown* rather than swallowed so
+the collector can decide what to do.
 
-### WorkoutMetricEntity
-```kotlin
-- id: Int (auto PK)
-- workoutId: String (FK → Workout, CASCADE)
-- timestampSec: Int
-- cadence: Double
-- resistance: Double
-- power: Double
-- heartRate: Int?
-```
+### 1b. Cadence and power — derived, not measured
+
+The board reports ticks, not RPM, and does not report power at all.
+
+- **`CadenceTracker`** converts tick timestamps to RPM, averaging a short window
+  to damp jitter. Critically it is also polled on a timer, so cadence **decays
+  to zero** when ticks stop — otherwise a rider who stops pedalling keeps
+  reading 90 RPM forever and every downstream metric keeps accruing.
+- **`PowerModel`** estimates watts as a cubic in cadence scaled by resistance.
+
+> ⚠️ **The power coefficients are unvalidated.** Absolute watts should not be
+> trusted against a real power meter, and FTP derived from them is
+> self-consistent only — comparable between your own rides, not with anyone
+> else's. Tracked as PLAN.md item 2.2.4.
+
+### 1c. Heart rate — Bluetooth LE
+
+Standard Heart Rate Service (`0x180D`), Heart Rate Measurement characteristic
+(`0x2A37`). Scanning filters on the service UUID rather than device names.
+
+Connecting is a four-step handshake, and the fourth step is the one that is
+easy to miss:
+
+1. Scan and connect GATT
+2. Discover services
+3. `setCharacteristicNotification(...)` — routes notifications *locally*
+4. **Write `ENABLE_NOTIFICATION_VALUE` to the CCCD descriptor** — this is what
+   actually tells the strap to start sending. Without it, nothing ever arrives.
+
+Packets are `[flags][value…]`. Bit 0 of flags selects uint8 or little-endian
+uint16. Parsing is bounds-checked and returns null on a truncated packet: it
+runs on the Binder callback thread, where an exception kills the process.
+
+`heartRateBpm` is nullable everywhere. **Null means unknown**, and must never be
+conflated with a measured zero — a rider with no strap is not a rider with no
+pulse.
+
+### 1d. Simulation
+
+`SimulatedSensorSource` generates a plausible effort profile — warmup ramp, two
+sinusoids of different periods, per-sample jitter, and heart rate integrated
+towards a power-derived target so it lags the way a real one does. Power runs
+through the same `PowerModel`, so everything downstream sees numerically
+consistent data rather than a parallel set of fake values.
+
+Selected by `SensorMode` in Settings:
+
+| Mode | Behaviour |
+|------|-----------|
+| `Auto` | Serial if the device exists, otherwise simulated |
+| `Hardware` | Serial only — **retries rather than falling back** |
+| `Simulated` | Always fake, for development |
+
+`Hardware` never falls back on purpose: silently substituting invented telemetry
+mid-ride would write fabricated numbers into the rider's permanent record.
+
+### 1e. Merging and retries
+
+`SensorRepository` merges the bike source with heart rate into one
+`StateFlow<SensorReading>`, and owns **all** retry policy — one `retryWhen` with
+capped exponential backoff. Sources deliberately do not reconnect themselves;
+when they did, `close()` triggered a reconnect and `reconnect()` called
+`close()`, so ending a workout started an endless loop.
 
 ---
 
-## Class Template JSON Format
+## 2. Data flowing through a ride
+
+```mermaid
+flowchart TD
+    A["StateFlow&lt;SensorReading&gt;"] --> B[WorkoutService ticker]
+    B --> C[WorkoutMetricsCalculator]
+    B --> D["Buffer (15 samples)"]
+    D --> E[(workout_metrics)]
+    C --> F["StateFlow&lt;WorkoutSession&gt;"]
+    F --> G[RideViewModel]
+    G --> H[RideScreen]
+    F --> I[Notification]
+```
+
+`WorkoutService` is a bound foreground service. On ride start it:
+
+1. Inserts the `workouts` row with `is_complete = 0`
+2. Starts the sensor repository
+3. Starts a 250 ms ticker
+
+**The workout row must exist first.** `workout_metrics` has a foreign key onto
+`workouts`, so writing a sample against a row that does not yet exist raises a
+constraint violation — which is exactly what happened when the row was only
+inserted at ride end, and why no ride ever captured a time series.
+
+Each whole second the ticker:
+
+- reads the latest `SensorReading`
+- folds it into `WorkoutMetricsCalculator`
+- appends a `WorkoutMetricEntity` to an in-memory buffer, flushed every 15
+  samples (one transaction per second for an hour is a lot of writes on
+  tablet-grade flash)
+- updates the session's running means
+
+**Elapsed time is measured, not counted** — `SystemClock.elapsedRealtime()`
+minus accumulated pause time. A `delay(1000)` loop drifts, because `delay` is a
+lower bound and the loop body's own cost accumulates.
+
+### What the calculator derives
+
+| Metric | How |
+|--------|-----|
+| Total output (kJ) | `∫P dt` by the trapezoidal rule against **elapsed time** |
+| Distance (km) | Revolutions × 2.1 m, accumulated |
+| Rolling averages | 1 s / 5 s / 30 s time windows |
+| Power zone | `PowerZone.forPower(watts, ftp)` |
+
+Sample gaps are clamped at 5 s, so a backgrounded app cannot integrate idle time
+as though the rider pedalled through it.
+
+---
+
+## 3. Where data comes to rest
+
+```
+profiles ──┬─< workouts ──< workout_metrics
+           │      │           (CASCADE delete)
+class_templates ──┘
+```
+
+| Table | Written when | Contains |
+|-------|-------------|----------|
+| `profiles` | Profile created/edited | Name, weight, FTP |
+| `class_templates` | First launch (seeded) | Title, category, duration, `intervals_json` |
+| `workouts` | Ride **start**, updated at end | Aggregates, RPE, `is_complete` |
+| `workout_metrics` | Every second | Cadence, resistance, power, HR |
+
+`is_complete` does double duty: it keeps in-progress rides out of history and
+leaderboards, and it is the crash-recovery marker — an unfinished row means the
+process died mid-ride.
+
+App preferences (theme, sensor mode, selected profile, strap address, sync
+toggle) live in **DataStore**, not Room, since they are not relational.
+
+> **Pre-release:** the database uses `fallbackToDestructiveMigration()`. Replace
+> it with explicit migrations before the first real user installs a build.
+
+### Class templates in
+
+`assets/classes/<category>/<id>.json` — the seeder lists the directory, so
+adding a folder is enough.
 
 ```json
 {
-  "id": "HC-01",
-  "title": "Hill Grind 20",
-  "category": "HIIT & Heavy Climbs",
+  "id": "TB-01",
+  "title": "Tabata Sprint 20",
+  "category": "Tabata Bursts",
   "duration_sec": 1200,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},...]"
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
 }
 ```
 
-**Interval Structure:**
-- `time_start_sec` - Interval start time
-- `time_end_sec` - Interval end time
-- `target_cadence_min` - Minimum target cadence
-- `target_cadence_max` - Maximum target cadence
-- `target_power_zone` - Target Coggan power zone (1-7)
+`intervals_json` is a JSON **string** containing an array. Field names are
+snake_case and segments carry start/end timestamps rather than durations —
+`Interval` matches this exactly with `@SerialName`. When it did not, every
+decode threw and no class ever displayed a single interval.
 
 ---
 
-## Power Zones (Coggan Model)
+## 4. Data going out
 
-| Zone | Name | % of FTP |
-|------|------|----------|
-| Z1 | Active Recovery | < 55% |
-| Z2 | Endurance | 56–75% |
-| Z3 | Tempo | 76–90% |
-| Z4 | Lactate Threshold | 91–105% |
-| Z5 | VO2 Max | 106–120% |
-| Z6 | Anaerobic Capacity | 121–150% |
-| Z7 | Neuromuscular Power | > 150% |
+### To the screen
 
-**Intent Modifiers:**
-- "Reach New Milestones" → `k = 1.05` (scales target power up 5%)
-- "Just Stay Fit" → `k = 0.95` (scales target power down 5%)
+Room and DataStore expose `Flow`s. Repositories combine them, ViewModels
+`stateIn` them, and Compose collects with `collectAsStateWithLifecycle` so
+collection stops when the app is backgrounded.
 
----
+```
+Room/DataStore Flow → Repository → ViewModel StateFlow → Composable
+```
 
-## Dependencies
+No composable touches a DAO. Nothing lives in `remember {}` that should survive
+rotation.
 
-| Category | Library | Version |
-|----------|---------|---------|
-| Compose | compose-bom | 2024.10.01 |
-| Material3 | material3 | (via BOM) |
-| Room | room-runtime | 2.6.1 |
-| Room | room-ktx | 2.6.1 |
-| Coroutines | kotlinx-coroutines-android | 1.9.0 |
-| Coroutines | kotlinx-coroutines-core | 1.9.0 |
-| Serialization | kotlinx-serialization-json | 1.7.3 |
-| Supabase | supabase-bom | 3.0.2 |
-| Supabase | postgrest-kt | (via BOM) |
-| Ktor | ktor-client-android | 3.0.2 |
-| WorkManager | work-runtime-ktx | 2.9.1 |
-| Lifecycle | lifecycle-service | 2.8.7 |
-| Navigation | navigation-compose | 2.8.4 |
+### To the cloud (optional)
 
----
+```mermaid
+flowchart LR
+    A[Ride ends] --> B[WorkoutSyncWorker]
+    B --> C{Credentials?}
+    C -->|No| D[Disabled — stop]
+    C -->|Yes| E[POST typed DTO]
+    E -->|OK| F[Success]
+    E -->|Error| G{Attempts &lt; 3?}
+    G -->|Yes| H[Retry, backoff]
+    G -->|No| I[Give up]
+```
 
-## Development Phases
+Credentials come from `local.properties` → `BuildConfig`, never from source:
 
-Based on PLAN.md, the implementation is organized into 8 phases:
+```properties
+supabase.url=https://your-project.supabase.co
+supabase.anonKey=your-anon-key
+```
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 0 | ✅ Complete | Project scaffolding & build system |
-| 1 | ✅ Complete | Local database (Room) & Supabase cloud sync |
-| 2 | ⏳ In Progress | Telemetry engine (serial port & BLE) |
-| 3 | ✅ Complete | Foreground service & workout lifecycle |
-| 4 | ✅ Complete | Floating HUD overlay |
-| 5 | ✅ Complete | HUD Compose UI & power zone engine |
-| 6 | ✅ Complete | Main app UI (non-overlay screens) |
-| 7 | ✅ Complete | Auto-FTP engine, workload JSON & cloud sync |
-| 8 | ⏳ In Progress | Polish, testing & edge cases |
+Omit them and `SupabaseModule.client` is null, every call returns
+`SyncOutcome.Disabled`, and the app is fully functional offline. `Disabled` is
+deliberately distinct from `Failed` so the worker can tell "there is no cloud,
+stop asking" from "the network is down, try again".
 
----
+Payloads are typed `@Serializable` DTOs. They were previously
+`Map<String, Any?>` — kotlinx.serialization has no serializer for `Any`, so
+every call threw and was swallowed by `runCatching`.
 
-## Key Features
+### To the analyser
 
-### Workout Tracking
-- Real-time sensor data collection (cadence, resistance, power, heart rate)
-- 1-second metric recording to local database
-- Persistent foreground service with notification
-- Crash recovery for incomplete workouts
+On ride end, `PostWorkoutAnalyzer` reads the full metric series and looks for:
 
-### Class System
-- 40+ pre-loaded workout class templates
-- Categories: Endurance, Sweet Spot, Threshold, VO2 Max, HIIT & Heavy Climbs, Tabata Bursts, Recovery
-- Interval-based target zones with visual feedback
+- **20-minute peak power** → `FTP ≈ P₂₀ × 0.95`, via an O(n) sliding window over
+  full-length windows only
+- **Biometric decoupling** — sustained Zone 4 at under 80% of max HR
+- **RPE** — a hard class rated ≤ 4 suggests a 3% bump
 
-### HUD Overlay
-- Floating overlay that works over other apps
-- Draggable positioning
-- Real-time metrics display
-- Target zone alerts with animations
-
-### Analytics
-- 20-minute peak power FTP estimation
-- Biometric decoupling detection
-- RPE-based FTP suggestions
-- Personal best tracking
-
-### Cloud Sync
-- Supabase integration for data backup
-- Workout and profile synchronization
-- Background sync with WorkManager
+A proposal only surfaces if it beats the current FTP by more than 2%; below that
+it is inside the noise of the power model.
 
 ---
 
-## Testing
+## 5. What is not wired yet
 
-### Unit Tests
-- `PowerZoneCalculatorTest.kt` - Tests for all 7 zones, edge cases, intent modifiers
-- `PostWorkoutAnalyzerTest.kt` - Tests for FTP calculation, biometric decoupling, RPE suggestions
+Three flows exist as components but nothing connects them. See PLAN.md phase 9.
 
-### Instrumented Tests
-- `WorkoutDaoTest.kt` - Room DAO operations
-- `WorkoutServiceTest.kt` - WorkoutState and WorkoutSession lifecycle
+| Gap | State |
+|-----|-------|
+| **Class intervals do not drive a ride** | They parse and render, but no engine advances through them during a workout |
+| **The HUD overlay never appears** | Built and permission-gated; nothing calls `show()` |
+| **Cloud sync is never triggered** | `WorkoutSyncWorker` is correct; nothing calls `enqueue()` |
 
----
-
-## Permissions Required
-
-From `AndroidManifest.xml`:
-- `SYSTEM_ALERT_WINDOW` - For floating HUD overlay
-- `FOREGROUND_SERVICE` - For persistent workout service
-- `FOREGROUND_SERVICE_DATA_SYNC` - For data sync service
-- `BLUETOOTH` / `BLUETOOTH_ADMIN` / `BLUETOOTH_SCAN` / `BLUETOOTH_CONNECT` - For heart rate monitors
-- `INTERNET` / `ACCESS_NETWORK_STATE` - For Supabase sync
-- `POST_NOTIFICATIONS` - For workout notifications
+And nothing has been verified against a real bike — the serial path, the
+protocol assumptions and the power curve are all unproven on hardware.
 
 ---
 
-## Build Commands
+## Build
 
 ```bash
-# Build debug APK
-./gradlew assembleDebug
-
-# Run unit tests
-./gradlew test
-
-# Run instrumented tests
-./gradlew connectedAndroidTest
-
-# Install on connected device
-./gradlew installDebug
+./gradlew assembleDebug            # Build
+./gradlew testDebugUnitTest        # 83 JVM tests
+./gradlew connectedDebugAndroidTest # DAO tests (needs a device)
+./gradlew installDebug             # Install
 ```
+
+Dependency versions are centralised in `gradle/libs.versions.toml`.
+
+### Permissions
+
+| Permission | For |
+|-----------|-----|
+| `SYSTEM_ALERT_WINDOW` | Floating HUD over other apps |
+| `FOREGROUND_SERVICE`, `..._DATA_SYNC` | Workout service |
+| `POST_NOTIFICATIONS` | Ride notification (API 33+) |
+| `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` | Heart rate strap (API 31+) |
+| `BLUETOOTH`, `BLUETOOTH_ADMIN`, `ACCESS_FINE_LOCATION` | Heart rate strap (API 24–30) |
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Optional cloud sync |

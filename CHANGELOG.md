@@ -340,3 +340,62 @@
 - Branch: `setup`
 - Commits: 14 (scaffold, room-db, supabase-client, hud-overlay, main-ui, profile-dialog, phase-7, zone-alerts, crash-recovery, guest-mode, unit-tests, instrumented-tests, dynamic-color)
 CHANGELOG update\n\n[Task 8.11.3]\n- Added extended color palette for fitness metrics (power zones, heart rate zones, cadence ranges)
+
+
+---
+
+# Quality Refactor — 2026-07-31
+
+A full-repo audit and rework. The app previously built and rendered, but
+several core features could not work at runtime. This entry records what was
+actually broken, because most of it was invisible: the failures were swallowed
+by `catch` blocks and `runCatching`, so the app looked healthy.
+
+## Defects that made features non-functional
+
+| Area | Defect |
+|------|--------|
+| **Metric recording** | `workout_metrics` has a foreign key onto `workouts`, but the workout row was only inserted at ride *end*. Every per-second insert during a ride violated the constraint and killed the recording coroutine. **No ride ever stored a time series.** |
+| **Class intervals** | The `Interval` model declared camelCase fields and a duration, against assets written in snake_case with start/end timestamps. Every decode threw into `catch { emptyList() }`. **No class ever displayed an interval.** |
+| **Heart rate** | `connectGatt(null, …)` passed a null Context; the CCCD descriptor was never written, so the strap was never told to notify; straps were matched by looking for "Heart"/"HR" in bonded device names, which misses every strap on the market. **No reading could ever arrive.** |
+| **HUD overlay** | `PelonotTheme` cast `view.context as Activity` unconditionally. Inside the overlay's ComposeView that context is the Service, so showing the HUD threw `ClassCastException`. |
+| **Energy totals** | Power was integrated against sample *count* rather than elapsed time. A 45-minute ride over-reported energy by roughly three orders of magnitude. |
+| **Distance** | Reported the latest sample's contribution under a cumulative name, so it never exceeded a few metres. |
+| **Power zones** | Zone ranges left gaps (0.55–0.56, 0.75–0.76 …) and an unmatched lookup fell through to Z7. A 55.5%-of-FTP warmup was reported as Neuromuscular Power. |
+| **Cadence** | Froze at its last value when ticks stopped. A stationary bike read 90 RPM and kept accruing power, distance and energy. |
+| **Serial framing** | Reads are unframed, but the parser treated each buffer independently. An `R` at a buffer boundary lost its value byte. |
+| **Reconnection** | `close()` called `startAutoReconnect()`, and `reconnect()` called `close()`. Ending a workout started an endless retry loop, with three competing backoff schedules. |
+| **Crash recovery** | `getIncompleteWorkout()` was `ORDER BY timestamp DESC LIMIT 1` with no completion filter, so the app offered to resume the ride you had just finished, on every launch. |
+| **Cloud sync** | Postgrest was passed `Map<String, Any?>`; kotlinx.serialization has no serializer for `Any`, so every call threw. `WorkoutSyncWorker` discarded the result and reported success for failed uploads. |
+| **Dashboard** | "Today's Output 12.5 kJ", "Recent Ride 8.3 kJ" and an "FTP Stable" badge were hardcoded literals, shown as the rider's own statistics on a device with no rides. |
+| **Post-ride summary** | Called with hardcoded zeros. RPE buttons were `onClick = { /* TODO */ }`. |
+| **FTP estimation** | The 20-minute peak search clamped its window to the array end, averaging progressively shorter slices near the tail — a 60-second sprint finish inflated the estimate. Also O(n²). |
+| **Ride UI** | The rider-facing screen was a developer diagnostic panel: "✓ Service Started", "✗ Serial Port NOT Ready", a raw byte dump, and a timer permanently reading `00:00`. |
+| **Navigation** | Ride screens rendered *before* the `NavHost` behind a boolean and `return`ed. Nothing was on the back stack, so system back exited the app mid-ride. |
+| **State** | FTP, weight and theme lived in `remember {}` in the nav graph — lost on rotation, never written to the database. |
+| **Tests** | `PostWorkoutAnalyzerTest.kt` was empty. `WorkoutDaoTest` referenced fields that never existed on the entity and had never compiled. Both were ticked complete in PLAN.md. |
+| **RPE input** | Ten 48dp buttons in a `Row` need ~520dp; the higher ratings were off-screen and untappable on every phone. |
+
+## Structural changes
+
+- **Domain layer** (`domain/model/`) — `PowerZone`, `RideIntent`, `Interval`, all pure Kotlin and unit-testable.
+- **Repository layer** over the DAOs, plus DataStore-backed `SettingsRepository`.
+- **ViewModels** with `StateFlow`; no database access from composables.
+- **Sensor layer** rebuilt around a cold-flow `SensorSource`, with retry policy owned in one place.
+- **`SimulatedSensorSource`** and a Settings toggle, so the whole ride flow is testable without a Peloton.
+- **Manual DI** via `ServiceLocator`, replacing scattered `getInstance(context)` singletons.
+- **Build**: `gradle/libs.versions.toml`; Supabase credentials moved from source to `local.properties` → `BuildConfig`; R8 enabled for release with keep rules.
+- **Design system** deduplicated — two conflicting elevation scales, a shape scale shadowing itself with literal-named tokens, and dynamic colour unconditionally overriding the entire brand palette on API 31+.
+
+## Verification
+
+- `./gradlew assembleDebug` — SUCCESSFUL
+- `./gradlew testDebugUnitTest` — **83 tests, 0 failures**
+- Verified end-to-end on an API 36 emulator: profile creation → persistence across restart → class library with filters → 35 intervals rendering → simulated ride → post-ride summary with real figures → **80 metric rows persisted to SQLite** → RPE recorded → light/dark themes.
+
+## Known gaps (see PLAN.md phase 9)
+
+- Class intervals parse and display but do not drive a ride.
+- The HUD overlay is built but never shown.
+- `WorkoutSyncWorker` is correct but nothing calls `enqueue()`.
+- Nothing has run against real Peloton hardware; `PowerModel`'s coefficients are unvalidated.
