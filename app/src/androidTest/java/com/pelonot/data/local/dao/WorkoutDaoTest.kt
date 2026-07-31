@@ -33,8 +33,16 @@ class WorkoutDaoTest {
     private lateinit var metricDao: WorkoutMetricDao
     private lateinit var userDao: UserDao
 
+    /**
+     * Note the explicit `Unit`: `= runBlocking { … }` infers its type from the
+     * last expression, and `insertUser` returns the new row id. JUnit rejects a
+     * `@Before` that does not return void, so this whole class failed to
+     * initialise and **every test in it silently never ran** — while PLAN item
+     * 8.8 was ticked. Same failure mode as the previous version of this file,
+     * which did not compile at all.
+     */
     @Before
-    fun setup() = runBlocking {
+    fun setup(): Unit = runBlocking {
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
             AppDatabase::class.java

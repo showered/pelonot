@@ -12,7 +12,9 @@ Bytes arrive from the bike's sensor board over a serial character device. They
 are decoded into cadence ticks and resistance readings, turned into a power
 estimate, merged with heart rate from a Bluetooth strap, and published as a
 single `StateFlow<SensorReading>`. A foreground service samples that flow once a
-second, writes each sample to SQLite, and keeps running totals. When the ride
+second, writes each sample to SQLite, keeps running totals, advances the class
+through its intervals, decides whether to say anything about it, and drives a
+floating HUD docked to the edge of whatever the rider is watching. When the ride
 ends the totals are finalised on the workout row, analysed for an FTP
 breakthrough, and optionally uploaded. Everything works with no network; the
 cloud is a mirror, never a dependency.
@@ -131,10 +133,16 @@ flowchart TD
     B --> C[WorkoutMetricsCalculator]
     B --> D["Buffer (15 samples)"]
     D --> E[(workout_metrics)]
-    C --> F["StateFlow&lt;WorkoutSession&gt;"]
+    B --> J[ClassIntervalEngine]
+    J --> K[RideCoachPolicy]
+    K --> L[RideCoach: voice + haptics]
+    C --> F["StateFlow&lt;RideSnapshot&gt;"]
+    J --> F
     F --> G[RideViewModel]
     G --> H[RideScreen]
+    F --> M[HudOverlayManager]
     F --> I[Notification]
+    A --> M
 ```
 
 `WorkoutService` is a bound foreground service. On ride start it:
@@ -156,6 +164,9 @@ Each whole second the ticker:
   samples (one transaction per second for an hour is a lot of writes on
   tablet-grade flash)
 - updates the session's running means
+- evaluates `ClassIntervalEngine` and publishes a new `RideSnapshot`
+- asks `RideCoachPolicy` whether any of that is worth saying out loud
+- finishes the ride if the class timer has run out
 
 **Elapsed time is measured, not counted** — `SystemClock.elapsedRealtime()`
 minus accumulated pause time. A `delay(1000)` loop drifts, because `delay` is a
@@ -171,7 +182,54 @@ lower bound and the loop body's own cost accumulates.
 | Power zone | `PowerZone.forPower(watts, ftp)` |
 
 Sample gaps are clamped at 5 s, so a backgrounded app cannot integrate idle time
-as though the rider pedalled through it.
+as though the rider pedalled through it. `WorkoutAggregates` recomputes the same
+figures from a stored series when a crashed ride has to be rebuilt, and matches
+this clamp deliberately — a recovered ride has to be comparable with one that
+finished normally, not a differently shaped number with the same name.
+
+### 2a. The class clock
+
+`ClassIntervalEngine` is a **pure function of elapsed time**, not a timer.
+
+```kotlin
+engine.stateAt(elapsedSec): IntervalState
+```
+
+That is the whole design. The ride already has one authoritative clock —
+`elapsedRealtime()` minus paused time — and a second timer running alongside it
+would drift away over a 45-minute class until the two disagreed about which
+interval was running. Evaluating the engine on the existing ticker means pausing
+the ride pauses the class for free, and there is no state to keep in sync.
+
+`IntervalState` carries the current interval, the next one (**null on the final
+interval**, so nothing can promise an effort the class will not deliver), the
+index, elapsed and remaining time, and a `RideCue`. The cue lands on the last
+*hard* interval rather than the last one: most classes end on a cooldown, and
+telling a rider to empty the tank during a Zone 1 spin-down is worse than saying
+nothing.
+
+### 2b. The coach
+
+Two halves, split on purpose:
+
+| Piece | Responsibility | Testable? |
+|-------|---------------|-----------|
+| `RideCoachPolicy` | *Whether* to say something | Pure, JVM-tested |
+| `RideCoach` | Speaking and buzzing | Android; does no thinking |
+
+All the restraint lives in the policy: drift from target has to persist 12 s
+before it is mentioned and 45 s before it is mentioned again, a rider who has
+stopped pedalling is never told to pedal harder, and the five-second countdown
+buzzes on every tick but speaks only once. A rider watching a film will tolerate
+a handful of cues per class and nothing else.
+
+`CoachStyle` — Spoken, Silent or Off — decides how much of that reaches them.
+Silent is the default, because a bike in a shared room should not talk unasked;
+in that mode the HUD's motion *is* the announcement. The countdown itself is
+never optional in any mode.
+
+Speech uses `USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` audio attributes, so the
+system ducks the rider's video under it instead of the cue being drowned by it.
 
 ---
 
@@ -281,18 +339,78 @@ it is inside the noise of the power model.
 
 ---
 
-## 5. What is not wired yet
+## 5. The HUD
 
-Three flows exist as components but nothing connects them. See PLAN.md phase 9.
+This is the surface the app is really for. A rider starts a class, switches to
+Netflix, and looks at Pelonot in glances for the next forty minutes.
 
-| Gap | State |
-|-----|-------|
-| **Class intervals do not drive a ride** | They parse and render, but no engine advances through them during a workout |
-| **The HUD overlay never appears** | Built and permission-gated; nothing calls `show()` |
-| **Cloud sync is never triggered** | `WorkoutSyncWorker` is correct; nothing calls `enqueue()` |
+So the overlay is **not a floating card**. It is a full-width strip docked to
+one screen edge — top by default, because subtitles live along the bottom —
+leaving the middle of the screen, where faces are, completely clear. Dragging
+its handle snaps it to the other edge rather than parking it over the film.
+Tapping collapses it to a slim strip that still carries the clock, the three
+live numbers and the countdown.
 
-And nothing has been verified against a real bike — the serial path, the
-protocol assumptions and the power curve are all unproven on hardware.
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ ▓▓▓▓▓░░░▓▓░░▓▓▓▓░░░  class timeline, zone-coloured, with playhead   │
+│ 12:34   ⬡ Z2  01:05   214 W   92 RPM   135 BPM   [next up]  ⏸ ⏹   │
+├────────────────────────────────────────────────────────────────────┤
+│                    ← the rider's film, untouched                    │
+```
+
+`WorkoutService` owns the overlay, not the ride screen's ViewModel. A ride
+outlives the screen — that is the entire point of it being a foreground service
+— and hanging the HUD off the screen would tear it down at exactly the moment
+it becomes useful. The screen tells the service whether it is on top, and the
+overlay stands down while it is, so the rider never sees two of everything.
+
+Two flows feed it, deliberately separately:
+
+| Flow | Rate | Why |
+|------|------|-----|
+| `StateFlow<RideSnapshot>` | ~1 Hz | Clock, interval, targets, totals |
+| `StateFlow<SensorReading>` | sensor rate | The live numbers |
+
+Folding telemetry into the snapshot would recompose the whole strip several
+times a second for values that have not moved.
+
+### Reading it without reading it
+
+Everything on the strip assumes half a second of attention from two metres away.
+
+- **Intensity is encoded three times.** Colour, the zone digit, and the *shape*
+  of the badge — a circle at Zone 1, a twelve-point star at Zone 7, morphing
+  between them on a change. Shape is the channel that survives peripheral
+  vision, and `androidx.graphics.shapes` is the same machinery Material 3
+  Expressive uses for it.
+- **Targets are gauges, not numbers.** A rider at 240 W being asked for 250–280 W
+  should not have to compare two figures while breathing hard. The band is drawn,
+  the marker is where they are, and the window is wider than the band so *how
+  far* out is visible instead of the marker pinning to an end stop.
+- **Off target is amber**, never red — power's own accent is coral, and a coral
+  number turning red is not a signal anyone can read at a glance. The direction
+  is spelled out beside the label too, so colour is never the only channel.
+- **The countdown is not optional.** Five seconds out, the edge hairline
+  thickens and pulses in the next zone's colour, the preview card scales up into
+  a countdown, and the strip washes with that colour. With the coach set to
+  Silent, that motion is the entire announcement.
+
+The full-width strip is washed with colour rather than bounced, incidentally,
+because scaling something docked to a screen edge peels it away from that edge
+and reads as a rendering fault.
+
+---
+
+## 6. What is not wired yet
+
+Nothing has been verified against a real bike. The serial path, the protocol
+assumptions and the power curve are all unproven on hardware, and `PowerModel`'s
+coefficients are unvalidated — absolute watts are self-consistent between the
+rider's own rides and meaningless against anyone else's.
+
+Beyond that, see PLAN.md phase 11. The largest known gap is **resistance**: the
+knob is the rider's only actuator, and the redesigned HUD does not show it.
 
 ---
 
@@ -300,8 +418,8 @@ protocol assumptions and the power curve are all unproven on hardware.
 
 ```bash
 ./gradlew assembleDebug            # Build
-./gradlew testDebugUnitTest        # 83 JVM tests
-./gradlew connectedDebugAndroidTest # DAO tests (needs a device)
+./gradlew testDebugUnitTest        # 150 JVM tests
+./gradlew connectedDebugAndroidTest # DAO + service tests (needs a device)
 ./gradlew installDebug             # Install
 ```
 
@@ -314,6 +432,7 @@ Dependency versions are centralised in `gradle/libs.versions.toml`.
 | `SYSTEM_ALERT_WINDOW` | Floating HUD over other apps |
 | `FOREGROUND_SERVICE`, `..._DATA_SYNC` | Workout service |
 | `POST_NOTIFICATIONS` | Ride notification (API 33+) |
+| `VIBRATE` | Haptic interval alerts |
 | `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT` | Heart rate strap (API 31+) |
 | `BLUETOOTH`, `BLUETOOTH_ADMIN`, `ACCESS_FINE_LOCATION` | Heart rate strap (API 24–30) |
 | `INTERNET`, `ACCESS_NETWORK_STATE` | Optional cloud sync |

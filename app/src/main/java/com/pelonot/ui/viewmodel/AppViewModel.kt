@@ -131,7 +131,10 @@ class AppViewModel(
         val workoutId = _recoverableWorkout.value?.id ?: return
         viewModelScope.launch {
             val recovered = workoutRepository.recoverWorkout(workoutId)
-            _recoverableWorkout.value = null
+            // Re-query rather than clearing: a device that has crashed twice has
+            // two orphaned rides, and answering for one should not silently
+            // abandon the other.
+            _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
             if (recovered != null) onRecovered(recovered.id)
         }
     }

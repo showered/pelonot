@@ -8,7 +8,7 @@
 
 1. **Each checkbox is one focused task** — small enough for a single session, large enough to matter.
 2. **A box is only ticked when the behaviour has been observed working**, not when the code was written. Several items in this plan were previously ticked while the feature was non-functional (see *Corrections* below); that is the failure mode this rule exists to prevent.
-3. **Work phases in order** where later ones build on earlier ones. Phase 9 is the current priority.
+3. **Work phases in order** where later ones build on earlier ones. Phase 11 is the current priority.
 4. When switching models or sessions, paste the current plan state so the next session knows where to pick up.
 
 ---
@@ -21,13 +21,14 @@
 | 1 | Local database (Room) + Supabase | ✅ Complete |
 | 2 | Telemetry engine (serial, BLE, simulated) | ✅ Code complete — ⚠️ unverified on real hardware |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
-| 4 | Floating HUD overlay | ⚠️ Built, but never activated during a ride |
+| 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | ✅ Complete |
-| 8 | Polish, testing, edge cases | 🔶 In progress |
-| 9 | **Ride integration — the current priority** | ❌ Not started |
+| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
+| 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | ❌ Blocked on bike access |
+| 11 | **HUD-first experience — the current priority** | 🔶 In progress |
 
 ---
 
@@ -48,6 +49,9 @@ were the *reason* a downstream feature looked broken.
 | 8.7 Unit tests | ✅ | `PostWorkoutAnalyzerTest.kt` was committed empty. |
 | 8.8 Instrumented tests | ✅ | `WorkoutDaoTest` referenced `localUserId` / `classTemplateId`, fields that never existed on the entity. It had never compiled. |
 | 8.11.17 Dashboard redesign | ✅ | Shipped with `"12.5"` and `"8.3"` kJ hardcoded, and a constant "FTP Stable" badge, shown as the rider's own statistics. |
+| 8.5 Haptic feedback | ✅ | The app never declared `android.permission.VIBRATE`. Every call threw `SecurityException` into a `runCatching`, so the buzz simply never happened. Found by reading logcat during a real ride — it is invisible from the UI. |
+| 8.8 Instrumented DAO tests | ✅ | Rewritten so they compiled, and ticked — but `@Before fun setup() = runBlocking { … }` infers its return type from the last expression, and `insertUser` returns a row id. JUnit rejects a `@Before` that is not void, so the class failed to initialise and **all ten tests silently never ran**. They pass now. |
+| 8.3a Crash recovery prompt | (untickable) | The service exposed `recoverableWorkout`, but nothing binds to the service on a cold start — which is exactly the situation a crash leaves behind — so the prompt could never have appeared wherever it was rendered. |
 
 All of the above are now fixed and covered by tests.
 
@@ -148,7 +152,9 @@ All of the above are now fixed and covered by tests.
 - [x] **4.4** Drag-to-move, scoped to the handle so it cannot swallow button presses
 - [x] **4.6** Composition disposed on hide (each ride used to leak one)
 - [x] **4.7** Fixed the `view.context as Activity` cast that threw `ClassCastException` from the overlay's Service context — the HUD crashed every time it was shown
-- [ ] **4.5** **Actually show the overlay when a ride starts** — nothing calls `show()` yet. See 9.2.
+- [x] **4.5** The overlay is raised when a ride starts and dropped when it ends
+- [x] **4.8** Docked full-width to one screen edge rather than floating: the rider is watching something else, and the middle of the screen has to stay clear
+- [x] **4.9** `WorkoutService` owns the overlay, not the ride screen's ViewModel — a ride outlives the screen, which is the entire point of the HUD
 
 ---
 
@@ -157,7 +163,7 @@ All of the above are now fixed and covered by tests.
 - [x] **5.1** HUD theme
 - [x] **5.2** `MetricCard` with animated transitions
 - [x] **5.3** Target zone indicator with out-of-range alerting
-- [x] **5.4** Collapsible leaderboard panel
+- [x] **5.4** ~~Collapsible leaderboard panel~~ — **removed in the HUD redesign.** It was built for a 300dp floating card and has no home on a full-width edge strip whose whole purpose is to stay out of the way. `WorkoutRepository.leaderboardFor` still exists and is still correct; nothing renders it. Tracked as 11.6 rather than left as a silently-broken tick.
 - [x] **5.5** HUD controls — a single pause/resume toggle rather than two buttons, one always a no-op
 - [x] **5.6** Assembled HUD content, using theme colours rather than hardcoded constants
 - [x] **5.7** `PowerZone` with contiguous zone bands
@@ -198,16 +204,17 @@ All of the above are now fixed and covered by tests.
 - [x] **8.1** Serial disconnection handled with a single backoff policy
 - [x] **8.2** BLE disconnection handled without self-triggered reconnect loops
 - [x] **8.3** Crash recovery via `is_complete`, surfaced through `WorkoutService.recoverableWorkout`
-- [ ] **8.3a** **Show the recovery prompt in the UI** — the service exposes it, nothing renders it yet
-- [ ] **8.4** Guest post-ride: save to a new profile, an existing profile, or discard (currently keep-or-discard only)
-- [x] **8.5** Haptic feedback for zone alerts (`ZoneAlertManager`)
-- [x] **8.6** TTS audio cues
-- [ ] **8.6a** Wire `ZoneAlertManager` into the ride — it exists but nothing calls it
-- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser` — **83 tests**
+- [x] **8.3a** Recovery prompt shown at launch, driven from `AppViewModel` rather than the service. It offers to **keep** the ride, not resume it: the rider stopped pedalling when the app went away, and restarting the clock would splice a gap of unknown length into the record. `WorkoutAggregates` rebuilds the totals from the samples that did land.
+- [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
+- [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
+- [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
+- [x] **8.6a** `RideCoach` wired into the ride, driven by the pure `RideCoachPolicy`. Replaces `ZoneAlertManager`, which had no caller and no decision logic to call it with.
+- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates` — **150 tests**
 - [x] **8.8** Instrumented tests for Room DAOs (foreign key ordering, `is_complete` filtering, cascade delete)
-- [ ] **8.8a** Instrumented test for `WorkoutService` lifecycle
+- [x] **8.8a** Instrumented test for `WorkoutService` lifecycle — start/pause/resume/stop, the workout row existing before its first metric, the batched tail being flushed, and a finished ride no longer being offered for recovery
 - [ ] **8.9** Manual testing on Gen 1/Gen 2 Peloton hardware — *blocked*
 - [x] **8.12** Verified end-to-end on an emulator: profile creation → class library → intervals → simulated ride → post-ride summary → persisted metrics
+- [x] **8.13** Verified on a 1920×1080 landscape tablet emulator, which is the shape of the device this actually runs on
 
 ### 8.11 Material Expressive design
 
@@ -224,6 +231,9 @@ All of the above are now fixed and covered by tests.
 - [x] **8.11.48/50** Post-ride summary cards and RPE selector (now a `FlowRow` — ten 48dp buttons in a `Row` overflowed every phone screen, making the higher ratings untappable)
 - [x] **8.11.52** FTP breakthrough dialog
 - [x] **8.11.65–8.11.67** Content descriptions, 48dp touch targets, semantic headings
+- [x] **8.11.81** Shape as a semantic channel: the zone badge is a circle at Zone 1 and a twelve-point star at Zone 7, morphing between them on a change. Built on `androidx.graphics.shapes`, which is the mechanism behind Material 3 Expressive's shape language and works without moving to the material3 alpha.
+- [x] **8.11.82** Off-target is amber, never red — power's own accent is coral, and a coral number turning red is not a signal anyone can read at a glance. The direction is also spelled out beside the label, so colour is never the only channel.
+- [x] **8.11.83** Springy, physical motion: interval changes wash the HUD with the new zone's colour, cards overshoot and settle, the countdown re-bounces on every tick
 - [ ] **8.11.12** Shared element transitions between profile selector and dashboard
 - [ ] **8.11.14** Container transform for library → detail
 - [ ] **8.11.15** Predictive back for Android 14+
@@ -240,7 +250,10 @@ All of the above are now fixed and covered by tests.
 - [ ] **8.11.68–8.11.69** High contrast mode, font scaling
 - [ ] **8.11.70–8.11.80** Micro-interactions, shimmer, pull-to-refresh, scroll edge effects
 
-> Items 8.11.53+ are cosmetic. Phase 9 is worth more than all of them: the app cannot yet run a class.
+> The unticked items above are cosmetic and none of them are on the HUD. Phase
+> 11 is worth more than all of them: the app runs a class now, and the question
+> is whether the surface the rider actually spends forty minutes glancing at is
+> good enough. Charts and shimmer are for the two minutes either side of that.
 
 ---
 
@@ -253,24 +266,25 @@ All of the above are now fixed and covered by tests.
 - [x] **9.1.2** `RideViewModel` binds to the service and observes `workoutState` and `currentSession`
 - [x] **9.1.3** End Ride stops the service and passes the real workout id to the summary
 
-### 9.2 HUD overlay activation
-- [ ] **9.2.1** Call `HudOverlayManager.show()` when a ride starts and `hide()` when it ends
-- [ ] **9.2.2** Feed the service's elapsed-time and sensor flows into the overlay
-- [ ] **9.2.3** Wire the overlay's pause/resume/stop to the service controls
-- [ ] **9.2.4** Prompt for overlay permission at ride start when it is missing, rather than silently not appearing
+### 9.2 HUD overlay activation ✅
+- [x] **9.2.1** `HudOverlayManager.show()` when a ride starts, `hide()` when it ends
+- [x] **9.2.2** The service publishes one `RideSnapshot` the overlay renders from; telemetry stays on its own higher-rate flow so a sensor packet does not recompose the whole strip
+- [x] **9.2.3** The overlay's pause/resume/stop drive the service directly
+- [x] **9.2.4** Overlay permission asked for at ride start, with "not now" and "don't use the HUD" both honoured
+- [x] **9.2.5** The overlay stands down while the app's own ride screen is on top, so the rider never sees two of everything
 
-### 9.3 Class interval engine
-- [ ] **9.3.1** `ClassIntervalEngine` driving a timer over `List<Interval>` (parsing now works, so this is unblocked)
-- [ ] **9.3.2** Emit `StateFlow<IntervalState>`: current interval, targets, elapsed and remaining time
-- [ ] **9.3.3** Drive the HUD's target zone indicators from it
-- [ ] **9.3.4** Auto-complete the workout when the class timer ends
+### 9.3 Class interval engine ✅
+- [x] **9.3.1** `ClassIntervalEngine` over `List<Interval>` — a pure function of elapsed time, evaluated on the service's existing ticker rather than running a second clock that would drift away from it
+- [x] **9.3.2** `IntervalState`: current and next interval, index, elapsed and remaining, class progress, cue
+- [x] **9.3.3** Drives the target gauges on both the HUD and the ride screen
+- [x] **9.3.4** The ride finishes itself when the class timer runs out
 
-### 9.3a Interval preview & countdown
-- [ ] **9.3a.1** `nextInterval` in `IntervalState` for an upcoming-effort preview
-- [ ] **9.3a.2** Prominent countdown during recovery intervals
-- [ ] **9.3a.3** Preview card showing the next interval's zone colour and targets
-- [ ] **9.3a.4** Five-second warning: flash plus haptic before an interval change
-- [ ] **9.3a.5** "Give it everything" on the last *hard* interval, not merely the last one. If the final interval is recovery (Z1–Z2), show it on the penultimate one and "Cool down — ride easy" on the last. If the final interval is itself Z4+, show it directly. Never show a next-interval preview on the final interval.
+### 9.3a Interval preview & countdown ✅
+- [x] **9.3a.1** `next` on `IntervalState`, null on the final interval by design
+- [x] **9.3a.2** The interval clock is a draining progress ring around the zone badge, prominent on every interval rather than only recovery ones
+- [x] **9.3a.3** Preview card with the next interval's zone colour, shape, cadence target and length
+- [x] **9.3a.4** Five-second warning: the edge hairline thickens and pulses in the next zone's colour, the preview card scales up into a countdown, the strip washes with the new zone's colour, and a haptic fires on each tick
+- [x] **9.3a.5** "Give it everything" on the last *hard* interval, "Cool down — ride easy" on a recovery finish, no next-interval preview on the final interval
 
 ### 9.4 Sensor data off-hardware ✅
 - [x] **9.4.1** `SimulatedSensorProvider`
@@ -281,7 +295,42 @@ All of the above are now fixed and covered by tests.
 - [x] **9.5.1** Final session collected from the service
 - [x] **9.5.2** Real duration, average power, output and distance shown in the summary
 - [x] **9.5.3** `PostWorkoutAnalyzer` run for FTP breakthrough detection
-- [ ] **9.5.4** Enqueue `WorkoutSyncWorker` after a ride is saved — the worker is correct but nothing calls `enqueue()`
+- [x] **9.5.4** `WorkoutSyncWorker` enqueued when a ride with a profile is saved, and when a guest ride is later filed against one
+
+---
+
+## Phase 11: The HUD-first experience — the current priority
+
+**Premise:** this app is used almost entirely from the corner of the rider's
+eye. They start a class, switch to Netflix, and look at Pelonot in glances for
+the next forty minutes. The HUD is not an accessory to the ride screen; it *is*
+the product, and everything in this phase is judged by whether it survives
+being read in half a second from two metres away while out of breath.
+
+### 11.1 Verify the HUD's own interactions on a device
+- [x] **11.1.1** Docked strip renders over another app without covering the middle of the screen
+- [x] **11.1.2** Sits below the status bar rather than under the clock
+- [ ] **11.1.3** Tap-to-collapse and the slim strip it collapses to
+- [ ] **11.1.4** Drag to re-dock between top and bottom, and that the choice persists
+- [ ] **11.1.5** Pause, resume and stop from the HUD with the app in the background
+- [ ] **11.1.6** Spoken coach mode actually audible over a playing video (needs a device with a TTS voice installed)
+
+### 11.2 What the strip is still missing
+- [ ] **11.2.1** Resistance. The rider's only *actuator* is the knob — power is an output, not something you set — and the redesigned strip dropped it. Show current resistance, and a prescribed range derived from the interval's power target at its cadence target.
+- [ ] **11.2.2** Time in zone: a thin stacked bar of how the ride has been spent, for the collapsed strip where the timeline does not fit
+- [ ] **11.2.3** A "you are ahead of / behind your usual" line against `leaderboardFor`, which is the one comparison a rider actually acts on mid-ride
+- [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top
+
+### 11.3 Beyond the strip
+- [ ] **11.3.1** Landscape layouts for the profile selector and dashboard — both are phone-shaped columns with two thirds of a 1920×1080 screen empty
+- [ ] **11.3.2** Post-ride charts: power with zone bands, heart rate, cadence distribution (8.11.53–8.11.57)
+- [ ] **11.3.3** Time-in-zone summary on the post-ride screen
+- [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
+- [ ] **11.3.5** Screen-on lock during a ride, so the tablet does not sleep mid-class
+
+### 11.4 Re-home the leaderboard
+- [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it
+- [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
 
 ---
 
