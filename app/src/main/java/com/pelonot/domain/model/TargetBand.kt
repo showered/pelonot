@@ -1,5 +1,7 @@
 package com.pelonot.domain.model
 
+import kotlin.math.roundToInt
+
 /**
  * A prescribed range — cadence or power — and everything the UI needs to draw
  * "am I on target?" as a gauge rather than a number the rider has to compare
@@ -41,6 +43,27 @@ data class TargetBand(val min: Double, val max: Double) {
     /** Where the target band itself starts and ends along the gauge. */
     val bandStartFraction: Float get() = fractionOf(min)
     val bandEndFraction: Float get() = fractionOf(max)
+
+    /**
+     * The band as a rider would read it — "85–95" — or null when nothing is
+     * prescribed (11.6.4).
+     *
+     * Null rather than "0–0" on purpose. [NONE] is returned for a free ride and
+     * also, deliberately, when a power target is out of the knob's reach
+     * (see `RideSnapshot.resistanceTarget`); rendering that as a range would
+     * invent an instruction the app has just decided it cannot give.
+     *
+     * Rounded to whole units because that is the resolution the rider can act
+     * on — nobody holds 84.6 rpm — and collapsed to a single number when the
+     * two ends round together, since "52–52" reads as a broken range.
+     */
+    val label: String?
+        get() {
+            if (!isDefined) return null
+            val low = min.roundToInt()
+            val high = max.roundToInt()
+            return if (low == high) "$low" else "$low–$high"
+        }
 
     private val margin: Double
         get() = (width * MARGIN_RATIO).coerceAtLeast(MIN_MARGIN)

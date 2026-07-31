@@ -24,6 +24,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +46,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -209,11 +218,37 @@ fun TargetGauge(
 // ==========================================================================
 
 /**
+ * One glyph per quantity, shared by the ride screen and the strip (11.6.3).
+ *
+ * Defined in one place because the two surfaces are meant to be the same
+ * display at two sizes — a rider who learns the lightning bolt on the strip
+ * must not meet a different bolt in the app.
+ */
+object MetricIcons {
+    /** Revolutions, which is what a cadence is. */
+    val Cadence: ImageVector = Icons.Filled.Autorenew
+
+    /** The knob. Resistance is the one metric the rider sets by hand. */
+    val Resistance: ImageVector = Icons.Filled.Tune
+    val Power: ImageVector = Icons.Filled.Bolt
+    val HeartRate: ImageVector = Icons.Filled.Favorite
+
+    /** Total work done, rather than the rate of it. */
+    val Output: ImageVector = Icons.Filled.LocalFireDepartment
+    val Distance: ImageVector = Icons.Filled.Straighten
+}
+
+/**
  * One live number with its target gauge beneath it.
  *
  * The value is the largest thing in the tile and the label the smallest,
  * because at a glance the rider already knows which tile is which — they know
  * where power lives — and only needs the digits.
+ *
+ * [showTargetRange] spells the band out in numbers under the gauge (11.6.4).
+ * Off by default and opted into only by the ride screen: the strip has a
+ * quarter of the width for the same tile, and shrinking one design until it
+ * fits both surfaces is how the gauge ended up saying nothing on either.
  */
 @Composable
 fun MetricReadout(
@@ -225,7 +260,9 @@ fun MetricReadout(
     band: TargetBand = TargetBand.NONE,
     rawValue: Double = 0.0,
     valueSize: androidx.compose.ui.unit.TextUnit = 56.sp,
-    compact: Boolean = false
+    compact: Boolean = false,
+    showTargetRange: Boolean = false,
+    icon: ImageVector? = null
 ) {
     val status = band.statusFor(rawValue)
     val valueColor by animateColorAsState(
@@ -237,9 +274,18 @@ fun MetricReadout(
         label = "MetricValueColor"
     )
 
+    val targetRange = band.label
+
     Column(
         modifier = modifier.clearAndSetSemantics {
-            contentDescription = "$label $value $unit${status.spokenSuffix}"
+            contentDescription = buildString {
+                append("$label $value $unit")
+                // The band is spoken whenever there is one, on both surfaces:
+                // the reason for hiding it on the strip is width, and a screen
+                // reader has none.
+                if (targetRange != null) append(", target $targetRange $unit")
+                append(status.spokenSuffix)
+            }
         },
         horizontalAlignment = Alignment.Start
     ) {
@@ -271,6 +317,23 @@ fun MetricReadout(
             Spacer(Modifier.height(6.dp))
             TargetGauge(band = band, value = rawValue, accent = accent)
             Spacer(Modifier.height(4.dp))
+
+            // 11.6.4. The gauge shows a rider they are under the band without
+            // ever telling them the band is 85–95. The unit is repeated here
+            // rather than borrowed from the value above it: "85–95" beside a
+            // resistance tile is ambiguous on its own, and this line is read
+            // separately from the number it sits under.
+            if (showTargetRange && targetRange != null) {
+                Text(
+                    text = "TARGET ${targetWithUnit(targetRange, unit)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Spacer(Modifier.height(4.dp))
+            }
         }
 
         // Colour alone is never the whole signal, so the direction is marked
@@ -278,6 +341,22 @@ fun MetricReadout(
         // ▼ LOW" does not fit a quarter of the HUD strip and wrapping it makes
         // the whole strip taller. The screen reader still gets the sentence.
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // 11.6.3. The label is the smallest text on the tile and the only
+            // thing saying which number this is, read from a metre away
+            // mid-effort — a glyph is recognised faster than a word. It sits
+            // *beside* the word rather than replacing it, because nobody
+            // recognises a bare icon for "resistance" unaided.
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    // The whole tile already carries one description; a labelled
+                    // icon inside it would be announced twice.
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(LabelIconSize)
+                )
+                Spacer(Modifier.width(4.dp))
+            }
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
@@ -300,6 +379,17 @@ fun MetricReadout(
         }
     }
 }
+
+/**
+ * Sized against `labelSmall` beside it rather than by the tile: the same glyph
+ * appears on a 104 sp ride tile and on a quarter of the strip, and it is
+ * labelling the same small word in both.
+ */
+private val LabelIconSize = 14.dp
+
+/** "85–95 rpm", but "42–52%" — a percent sign does not take a space. */
+private fun targetWithUnit(range: String, unit: String): String =
+    if (unit == "%") "$range$unit" else "$range $unit"
 
 private val TargetStatus.spokenSuffix: String
     get() = when (this) {

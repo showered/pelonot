@@ -78,6 +78,28 @@ class TargetBandTest {
     }
 
     @Test
+    fun `the band reads as a range the rider can act on`() {
+        assertEquals("80–100", cadence.label)
+        // Whole units: nobody holds 84.6 rpm, and the resistance band arrives
+        // from PowerModel as fractions.
+        assertEquals("42–52", TargetBand(41.6, 51.9).label)
+    }
+
+    @Test
+    fun `a band with nothing prescribed has no label at all`() {
+        // Not "0–0". NONE is also what an unreachable resistance target
+        // returns, and printing a range there invents an instruction the app
+        // has just decided it cannot give.
+        assertEquals(null, TargetBand.NONE.label)
+        assertEquals(null, TargetBand(200.0, 200.0).label)
+    }
+
+    @Test
+    fun `a band whose ends round together reads as one number`() {
+        assertEquals("52", TargetBand(51.6, 52.4).label)
+    }
+
+    @Test
     fun `an interval's cadence band comes straight from the template`() {
         val interval = Interval(0, 60, cadenceMin = 85, cadenceMax = 95, powerZoneNumber = 3)
 

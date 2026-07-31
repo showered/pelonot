@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
@@ -76,6 +77,7 @@ import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
+import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.ProgressArc
@@ -648,6 +650,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         ) {
             RideMetricTile(
                 label = "CADENCE",
+                icon = MetricIcons.Cadence,
                 value = if (live) state.reading.cadenceRpm.toInt().toString() else NO_READING,
                 unit = "rpm",
                 accent = MetricCadenceCyan,
@@ -657,6 +660,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
             )
             RideMetricTile(
                 label = "RESISTANCE",
+                icon = MetricIcons.Resistance,
                 value = if (live) state.reading.resistancePercent.toInt().toString() else NO_READING,
                 unit = "%",
                 accent = MetricResistanceViolet,
@@ -675,6 +679,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         ) {
             RideMetricTile(
                 label = "POWER",
+                icon = MetricIcons.Power,
                 value = if (live) state.reading.powerWatts.toInt().toString() else NO_READING,
                 unit = "watts",
                 accent = MetricPowerCoral,
@@ -685,6 +690,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
             )
             RideMetricTile(
                 label = "HEART RATE",
+                icon = MetricIcons.HeartRate,
                 // Null means no strap, never a measured zero. The strap is its
                 // own radio, so it is not silenced by the bike going quiet.
                 value = state.reading.heartRateBpm?.toString() ?: NO_READING,
@@ -709,6 +715,7 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
     ) {
         SmallStat(
             label = "OUTPUT",
+            icon = MetricIcons.Output,
             value = String.format(java.util.Locale.US, "%.1f", snapshot.totalOutputKj),
             unit = "kJ",
             accent = MaterialTheme.colorScheme.primary,
@@ -716,6 +723,7 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
         )
         SmallStat(
             label = "DISTANCE",
+            icon = MetricIcons.Distance,
             value = Formatters.distanceValue(snapshot.distanceKm, MaterialTheme.units),
             unit = MaterialTheme.units.distanceLabel,
             accent = MaterialTheme.colorScheme.primary,
@@ -723,6 +731,7 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
         )
         SmallStat(
             label = "AVG POWER",
+            icon = MetricIcons.Power,
             value = (state.session?.avgPower ?: 0.0).toInt().toString(),
             unit = "W",
             accent = MaterialTheme.colorScheme.primary,
@@ -739,6 +748,7 @@ private fun RideMetricTile(
     accent: Color,
     band: TargetBand,
     rawValue: Double,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
     valueSize: androidx.compose.ui.unit.TextUnit = 104.sp
 ) {
@@ -764,6 +774,10 @@ private fun RideMetricTile(
                 rawValue = rawValue,
                 // Sized for a 21-inch screen read from a metre away, mid-effort.
                 valueSize = valueSize,
+                // 11.6.4. There is room for the numbers here, and this is the
+                // screen a rider reads rather than glances at.
+                showTargetRange = true,
+                icon = icon,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -776,6 +790,7 @@ private fun SmallStat(
     value: String,
     unit: String,
     accent: Color,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -790,11 +805,24 @@ private fun SmallStat(
                 .fillMaxWidth()
                 .padding(MaterialTheme.spacing.medium)
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // 11.6.3, same argument as the big tiles: the label is the only
+                // thing naming the number and it is the smallest text here.
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = value,

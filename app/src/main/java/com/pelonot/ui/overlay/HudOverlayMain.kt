@@ -76,6 +76,7 @@ import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
+import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.ProgressArc
@@ -819,6 +820,7 @@ private fun MetricsBlock(
     ) {
         MetricReadout(
             label = "CADENCE",
+            icon = MetricIcons.Cadence,
             value = if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
             unit = "RPM",
             accent = MetricCadenceCyan,
@@ -829,6 +831,7 @@ private fun MetricsBlock(
         )
         MetricReadout(
             label = "RESISTANCE",
+            icon = MetricIcons.Resistance,
             value = if (live) reading.resistancePercent.toInt().toString() else NO_READING,
             unit = "%",
             accent = MetricResistanceViolet,
@@ -839,6 +842,7 @@ private fun MetricsBlock(
         )
         MetricReadout(
             label = "POWER",
+            icon = MetricIcons.Power,
             value = if (live) reading.powerWatts.toInt().toString() else NO_READING,
             unit = "W",
             accent = MetricPowerCoral,
@@ -849,6 +853,7 @@ private fun MetricsBlock(
         )
         MetricReadout(
             label = "HEART RATE",
+            icon = MetricIcons.HeartRate,
             // Null means no strap, never a measured zero.
             value = reading.heartRateBpm?.toString() ?: "--",
             unit = "BPM",
