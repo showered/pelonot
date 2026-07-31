@@ -203,17 +203,19 @@ private fun OverlayPermissionDialog(
     AlertDialog(
         onDismissRequest = onNotNow,
         title = { Text("Show your ride over other apps?") },
+        // 11.6.5. Names the thing the same way the button and Settings do.
         text = {
             Text(
                 "Pelonot can dock your metrics, targets and interval countdown to " +
-                    "the edge of the screen while you watch something else. " +
-                    "Android needs your permission to draw over other apps first."
+                    "the edge of the screen — a strip along one edge while you " +
+                    "watch something else. Android needs your permission to draw " +
+                    "over other apps first."
             )
         },
         confirmButton = { TextButton(onClick = onGrant) { Text("Open settings") } },
         dismissButton = {
             Row {
-                TextButton(onClick = onNever) { Text("Don't use the HUD") }
+                TextButton(onClick = onNever) { Text("Don't show the strip") }
                 TextButton(onClick = onNotNow) { Text("Not now") }
             }
         }
@@ -890,7 +892,7 @@ private fun UpNextColumn(
                 Icon(imageVector = Icons.Default.PictureInPictureAlt, contentDescription = null)
                 Spacer(Modifier.width(MaterialTheme.spacing.small))
                 Text(
-                    text = stringResource(R.string.ride_back_to_hud),
+                    text = stringResource(R.string.ride_minimise_to_strip),
                     style = MaterialTheme.typography.titleMedium
                 )
             }

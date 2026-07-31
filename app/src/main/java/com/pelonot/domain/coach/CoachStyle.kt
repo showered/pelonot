@@ -24,7 +24,7 @@ enum class CoachStyle(
     /** Motion and haptics only — the HUD moves to catch the eye instead. */
     Silent(
         displayName = "Silent",
-        description = "No voice. The HUD bounces and buzzes to catch your eye instead"
+        description = "No voice. The strip bounces and buzzes to catch your eye instead"
     ),
 
     /** Nothing but the numbers. */
