@@ -37,6 +37,7 @@
 | 17 | Companion web application | ❌ Not started — *nice to have* |
 | 18 | Social features in the Android app | ❌ Not started — *nice to have* |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
+| 20 | Who's riding — profile selector & avatars | ❌ Not started — the selector is *fundamental* on a shared bike |
 
 ---
 
@@ -56,9 +57,18 @@ ordering below is the one to work in.
 | 15 Accounts | Sync without an identity puts every rider's data in one anonymous pool. This is also where the current RLS policies stop being a placeholder and start being a security problem. |
 | 12.7 Room migrations | `fallbackToDestructiveMigration()` deletes the rider's entire training history on any schema change. Phases 12–19 all change the schema. This has to go first. |
 
+Two more that belong in the fundamental list, added after riding the app on the
+tablet:
+
+| # | Why it is not optional |
+|---|------------------------|
+| 11.1a Getting between the HUD and the app | There is no door between the HUD and the full app in either direction, and the app does not come forward when the class ends. This is the journey a rider makes most often during a ride and it currently routes through the launcher. |
+| 20.1 The profile selector | It is the first screen anyone sees and the thing that makes a shared household bike work, and it is a cluster of small cards in the corner of a 1920×1080 screen. |
+
 **Nice to have — real value, none of it load-bearing:**
 
-16 (beyond the post-ride charts), 17, 18, and most of 19. A companion web app
+16 (beyond the post-ride charts), 17, 18, most of 19, and the avatar work in
+20.2. A companion web app
 and a friends feed are good ideas for an app people already use daily; they
 are not what makes people use it daily. The bike, the HUD and an honest record
 of the ride are.
@@ -370,6 +380,62 @@ being read in half a second from two metres away while out of breath.
 - [ ] **11.1.5** Pause, resume and stop from the HUD with the app in the background
 - [ ] **11.1.6** Spoken coach mode actually audible over a playing video (needs a device with a TTS voice installed)
 
+### 11.1a Getting between the HUD and the app
+
+Today the HUD and the ride screen are two places with no door between them. The
+rider raises the HUD when the ride starts, switches to Netflix, and there is no
+way back into the app except through the launcher — and no way back out to the
+HUD except by leaving the app again. That is a gap in the product, not a
+polish item: it is the single journey a rider makes most often during a class.
+
+- [ ] **11.1a.1** **Double-tap the HUD brings the full app forward.** Double
+      rather than single, because single tap already collapses and expands the
+      strip (11.1.3) and that is the gesture a rider fires by accident while
+      reaching past the tablet. A single tap that yanked Netflix off the screen
+      mid-scene would be the worst possible mis-fire on this surface
+- [ ] **11.1a.2** A **"back to the HUD" control on the ride screen**, so the
+      journey is symmetric and does not route through the launcher or the
+      recents switcher
+- [ ] **11.1a.3** **The full app comes forward when the ride ends.** The class
+      finishing is the one moment the rider definitely wants the whole screen —
+      the summary, the RPE question and any FTP proposal are all there and none
+      of them fit on a strip. Needs care on Android 10+, where background
+      activity starts are restricted; a foreground service with an active
+      notification is the sanctioned route and should be verified on the actual
+      tablet rather than assumed
+- [ ] **11.1a.4** **Discard the ride from the post-ride summary**, for the
+      session that was a warm-up, a mistake, or somebody else pedalling for
+      thirty seconds. Guests get this today (8.4) and riders with a profile do
+      not — they have to finish, leave, open history and delete. It has to name
+      what is going and be as hard to hit by accident as the delete in 12.3.2
+
+### 11.1b The HUD getting out of the way
+
+The premise of this whole phase is that the rider is watching something else.
+The strip currently sits on top of that film as a solid block, in a fixed size,
+pinned to the top or bottom edge. Every item here is about the HUD taking up
+less of the screen and less of the attention.
+
+- [ ] **11.1b.1** **Adjustable opacity**, from solid down to nearly invisible,
+      with the film readable through it. Set once in Settings rather than
+      fiddled with mid-ride
+- [ ] **11.1b.2** A floor on how transparent it can go, and a check that the
+      text still passes contrast against **moving** video rather than against
+      one paused frame. A HUD nobody can read at a glance has failed at the one
+      thing it is for (8.11.82 made the same argument about colour)
+- [ ] **11.1b.3** **Resizable**, so a rider who wants three big numbers and a
+      rider who wants the whole timeline can both have it. Persisted like the
+      dock
+- [ ] **11.1b.4** **Dock to the left and right edges too**, not only top and
+      bottom. A vertical strip down one side leaves subtitles *and* faces clear
+      and is probably the better default on a 16:9 tablet in landscape — which
+      is the shape of the device this actually runs on (8.13)
+- [ ] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
+      rotate: the timeline, the zone badge and the three live numbers each need
+      a tall arrangement. Extends 11.1.4, which only ever considered top/bottom
+- [ ] **11.1b.6** Every one of these choices persists, and the HUD comes back
+      where and how the rider left it
+
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
 - [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind 2.2.4 — until the curve is calibrated it is as likely to be a modelling artefact as a real contradiction.
@@ -378,7 +444,7 @@ being read in half a second from two metres away while out of breath.
 - [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top
 
 ### 11.3 Beyond the strip
-- [ ] **11.3.1** Landscape layouts for the profile selector and dashboard — both are phone-shaped columns with two thirds of a 1920×1080 screen empty
+- [ ] **11.3.1** **Landscape layout for the dashboard.** It is a phone-shaped column with two thirds of a 1920×1080 screen empty — the FTP card, the Just Ride button and the three action cards all stretch to full width and the whole right-hand side is black. Confirmed by screenshot on the tablet emulator, 31 July 2026. The profile selector has the same problem and is tracked separately in 20.1, because fixing it properly means redesigning it rather than re-flowing it
 - [ ] **11.3.2** Post-ride charts: power with zone bands, heart rate, cadence distribution (8.11.53–8.11.57)
 - [ ] **11.3.3** Time-in-zone summary on the post-ride screen
 - [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
@@ -683,6 +749,67 @@ has simply never been written down.
 - Calorie estimates (13.6) — a nutrition claim the power model cannot support
 - Anything that requires a network to start a ride
 - Anything on the HUD that is not about the next sixty seconds of pedalling
+
+---
+
+## Phase 20: Who's riding — the profile selector and avatars
+
+The first screen anyone sees, and the one that has had the least thought. It is
+also the screen that makes the shared-household story work: a bike in a living
+room has three or four riders and picking the right one has to take one glance
+and one tap, from two metres away, by someone who has already got their shoes
+on.
+
+The obvious reference is a TV streaming app's profile picker, and it is the
+right one — same device shape, same distance, same job.
+
+### 20.1 The profile selector
+
+- [ ] **20.1.1** **Centre the profiles and make them big.** Today they are
+      small cards in a grid pinned to the top-left of a 1920×1080 screen, with
+      the rest of it empty. Confirmed by screenshot on the tablet emulator, 31
+      July 2026
+- [ ] **20.1.2** Landscape-first, centred both ways, sized off the screen rather
+      than a fixed dp — this app runs on a tablet bolted to a bike, not a phone
+- [ ] **20.1.3** Guest keeps its distinct treatment (6.1) but stops competing
+      with the real riders for the eye. It is the exception, not a peer
+- [ ] **20.1.4** "Create a new profile" belongs alongside the riders as one more
+      tile, not as a full-width bar at the bottom of an otherwise empty screen
+- [ ] **20.1.5** Edit and delete a profile from here. Deleting one has to say
+      what happens to their rides — `workouts.user_id` is `ON DELETE SET NULL`,
+      so the rides survive as unattributed rather than being destroyed, and the
+      dialog should say so rather than letting the rider guess
+
+### 20.2 Avatars
+
+- [ ] **20.2.1** A checked-in set of avatars to choose from. Licence first:
+      whatever is used has to be genuinely open (SIL OFL, CC0 or MIT), credited
+      in the repo, and vendored rather than fetched at runtime — the app starts
+      a ride with no network and that is not negotiable (19.4). Generated
+      identicon-style avatars derived from the profile name are the other
+      candidate and have no licence question at all
+- [ ] **20.2.2** `profiles.avatar` in Room, behind a real migration (12.5).
+      Store a **reference** — a pack id or a relative file path — never image
+      bytes in the row: a database that carries photos is a database that
+      cannot be exported, synced or backed up cheaply
+- [ ] **20.2.3** Pick from the built-in set at profile creation, with a sensible
+      default so nobody is forced through a choice to start riding
+- [ ] **20.2.4** **Set an avatar from the camera or the gallery on Android.**
+      `PhotoPicker` on API 33+ and `ACTION_OPEN_DOCUMENT` below it, so the
+      common path needs no storage permission at all. Downscale and re-encode
+      on import — a 12 MP phone photo has no business being loaded to draw a
+      64dp circle — and write it into app-private storage
+- [ ] **20.2.5** Strip EXIF on import, and honour the orientation tag before
+      discarding it. A gallery photo carries GPS coordinates, and this one will
+      end up synced (15) and possibly visible to friends (17.5)
+- [ ] **20.2.6** Avatars appear wherever a rider is named: the selector, the
+      dashboard greeting, history, and any leaderboard. Not on the HUD (18.6)
+- [ ] **20.2.7** Avatar changes sync with the profile, once 14 and 15 work. A
+      custom image is a blob and needs Supabase Storage rather than a column;
+      decide deliberately whether it goes up at all before building it
+- [ ] **20.2.8** Change your avatar from the companion web app — **much later**,
+      and strictly after 17 exists. Listed here so it is not re-invented as a
+      separate feature when it is the same field
 
 ---
 
