@@ -37,6 +37,22 @@ Where they landed:
 | "Your Progress" on the dashboard is meaningless | **22.1** |
 | The dashboard stretches too wide on a 1280 dp screen | **22.2** |
 
+**The calibration question is closed.** "Do we calibrate or leave the curve
+hardcoded?" now has a written answer with its reasoning, at the head of
+**2.2a**: *yes, calibrate*. 2.2.4 and 2.2.5 are closed out as answered and
+superseded, 2.2a gains a test that fences the model to its two legitimate
+consumers (2.2a.8), and the alarming-sounding caveat that had been hung over
+phases 7 and 16–18 turned out to be misapplied — it is withdrawn in 7.10.6.
+The genuine risk it was masking is **7.10.7**: a simulated ride can currently
+propose a real FTP change off invented watts.
+
+Followed by one more, found while writing 21.2.3 and confirmed in the code:
+**FTP is the app's best measure of progress and it is not kept.** A ride does
+not record the FTP it was ridden at, so an auto-FTP change silently redraws
+every past ride's zone bands (**7.8**); and only the latest FTP is stored, so
+the change history that 16.3.1 and 22.1.4 both assume exists has never been
+recorded (**7.9**, shown by **7.10**). Also unactioned.
+
 Two of these contradict something already in the plan, and both contradictions
 are written into the items rather than papered over: **11.6.5** changes copy
 that 11.1a.2 ticked as done, and **22.2** sits next to **11.3.1**, which says
@@ -160,12 +176,12 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete — the app now both reads (72 class templates) and writes to the cloud; the written row has not been *seen* (14.1.6) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a); it has yet to see a hardware ride (2.2a.1) |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a), and **the question of whether to calibrate at all is now settled in writing at the head of 2.2a — yes**; it has yet to see a hardware ride (2.2a.1) |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — `WorkoutSyncWorker` observed running and reporting success; the row itself unseen (14.1.6) |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete — `WorkoutSyncWorker` observed running and reporting success; the row itself unseen (14.1.6). **Newly opened: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9)** |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
@@ -219,8 +235,9 @@ of the ride are.
 > One caution that applies to all of 16–18, **now much narrower than it was**:
 > a ride on the bike records the board's own measured watts (2.1a), so those
 > numbers are as comparable between riders as the hardware is. It is
-> `PowerModel` that stays uncalibrated (2.2.4), and it now only governs
-> simulated rides and the 11.2.1 resistance band. Charts, leaderboards and
+> `PowerModel` that stays uncalibrated until a bike fits its own curve (2.2a),
+> and it only ever governs simulated rides and the 11.2.1 resistance band —
+> a suggestion and a fiction, never a record. Charts, leaderboards and
 > friend comparisons should read `SensorReading.powerIsMeasured` and say which
 > they are showing, rather than captioning everything "estimated" — or, worse,
 > presenting a modelled figure as fact.
@@ -398,8 +415,8 @@ and it was wrong in a way no amount of code reading would have exposed.
 - [x] `SerialProtocolParser` as a pure, testable state machine
 - [x] Carries partial commands across read boundaries (a trailing `R` used to lose its value byte)
 - [x] `CadenceTracker` smooths jitter and **decays to zero when pedalling stops** (cadence used to freeze at its last value forever)
-- [ ] **2.2.4** Validate `PowerModel` coefficients against a known curve or a real power meter. **Absolute watts from the model are not trustworthy** — they are self-consistent between your own rides only. **Largely superseded on real hardware** (2.1a): the sensor board reports watts directly, so a ride on the bike no longer infers power at all. `SensorReading.powerIsMeasured` marks which is which. The model still governs simulated rides and the resistance band in 11.2.1, so the caveat stays until it is either calibrated or confined to simulation
-- [ ] **2.2.5** Now that measured and modelled watts can be produced for the *same* cadence and resistance, the bike is itself the calibration source 2.2.4 has always lacked. Log both during a ride and fit the coefficients against it.
+- [x] **2.2.4** ~~Validate `PowerModel` coefficients against a known curve or a real power meter.~~ **Answered, and the answer was "they are badly wrong"** — RMSE 137 W, median absolute error 66%, R² 0.21 against 310 measured samples (2.2.5). The validation this box asked for is done; what it *implied* — that the app then goes and fixes the constants — is settled the other way in **2.2a**, which calibrates per bike instead. The standing caveat is now scoped and no longer open-ended: modelled watts govern simulated rides and the resistance band, nothing else, and 2.2a.8 makes that a test rather than a promise
+- [x] **2.2.5** ~~Fit the coefficients from a measured sweep.~~ **Done once, deliberately not shipped, and deliberately not to be repeated** — superseded by 2.2a. The capture method and the data are worth keeping; the approach is not. Kept in full below because it is the evidence 2.2a's decision rests on.
 
       **Attempted on the bike, 31 July 2026. The capture method works; one
       sweep was not enough, and the coefficients are unchanged.** A 494-second
@@ -433,6 +450,56 @@ and it was wrong in a way no amount of code reading would have exposed.
       that works on a stranger's bike
 
 ### 2.2a Auto-calibration — the answer to "what about everyone else's bike?"
+
+> ## Decided: yes, calibrate. The whole argument, in one place
+>
+> This has been spread across 2.2.4, 2.2.5, this section and a caveat hanging
+> over 16–18, and it has read as far more alarming than it is. Settled here so
+> nobody re-opens it.
+>
+> **What the power curve can and cannot touch.** `PowerModel` has exactly two
+> live consumers in the app: `SimulatedSensorSource`, which fabricates a ride,
+> and `RideSnapshot.resistanceForWatts`, which turns an interval's power target
+> into "put the knob about here" (11.2.1). On the bike,
+> `PelotonSensorServiceSource` reports the board's own measured watts and the
+> curve is never consulted. **No recorded number from a real ride comes from
+> this model.** A wrong curve gives a rider a bad suggestion; it cannot corrupt
+> a record, move an FTP, or make one ride incomparable with the next.
+>
+> **So the only question is whether the suggestion is any good — and today it
+> is not.** The shipped coefficients score RMSE 137 W, median absolute error
+> 66% and R² 0.21 against 310 measured samples off this bike (2.2.5). A
+> resistance band built on that is not advice, it is a guess with a confident
+> border drawn round it.
+>
+> **Leaving it hardcoded is not the cautious option, it is the current
+> defect.** And a *better* hardcoded constant is not available: the one manual
+> sweep failed cross-validation (2.2.5), no stranger will ever perform a sweep
+> on their own bike, and per-unit sensor variation (2.1a.5a) plus mechanism
+> wear mean a single constant is the wrong **shape** of answer however
+> carefully it is measured.
+>
+> **The drift worry, answered — it was misapplied.** Drift is dangerous when a
+> stored record is reinterpreted later against a moved yardstick. That is a
+> real problem in this app and it is why a ride must snapshot the FTP it was
+> judged against (7.8). Calibration has no such exposure, because nothing it
+> produces is ever stored: the band is computed for the interval the rider is
+> in and is gone a minute later. Recency weighting (2.2a.5) is therefore a
+> feature rather than a hazard — a mechanism that has worn, or been serviced,
+> *should* stop being described by how it behaved when it was new.
+>
+> **The downside is bounded at the status quo.** A fit is adopted only if it
+> beats the shipped curve, *and* lands within an absolute 25% out of sample,
+> *and* has seen enough of the grid (2.2a.3, 2.2a.4); a simulated ride never
+> contributes (2.2a.7). Every failure path ends in "keep using the shipped
+> curve", which is exactly where the app is today. The worst case is that this
+> does nothing — visibly, in Settings.
+>
+> **What would make us abandon it**, stated in advance so it is a measurement
+> and not a mood: if 2.2a.1 shows that ordinary riding does not cover enough of
+> the resistance × cadence grid within a few weeks, this never fires, and it
+> should then be **deleted** rather than left as machinery that looks like it
+> works. Settings already reports the coverage needed to judge that.
 
 **This supersedes the manual sweep as the way `PowerModel` gets calibrated.**
 2.2.5 asked one rider to sweep the operating range for five minutes; that does
@@ -526,6 +593,29 @@ Settings section. The gates are exercised against the real 31 July sweep in
       from one would be the model teaching itself its own answer. *Observed: a
       full simulated ride left Settings reading "0 of 7 levels, from 0 measured
       seconds", and the calibration DataStore file was never even created*
+
+- [ ] **2.2a.8** **Fence the model with a test rather than a comment.** The
+      scope argument above is the entire safety case for calibrating at all, and
+      right now it holds only because two call sites happen not to have grown. A
+      test that asserts `PowerModel` is reached from exactly the simulated source
+      and the resistance band — and fails the build when a third consumer
+      appears — is what stops some future feature quietly deriving a *recorded*
+      number from an uncalibrated curve. It is cheap, and it is the difference
+      between a rule and a hope
+- [ ] **2.2a.9** **Say what the resistance band is worth while the shipped curve
+      is still in use.** Until a bike has calibrated itself, 11.2.1's band comes
+      from coefficients known to be 66% out at the median, and it is drawn with
+      exactly the same authority as the cadence band beside it — which is
+      prescribed by the class directly and is simply *true*. Either mark it as
+      approximate until the bike has its own curve, or do not draw it at all.
+      The most-wrong number on the ride screen should not be the most
+      confident-looking one. Settings already knows which curve is in use
+      (2.2a.6), so the screen can too
+- [ ] **2.2a.10** Once a bike is on its own curve, revisit **11.2.1a** — the
+      Zone 1 band that vanishes for a low-FTP rider because the unloaded curve
+      at 85 rpm already exceeds the whole zone. That item is currently blocked
+      on "we cannot tell a modelling artefact from a real contradiction", and a
+      calibrated curve is precisely what resolves it
 
 > **Scope worth keeping in view before anyone builds this.** On real hardware
 > `PowerModel` does not run: a ride records the board's measured watts, and
@@ -626,7 +716,7 @@ Settings section. The gates are exercised against the real 31 July sweep in
 
 ---
 
-## Phase 7: Auto-FTP Engine, Workload JSON & Cloud Sync ✅
+## Phase 7: Auto-FTP Engine, Workload JSON & Cloud Sync
 
 - [x] **7.1** `PostWorkoutAnalyzer` — 20-min peak (O(n) sliding window over full-length windows only), biometric decoupling, RPE survey
 - [x] **7.2** `FtpBreakthroughDialog`
@@ -635,6 +725,120 @@ Settings section. The gates are exercised against the real 31 July sweep in
 - [x] **7.5** `ClassTemplateSeeder` listing the assets directory rather than a hardcoded category list
 - [x] **7.6** Class template JSON in `assets/classes/`
 - [x] **7.7** Seeding moved to application scope (a `LaunchedEffect` was cancelled by navigation mid-seed)
+
+### 7.8 The FTP a ride was ridden at — the bug underneath everything else
+
+**`profiles` holds one `ftp_watts` and `workouts` holds none.** The ride start
+passes an FTP into `WorkoutService` (9.1.1), the ride is judged against it live,
+and then it is thrown away. Every screen that needs a past ride's FTP therefore
+reads the rider's *current* one — `RideDetailViewModel` fetches
+`getUser(...).ftpWatts` and hands it to the power chart, which draws the zone
+bands and the dashed FTP rule from it.
+
+So an FTP change silently rewrites history: a ride ridden in Zone 5 in January
+is redrawn as Zone 4 the moment the rider's FTP goes up in March, and the chart
+gives no hint that anything changed. **Auto-FTP (7.1–7.3) makes this fire by
+itself**, off a ride the rider only agreed to a dialog about — which is the
+difference between a stale reading and a record that edits itself. It is the
+same family as the `avg_*` defect in CLAUDE.md: a number derived on read, from
+a source that has moved since.
+
+- [ ] **7.8.1** `workouts.ftp_watts`, written when the ride is created, with the
+      value the ride was actually judged against. A `Migration`, an exported
+      schema in `app/schemas/` and a `MigrationTestHelper` test (12.5), and it
+      belongs in the same migration as the other columns 12.5.4 is waiting on
+- [ ] **7.8.2** **Nullable, and null means unknown** — do not backfill existing
+      rows with the profile's current FTP, which would bake today's guess into
+      the record permanently and look exactly like real data afterwards
+- [ ] **7.8.3** Every read site uses the ride's own value and falls back to the
+      profile's only when it is null: the power chart's zone bands and FTP rule
+      (16.1.1), any time-in-zone summary (16.1.4, 11.3.3), and `leaderboardFor`
+      if it ever compares zones rather than raw watts. The fallback is today's
+      behaviour, so old rides are no worse than they are now
+- [ ] **7.8.4** Where the fallback is in use, the screen says so rather than
+      drawing bands that look as authoritative as the real ones
+- [ ] **7.8.5** A guest ride has no profile and so no FTP at all. It gets no zone
+      bands rather than the last-selected rider's
+
+### 7.9 FTP history — the progress measure the app already has and discards
+
+FTP is the one number in this app that is genuinely a fitness measure rather
+than a volume measure, and the app already recomputes it for free after every
+ride. It keeps only the latest value. **16.3.1** ("FTP over time, marked with
+the rides that triggered each change") and **22.1.4** both assume a history
+exists; nothing creates one. The previous value is overwritten and gone.
+
+- [ ] **7.9.1** An `ftp_history` table: profile, watts, when, **how it changed**
+      and, where there was one, the workout that caused it. A derived history is
+      not available — the old value is destroyed on update — so this has to be
+      recorded at the moment of the change or it does not exist
+- [ ] **7.9.2** The *how* is a typed enum, not a string: profile creation,
+      manual edit in Settings, accepted auto-breakthrough, guided FTP test
+      (19.2.3), pulled from another device (15.3). `RideIntent` is the
+      precedent — 5.8 made exactly this a typed enum after a bare display string
+      let a typo silently defeat it. The distinction matters on the chart: an
+      FTP the rider typed is a claim, one the app measured is evidence
+- [ ] **7.9.3** The workout reference is nullable and `ON DELETE SET NULL`.
+      Deleting a ride (12.3) must not delete the fact that the rider's FTP
+      changed — the training history is not the ride's to take with it
+- [ ] **7.9.4** **One funnel.** Every path that changes FTP goes through a single
+      repository method that writes the profile and the history row in one
+      transaction. There are already four call sites and 15 and 19.2.3 add more;
+      a history that depends on each new path remembering to append to it is a
+      history that will be wrong within two features
+- [ ] **7.9.5** A change to the same value is not a change. Do not record a row
+      when the number has not moved, or a re-save in Settings or an idempotent
+      cloud pull will fill the trend chart with vertical noise
+- [ ] **7.9.6** Seed the first row from the existing profile at migration time,
+      dated to the profile's `created_at` and marked as unknown-origin. Without
+      it every existing rider's chart starts at their second FTP change
+- [ ] **7.9.7** Room migration, exported schema and a `MigrationTestHelper` test
+      (12.5), with the seeding in 7.9.6 covered by it — a data-moving migration
+      is exactly the kind that passes a schema check and loses rows
+
+### 7.10 Showing it, and being honest about it
+
+- [ ] **7.10.1** 16.3.1 is now buildable: FTP over time, stepped rather than
+      interpolated — FTP does not drift smoothly between two rides, it changes
+      on a day — with each change marked by what caused it (7.9.2) and tappable
+      through to the ride that triggered it
+- [ ] **7.10.2** On the dashboard (22.1.4): current FTP, when it last changed,
+      and the direction. This is the progress line the section is missing
+- [ ] **7.10.3** In Settings, beside the editable field: what it is now and when
+      it last moved, so a rider who does not remember agreeing to a change can
+      see the app made it
+- [ ] **7.10.4** **An auto-FTP change is the app editing the rider's own
+      record**, so it stays visible and reversible: the history says the app did
+      it, off which ride, and reverting to the previous value is one action and
+      appends a row rather than erasing one
+- [ ] **7.10.5** A declined breakthrough should not be re-offered for the same
+      ride. `PostRideViewModel` runs the analyser on load, so a rider who
+      declines and re-opens the summary is asked again about a ride they have
+      already answered for
+- [ ] **7.10.6** **The honesty caveat — narrower than it first looked, and
+      calibration is not part of it.** An FTP trend is only a fitness trend if
+      the watts behind it are comparable over time. On the bike they are
+      measured off the board (2.1a) and nothing in the app can move them:
+      `PowerModel` does not run during a hardware ride, so per-bike calibration
+      (2.2a) cannot shift an FTP by a single watt. That concern was raised here
+      and is withdrawn — see the decision block at the head of 2.2a. What
+      remains is real but simple: a **simulated** ride's watts are fiction, so
+      mark on the chart which values came from measured rides. Partly blocked on
+      16.1.6, since `powerIsMeasured` is still discarded at the database
+      boundary
+- [ ] **7.10.7** **A simulated ride must not propose an FTP at all**, and today
+      it can. `PostRideViewModel.load` runs `PostWorkoutAnalyzer` over any
+      workout with no regard for where the watts came from, so a demo ride on
+      the emulator can offer a rider a breakthrough computed from numbers the
+      app invented — and 7.9 would then write that into their permanent history
+      as evidence. This is the actual integrity risk in the FTP path; the
+      calibration one was a phantom. Needs 16.1.6's column to know, which makes
+      that column load-bearing rather than cosmetic. Until it exists, the
+      conservative reading is the ride's telemetry-source setting at the time
+- [ ] **7.10.8** Decide whether `ftp_history` syncs (14, 15). It is small,
+      per-profile and the thing a rider would most miss on a new device, but it
+      is also a fitness record about a person and 17.7's private-by-default rule
+      applies to it before any of it leaves the tablet
 
 ---
 
@@ -861,7 +1065,7 @@ less of the screen and less of the attention.
 
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
-- [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind 2.2.4 — until the curve is calibrated it is as likely to be a modelling artefact as a real contradiction.
+- [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind **2.2a** (see 2.2a.10) — until this bike is on its own curve it is as likely to be a modelling artefact as a real contradiction, and 2.2.4 has now answered that the shipped curve is 66% out at the median, which makes the artefact reading the likelier of the two.
 - [ ] **11.2.2** Time in zone: a thin stacked bar of how the ride has been spent, for the collapsed strip where the timeline does not fit
 - [ ] **11.2.3** A "you are ahead of / behind your usual" line against `leaderboardFor`, which is the one comparison a rider actually acts on mid-ride
 - [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top
@@ -1065,7 +1269,7 @@ layer is done and nothing renders it.
 - [x] **12.5.2** Export the Room schema to `app/schemas/` and check it in. The stale `2.json` left over from an abandoned `theme_preference` column has been deleted; `1.json` and `2.json` are now the real history
 - [x] **12.5.3** `MigrationTestHelper` instrumented test for each migration. 1→2 runs against a real SQLite file created from the exported v1 schema, with rows written beforehand, and asserts they — and the cascade onto `workout_metrics` — survive. **Observed: 18 instrumented tests pass on the tablet emulator**
 - [x] **12.5.5** The first migration is one the app needed anyway rather than a placeholder: `workouts.was_recovered`, so history can distinguish a ride rebuilt from its samples after a crash from one that finished normally (12.1.3)
-- [ ] **12.5.4** Only then, the schema changes phases 14–15 need (`deleted_at`, `synced_at`, `auth_user_id`). Units (13) turned out to need none — the preference is a display concern and lives in DataStore
+- [ ] **12.5.4** Only then, the schema changes the rest of the plan needs — `deleted_at`, `synced_at`, `auth_user_id` for 14–15, `workouts.ftp_watts` (7.8) and the `ftp_history` table (7.9), a `powerIsMeasured` column (16.1.6), and date of birth on `profiles` (21.1.1). Units (13) turned out to need none — the preference is a display concern and lives in DataStore
 
 > Deliberate consequence: a development device still holding a pre-migration
 > database now fails to open rather than silently emptying itself. No shipped
@@ -1301,7 +1505,9 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       given the rule that a modelled watt is never presented as measured. It
       needs one column, a `Migration`, an exported schema and a
       `MigrationTestHelper` test (12.5). Do that and this becomes a one-line
-      change
+      change. **Promoted from cosmetic to load-bearing**: 7.10.7 needs this
+      column to stop a simulated ride proposing a real FTP change, so it is no
+      longer only about what an axis is captioned
 
 ### 16.2 Building them
 - [x] **16.2.1** Compose `Canvas`, no charting dependency — these are four
@@ -1326,7 +1532,7 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       announced once rather than twice*
 
 ### 16.3 Trends — nice to have
-- [ ] **16.3.1** FTP over time, marked with the rides that triggered each change
+- [ ] **16.3.1** FTP over time, marked with the rides that triggered each change. **Blocked on 7.9** — this was written as a charting task, and the data it charts does not exist: a profile holds one FTP and the previous value is overwritten. See 7.10.1 for what to draw and 7.10.6 for what the line is allowed to claim
 - [ ] **16.3.2** Weekly volume and output
 - [ ] **16.3.3** Personal bests by duration
 - [ ] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
@@ -1506,7 +1712,7 @@ whole phase.
       want to tell the app their age gets *no* HR zones rather than wrong ones;
       and whether it goes to the cloud at all (14) — this is the first properly
       personal datum the app would store about someone, and "we sync everything
-      in the row" is not a decision, it is a default. There's no need to have a precise birthday. Stick to month and year.
+      in the row" is not a decision, it is a default. HUMAN COMMENT: There's no need to have a precise birthday. Stick to month and year. Unless you think precise date opens the door to further personalisation
 - [ ] **21.1.2** Estimated maximum heart rate from age, using **Tanaka
       (208 − 0.7 × age)** rather than the folk formula 220 − age, which
       overestimates for younger riders and underestimates for older ones. Say on
@@ -1536,9 +1742,10 @@ whole phase.
 - [ ] **21.2.3** **The boundaries used for a ride are stored with the ride, not
       recomputed on read.** A rider who corrects their max HR in March must not
       silently rewrite what every ride in January said they did. This is the
-      same shape as the `avg_*` trap in CLAUDE.md — and worth noting that
-      `workouts` does not snapshot FTP either, so the power charts already have
-      this latent bug and could be fixed in the same migration
+      same shape as the `avg_*` trap in CLAUDE.md — and the same bug the power
+      charts already have, now written up properly as **7.8**. Do the two in one
+      migration: they are the same column added to the same table for the same
+      reason
 - [ ] **21.2.4** Nothing anywhere displays a zone when the heart rate is null.
       Unknown is unknown; this project has already corrupted a rider's record
       twice by treating a missing heart rate as a number
@@ -1642,8 +1849,10 @@ replaced it mean anything.
       week over the last six to eight weeks, sparkline-sized. The history query
       already returns what this needs
 - [ ] **22.1.4** FTP, with the date it last changed and what changed it
-      (16.3.1). The app already computes this (7.1) and it is the closest thing
-      to a real progress number it owns
+      (7.10.2, 16.3.1). The app already computes this (7.1) and it is the
+      closest thing to a real progress number it owns — but it currently keeps
+      only the latest value, so the history this card wants has to be recorded
+      first (7.9)
 - [ ] **22.1.5** A **last ride** card that opens the ride detail (12.2) —
       class name, RPE, and whether it beat the rider's own previous ride of the
       same class, which `leaderboardFor` already computes and nothing renders

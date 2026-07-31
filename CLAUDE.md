@@ -69,6 +69,22 @@ an AVD at the right resolution but the wrong density hides half of them.
   builds into: **"beats the shipped curve" is a bar a fit to pure noise
   clears**, precisely because the shipped curve is so bad. Any new acceptance
   test on this needs an absolute accuracy floor as well as a relative one.
+- **Whether to calibrate at all is settled — yes — and the argument is written
+  down at the head of PLAN.md 2.2a.** Do not re-open it; do not capture another
+  manual sweep (2.2.5 is closed, superseded). The reason it is safe rests
+  entirely on scope: **`PowerModel` has exactly two consumers** —
+  `SimulatedSensorSource` and `RideSnapshot.resistanceForWatts` (the prescribed
+  resistance band). A fiction and a suggestion. **If you are about to add a
+  third, stop**: anything that derives a *recorded* number from the curve
+  breaks the reason calibration is allowed to exist. PLAN.md 2.2a.8 makes this
+  a test.
+- **Nothing records the FTP a ride was ridden at.** `workouts` has no FTP
+  column, so the ride detail chart reads the rider's *current* `ftp_watts` and
+  draws every past ride's zone bands and FTP rule from it. Auto-FTP (Phase 7)
+  moves that number by itself, so accepting one breakthrough silently redraws
+  the whole history. Same family as the `avg_*` trap below — derived on read
+  from a source that has since moved. PLAN.md 7.8, and 7.9 for the change
+  history that also does not exist.
 - **Bike telemetry does not come from a serial port.** The bike's tablet is
   stock, not jailbroken, and no app can open the sensor board's UART
   (`/dev/ttyO0`, `system:system`). `/dev/ttyS1` does not exist and `/dev/ttyS2`

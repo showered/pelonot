@@ -3,6 +3,14 @@
 Measured `(cadence, resistance, power)` triples captured off the bike's own
 sensor board, for fitting `PowerModel` (PLAN.md 2.2.4 / 2.2.5).
 
+> **Do not capture another manual sweep.** 2.2.5 is closed and superseded by
+> **PLAN.md 2.2a**: every Hardware-mode ride already carries this data, and the
+> app now accumulates it per bike without asking anyone to perform a ritual. A
+> manual sweep does not scale past the one person willing to do it, and the one
+> below failed cross-validation anyway. This directory is kept as the evidence
+> that decision rests on, and as the only measured data the project has — the
+> gates in `domain/calibration/` are tested against it.
+
 The bike reports watts directly (see PLAN.md 2.1a), so a Hardware-mode ride
 *is* the dataset: every second of `workout_metrics` already holds the model's
 two inputs alongside the measured output it is trying to predict. No

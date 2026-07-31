@@ -69,10 +69,12 @@ The board reports ticks, not RPM, and does not report power at all.
   reading 90 RPM forever and every downstream metric keeps accruing.
 - **`PowerModel`** estimates watts as a cubic in cadence scaled by resistance.
 
-> ⚠️ **The power coefficients are unvalidated.** Absolute watts should not be
-> trusted against a real power meter, and FTP derived from them is
-> self-consistent only — comparable between your own rides, not with anyone
-> else's. Tracked as PLAN.md item 2.2.4.
+> ⚠️ **The power coefficients are measurably wrong** — median absolute error
+> 66% against samples off the real board — **and on a bike they do not run at
+> all.** The sensor board reports watts directly (§1a), so `PowerModel` governs
+> only simulated rides and the prescribed resistance band. A modelled watt must
+> never be presented as measured. PLAN.md 2.2a settles what is being done about
+> it; do not add a third consumer of this model.
 
 ### 1c. Heart rate — Bluetooth LE
 
@@ -404,10 +406,11 @@ and reads as a rendering fault.
 
 ## 6. What is not wired yet
 
-Nothing has been verified against a real bike. The serial path, the protocol
-assumptions and the power curve are all unproven on hardware, and `PowerModel`'s
-coefficients are unvalidated — absolute watts are self-consistent between the
-rider's own rides and meaningless against anyone else's.
+**Stale as written — the app has since been verified on a real Gen 1.** Telemetry
+comes from Peloton's `SensorService` rather than the serial port (PLAN.md 2.1a),
+watts on hardware are measured rather than modelled, and a real BLE strap has
+been ridden. `PowerModel`'s coefficients are wrong but only reach a suggestion
+and a simulation. PLAN.md's *Where the work stands* is the current picture.
 
 ### The inverse power model
 
