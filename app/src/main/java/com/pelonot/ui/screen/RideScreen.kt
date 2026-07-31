@@ -79,6 +79,7 @@ import com.pelonot.ui.components.rememberPulse
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
+import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -503,38 +504,67 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
     val snapshot = state.snapshot
     val hasTargets = snapshot.interval.hasClass
 
-    Row(
+    Column(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        RideMetricTile(
-            label = "POWER",
-            value = state.reading.powerWatts.toInt().toString(),
-            unit = "watts",
-            accent = MetricPowerCoral,
-            band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
-            rawValue = state.reading.powerWatts,
-            modifier = Modifier.weight(1f)
-        )
-        RideMetricTile(
-            label = "CADENCE",
-            value = state.reading.cadenceRpm.toInt().toString(),
-            unit = "rpm",
-            accent = MetricCadenceCyan,
-            band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
-            rawValue = state.reading.cadenceRpm,
-            modifier = Modifier.weight(1f)
-        )
-        RideMetricTile(
-            label = "HEART RATE",
-            // Null means no strap, never a measured zero.
-            value = state.reading.heartRateBpm?.toString() ?: "--",
-            unit = "bpm",
-            accent = MetricHeartRateGreen,
-            band = TargetBand.NONE,
-            rawValue = (state.reading.heartRateBpm ?: 0).toDouble(),
-            modifier = Modifier.weight(1f)
-        )
+        // The two inputs, given the most room: cadence and resistance are the
+        // only things the rider can actually change.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
+            RideMetricTile(
+                label = "CADENCE",
+                value = state.reading.cadenceRpm.toInt().toString(),
+                unit = "rpm",
+                accent = MetricCadenceCyan,
+                band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
+                rawValue = state.reading.cadenceRpm,
+                modifier = Modifier.weight(1f)
+            )
+            RideMetricTile(
+                label = "RESISTANCE",
+                value = state.reading.resistancePercent.toInt().toString(),
+                unit = "%",
+                accent = MetricResistanceViolet,
+                band = if (hasTargets) snapshot.resistanceTarget else TargetBand.NONE,
+                rawValue = state.reading.resistancePercent,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // And the two outputs.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.72f),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
+            RideMetricTile(
+                label = "POWER",
+                value = state.reading.powerWatts.toInt().toString(),
+                unit = "watts",
+                accent = MetricPowerCoral,
+                band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
+                rawValue = state.reading.powerWatts,
+                valueSize = 76.sp,
+                modifier = Modifier.weight(1f)
+            )
+            RideMetricTile(
+                label = "HEART RATE",
+                // Null means no strap, never a measured zero.
+                value = state.reading.heartRateBpm?.toString() ?: "--",
+                unit = "bpm",
+                accent = MetricHeartRateGreen,
+                band = TargetBand.NONE,
+                rawValue = (state.reading.heartRateBpm ?: 0).toDouble(),
+                valueSize = 76.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -578,7 +608,8 @@ private fun RideMetricTile(
     accent: Color,
     band: TargetBand,
     rawValue: Double,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    valueSize: androidx.compose.ui.unit.TextUnit = 104.sp
 ) {
     Card(
         modifier = modifier,
@@ -601,7 +632,7 @@ private fun RideMetricTile(
                 band = band,
                 rawValue = rawValue,
                 // Sized for a 21-inch screen read from a metre away, mid-effort.
-                valueSize = 104.sp,
+                valueSize = valueSize,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -648,6 +679,9 @@ private fun SmallStat(
                     text = unit,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // "km" was wrapping to "k / m" in a narrow tile.
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(bottom = 5.dp)
                 )
             }

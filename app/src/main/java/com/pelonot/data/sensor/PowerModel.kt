@@ -29,15 +29,47 @@ object PowerModel {
     fun estimateWatts(cadenceRpm: Double, resistancePercent: Double): Double {
         if (cadenceRpm < MIN_CADENCE_RPM) return 0.0
 
-        val base = (C3 * cadenceRpm.pow(3)) +
-            (C2 * cadenceRpm.pow(2)) +
-            (C1 * cadenceRpm) +
-            C0
+        val base = baseWatts(cadenceRpm)
 
         val resistanceFactor = 1.0 + (resistancePercent.coerceIn(0.0, 100.0) / RESISTANCE_DIVISOR)
 
         return (base * resistanceFactor).coerceIn(0.0, MAX_PLAUSIBLE_WATTS)
     }
+
+    /**
+     * The inverse: what resistance would produce [targetWatts] at [cadenceRpm].
+     *
+     * This is the number a rider can actually *do* something with. Power is an
+     * output — the knob and their legs are the only two inputs on the machine —
+     * so a prescription of "250 W" is really "hold this cadence and set the
+     * resistance to about here", and until now the app made them work that out
+     * themselves.
+     *
+     * The same caveat as [estimateWatts] applies twice over: the curve is
+     * unvalidated, so this is self-consistent guidance rather than a
+     * calibrated figure. It is still the right *shape* of instruction.
+     *
+     * @return null when the target cannot be reached at that cadence — the
+     *   answer is then "change your legs, not the knob", which is a different
+     *   instruction and must not be disguised as a clamped percentage.
+     */
+    fun resistanceForWatts(targetWatts: Double, cadenceRpm: Double): Double? {
+        if (cadenceRpm < MIN_CADENCE_RPM || targetWatts <= 0.0) return null
+
+        val base = baseWatts(cadenceRpm)
+        // Below roughly 23 rpm the cubic is at or under zero: no amount of
+        // resistance produces power because the flywheel is barely turning.
+        if (base <= 0.0) return null
+
+        val resistance = RESISTANCE_DIVISOR * ((targetWatts / base) - 1.0)
+        return resistance.takeIf { it in 0.0..100.0 }
+    }
+
+    private fun baseWatts(cadenceRpm: Double): Double =
+        (C3 * cadenceRpm.pow(3)) +
+            (C2 * cadenceRpm.pow(2)) +
+            (C1 * cadenceRpm) +
+            C0
 
     /** Below this the flywheel is coasting, not being driven. */
     private const val MIN_CADENCE_RPM = 10.0

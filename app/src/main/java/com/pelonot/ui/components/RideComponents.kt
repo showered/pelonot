@@ -258,6 +258,9 @@ fun MetricReadout(
                 text = unit,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                // "BPM" was stacking into a vertical B/P/M in a narrow tile.
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(bottom = valueSize.value.dp * 0.12f)
             )
         }
@@ -270,23 +273,28 @@ fun MetricReadout(
             Spacer(Modifier.height(4.dp))
         }
 
-        // Colour alone is never the whole signal: the direction is spelled out
-        // beside the label, which also survives a rider who cannot tell amber
-        // from coral.
+        // Colour alone is never the whole signal, so the direction is marked
+        // beside the label — an arrow rather than a word, because "CADENCE
+        // ▼ LOW" does not fit a quarter of the HUD strip and wrapping it makes
+        // the whole strip taller. The screen reader still gets the sentence.
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
             )
             if (status.isOffTarget) {
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(5.dp))
                 Text(
-                    text = if (status == TargetStatus.Below) "▼ LOW" else "▲ HIGH",
+                    text = if (status == TargetStatus.Below) "▼" else "▲",
                     style = MaterialTheme.typography.labelSmall,
                     color = AlertAmber,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }

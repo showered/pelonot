@@ -1,5 +1,6 @@
 package com.pelonot.data.service
 
+import com.pelonot.data.sensor.PowerModel
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
@@ -46,6 +47,34 @@ data class RideSnapshot(
     /** The power band the current interval asks for, scaled by [intent]. */
     val powerTarget: TargetBand
         get() = interval.current?.powerBand(ftpWatts.toDouble(), intent) ?: TargetBand.NONE
+
+    /**
+     * The resistance that would produce [powerTarget] at the middle of
+     * [cadenceTarget] — the actual instruction, rather than two numbers the
+     * rider has to combine in their head at 90 rpm.
+     *
+     * Empty when the target is unreachable at that cadence, because then the
+     * answer is "change your legs", which is a different instruction and must
+     * not be disguised as a clamped percentage.
+     */
+    val resistanceTarget: TargetBand
+        get() {
+            val cadence = cadenceTarget
+            val power = powerTarget
+            if (!cadence.isDefined || !power.isDefined) return TargetBand.NONE
+
+            val midCadence = (cadence.min + cadence.max) / 2.0
+            // Zone 1's power floor is 0 W, which has no resistance solution and
+            // does not need one: the bottom of the band is simply the bottom of
+            // the knob. Dropping the whole band over that would leave the
+            // easiest intervals — the ones a rider is most likely to overcook —
+            // with no guidance at all.
+            val low = if (power.min <= 0.0) 0.0 else PowerModel.resistanceForWatts(power.min, midCadence)
+            val high = PowerModel.resistanceForWatts(power.max, midCadence)
+            if (low == null || high == null) return TargetBand.NONE
+
+            return TargetBand(low, high)
+        }
 
     companion object {
         val IDLE = RideSnapshot()

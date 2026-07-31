@@ -60,6 +60,7 @@ import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
+import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricReadout
@@ -71,6 +72,7 @@ import com.pelonot.ui.components.rememberPulse
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
+import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.spacing
 
@@ -486,8 +488,14 @@ private fun NowBlock(snapshot: RideSnapshot, accent: Color, modifier: Modifier =
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "TARGET ${snapshot.cadenceTarget.min.toInt()}–" +
-                    "${snapshot.cadenceTarget.max.toInt()} RPM",
+                text = buildString {
+                    append("${snapshot.cadenceTarget.min.toInt()}–")
+                    append("${snapshot.cadenceTarget.max.toInt()} RPM")
+                    val resistance = snapshot.resistanceTarget
+                    if (resistance.isDefined) {
+                        append(" · ${resistance.min.toInt()}–${resistance.max.toInt()}%")
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
@@ -503,28 +511,41 @@ private fun MetricsBlock(
     showTargets: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // Cadence and resistance first, together: they are the only two things the
+    // rider can actually change. Power is what those two produce, and heart
+    // rate is what the body makes of it.
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        MetricReadout(
-            label = "POWER",
-            value = reading.powerWatts.toInt().toString(),
-            unit = "W",
-            accent = MetricPowerCoral,
-            band = if (showTargets) snapshot.powerTarget else com.pelonot.domain.model.TargetBand.NONE,
-            rawValue = reading.powerWatts,
-            valueSize = 46.sp,
-            modifier = Modifier.weight(1f)
-        )
         MetricReadout(
             label = "CADENCE",
             value = reading.cadenceRpm.toInt().toString(),
             unit = "RPM",
             accent = MetricCadenceCyan,
-            band = if (showTargets) snapshot.cadenceTarget else com.pelonot.domain.model.TargetBand.NONE,
+            band = if (showTargets) snapshot.cadenceTarget else TargetBand.NONE,
             rawValue = reading.cadenceRpm,
-            valueSize = 46.sp,
+            valueSize = 42.sp,
+            modifier = Modifier.weight(1f)
+        )
+        MetricReadout(
+            label = "RESISTANCE",
+            value = reading.resistancePercent.toInt().toString(),
+            unit = "%",
+            accent = MetricResistanceViolet,
+            band = if (showTargets) snapshot.resistanceTarget else TargetBand.NONE,
+            rawValue = reading.resistancePercent,
+            valueSize = 42.sp,
+            modifier = Modifier.weight(1f)
+        )
+        MetricReadout(
+            label = "POWER",
+            value = reading.powerWatts.toInt().toString(),
+            unit = "W",
+            accent = MetricPowerCoral,
+            band = if (showTargets) snapshot.powerTarget else TargetBand.NONE,
+            rawValue = reading.powerWatts,
+            valueSize = 42.sp,
             modifier = Modifier.weight(1f)
         )
         MetricReadout(
@@ -534,7 +555,7 @@ private fun MetricsBlock(
             unit = "BPM",
             accent = MetricHeartRateGreen,
             rawValue = (reading.heartRateBpm ?: 0).toDouble(),
-            valueSize = 46.sp,
+            valueSize = 42.sp,
             compact = true,
             modifier = Modifier.weight(1f)
         )
@@ -665,8 +686,9 @@ private fun HudCollapsed(
             }
         }
 
-        CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
         CompactMetric(reading.cadenceRpm.toInt().toString(), "RPM", MetricCadenceCyan)
+        CompactMetric(reading.resistancePercent.toInt().toString(), "%", MetricResistanceViolet)
+        CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
         CompactMetric(reading.heartRateBpm?.toString() ?: "--", "BPM", MetricHeartRateGreen)
 
         Spacer(Modifier.weight(1f))

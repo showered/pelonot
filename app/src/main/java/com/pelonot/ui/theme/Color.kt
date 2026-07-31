@@ -97,6 +97,15 @@ val MetricCadenceCyan = Color(0xFF00E5FF)
 val MetricPowerCoral = Color(0xFFFF5252)
 val MetricHeartRateGreen = Color(0xFF00E676)
 
+/**
+ * Resistance — the knob.
+ *
+ * Violet because it has to be unmistakable beside cadence: those two sit next
+ * to each other on the HUD and are the only two things the rider can actually
+ * change, so confusing them is the one mix-up that costs an interval.
+ */
+val MetricResistanceViolet = Color(0xFFB388FF)
+
 // --- Alerts ---
 val AlertRed = Color(0xFFFF1744)
 val AlertAmber = Color(0xFFFF9100)
