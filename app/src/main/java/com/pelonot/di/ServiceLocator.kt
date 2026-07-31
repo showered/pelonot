@@ -9,7 +9,9 @@ import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.BleHeartRateManager
+import com.pelonot.data.sensor.PelotonSensorServiceSource
 import com.pelonot.data.sensor.SensorRepository
+import com.pelonot.data.sensor.SensorSource
 import com.pelonot.data.sensor.SerialSensorSource
 import com.pelonot.data.sensor.SimulatedSensorSource
 import kotlinx.coroutines.CoroutineScope
@@ -81,10 +83,23 @@ object ServiceLocator {
 
     val sensorRepository: SensorRepository by lazy {
         SensorRepository(
-            serialSource = SerialSensorSource(),
+            hardwareSource = hardwareSensorSource(),
             simulatedSource = SimulatedSensorSource(),
             bleHeartRateManager = BleHeartRateManager(context)
         )
+    }
+
+    /**
+     * The bike's sensor board by whichever route this tablet allows.
+     *
+     * On a stock bike the UART belongs to `system` and Peloton's own service
+     * is the only way in. Reading the character device directly needs root, so
+     * [SerialSensorSource] is the fallback for a jailbroken tablet rather than
+     * the default it used to be.
+     */
+    private fun hardwareSensorSource(): SensorSource {
+        val serviceSource = PelotonSensorServiceSource(context)
+        return if (serviceSource.isAvailable()) serviceSource else SerialSensorSource()
     }
 
     /**

@@ -1,10 +1,13 @@
 # Pelonot — working notes
 
-Subscription-free Android client for jailbroken Peloton bikes (Gen 1/Gen 2).
+Subscription-free Android client for Peloton bikes (Gen 1/Gen 2). Runs on a
+**stock, un-jailbroken bike** — telemetry comes from Peloton's own sensor
+service, not from root.
 Kotlin, Jetpack Compose, Room, minSdk 24 / targetSdk 34.
 
 **Read `ARCHITECTURE.md` for how data flows through the app, and `PLAN.md` for
-what is done and what is next.** Phase 9 is the current priority.
+what is done and what is next.** PLAN.md opens with a *Where the work stands*
+section naming the current priority — read that before picking work.
 
 ---
 
@@ -12,7 +15,7 @@ what is done and what is next.** Phase 9 is the current priority.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 83 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 186 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -53,6 +56,17 @@ with `adb` at `~/Library/Android/sdk/platform-tools/adb`.
 - **`PowerModel`'s coefficients are unvalidated.** Absolute watts are not
   trustworthy; they are self-consistent between the user's own rides only. Say
   so rather than presenting them as measured.
+- **Bike telemetry does not come from a serial port.** The bike's tablet is
+  stock, not jailbroken, and no app can open the sensor board's UART
+  (`/dev/ttyO0`, `system:system`). `/dev/ttyS1` does not exist and `/dev/ttyS2`
+  is Bluetooth. Real telemetry comes from `PelotonSensorServiceSource`, which
+  binds Peloton's own `SensorService` — exported with no `android:permission`,
+  so the bind just works. `SerialSensorSource` is the fallback for a rooted
+  tablet and is exercised by nothing today. See PLAN.md 2.1a.
+- **On real hardware the watts are measured, not modelled.** The board reports
+  power directly, so `PowerModel` does not run during a bike ride and
+  `SensorReading.powerIsMeasured` is true. The uncalibrated-coefficients
+  caveat below applies to simulated rides and to the 11.2.1 resistance band.
 - **Sensor sources must not reconnect themselves.** `SensorRepository` owns the
   single retry policy. Adding another creates competing schedules.
 - **`SensorMode.Hardware` deliberately does not fall back to simulation.**
@@ -86,3 +100,24 @@ sqlite3 db.sqlite "SELECT COUNT(*) FROM workout_metrics;"
 
 Settings → Telemetry source → **Simulated** makes the whole ride flow work
 without a bike.
+
+### On the real bike
+
+The bike's tablet connects over wireless adb and identifies as `PLTN-RB1VQ`
+(Android 11). `installDebug` targets it like any device. The real columns are
+`cadence` / `resistance` / `power` / `heart_rate` — not the `*_watts` names it
+is easy to guess:
+
+```bash
+sqlite3 db.sqlite "SELECT timestamp_sec, cadence, resistance, power, heart_rate FROM workout_metrics ORDER BY id DESC LIMIT 10;"
+```
+
+Settings → Telemetry source → **Hardware** forces the sensor board with no
+simulated fallback, which is the setting to verify under. The ride screen's
+big metric cards are drawn without semantics, so `uiautomator dump` will not
+show cadence, resistance or power — use `screencap` and read the numbers.
+
+Verifying telemetry needs someone **pedalling**, and that is a perishable
+resource: work out what you want to capture before asking, and say clearly
+when they can stop. Resistance reads from the knob without pedalling, so the
+service bind can be confirmed on your own.

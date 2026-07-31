@@ -18,6 +18,23 @@
     -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--
+      Declared for completeness against Peloton's sensor service. It is a
+      signature-level permission we can never be granted, and the service's
+      <service> tag sets no android:permission, so it is not enforced and the
+      bind succeeds without it. Listed so the dependency is visible rather than
+      implied by a bare bindService call.
+    -->
+    <uses-permission android:name="onepeloton.permission.ACCESS_SENSOR_SERVICE" />
+
+    <!--
+      Package visibility filtering (targetSdk 30+) hides other packages from
+      us, and an invisible package makes bindService fail with no useful error.
+    -->
+    <queries>
+        <package android:name="com.peloton.service.SensorData" />
+    </queries>
+
     <application
         android:name=".PelonotApp"
         android:allowBackup="true"

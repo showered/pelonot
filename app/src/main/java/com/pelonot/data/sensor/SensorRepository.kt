@@ -42,7 +42,7 @@ sealed interface SensorStatus {
  * each other and stopping a workout started an endless retry loop.
  */
 class SensorRepository(
-    private val serialSource: SensorSource,
+    private val hardwareSource: SensorSource,
     private val simulatedSource: SensorSource,
     private val bleHeartRateManager: BleHeartRateManager,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -82,8 +82,8 @@ class SensorRepository(
     /** The source [mode] resolves to right now. */
     fun activeSource(): SensorSource = when (mode) {
         SensorMode.Simulated -> simulatedSource
-        SensorMode.Hardware -> serialSource
-        SensorMode.Auto -> if (serialSource.isAvailable()) serialSource else simulatedSource
+        SensorMode.Hardware -> hardwareSource
+        SensorMode.Auto -> if (hardwareSource.isAvailable()) hardwareSource else simulatedSource
     }
 
     fun start() {

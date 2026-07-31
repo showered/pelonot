@@ -1,6 +1,8 @@
 # Pelonot — Implementation Plan
 
-> **Open-Source Peloton Client** — A subscription-free fitness app for jailbroken Peloton bikes (Gen 1/Gen 2).
+> **Open-Source Peloton Client** — A subscription-free fitness app for Peloton
+> bikes (Gen 1/Gen 2). **A stock, un-jailbroken bike is the supported target**;
+> telemetry comes from Peloton's own sensor service, not from root (see 2.1a).
 
 ---
 
@@ -8,8 +10,51 @@
 
 1. **Each checkbox is one focused task** — small enough for a single session, large enough to matter.
 2. **A box is only ticked when the behaviour has been observed working**, not when the code was written. Several items in this plan were previously ticked while the feature was non-functional (see *Corrections* below); that is the failure mode this rule exists to prevent.
-3. **Work phases in order** where later ones build on earlier ones. Phase 11 is the current priority.
+3. **Work phases in order** where later ones build on earlier ones. See *Where the work stands* immediately below for the current priority.
 4. When switching models or sessions, paste the current plan state so the next session knows where to pick up.
+
+---
+
+## Where the work stands — read this first
+
+**Last session: 31 July 2026, on the real bike with a rider pedalling.** It
+changed the shape of the project, so start here rather than from the phase
+order.
+
+**The headline: bike telemetry works on real hardware, and every assumption
+about how it would work was wrong.** The app had spent its whole history
+preparing to read a serial port that either does not exist or belongs to
+Bluetooth, on a bike it assumed was jailbroken and is not. The route that
+works is binding Peloton's own `SensorService`. Full detail in **2.1a** —
+read that section before touching anything under `data/sensor/`.
+
+Observed on the bike: cadence 0→58 rpm, resistance 16→59% tracking the knob,
+power 0→176 W, 246 per-second rows persisted, ride saved at 245 s / 6.7 kJ.
+
+Three consequences worth carrying forward:
+
+1. **Watts are measured on hardware, not modelled.** `PowerModel` does not run
+   during a bike ride. `SensorReading.powerIsMeasured` marks which is which.
+   Much of the uncalibrated-power caveat that hangs over 16–18 evaporates for
+   real rides, and 2.2.5 now has a way to fix it for simulated ones.
+2. **`SerialSensorSource` and `SerialProtocolParser` are dead on this
+   hardware.** Correct code, wrong target. Kept only for a rooted tablet.
+3. **The next unknown is the HUD, not the sensors.** Phase 11's premise —
+   glance at a strip while watching something else — has still never been seen
+   on the bike, and 10.4 is the cheapest way to find out.
+
+### What to do next, in order
+
+| Next | Why now |
+|------|---------|
+| **10.4** HUD over the Peloton video app | Needs the bike and five minutes. The whole of Phase 11 rests on the strip being readable over video, and that has never been observed. Needs the overlay permission granted on the tablet first — it is the rider's to give |
+| **14.1.6** Cloud round trip from the app | Does **not** need the bike; simulated telemetry drives it. It is the last thing standing between Phase 14 and done, and 15/17/18 all sit on it. Note a *guest* ride never syncs by design, so this needs a real profile |
+| **2.1a.5** Confirm the resistance scale | It is displayed as a percentage and moved plausibly, but neither end was driven to a stop. Assumed, not established |
+| **11.1a** Doors between the HUD and the app | Unchanged in priority and still the journey a rider makes most often |
+| **2.2.5** Calibrate `PowerModel` against the board | The bike can now produce measured and modelled watts for the same cadence and resistance. That is the calibration source 2.2.4 never had |
+
+Still blocked on things not to hand: **10.5 / 2.3.5** need a BLE strap,
+**10.6** needs a full-length ride, **11.1.6** needs a listener rather than adb.
 
 ---
 
@@ -19,7 +64,7 @@
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete — Supabase writes now land, app-driven sync unproven (14.1.6) |
-| 2 | Telemetry engine (serial, BLE, simulated) | ✅ Code complete — ⚠️ unverified on real hardware |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Bike telemetry verified on real hardware** (2.1a) — BLE strap still unverified |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
@@ -27,7 +72,7 @@
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — cloud sync wire path proven, worker unverified (14.1.6) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
-| 10 | Hardware validation | ❌ Blocked on bike access |
+| 10 | Hardware validation | 🔶 Sensor path, protocol and a real ride done — HUD-over-video, strap and endurance remain |
 | 11 | **HUD-first experience — the current priority** | 🔶 In progress |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
@@ -73,11 +118,14 @@ and a friends feed are good ideas for an app people already use daily; they
 are not what makes people use it daily. The bike, the HUD and an honest record
 of the ride are.
 
-> One caution that applies to all of 16–18: `PowerModel` is uncalibrated
-> (2.2.4). Charts, leaderboards and friend comparisons all take these watts and
-> present them as fact. Numbers are only comparable **between one rider's own
-> rides** until the curve is validated, and anything social has to say so
-> rather than quietly implying otherwise.
+> One caution that applies to all of 16–18, **now much narrower than it was**:
+> a ride on the bike records the board's own measured watts (2.1a), so those
+> numbers are as comparable between riders as the hardware is. It is
+> `PowerModel` that stays uncalibrated (2.2.4), and it now only governs
+> simulated rides and the 11.2.1 resistance band. Charts, leaderboards and
+> friend comparisons should read `SensorReading.powerIsMeasured` and say which
+> they are showing, rather than captioning everything "estimated" — or, worse,
+> presenting a modelled figure as fact.
 
 ---
 
@@ -101,6 +149,7 @@ were the *reason* a downstream feature looked broken.
 | 8.5 Haptic feedback | ✅ | The app never declared `android.permission.VIBRATE`. Every call threw `SecurityException` into a `runCatching`, so the buzz simply never happened. Found by reading logcat during a real ride — it is invisible from the UI. |
 | 8.8 Instrumented DAO tests | ✅ | Rewritten so they compiled, and ticked — but `@Before fun setup() = runBlocking { … }` infers its return type from the last expression, and `insertUser` returns a row id. JUnit rejects a `@Before` that is not void, so the class failed to initialise and **all ten tests silently never ran**. They pass now. |
 | 8.3a Crash recovery prompt | (untickable) | The service exposed `recoverableWorkout`, but nothing binds to the service on a cold start — which is exactly the situation a crash leaves behind — so the prompt could never have appeared wherever it was rendered. |
+| 2.1 Serial telemetry | (never ticked) | Not a false tick, but the same failure shape and the most expensive one yet: **the entire premise was wrong and no test could have said so.** The app spent its whole history preparing to read a character device that either does not exist (`ttyS1`) or belongs to Bluetooth (`ttyS2`), on a bike it assumed was jailbroken and is not. `SerialSensorSource`, `SerialProtocolParser`, `CadenceTracker` and `PowerModel` are all correct code aimed at the wrong target. Fifteen minutes on the actual hardware settled it. See 2.1a. |
 | 1.11 / 7.4 Cloud sync (again) | ✅ | **No row had ever reached the cloud** — `profiles` and `workouts` were both empty, by count. The cause was not the DTOs: `migration.sql` never granted `anon` a single table privilege, so every request failed `42501` before RLS was consulted. Behind that sat four more defects, one of which (epoch millis into a `TIMESTAMPTZ`) was invisible to code reading and only appeared on a real insert. Failures returned `SyncOutcome.Failed`, which nothing displays. Full detail in **14.0**. |
 
 All of the above are now fixed and covered by tests, **except the last** —
@@ -165,13 +214,63 @@ deletion — **it also has to add somewhere the rider can see that it failed.**
 - [x] `SerialSensorSource` as a cold flow — collection opens the port, cancellation closes it
 - [x] Removed the `close()` → `reconnect()` → `close()` cycle that made ending a workout start an endless retry loop
 - [x] Device path injectable (docs said `/dev/ttyS1`, code opened `/dev/ttyS2`)
-- [ ] **2.1.3** Verify against real hardware — *blocked on bike access*
+- [x] **2.1.3** Verified against real hardware, 31 July 2026 — **and the answer is that this whole approach cannot work on a stock bike.** See 2.1a. `SerialSensorSource` is kept as the fallback for a genuinely rooted tablet and is no longer the default
+
+### 2.1a How telemetry actually gets in — findings on the bike, 31 July 2026
+
+Established on a real Gen 1 (`PLTN-RB1VQ`, Android 11) over wireless adb.
+**Every assumption this project held about reading the sensor board was wrong**,
+and it was wrong in a way no amount of code reading would have exposed.
+
+- `/dev/ttyS1` **does not exist**. `/dev/ttyS2` exists but is the **Bluetooth
+  HCI UART** (`bluetooth:bluetooth`) — opening it would never have produced
+  bike telemetry, only a fight with the Bluetooth stack.
+- The sensor board is `/dev/ttyO0` (OMAP naming; same char device as the absent
+  `ttyS1`, major 4 minor 65), owned `system:system` mode `0660`. Confirmed
+  independently by the constant `UART_DEFAULT_DEVICE = "/dev/ttyO0"` inside
+  Peloton's own service.
+- An ordinary app uid cannot open it, and **the bike is not jailbroken**:
+  `ro.build.type=user`, release-keys, `ro.secure=1`, no `su`, no Magisk. The
+  premise in the README — that this app targets *jailbroken* bikes — is not the
+  situation the app is actually installed into, and does not need to be.
+- The route that works is **binding Peloton's own `SensorService`**, which
+  already owns the port and hands out decoded values. Its `<service>` tag is
+  `exported="true"` with **no `android:permission` attribute**, so the
+  `onepeloton.permission.ACCESS_SENSOR_SERVICE` it declares at `signature`
+  level is never enforced and any app may bind. That is why third-party bike
+  apps work on an unmodified tablet.
+
+- [x] **2.1a.1** `PelotonSensorServiceSource` — binds
+      `android.intent.action.peloton.SensorData` with category
+      `com.peloton.sensor.category.BIKE`, registers `REGISTER_RPM` (1),
+      `REGISTER_WATT` (2) and `REGISTER_RESISTANCE` (3) with a `replyTo`
+      [Messenger], and receives repeating `EVENT_*` (7/8/9) replies carrying a
+      `data` float. Written against the decompiled contract rather than copied
+      from the obvious reference client, which is GPL-3.0 against this
+      project's Apache-2.0
+- [x] **2.1a.2** `<queries>` for `com.peloton.service.SensorData`. Package
+      visibility filtering (targetSdk 30+) otherwise hides it and `bindService`
+      fails with nothing useful in the log
+- [x] **2.1a.3** A `TIME_OUT` reply carries a `0.0` payload and means *the
+      board did not answer*, not *the rider produced nothing*. It is dropped
+      rather than recorded, and a run of them fails the flow so
+      `SensorRepository` backs off — the same argument as nullable
+      `heartRateBpm`
+- [x] **2.1a.4** **Observed on the bike**: cadence 0→58 rpm, resistance 16→59%
+      tracking the knob, power 0→176 W, 246 per-second rows written to
+      `workout_metrics`, `avg_hr` NULL with no strap, ride persisted
+      `is_complete = 1` at 245 s / 6.7 kJ
+- [ ] **2.1a.5** Confirm the resistance figure really is 0–100. It is displayed
+      as a percentage and moved 16→59 plausibly with the knob, but neither end
+      of the range was driven to a stop, so the scale is assumed rather than
+      established
 
 ### 2.2 Protocol parsing
 - [x] `SerialProtocolParser` as a pure, testable state machine
 - [x] Carries partial commands across read boundaries (a trailing `R` used to lose its value byte)
 - [x] `CadenceTracker` smooths jitter and **decays to zero when pedalling stops** (cadence used to freeze at its last value forever)
-- [ ] **2.2.4** Validate `PowerModel` coefficients against a known Grupetto curve or a real power meter. **Absolute watts are currently not trustworthy** — they are self-consistent between your own rides only.
+- [ ] **2.2.4** Validate `PowerModel` coefficients against a known curve or a real power meter. **Absolute watts from the model are not trustworthy** — they are self-consistent between your own rides only. **Largely superseded on real hardware** (2.1a): the sensor board reports watts directly, so a ride on the bike no longer infers power at all. `SensorReading.powerIsMeasured` marks which is which. The model still governs simulated rides and the resistance band in 11.2.1, so the caveat stays until it is either calibrated or confined to simulation
+- [ ] **2.2.5** Now that measured and modelled watts can be produced for the *same* cadence and resistance, the bike is itself the calibration source 2.2.4 has always lacked. Log both during a ride and fit the coefficients against it
 
 ### 2.3 BLE heart rate
 - [x] Rewritten against the Bluetooth SIG spec: real Context, CCCD descriptor write, service-UUID scan filter, cancellable scanning, bounds-checked parsing
@@ -277,7 +376,7 @@ deletion — **it also has to add somewhere the rider can see that it failed.**
 - [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates`, `UnitSystem`, `Formatters`, `RideDayGrouping` — **186 tests**
 - [x] **8.8** Instrumented tests for Room DAOs (foreign key ordering, `is_complete` filtering, cascade delete)
 - [x] **8.8a** Instrumented test for `WorkoutService` lifecycle — start/pause/resume/stop, the workout row existing before its first metric, the batched tail being flushed, and a finished ride no longer being offered for recovery
-- [ ] **8.9** Manual testing on Gen 1/Gen 2 Peloton hardware — *blocked*
+- [x] **8.9** Manual testing on Gen 1 Peloton hardware — profile selector → dashboard → settings → Hardware telemetry → Just Ride → live board data → post-ride summary → persisted ride and 246 metric rows, 31 July 2026. Imperial units picked up from the device locale with no prompting (13.2), on the actual tablet this time
 - [x] **8.12** Verified end-to-end on an emulator: profile creation → class library → intervals → simulated ride → post-ride summary → persisted metrics
 - [x] **8.13** Verified on a 1920×1080 landscape tablet emulator, which is the shape of the device this actually runs on
 
@@ -668,7 +767,7 @@ nice-to-have and only becomes interesting after a few dozen rides exist.
 - [ ] **16.1.3** Cadence distribution
 - [ ] **16.1.4** Time in zone as a stacked bar, shared with the HUD's collapsed strip (11.2.2)
 - [ ] **16.1.5** The class's prescribed intervals drawn under the actual trace — "what you were asked for" against "what you did" is the single most useful post-ride view
-- [ ] **16.1.6** Axis label says **estimated** watts. It is a model, not a meter (2.2.4)
+- [ ] **16.1.6** Axis label reads from `SensorReading.powerIsMeasured` rather than saying **estimated** unconditionally. On the bike it *is* a meter (2.1a); on a simulated ride it is a model (2.2.4). A ride can in principle contain both, so decide what a mixed series is labelled
 
 ### 16.2 Building them
 - [ ] **16.2.1** Compose `Canvas`, no charting dependency — these are four fixed chart types, and a library is a large surface for a small need
@@ -713,7 +812,7 @@ signed out — not grey out, not prompt, not appear at all.
 - [ ] **18.4** Compare a class you both rode — same class, both traces, one chart. This is the version of a leaderboard that is actually motivating
 - [ ] **18.5** Friend leaderboard on the post-ride summary, alongside the rider's own history (11.4.1)
 - [ ] **18.6** **The HUD stays social-free.** Nothing on the strip during a ride. It has half a second of attention and it belongs to the interval
-- [ ] **18.7** Every comparison across riders carries the uncalibrated-power caveat, or it is comparing two different bikes' guesses and presenting the difference as fitness
+- [ ] **18.7** A comparison across riders is honest when both sides are measured watts off their own boards (2.1a), and misleading when either side is modelled. Carry the caveat on the modelled ones specifically rather than on all of them — a blanket disclaimer nobody reads is the same as none
 - [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
 
 ---
@@ -728,7 +827,7 @@ has simply never been written down.
 - [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
 - [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
-- [ ] **19.1.5** **README and CONTRIBUTING** covering the jailbreak prerequisite, the build, and the fact that simulated telemetry makes the whole app usable with no bike
+- [ ] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. The README still advertises a root prerequisite the app does not have and does not want (2.1a). Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot
 
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
@@ -813,16 +912,30 @@ right one — same device shape, same distance, same job.
 
 ---
 
-## Phase 10: Hardware Validation — blocked
+## Phase 10: Hardware Validation — partly done, 31 July 2026
 
-Everything here needs a jailbroken Gen 1/Gen 2 bike.
+Done on a real Gen 1 (`PLTN-RB1VQ`) over wireless adb, with a rider pedalling.
+Note that the bike is **stock, not jailbroken**, which turned out to be the
+finding rather than an obstacle — see 2.1a.
 
-- [ ] **10.1** Confirm the sensor board's device path and that it is readable
-- [ ] **10.2** Confirm the byte protocol matches `SerialProtocolParser` (`C` ticks, `R`+value)
-- [ ] **10.3** Calibrate `PowerModel` against a known-good power source — see 2.2.4
-- [ ] **10.4** Verify the HUD renders over the Peloton video app
-- [ ] **10.5** Verify a BLE strap connects and streams
-- [ ] **10.6** Full-length ride: battery, thermals, memory, no dropped samples
+- [x] **10.1** Sensor board device path confirmed: `/dev/ttyO0`, `system:system`
+      `0660`. **Not readable by this app, and not made readable** — there is no
+      root on a stock bike. `/dev/ttyS1` does not exist and `/dev/ttyS2` is the
+      Bluetooth UART
+- [x] **10.2** Moot as written, and answered: the raw byte protocol never
+      reaches us. Peloton's service owns the port, decodes the packets
+      (`F5,41,36,F6` for RPM, `F5,44,39,F6` watts, `F5,49,3E,F6` resistance,
+      19200 baud) and hands over a float. `SerialProtocolParser` is unexercised
+      on this hardware and stays only for the rooted-tablet path
+- [x] **10.3** Superseded for real rides: the board reports watts directly, so
+      there is nothing to calibrate on the bike itself. The remaining
+      calibration question is about simulated rides — see 2.2.5
+- [ ] **10.4** Verify the HUD renders over the Peloton video app. **Not done**:
+      needs the overlay permission granted on the tablet, which is the rider's
+      to give
+- [ ] **10.5** Verify a BLE strap connects and streams — no strap to hand
+- [ ] **10.6** Full-length ride: battery, thermals, memory, no dropped samples.
+      The longest run so far is 4 minutes
 
 ---
 
