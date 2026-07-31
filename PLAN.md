@@ -1703,26 +1703,44 @@ whole phase.
 
 ### 21.1 What the zones are computed from
 
+**Ask for the max HR first and the age second.** The app does not want anybody's
+age; it wants their maximum heart rate, and age is only a proxy for it — a poor
+one, with a 10–12 bpm spread between individuals at the same age, which is wider
+than a zone. So 21.1.3 is the primary path and 21.1.2 is the fallback for a
+rider who does not know their number. That ordering is both more accurate and
+asks less about the person, which is a rare combination and worth taking.
+
 - [ ] **21.1.1** **Date of birth on the profile.** `profiles` today is name,
       weight, FTP and a created-at, so this is a schema change and gets the full
       treatment: a `Migration`, an exported schema in `app/schemas/` and a
-      `MigrationTestHelper` test (12.5). Three decisions to make deliberately:
-      **date of birth rather than an age integer**, or every rider's zones go
-      quietly stale on their birthday; **nullable**, so a rider who does not
-      want to tell the app their age gets *no* HR zones rather than wrong ones;
-      and whether it goes to the cloud at all (14) — this is the first properly
-      personal datum the app would store about someone, and "we sync everything
-      in the row" is not a decision, it is a default. HUMAN COMMENT: There's no need to have a precise birthday. Stick to month and year. Unless you think precise date opens the door to further personalisation
-- [ ] **21.1.2** Estimated maximum heart rate from age, using **Tanaka
-      (208 − 0.7 × age)** rather than the folk formula 220 − age, which
+      `MigrationTestHelper` test (12.5). A **full date**, and stored as one:
+      a date picker is a control everyone already knows, where "what year were
+      you born" is an odd field people have to stop and think about. Not an age
+      integer, or every rider's zones go quietly stale on their birthday.
+      **Nullable** — a rider who does not want to give it gets *no* HR zones
+      rather than wrong ones, and with 21.1.3 in front of it many riders will
+      never be asked at all
+- [ ] **21.1.1a** **Sync the year, not the date** (14, 15). On the tablet a date
+      of birth is a fitness input; in a cloud row beside a display name it is an
+      identity field, and that boundary — not the collecting of it — is where
+      this datum changes character. Only the year has any effect on the maths
+      (0.7 bpm per year of age, against a formula whose own error is 10–12), so
+      deriving it at the sync edge costs nothing and means the useful part is
+      the only part that travels. Decide this **when the DTO is written**, not
+      after: "we sync every column in the row" is a default, not a decision
+- [ ] **21.1.2** *The fallback.* Estimated maximum heart rate from age, using
+      **Tanaka (208 − 0.7 × age)** rather than the folk formula 220 − age, which
       overestimates for younger riders and underestimates for older ones. Say on
-      screen, once and plainly, that it is an estimate
-- [ ] **21.1.3** **A measured max HR that overrides the estimate.** Any
+      screen, once and plainly, that it is an estimate — and show it updating as
+      the rider fills the field in, so it is visibly a fitness calculation and
+      not a profile form harvesting a birthday
+- [ ] **21.1.3** *The primary path.* **A measured max HR, asked for first.** Any
       age-based formula has a between-individual spread of roughly 10–12 bpm,
       which is wider than a zone — so for a meaningful fraction of riders the
       estimated zones are simply the wrong zones. Let a rider who knows their
       own number type it, and offer the highest heart rate the app has ever
-      recorded for them as a starting point (it already has every sample)
+      recorded for them as a starting point (it already has every sample). It
+      overrides the estimate wherever both exist
 - [ ] **21.1.4** Resting heart rate, if and only if the model chosen in 21.2
       needs it. Do not collect a field nothing reads
 - [ ] **21.1.5** Threshold heart rate (LTHR) as the best-quality basis, optional
