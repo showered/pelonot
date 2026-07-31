@@ -46,6 +46,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -232,6 +235,23 @@ private fun RideContent(
     val interval = snapshot.interval
     val zone = interval.targetZone
 
+    // 11.6.6. One tap on a 72 dp pill, pressed with sweaty hands while moving,
+    // and the class is over — there is no resume. Asked here and not in the
+    // service, so a class that runs out of intervals still ends by itself
+    // without a dialog nobody is there to answer.
+    var confirmingEnd by rememberSaveable { mutableStateOf(false) }
+    if (confirmingEnd) {
+        EndRideDialog(
+            elapsedSec = snapshot.elapsedSeconds,
+            remainingSec = if (interval.hasClass) interval.classRemainingSec else null,
+            onConfirm = {
+                confirmingEnd = false
+                onEnd()
+            },
+            onDismiss = { confirmingEnd = false }
+        )
+    }
+
     val accent by animateColorAsState(
         targetValue = if (interval.hasClass) zone.color else MaterialTheme.colorScheme.primary,
         animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
@@ -302,7 +322,7 @@ private fun RideContent(
                             state = state,
                             onPause = onPause,
                             onResume = onResume,
-                            onEnd = onEnd,
+                            onEnd = { confirmingEnd = true },
                             onBackToHud = onBackToHud,
                             modifier = Modifier
                                 .width(if (availableWidth >= 1000.dp) 320.dp else 260.dp)
@@ -322,7 +342,7 @@ private fun RideContent(
                             state = state,
                             onPause = onPause,
                             onResume = onResume,
-                            onEnd = onEnd,
+                            onEnd = { confirmingEnd = true },
                             onBackToHud = onBackToHud,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -331,6 +351,48 @@ private fun RideContent(
             }
         }
     }
+}
+
+/**
+ * Asked before a ride ends, because ending one cannot be taken back (11.6.6).
+ *
+ * The ride itself survives — it is saved, and the summary comes up — so this is
+ * not the same danger as the delete in 12.3.2. What a mis-tap destroys is the
+ * *rest of the class*: there is no resume, so a thumb landing here at minute 20
+ * of 45 ends it at 20.
+ *
+ * Deliberately dismissible by tapping anywhere outside. It is raised mid-effort
+ * and the overwhelmingly likely answer is "I did not mean that", so the cheap
+ * gesture has to be the safe one — the opposite of the recovery prompt, which
+ * refuses to go away because it genuinely needs an answer.
+ */
+@Composable
+private fun EndRideDialog(
+    elapsedSec: Int,
+    remainingSec: Int?,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("End the ride?") },
+        text = {
+            Text(
+                buildString {
+                    append("You're ${Formatters.duration(elapsedSec)} in. ")
+                    // Naming what is left is the whole argument for asking: it
+                    // is the part the rider is about to lose, and it is the
+                    // number they do not have in their head mid-effort.
+                    if (remainingSec != null && remainingSec > 0) {
+                        append("There's ${Formatters.duration(remainingSec)} of the class left. ")
+                    }
+                    append("Everything so far is saved either way, but a ride can't be restarted.")
+                }
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("End ride") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep riding") } }
+    )
 }
 
 @Composable

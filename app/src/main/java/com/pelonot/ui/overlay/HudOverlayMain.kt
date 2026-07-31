@@ -35,6 +35,8 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -42,7 +44,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,6 +93,7 @@ import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.theme.units
+import kotlinx.coroutines.delay
 
 /**
  * The floating ride HUD.
@@ -946,8 +953,70 @@ private fun Controls(
                 )
             )
         }
+        StopButton(onStop = onStop)
+    }
+}
+
+/**
+ * Ending the ride from the strip, in two taps (11.6.6).
+ *
+ * The ride screen asks with a dialog; this window cannot. It is
+ * `FLAG_NOT_FOCUSABLE` by design — the whole point of the strip is that it
+ * never takes focus from the film — so the button asks for itself: the first
+ * tap turns it into the question, the second answers it, and a few seconds of
+ * no answer is an answer too.
+ *
+ * That is worth more here than on the ride screen, not less. This control sits
+ * a thumb's width from pause, on the edge of a screen someone reaches past to
+ * pick up a bottle, and there is no undo behind it.
+ */
+@Composable
+private fun StopButton(onStop: () -> Unit) {
+    var confirming by remember { mutableStateOf(false) }
+
+    LaunchedEffect(confirming) {
+        if (confirming) {
+            delay(STOP_CONFIRM_TIMEOUT_MS)
+            confirming = false
+        }
+    }
+
+    val end = {
+        if (confirming) {
+            confirming = false
+            onStop()
+        } else {
+            confirming = true
+        }
+    }
+
+    // Two different components rather than one that swaps its content: an
+    // IconButton sizes itself to a 52 dp circle whatever is inside it, so the
+    // word wrapped to "EN / D?". A button that changed only its colour would be
+    // worse — the rider has to be able to see that the second tap does
+    // something the first one did not.
+    if (confirming) {
+        Button(
+            onClick = end,
+            modifier = Modifier.height(52.dp),
+            shape = MaterialTheme.expressiveShapes.pill,
+            contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Text(
+                text = "END?",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    } else {
         FilledIconButton(
-            onClick = onStop,
+            onClick = end,
             modifier = Modifier.size(52.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -1103,6 +1172,14 @@ private fun CompactMetric(value: String, unit: String, accent: Color) {
  * reason: unknown is its own value and must never be drawn as a number.
  */
 private const val NO_READING = "--"
+
+/**
+ * How long the strip's stop button waits for its second tap (11.6.6).
+ *
+ * Long enough to be answered by someone out of breath, short enough that the
+ * button is back to being a stop button before the rider next glances at it.
+ */
+private const val STOP_CONFIRM_TIMEOUT_MS = 4_000L
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp
