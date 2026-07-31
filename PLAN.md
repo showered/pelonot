@@ -780,10 +780,13 @@ offer it, which makes this closer to fundamental than to polish.
       Do Not Disturb policy is active on API 23+. Catch it and say so rather
       than letting the slider move and nothing happen — a control that lies
       about having worked is worse than one that is absent
-- [ ] **11.5.8** Check whether the tablet's own hardware volume buttons reach
-      the app at all. If they do, honouring them may be most of the feature;
-      if they do not, that is worth recording next to 2.1a as another thing
-      this hardware does not have
+- [ ] **11.5.8** Volume keys: the owner reports **no physical rocker**, and the
+      driver picture in `HARDWARE.md` is consistent with that — the only devices
+      declaring `KEY_VOLUMEUP` are the headphone jack (`ACCDET`, inline remote
+      only) and the MediaTek keypad driver, which declares the capability
+      whether or not buttons are populated. **Settle it with `adb shell getevent
+      -l` and a press of every physical button**; ten seconds with someone at
+      the bike. Honour the keys if they arrive, but nothing may depend on them
 
 ---
 

@@ -8,6 +8,8 @@ Kotlin, Jetpack Compose, Room, minSdk 24 / targetSdk 34.
 **Read `ARCHITECTURE.md` for how data flows through the app, and `PLAN.md` for
 what is done and what is next.** PLAN.md opens with a *Where the work stands*
 section naming the current priority — read that before picking work.
+**`HARDWARE.md` has the bike tablet's measured display, system and input facts**
+— read it before any UI work, so it is checked at the size it will actually run.
 
 ---
 
@@ -20,8 +22,13 @@ section naming the current priority — read that before picking work.
 ./gradlew connectedDebugAndroidTest
 ```
 
-Emulator: `~/Library/Android/sdk/emulator/emulator -avd Medium_Phone_API_36.1`,
-with `adb` at `~/Library/Android/sdk/platform-tools/adb`.
+`adb` lives at `~/Library/Android/sdk/platform-tools/adb`.
+
+**Do not check UI work on `Medium_Phone_API_36.1`.** The bike is a landscape
+**1920 × 1080 at 240 dpi — 1280 × 720 dp** — with a 48 dp bottom navigation bar
+and no top status bar. A phone AVD hides every layout problem this app has, and
+an AVD at the right resolution but the wrong density hides half of them.
+`HARDWARE.md` has the measured figures and an AVD recipe that matches.
 
 ---
 
@@ -53,9 +60,12 @@ with `adb` at `~/Library/Android/sdk/platform-tools/adb`.
   0 — that writes a fake sample into the rider's record and drags averages down.
 - **`PelonotTheme` may be composed from a Service context** (the HUD overlay),
   so anything reaching for an Activity must use a safe cast.
-- **`PowerModel`'s coefficients are unvalidated.** Absolute watts are not
-  trustworthy; they are self-consistent between the user's own rides only. Say
-  so rather than presenting them as measured.
+- **`PowerModel`'s coefficients are not merely unvalidated, they are measurably
+  wrong.** Against 310 steady-state samples off the real board they score
+  **RMSE 137 W, median absolute error 66%, R² 0.21** (`calibration/`). Never
+  present a modelled watt as measured. They have not been replaced because one
+  sweep produced a fit that failed cross-validation — PLAN.md 2.2a is the
+  per-bike auto-calibration that supersedes hand-fitting.
 - **Bike telemetry does not come from a serial port.** The bike's tablet is
   stock, not jailbroken, and no app can open the sensor board's UART
   (`/dev/ttyO0`, `system:system`). `/dev/ttyS1` does not exist and `/dev/ttyS2`
@@ -71,9 +81,20 @@ with `adb` at `~/Library/Android/sdk/platform-tools/adb`.
   single retry policy. Adding another creates competing schedules.
 - **`SensorMode.Hardware` deliberately does not fall back to simulation.**
   Substituting fabricated telemetry mid-ride would corrupt a permanent record.
-- **The database uses `fallbackToDestructiveMigration()`** while pre-release.
-  Swap to real migrations before anyone installs a build with data they care
-  about.
+- **The database uses explicit migrations** (`AppMigrations.ALL`) — the
+  destructive fallback is gone except on *downgrade*, which only happens when
+  an older APK is installed over a newer one on a development device. Every
+  schema change needs a `Migration`, an exported schema in `app/schemas/`, and
+  a `MigrationTestHelper` test. See PLAN.md 12.5.
+- **A ride's `avg_*` columns are computed live, not derived on read.** Check a
+  new one against `AVG()` over its own `workout_metrics` rows before trusting
+  it; `avg_hr` was wrong for the project's whole history while `avg_power` and
+  `avg_cadence` beside it were exact.
+- **Audio attributes request nothing.** Setting `AudioAttributes` on a
+  `TextToSpeech` describes the sound; ducking needs an explicit
+  `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` request. And configuring a
+  `TextToSpeech` before its engine has bound silently discards the call — do it
+  in the init callback. Both of these made the coach inaudible over video.
 
 ---
 
@@ -125,7 +146,8 @@ service bind can be confirmed on your own.
 The tablet is not stock-stock: it has Nova Launcher and Netflix side-loaded,
 and Peloton's own member app is `com.onepeloton.weasel`. Drive the whole UI
 over `adb shell input tap` and read it back with `screencap` — but note the
-two blind spots below.
+two blind spots below. **`HARDWARE.md` has the full measured picture**: display
+geometry, system bars, input devices and the packages that matter.
 
 **Screenshots come back empty over DRM video.** Netflix's player sets
 `FLAG_SECURE`, so `adb exec-out screencap` yields a black image and the HUD
