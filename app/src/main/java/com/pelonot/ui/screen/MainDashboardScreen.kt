@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -81,71 +82,96 @@ fun MainDashboardScreen(
         enter = fadeIn(tween(600)) + scaleIn(tween(600)),
         exit = fadeOut(tween(300))
     ) {
-        Column(
+        // 22.2.1. 11.3.1 was right that there is no dead right-hand side here —
+        // the column filled the width. That is the problem: a card 1200 dp wide
+        // with a two-word label in it is *harder* to read than the same card at
+        // 700, because the eye has to travel the whole room to get from the
+        // label to the value. Capped and centred, a card reads as a card.
+        //
+        // The cap is a maximum, not a width: below it the column still fills
+        // whatever it is given, so nothing changes on a narrow screen.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.large)
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter
         ) {
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-            // ── 1️⃣ Greeting Header ──────────────────────────────────
-            GreetingHeader(userName = userName)
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-
-            // ── 2️⃣ FTP Hero Card ────────────────────────────────────
-            FtpHeroCard(ftp = ftp)
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-
-            // ── 3️⃣ Primary Action – Just Ride ───────────────────────
-            PrimaryActionCard(
-                title = "Just Ride",
-                subtitle = "Jump on the bike and ride free",
-                icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                onClick = onJustRide
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-            // ── 4️⃣ Secondary Actions ────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            Column(
+                modifier = Modifier
+                    .widthIn(max = DashboardMaxWidth)
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.spacing.large)
             ) {
-                SecondaryActionCard(
-                    title = "Begin Class",
-                    subtitle = "Structured workout",
-                    icon = Icons.Default.FitnessCenter,
-                    onClick = onBeginClass,
-                    modifier = Modifier.weight(1f)
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                // ── 1️⃣ Greeting Header ──────────────────────────────────
+                GreetingHeader(userName = userName)
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
+                // ── 2️⃣ FTP Hero Card ────────────────────────────────────
+                FtpHeroCard(ftp = ftp)
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
+                // ── 3️⃣ Primary Action – Just Ride ───────────────────────
+                PrimaryActionCard(
+                    title = "Just Ride",
+                    subtitle = "Jump on the bike and ride free",
+                    icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                    onClick = onJustRide
                 )
-                SecondaryActionCard(
-                    title = "History",
-                    subtitle = "Every ride you've finished",
-                    icon = Icons.Default.History,
-                    onClick = onHistory,
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryActionCard(
-                    title = "Settings",
-                    subtitle = "FTP, weight, units",
-                    icon = Icons.Default.Settings,
-                    onClick = onSettings,
-                    modifier = Modifier.weight(1f)
-                )
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+
+                // ── 4️⃣ Secondary Actions ────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    SecondaryActionCard(
+                        title = "Begin Class",
+                        subtitle = "Structured workout",
+                        icon = Icons.Default.FitnessCenter,
+                        onClick = onBeginClass,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SecondaryActionCard(
+                        title = "History",
+                        subtitle = "Every ride you've finished",
+                        icon = Icons.Default.History,
+                        onClick = onHistory,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SecondaryActionCard(
+                        title = "Settings",
+                        subtitle = "FTP, weight, units",
+                        icon = Icons.Default.Settings,
+                        onClick = onSettings,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+
+                // ── 5️⃣ Progress Section ─────────────────────────────────
+                ProgressSection(stats = stats)
+
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
             }
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-
-            // ── 5️⃣ Progress Section ─────────────────────────────────
-            ProgressSection(stats = stats)
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
         }
     }
 }
+
+/**
+ * How wide the dashboard's column is allowed to get (22.2.1).
+ *
+ * 760 dp on the bike's 1280 dp panel leaves a rail either side. Those rails are
+ * deliberately empty for now: what goes in them is a layout decision for the
+ * whole screen (22.2.2, 22.2.3), and filling them card by card produces three
+ * columns of unrelated things, which is worse than one.
+ */
+private val DashboardMaxWidth = 760.dp
 
 // =========================================================================
 // Greeting Header
