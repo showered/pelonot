@@ -11,6 +11,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +65,30 @@ fun PelonotNavGraph(
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
     var showIntentPrompt by rememberSaveable { mutableStateOf(false) }
+
+    // 11.1a.5. Opening the app while a class is already recording — from the
+    // ride notification, from the launcher, or from the strip after the task
+    // was swiped away — used to land on "Who's riding?" with the ride running
+    // behind it and no route back to it. Nothing outside WorkoutService knew a
+    // ride existed.
+    //
+    // Only from the start destination, which is what makes this a cold-start
+    // door and not a trap: a ride begun the ordinary way also sets this, and
+    // the rider is already on the ride screen by then. Dashboard is pushed
+    // underneath so the back stack matches the ordinary path exactly —
+    // otherwise the summary's own popUpTo(Dashboard) has nothing to pop to and
+    // the rider finishes the ride into a dead end.
+    val activeRide = uiState.activeRide
+    LaunchedEffect(activeRide) {
+        if (activeRide != null &&
+            navController.currentDestination?.route == Destination.ProfileSelector.route
+        ) {
+            navController.navigate(Destination.Dashboard.route)
+            navController.navigate(
+                Destination.Ride.of(activeRide.classId, activeRide.intentId)
+            )
+        }
+    }
 
     val contentModifier = Modifier
         .windowInsetsPadding(WindowInsets.statusBars)

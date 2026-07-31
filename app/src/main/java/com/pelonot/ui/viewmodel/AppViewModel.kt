@@ -12,6 +12,8 @@ import com.pelonot.data.repository.DashboardStats
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
+import com.pelonot.data.service.ActiveRide
+import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,7 +44,14 @@ data class AppUiState(
      * A ride the app was killed in the middle of. Non-null means the rider is
      * about to be asked what to do with it.
      */
-    val recoverableWorkout: WorkoutEntity? = null
+    val recoverableWorkout: WorkoutEntity? = null,
+    /**
+     * A ride recording right now (11.1a.5). Non-null on a cold start means the
+     * app was opened while a class was already running — from the notification,
+     * the launcher, or the strip after the task was swiped away — and the rider
+     * is looking for the ride, not the profile picker.
+     */
+    val activeRide: ActiveRide? = null
 ) {
     val selectedProfile: UserEntity?
         get() = profiles.firstOrNull { it.localUserId == settings.lastProfileId }
@@ -83,20 +92,33 @@ class AppViewModel(
             else workoutRepository.observeDashboardStats(profileId)
         }
 
+    /**
+     * The two ride-shaped questions, paired so the state combine stays inside
+     * the five-flow typed overload: is there a ride to recover, and is there
+     * one running right now. They are mutually exclusive by construction —
+     * 8.3b excludes the live ride from the first — and the UI treats them very
+     * differently, so they travel together and are read apart.
+     */
+    private val rideStatus = combine(
+        _recoverableWorkout,
+        RideInProgress.active
+    ) { recoverable, active -> recoverable to active }
+
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
         userRepository.allUsers,
         classRepository.allPlans,
         dashboardStats,
-        _recoverableWorkout
-    ) { settings, profiles, classes, stats, recoverable ->
+        rideStatus
+    ) { settings, profiles, classes, stats, (recoverable, active) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
             dashboardStats = stats,
             isLoading = false,
-            recoverableWorkout = recoverable
+            recoverableWorkout = recoverable,
+            activeRide = active
         )
     }.stateIn(
         scope = viewModelScope,
