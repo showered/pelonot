@@ -337,6 +337,7 @@ were the *reason* a downstream feature looked broken.
 | 2.3 BLE heart rate (again) | ✅ | **The manifest never declared `ACCESS_FINE_LOCATION`**, which below API 31 *is* the BLE scan permission. A runtime request for an undeclared permission is denied instantly — no dialog, nothing in the log — so on the bike's own Android 11 tablet no strap could ever be found. The rewrite in 2.3 was correct code behind a door that was nailed shut. Behind it, the Scan button reported `PermissionRequired` and never requested anything, so there was no way to grant from inside the app either. Found the first time a strap was put on. |
 | 8.6 TTS audio cues | ✅ | Two defects, neither in the coaching logic. `RideCoach` set the language and audio attributes immediately after the `TextToSpeech` constructor, but the engine binds asynchronously, so both were discarded — the device said `setLanguage failed: not bound to TTS engine` and nothing read it. And audio attributes only *describe* a sound; they request nothing. Ducking needs `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, which nothing ever asked for, so the cue was spoken at full volume underneath a film at full volume. The tick claimed "the rider's video ducks under them" and the video had never ducked once. |
 | 3.4 / 9.5.2 Average heart rate | (untickable) | `workouts.avg_hr` was written as **79.0 against a true mean of 105.4** over the ride's own 314 metric rows — 79 being the lowest reading of the warm-up. The running mean was rounded to an `Int` every tick, so once one sample moved it by less than 1 bpm the whole increment was discarded and the average froze. `avg_power` and `avg_cadence` beside it, both `Double`, were exact. A second bug sat behind it: heart rate divided by the *tick* count rather than the heart-rate sample count, which would have buried the readings of any strap connecting mid-ride. Invisible from every screen; found by comparing the stored aggregate against the samples it claimed to summarise. |
+| 2.6 Telemetry source toggle | ✅ | The chip persisted and was **applied to the running pipeline only in the session it was tapped in**. `SensorRepository.setMode` had one caller, `SettingsViewModel`; nothing applied the stored preference at startup, so every launch silently reverted to `Auto`. Settings kept drawing the rider's choice because Settings reads DataStore and the pipeline reads its own field. **Hardware** — the mode that exists so a ride never records fabricated numbers — therefore could not survive the app being closed. See 2.4.6. |
 | 1.11 / 7.4 Cloud sync (again) | ✅ | **No row had ever reached the cloud** — `profiles` and `workouts` were both empty, by count. The cause was not the DTOs: `migration.sql` never granted `anon` a single table privilege, so every request failed `42501` before RLS was consulted. Behind that sat four more defects, one of which (epoch millis into a `TIMESTAMPTZ`) was invisible to code reading and only appeared on a real insert. Failures returned `SyncOutcome.Failed`, which nothing displays. Full detail in **14.0**. |
 
 All of the above are now fixed and covered by tests, **except the last** —
@@ -716,7 +717,7 @@ Settings section. The gates are exercised against the real 31 July sweep in
 - [x] Unified `StateFlow<SensorReading>` merging bike telemetry and heart rate
 - [x] **One** reconnect policy with exponential backoff (there were previously three competing ones)
 - [x] Hardware mode retries rather than falling back to simulation, so a ride never records fabricated numbers
-- [ ] **2.4.4** **A stale reading is an absence, not a sample.** When the board
+- [x] **2.4.4** **A stale reading is an absence, not a sample.** When the board
       stops answering, `PelotonSensorServiceSource` closes the flow and
       `SensorRepository` backs off and retries — but `_sensorReading` is a
       `StateFlow`, so it goes on holding **the last value that arrived**. The
@@ -731,8 +732,21 @@ Settings section. The gates are exercised against the real 31 July sweep in
       **`timestampMs` already says how old a reading is and nothing else asks.**
       Same family as nullable `heartRateBpm` and the `TIME_OUT` payload in
       2.1a.3: a zero or a repeat that means *we do not know* must not enter the
-      rider's permanent record as though it were measured
-- [ ] **2.4.5** **The rider is never told the sensor stopped.**
+      rider's permanent record as though it were measured.
+      *Fixed by the one thing that already knew: `timestampMs` says how old a
+      reading is and nothing asked. A reading older than three seconds ends the
+      tick — no `workout_metrics` row, no contribution to the averages, no
+      calibration sample — so the second is a **gap**, which is what actually
+      happened. Seven JVM tests on the rule, including the two traps: `EMPTY`
+      carries `timestampMs = 0` and must never read as live, and a heart-rate
+      packet `copy()`s the bike's reading and must not refresh its timestamp.
+      **Observed on the tablet AVD**: a 47-second ride in Hardware mode with no
+      board wrote **0 rows** to `workout_metrics` and finalised at 0.0 kJ,
+      where before it would have written 47 fabricated ones. The frozen-mid-ride
+      case — the board dying at 200 W and holding it — is covered by the tests
+      and has not been staged on a device; there is no way to make the
+      simulator stall*
+- [x] **2.4.5** **The rider is never told the sensor stopped.**
       `SensorStatus.Reconnecting` is constructed, logged and rendered nowhere:
       the only consumer of `SensorStatus` in the whole UI is `isSimulated` on
       `RideUiState`. In Hardware mode with a dead board the ride screen shows
@@ -740,7 +754,39 @@ Settings section. The gates are exercised against the real 31 July sweep in
       the strip has no simulated-telemetry marker either, though the ride screen
       does. This is the *Corrections* rule applied to telemetry: a failure path
       that is caught, logged and returned as a value nothing reads is
-      indistinguishable from success from every surface anyone looks at
+      indistinguishable from success from every surface anyone looks at.
+      *Both surfaces now show the two dashes an absent heart-rate strap has
+      always had, rather than a frozen number: `telemetryLive` rides on
+      `RideSnapshot` because it is a fact about the **absence** of telemetry,
+      and a flow that has stopped emitting cannot announce that it stopped —
+      the service's tick is the only thing in the app that notices time passing
+      without a reading. **Observed on the tablet AVD** in Hardware mode with no
+      board: the ride screen says "No signal from the bike — not recording" and
+      all four tiles read `--`; the strip's status line says NO SIGNAL in the
+      same amber the pause state uses. One thing found by looking: the full
+      sentence clipped to "NO SIGNAL · NOT" on the strip, because that chip is
+      only as wide as the clock above it. The strip gets two words and the ride
+      screen keeps the sentence. Two dashes at 104 sp read as two coloured bars
+      — legible as "no value", but worth a look when 11.6.3 does the metric
+      tiles properly*
+- [x] **2.4.6** **The telemetry source the rider picked was forgotten at the
+      next launch.** Found while verifying 2.4.5, and worse than what it was
+      found in aid of. `SensorRepository.setMode` had exactly one caller —
+      `SettingsViewModel`, on tap — so the choice was applied to the *object*
+      only in the session it was made in. On every launch after that the
+      repository was back to its default of `Auto`, while Settings went on
+      drawing the chip the rider had chosen, because **Settings reads DataStore
+      and the pipeline reads its own field** and nothing reconciled the two.
+      The consequence is not cosmetic: `SensorMode.Hardware` exists so that a
+      ride never records fabricated numbers, and after a restart it was
+      silently `Auto`, which falls back to simulated telemetry when the board
+      does not answer. Same shape as everything in *Corrections* — a setting
+      that reads back correctly everywhere a human looks and does nothing.
+      *Observed on the tablet AVD, and it is the clearest evidence of the day:
+      Settings showing **Hardware** selected while the ride beside it recorded
+      a plausible simulated 68 rpm / 71 W. `PelonotApp` now collects the
+      preference for the life of the process; after the fix the same cold start
+      rides "No signal from the bike — not recording"*
 
 ### 2.5 Metrics calculator
 - [x] Total output by integrating power over **elapsed time**
@@ -942,7 +988,7 @@ exists; nothing creates one. The previous value is overwritten and gone.
 - [x] **8.2** BLE disconnection handled without self-triggered reconnect loops
 - [x] **8.3** Crash recovery via `is_complete`, surfaced through `WorkoutService.recoverableWorkout`
 - [x] **8.3a** Recovery prompt shown at launch, driven from `AppViewModel` rather than the service. It offers to **keep** the ride, not resume it: the rider stopped pedalling when the app went away, and restarting the clock would splice a gap of unknown length into the record. `WorkoutAggregates` rebuilds the totals from the samples that did land.
-- [ ] **8.3b** **Crash recovery cannot tell a crashed ride from one that is
+- [x] **8.3b** **Crash recovery cannot tell a crashed ride from one that is
       running right now.** `getIncompleteWorkout()` is
       `SELECT * FROM workouts WHERE is_complete = 0 ORDER BY timestamp DESC
       LIMIT 1` and `clearRecoverableWorkouts()` is
@@ -958,7 +1004,20 @@ exists; nothing creates one. The previous value is overwritten and gone.
       and forty minutes of Netflix on a tablet this size is ample reason for
       Android to destroy a backgrounded Activity. Same shape as the 8.3
       correction one layer down — that one returned the ride you had just
-      finished, this one returns the ride you are still on
+      finished, this one returns the ride you are still on.
+      *Reproduced first, and it reads worse than it describes: the dialog says
+      the app "was closed part-way through a ride" while the HUD strip two
+      inches above it shows 02:11 and 66 rpm, live. The fix is `RideInProgress`,
+      deliberately process-scoped rather than a column — "is a ride being
+      recorded?" is a question about **this process**, and if it died then none
+      is, whatever the table says, which is exactly the case this prompt exists
+      for. Two instrumented tests, one of them for the trap in the SQL: written
+      the obvious way as `id != :excludingId`, excluding nothing excludes
+      everything, because `id != NULL` is never true and no ride could ever be
+      recovered again. **Observed on the tablet AVD**: same repro — ride
+      started, task swiped away, app reopened — now cold-starts with the ride
+      still running and no dialog, and a genuine orphan (left behind by
+      reinstalling over a live ride) is still offered*
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
@@ -1144,7 +1203,7 @@ polish item: it is the single journey a rider makes most often during a class.
       and all 135 of its `workout_metrics` rows with it — checked by count
       against the database, not by the screen returning.* Local only: an
       already-uploaded ride stays in the cloud until tombstones exist (15.3.4)
-- [ ] **11.1a.5** **The cold-start door — there is no way back into a ride that
+- [x] **11.1a.5** **The cold-start door — there is no way back into a ride that
       is already running.** 11.1a.1–11.1a.3 all assume the app's task still
       exists: `AppForeground.bringForward` sends `ACTION_MAIN` +
       `CATEGORY_LAUNCHER` precisely so an existing task resumes where it was
@@ -1158,7 +1217,31 @@ polish item: it is the single journey a rider makes most often during a class.
       one thing a notification is for. Needs the running ride to be knowable
       from outside the service — the incomplete workout row already says so, and
       8.3b has to be fixed first or asking the question raises the recovery
-      dialog instead
+      dialog instead.
+      *Done with the same `RideInProgress` 8.3b introduced, and only from the
+      start destination — that is what makes it a cold-start door rather than a
+      trap, since a ride begun the ordinary way sets it too and the rider is
+      already on the ride screen by then. Dashboard is pushed underneath on the
+      way in, because otherwise the summary's own `popUpTo(Dashboard)` has
+      nothing to pop to and the rider finishes the ride into a dead end.
+      **Observed on the tablet AVD**: ride started, task swiped away (0 activity
+      records, service still `isForeground=true`), reopened from the launcher →
+      the ride screen at 00:26 and counting; ended it there and Done on the
+      summary returned to the dashboard*
+- [ ] **11.1a.6** **The ride notification is missing entirely on Android 13+.**
+      `POST_NOTIFICATIONS` is declared in the manifest and **requested by
+      nothing** — the only runtime request the app makes is for Bluetooth. On
+      API 33+ that means the ongoing ride notification is never posted, so the
+      route 11.1a.5 just built has no doorbell: `HARDWARE.md` calls that
+      notification "the most reliable read on an in-flight ride" and on a
+      modern device it does not exist. The bike's own tablet is Android 11 and
+      unaffected, which is exactly why this could sit here unnoticed —
+      `targetSdk 34` means any other device the app is installed on is not.
+      Same family as the `VIBRATE` and `ACCESS_FINE_LOCATION` corrections, one
+      step earlier: not a permission absent from the manifest, but one present
+      in it that nobody ever asks for. *Seen on the API 36 tablet AVD:
+      `importance=NONE` for `com.pelonot` and no notification during a ride,
+      until it was granted by hand with `pm grant`*
 
 ### 11.1b The HUD getting out of the way
 
@@ -1832,7 +1915,18 @@ Sorted by value per unit of work. The first group is arguably fundamental and
 has simply never been written down.
 
 ### 19.1 High value, small
-- [ ] **19.1.1** **Screen-on lock during a ride** (also 11.3.5) — the tablet sleeping mid-class is a bug the rider experiences as the app being broken
+- [x] **19.1.1** **Screen-on lock during a ride** (also 11.3.5) — the tablet sleeping mid-class is a bug the rider experiences as the app being broken.
+      *Nothing held the screen awake: no window flag, no wake lock, not even the
+      permission. Invisible on the bike because Netflix holds its own, so it
+      only bites a rider on Pelonot's own ride screen — or on a podcast, or on
+      anything else that does not. Asserted in the two places that are up for
+      exactly as long as a ride is: the ride screen's window and the strip's
+      overlay window, of which exactly one exists at a time, because the overlay
+      stands down while the ride screen is on top. Held through a pause too — a
+      rider refilling a bottle has not left. **Observed on the tablet AVD**:
+      `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager'` with
+      `ws=WorkSource{com.pelonot}` on the ride screen, and still held after
+      minimising to the strip with another app in the foreground*
 - [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
 - [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
