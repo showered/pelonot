@@ -40,19 +40,46 @@ class RideCoach(context: Context) {
     @Volatile
     private var ttsReady = false
 
-    private var tts: TextToSpeech? = TextToSpeech(context.applicationContext) { status ->
-        ttsReady = status == TextToSpeech.SUCCESS
-        if (!ttsReady) Log.w(TAG, "Text-to-speech unavailable; coaching will be silent")
-    }.apply {
-        setAudioAttributes(
-            AudioAttributes.Builder()
-                // Guidance rather than media, so the film ducks under it
-                // instead of the cue being drowned by it.
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
-        )
-        language = Locale.getDefault()
+    private var tts: TextToSpeech? = null
+
+    init {
+        // Configuration has to happen in the init callback, not straight after
+        // the constructor. TextToSpeech binds to the engine service
+        // asynchronously, so the previous `.apply { language = … }` ran while
+        // nothing was bound yet and was discarded with a warning the app never
+        // read: "setLanguage failed: not bound to TTS engine", observed on the
+        // bike's tablet. The audio attributes went the same way — which meant
+        // the ducking this class exists to arrange was not actually requested.
+        lateinit var engine: TextToSpeech
+        engine = TextToSpeech(context.applicationContext) { status ->
+            if (status != TextToSpeech.SUCCESS) {
+                Log.w(TAG, "Text-to-speech unavailable; coaching will be silent")
+                return@TextToSpeech
+            }
+
+            runCatching {
+                engine.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        // Guidance rather than media, so the film ducks under
+                        // it instead of the cue being drowned by it.
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+
+                // A device with no voice for the rider's locale is not a
+                // reason to stay silent: the engine's own default still says
+                // "Anaerobic Capacity" intelligibly, and a cue in the wrong
+                // accent beats no cue at all on a surface you cannot look at.
+                val locale = Locale.getDefault()
+                if (engine.setLanguage(locale) < TextToSpeech.LANG_AVAILABLE) {
+                    Log.w(TAG, "No TTS voice for $locale; using the engine default")
+                }
+            }.onFailure { Log.w(TAG, "Could not configure text-to-speech", it) }
+
+            ttsReady = true
+        }
+        tts = engine
     }
 
     /** How much the rider has asked to be interrupted. */
