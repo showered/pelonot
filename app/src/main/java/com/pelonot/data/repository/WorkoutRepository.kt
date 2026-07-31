@@ -132,7 +132,8 @@ class WorkoutRepository(
             avgPower = aggregates.avgPower,
             avgCadence = aggregates.avgCadence,
             avgHr = aggregates.avgHeartRate?.toDouble(),
-            isComplete = true
+            isComplete = true,
+            wasRecovered = true
         )
         workoutDao.updateWorkout(recovered)
         return recovered

@@ -79,6 +79,18 @@ data class WorkoutEntity(
     @ColumnInfo(name = "is_complete")
     val isComplete: Boolean = false,
 
+    /**
+     * True when this ride's totals were rebuilt from its stored samples after
+     * the app was killed mid-workout, rather than finalised by the service.
+     *
+     * A recovered ride is missing however much of itself the rider went on
+     * pedalling after the process died, and its aggregates come from
+     * `WorkoutAggregates` rather than the live calculator. History says so
+     * rather than presenting a truncated ride as a complete one.
+     */
+    @ColumnInfo(name = "was_recovered")
+    val wasRecovered: Boolean = false,
+
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis()
 )

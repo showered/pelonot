@@ -20,7 +20,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
         WorkoutEntity::class,
         WorkoutMetricEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -48,12 +48,16 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-                // Pre-release: no installs hold data worth preserving, so
-                // schema changes recreate the database rather than carrying a
-                // migration each time. Replace this with explicit migrations
-                // before the first real user installs a build — after that,
-                // dropping it silently deletes their entire training history.
-                .fallbackToDestructiveMigration()
+                // Explicit migrations, never a destructive fallback: a rider's
+                // training history is the one thing in this app that cannot be
+                // regenerated. See [AppMigrations] for the rule that goes with
+                // this — a schema change without a migration now fails at open
+                // rather than quietly emptying the database.
+                .addMigrations(*AppMigrations.ALL)
+                // A downgrade means someone has installed an older APK over a
+                // newer one, which only happens on a development device and
+                // which no forward migration can describe.
+                .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
     }
 }

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "f4475c376d22fa314baa2b405b711bbd",
+    "identityHash": "d1bb66202b200fb01188abd572a2a76a",
     "entities": [
       {
         "tableName": "profiles",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`local_user_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `weight_kg` REAL NOT NULL, `ftp_watts` INTEGER NOT NULL, `theme_preference` TEXT NOT NULL, `created_at` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`local_user_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `weight_kg` REAL NOT NULL, `ftp_watts` INTEGER NOT NULL, `created_at` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "localUserId",
@@ -30,12 +30,6 @@
             "fieldPath": "ftpWatts",
             "columnName": "ftp_watts",
             "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "themePreference",
-            "columnName": "theme_preference",
-            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -106,7 +100,7 @@
       },
       {
         "tableName": "workouts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `user_id` INTEGER, `class_id` TEXT, `duration_sec` INTEGER NOT NULL, `total_output_kj` REAL NOT NULL, `total_distance_km` REAL NOT NULL, `avg_cadence` REAL, `avg_power` REAL, `avg_hr` REAL, `intent_modifier` REAL NOT NULL, `rpe_rating` INTEGER, `is_complete` INTEGER NOT NULL DEFAULT 1, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`user_id`) REFERENCES `profiles`(`local_user_id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`class_id`) REFERENCES `class_templates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `user_id` INTEGER, `class_id` TEXT, `duration_sec` INTEGER NOT NULL, `total_output_kj` REAL NOT NULL, `total_distance_km` REAL NOT NULL, `avg_cadence` REAL, `avg_power` REAL, `avg_hr` REAL, `intent_modifier` REAL NOT NULL, `rpe_rating` INTEGER, `is_complete` INTEGER NOT NULL, `was_recovered` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`user_id`) REFERENCES `profiles`(`local_user_id`) ON UPDATE NO ACTION ON DELETE SET NULL , FOREIGN KEY(`class_id`) REFERENCES `class_templates`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "id",
@@ -178,8 +172,13 @@
             "fieldPath": "isComplete",
             "columnName": "is_complete",
             "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "1"
+            "notNull": true
+          },
+          {
+            "fieldPath": "wasRecovered",
+            "columnName": "was_recovered",
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "timestamp",
@@ -330,7 +329,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f4475c376d22fa314baa2b405b711bbd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd1bb66202b200fb01188abd572a2a76a')"
     ]
   }
 }
