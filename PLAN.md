@@ -148,7 +148,6 @@ Three consequences worth carrying forward:
 | Next | Why now |
 |------|---------|
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
-| **16.1.5** Prescribed intervals under the actual trace | The rest of 16.1 landed this session; this is the one piece left, and it is the most useful post-ride view there is — "what you were asked for" against "what you did" |
 | **11.1b** The HUD getting out of the way | Opacity, resizing and side docking. All emulator-checkable, and the strip's fill was just simplified to one flat colour plus a fixed feather, so 11.1b.1 is now one alpha rather than a gradient to re-tune |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
 | **19.1.5** README and CONTRIBUTING | The README still advertises a root prerequisite the app does not have and does not want (2.1a). That is the difference between a project people try and one they assume they cannot |
@@ -190,7 +189,7 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
-| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.4, 16.2) — the fundamental half. Prescribed-vs-actual (16.1.5) and trends (16.3) remain |
+| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included — the fundamental half. Trends (16.3) remain, blocked on 7.9 |
 | 17 | Companion web application | ❌ Not started — *nice to have* |
 | 18 | Social features in the Android app | ❌ Not started — *nice to have* |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
@@ -1492,7 +1491,25 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
 - [x] **16.1.4** Time in zone as a stacked bar, shared with the HUD's collapsed
       strip (11.2.2). *With a legend: seven colours in a bar is a code nobody
       has been given the key to*
-- [ ] **16.1.5** The class's prescribed intervals drawn under the actual trace — "what you were asked for" against "what you did" is the single most useful post-ride view
+- [x] **16.1.5** The class's prescribed intervals drawn under the actual trace — "what you were asked for" against "what you did" is the single most useful post-ride view.
+      *Each interval is an outlined block at its target power band, behind the
+      trace so the record is always on top of the prescription. Two things the
+      building of it turned up. The band is scaled by `workouts.intent_modifier`
+      — the multiplier the ride was **given**, not one re-derived from today's
+      preferences — so this half is a record; the FTP half is not, and is 7.8.
+      And the plan is **clipped to what was ridden**: a class abandoned part way
+      would otherwise hang 18 minutes of prescription off the end of a
+      12-minute axis, so the segments stop where the ride does and the sentence
+      says the class was longer. Observed on the tablet AVD against a real
+      `Torque Repeats 20` ride that stopped at 10:31 of 20:00 — five blocks
+      (Z1, Z2, Z5, Z2, and a sliver of the sixth), 28% of the prescribed time
+      inside the band, and a free ride beside it with no blocks, no legend and
+      no compliance sentence*
+- [ ] **16.1.5a** The prescribed **cadence** has nowhere to be drawn. An
+      interval prescribes a cadence range as well as a zone, and 16.1.3 is a
+      *distribution*, not a trace — there is no time axis to lay a target on.
+      Either a cadence-over-time chart or nothing; the data is already parsed
+      and thrown away by 16.1.5
 - [ ] **16.1.6** Axis label reads from `SensorReading.powerIsMeasured` rather
       than saying **estimated** unconditionally. On the bike it *is* a meter
       (2.1a); on a simulated ride it is a model (2.2.4). A ride can in principle

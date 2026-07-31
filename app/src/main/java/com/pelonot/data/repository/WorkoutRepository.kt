@@ -47,8 +47,6 @@ class WorkoutRepository(
     fun observeCompletedCount(userId: Int): Flow<Int> =
         workoutDao.observeCompletedCount(userId)
 
-    suspend fun getClassTitle(classId: String): String? = workoutDao.getClassTitle(classId)
-
     /**
      * Headline figures for the dashboard.
      *

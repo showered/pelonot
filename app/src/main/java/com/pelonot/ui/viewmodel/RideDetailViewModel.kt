@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.model.Interval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +51,8 @@ data class RideDetailUiState(
  */
 class RideDetailViewModel(
     private val workoutRepository: WorkoutRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val classRepository: ClassRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RideDetailUiState())
@@ -63,12 +66,13 @@ class RideDetailViewModel(
 
         viewModelScope.launch {
             val workout = workoutRepository.getWorkout(workoutId)
+            // The whole plan, not just its title: 16.1.5 draws the intervals it
+            // prescribed under the trace of what was actually ridden.
+            val plan = workout?.classId?.let { classRepository.getPlan(it) }
             _uiState.update {
                 it.copy(
                     workout = workout,
-                    classTitle = workout?.classId?.let { id ->
-                        workoutRepository.getClassTitle(id)
-                    },
+                    classTitle = plan?.title,
                     isLoading = false
                 )
             }
@@ -77,7 +81,7 @@ class RideDetailViewModel(
             // series is a few thousand rows and the totals are the thing the
             // rider opened this screen for; making them wait on the charts
             // would be the wrong way round.
-            if (workout != null) buildCharts(workout)
+            if (workout != null) buildCharts(workout, plan?.intervals.orEmpty())
         }
     }
 
@@ -88,9 +92,13 @@ class RideDetailViewModel(
      * a deliberate simplification worth knowing about: a ride from before an
      * FTP change is banded against today's zones, not the ones it was ridden
      * under. Storing the FTP on the workout row would fix it and needs a
-     * migration (12.5).
+     * migration (7.8 / 12.5).
+     *
+     * The intent multiplier has no such problem — `workouts.intent_modifier` is
+     * on the row, so the prescribed band is the one the rider was actually
+     * given rather than a re-derivation from today's preferences.
      */
-    private suspend fun buildCharts(workout: WorkoutEntity) {
+    private suspend fun buildCharts(workout: WorkoutEntity, intervals: List<Interval>) {
         val charts = withContext(Dispatchers.Default) {
             val metrics = workoutRepository.getMetrics(workout.id)
             val ftp = workout.userId
@@ -107,7 +115,9 @@ class RideDetailViewModel(
                         heartRateBpm = metric.heartRate
                     )
                 },
-                ftpWatts = ftp
+                ftpWatts = ftp,
+                intervals = intervals,
+                intentMultiplier = workout.intentModifier
             )
         }
         _uiState.update { it.copy(charts = charts) }
@@ -140,7 +150,8 @@ class RideDetailViewModel(
         val Factory = viewModelFactory {
             RideDetailViewModel(
                 workoutRepository = ServiceLocator.workoutRepository,
-                userRepository = ServiceLocator.userRepository
+                userRepository = ServiceLocator.userRepository,
+                classRepository = ServiceLocator.classRepository
             )
         }
     }

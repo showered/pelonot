@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pelonot.core.Formatters
 import com.pelonot.domain.chart.CadenceDistribution
+import com.pelonot.domain.chart.PrescribedPlan
 import com.pelonot.domain.chart.RideTrace
 import com.pelonot.domain.chart.TimeInZone
 import com.pelonot.domain.model.PowerZone
@@ -108,11 +109,14 @@ fun ChartCard(
 }
 
 /**
- * Power over time with the rider's own zone bands behind it (16.1.1).
+ * Power over time with the rider's own zone bands behind it (16.1.1) and the
+ * class's prescribed intervals drawn under the trace (16.1.5).
  *
  * The band is the point. A line alone says "you did 240 W"; the same line over
  * a Threshold band says "that was threshold work for you", which is the thing
- * a rider is actually asking.
+ * a rider is actually asking. The prescription goes one further and says what
+ * was *asked for* at that moment, so the gap between the two is visible without
+ * arithmetic.
  *
  * Drawn as a **min/max envelope with the mean through it**, not a single line:
  * each bucket is several seconds, and the envelope is what keeps a one-second
@@ -123,6 +127,7 @@ fun PowerTraceChart(
     trace: RideTrace,
     ftpWatts: Int,
     modifier: Modifier = Modifier,
+    prescribed: PrescribedPlan = PrescribedPlan(),
     height: androidx.compose.ui.unit.Dp = CHART_HEIGHT
 ) {
     if (trace.isEmpty) {
@@ -130,7 +135,12 @@ fun PowerTraceChart(
         return
     }
 
-    val ceiling = maxOf(trace.maxValue, ftpWatts * 1.2).coerceAtLeast(1.0)
+    // Room for the *floor* of every prescribed band, not its ceiling: a Z7
+    // sprint is prescribed up to twice FTP, and scaling a whole ride to fit the
+    // top of that block flattens the trace into a line along the axis. Blocks
+    // taller than the chart are clipped instead.
+    val ceiling = maxOf(trace.maxValue, ftpWatts * 1.2, prescribed.highestTargetFloor * 1.15)
+        .coerceAtLeast(1.0)
     val zoneBands = if (ftpWatts > 0) {
         PowerZone.entries.map { zone ->
             val range = zone.powerRange(ftpWatts.toDouble())
@@ -163,6 +173,36 @@ fun PowerTraceChart(
 
         val x = { sec: Int -> size.width * (sec.toFloat() / trace.durationSec.coerceAtLeast(1)) }
         val y = { watts: Double -> size.height * (1f - (watts / ceiling).toFloat()) }
+
+        // What the class asked for, under what the rider did. Drawn before the
+        // trace so it never hides it: the record goes on top of the
+        // prescription, not the other way round.
+        prescribed.segments.forEach { segment ->
+            val left = x(segment.startSec)
+            val right = x(segment.endSec)
+            val top = y(segment.targetHighWatts).coerceAtLeast(0f)
+            val bottom = y(segment.targetLowWatts).coerceAtMost(size.height)
+            if (right > left && bottom > top) {
+                val block = Size(right - left, bottom - top)
+                drawRect(
+                    // Light enough that a Z1 block — which runs from zero and
+                    // so fills the bottom third of the chart — is a backdrop
+                    // rather than a slab with a ride drawn on it.
+                    color = segment.zone.color.copy(alpha = 0.18f),
+                    topLeft = Offset(left, top),
+                    size = block
+                )
+                // Outlined as well as filled: two adjacent intervals in the same
+                // zone are one continuous block without it, which is a different
+                // class from the one that was ridden.
+                drawRect(
+                    color = segment.zone.color.copy(alpha = 0.55f),
+                    topLeft = Offset(left, top),
+                    size = block,
+                    style = Stroke(width = 1.dp.toPx())
+                )
+            }
+        }
 
         // The envelope, as one closed path along the maxima and back along the
         // minima.

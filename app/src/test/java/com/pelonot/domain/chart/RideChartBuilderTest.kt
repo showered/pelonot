@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -146,6 +147,106 @@ class RideChartBuilderTest {
         val charts = RideChartBuilder.build(ride(600), ftpWatts = 200, powerIsMeasured = true)
         assertTrue(RideChartSummaries.power(charts.power, isMeasured = true).contains("measured"))
         assertTrue(RideChartSummaries.power(charts.power, isMeasured = false).contains("estimated"))
+    }
+
+    // ---- 16.1.5: what you were asked for, against what you did ----
+
+    /** Against an FTP of 200: Z2 is 112–152 W and Z4 is 182–212 W. */
+    private fun interval(startSec: Int, endSec: Int, zone: Int) = Interval(
+        startSec = startSec,
+        endSec = endSec,
+        cadenceMin = 80,
+        cadenceMax = 90,
+        powerZoneNumber = zone
+    )
+
+    @Test
+    fun `a free ride is not marked down against a class it never rode`() {
+        val charts = RideChartBuilder.build(ride(600), ftpWatts = 200)
+
+        assertTrue(charts.prescribed.isEmpty)
+        // And says nothing at all rather than "0% of nothing".
+        assertEquals("", RideChartSummaries.prescribed(charts.prescribed))
+    }
+
+    @Test
+    fun `the prescription is counted against the seconds actually ridden`() {
+        // Five minutes of Endurance ridden at 130 W — inside the band — then ten
+        // minutes of Threshold ridden at 250 W, which is over it. 901 samples,
+        // second 0 to second 900, is 900 seconds of riding.
+        val samples = ride(901, power = { if (it < 300) 130.0 else 250.0 })
+        val charts = RideChartBuilder.build(
+            samples,
+            ftpWatts = 200,
+            intervals = listOf(interval(0, 300, zone = 2), interval(300, 900, zone = 4))
+        )
+
+        val segments = charts.prescribed.segments
+        assertEquals(2, segments.size)
+        assertEquals(300, segments[0].secondsRidden)
+        assertEquals(300, segments[0].secondsInBand)
+        assertEquals(600, segments[1].secondsRidden)
+        // Over the target is still off the target.
+        assertEquals(0, segments[1].secondsInBand)
+
+        assertEquals(1f / 3f, charts.prescribed.fractionInBand, 0.001f)
+        assertTrue(charts.prescribed.finishedClass)
+        assertTrue(RideChartSummaries.prescribed(charts.prescribed).contains("33%"))
+    }
+
+    /**
+     * A rider who abandons a 30-minute class at 2 minutes gets 2 minutes of
+     * prescription, not 28 minutes of ghost plan hanging off the end of a
+     * 2-minute axis.
+     */
+    @Test
+    fun `a class abandoned part way is clipped to what was ridden and says so`() {
+        val charts = RideChartBuilder.build(
+            ride(121),
+            ftpWatts = 200,
+            intervals = listOf(interval(0, 900, zone = 2), interval(900, 1_800, zone = 4))
+        )
+
+        val segments = charts.prescribed.segments
+        assertEquals(1, segments.size)
+        assertEquals(120, segments.single().endSec)
+        assertEquals(1_800, charts.prescribed.classDurationSec)
+        assertFalse(charts.prescribed.finishedClass)
+
+        val summary = RideChartSummaries.prescribed(charts.prescribed)
+        assertTrue(summary, summary.contains("30 minutes") && summary.contains("stopped at"))
+    }
+
+    /**
+     * The band is the one the ride was *given*, not one re-derived from
+     * whatever the rider would pick today. 220 W is over the top of Z4 at face
+     * value and inside it for someone who asked to be pushed 5% harder.
+     */
+    @Test
+    fun `the intent the ride was ridden with scales the target band`() {
+        val samples = ride(301, power = { 220.0 })
+        val intervals = listOf(interval(0, 300, zone = 4))
+
+        val asPrescribed = RideChartBuilder.build(samples, ftpWatts = 200, intervals = intervals)
+        assertEquals(0, asPrescribed.prescribed.secondsInBand)
+
+        val pushed = RideChartBuilder.build(
+            samples,
+            ftpWatts = 200,
+            intervals = intervals,
+            intentMultiplier = 1.05
+        )
+        assertEquals(300, pushed.prescribed.secondsInBand)
+    }
+
+    @Test
+    fun `without an FTP there is no band to be inside`() {
+        val charts = RideChartBuilder.build(
+            ride(300),
+            ftpWatts = 0,
+            intervals = listOf(interval(0, 300, zone = 4))
+        )
+        assertTrue(charts.prescribed.isEmpty)
     }
 
     @Test

@@ -281,15 +281,27 @@ private fun PowerCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     // Until that migration exists (12.5) this errs towards "estimated", which
     // is the safe direction — the rule this project cares about is never
     // presenting a modelled watt as measured.
-    caption = if (charts.powerIsMeasured) {
-        "Measured by the bike"
-    } else {
-        "Estimated from cadence and resistance — see Settings"
-    },
-    summary = RideChartSummaries.power(charts.power, charts.powerIsMeasured),
+    caption = listOfNotNull(
+        if (charts.powerIsMeasured) {
+            "Measured by the bike"
+        } else {
+            "Estimated from cadence and resistance — see Settings"
+        },
+        // Only said when there are blocks to explain. On a free ride there is
+        // no prescription and no legend for one.
+        "blocks are what the class asked for".takeUnless { charts.prescribed.isEmpty }
+    ).joinToString(" · "),
+    summary = listOf(
+        RideChartSummaries.power(charts.power, charts.powerIsMeasured),
+        RideChartSummaries.prescribed(charts.prescribed)
+    ).filter { it.isNotEmpty() }.joinToString(" "),
     modifier = modifier
 ) {
-    PowerTraceChart(trace = charts.power, ftpWatts = charts.ftpWatts)
+    PowerTraceChart(
+        trace = charts.power,
+        ftpWatts = charts.ftpWatts,
+        prescribed = charts.prescribed
+    )
 }
 
 @Composable

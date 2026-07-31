@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import kotlin.math.roundToInt
 
@@ -92,12 +93,78 @@ data class CadenceDistribution(
         }
 }
 
+/**
+ * One prescribed interval of the class, on the ride's own elapsed-second axis
+ * (16.1.5).
+ *
+ * The target band is the interval's zone scaled by the **multiplier the ride
+ * was ridden with** (`workouts.intent_modifier`), not by whatever the rider
+ * would pick today — this is a record of what was asked for at the time.
+ *
+ * FTP is the one part that is not: the band is derived from the rider's
+ * *current* FTP, exactly as the zone bands behind it are, so an FTP change
+ * silently redraws every past ride's prescription. That is 7.8, and it is a
+ * missing column rather than anything this file can fix.
+ */
+data class PrescribedSegment(
+    val startSec: Int,
+    val endSec: Int,
+    val zone: PowerZone,
+    val targetLowWatts: Double,
+    val targetHighWatts: Double,
+    /** Seconds of this segment the ride actually recorded. */
+    val secondsRidden: Int,
+    /** Of those, how many were inside the target band. */
+    val secondsInBand: Int
+) {
+    val durationSec: Int get() = (endSec - startSec).coerceAtLeast(0)
+}
+
+/**
+ * What the class asked for, ready to draw under what the rider did.
+ *
+ * Segments are **clipped to the ride**: a rider who abandons a 30-minute class
+ * at 12 minutes gets 12 minutes of prescription, not 18 minutes of ghost plan
+ * hanging off the end of a 12-minute axis. [classDurationSec] keeps the class's
+ * full length so the difference can be said out loud.
+ */
+data class PrescribedPlan(
+    val segments: List<PrescribedSegment> = emptyList(),
+    /** The class as authored, before clipping. */
+    val classDurationSec: Int = 0,
+    /** Where the ride stopped, on the class's clock. */
+    val riddenSec: Int = 0
+) {
+    val isEmpty: Boolean get() = segments.isEmpty()
+
+    val secondsRidden: Int get() = segments.sumOf { it.secondsRidden }
+
+    val secondsInBand: Int get() = segments.sumOf { it.secondsInBand }
+
+    val fractionInBand: Float
+        get() = if (secondsRidden == 0) 0f else secondsInBand.toFloat() / secondsRidden
+
+    /** True when the rider saw the class out rather than stopping part way. */
+    val finishedClass: Boolean
+        get() = classDurationSec > 0 && riddenSec >= classDurationSec - FINISH_TOLERANCE_SEC
+
+    /** The highest target *floor*, which is what the chart has to leave room for. */
+    val highestTargetFloor: Double
+        get() = segments.maxOfOrNull { it.targetLowWatts } ?: 0.0
+
+    private companion object {
+        /** A class ending on the tick is rare; a few seconds short is not. */
+        const val FINISH_TOLERANCE_SEC = 5
+    }
+}
+
 /** Everything the ride detail screen draws, computed once. */
 data class RideCharts(
     val power: RideTrace = RideTrace(),
     val heartRate: RideTrace = RideTrace(),
     val cadence: CadenceDistribution = CadenceDistribution(),
     val timeInZone: TimeInZone = TimeInZone(),
+    val prescribed: PrescribedPlan = PrescribedPlan(),
     val ftpWatts: Int = 0,
     /** True when these watts came off the board rather than out of the model. */
     val powerIsMeasured: Boolean = false
@@ -119,6 +186,10 @@ object RideChartBuilder {
         samples: List<ChartSample>,
         ftpWatts: Int,
         powerIsMeasured: Boolean = false,
+        /** The class this ride was ridden to, or empty for a free ride. */
+        intervals: List<Interval> = emptyList(),
+        /** `workouts.intent_modifier` — the multiplier the ride was ridden with. */
+        intentMultiplier: Double = 1.0,
         buckets: Int = DEFAULT_BUCKETS
     ): RideCharts {
         if (samples.isEmpty()) return RideCharts(ftpWatts = ftpWatts)
@@ -130,6 +201,7 @@ object RideChartBuilder {
             heartRate = downsampleNullable(ordered, buckets) { it.heartRateBpm?.toDouble() },
             cadence = cadenceDistribution(ordered),
             timeInZone = timeInZone(ordered, ftpWatts),
+            prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
             ftpWatts = ftpWatts,
             powerIsMeasured = powerIsMeasured
         )
@@ -212,6 +284,61 @@ object RideChartBuilder {
         return TimeInZone(secondsByZone = byZone)
     }
 
+    /**
+     * What the class asked for, over the part of it that was ridden (16.1.5).
+     *
+     * Metric timestamps and interval boundaries are the same clock — the
+     * service records at `elapsedSec` and asks the interval engine for
+     * `stateAt(elapsedSec)` on the same tick — so no alignment is needed beyond
+     * clipping the class to where the ride stopped.
+     *
+     * Needs an FTP: without one there is no band to be inside, and a
+     * prescription drawn against a guessed FTP would be a fiction shown beside
+     * a record.
+     */
+    private fun prescribedPlan(
+        samples: List<ChartSample>,
+        intervals: List<Interval>,
+        ftpWatts: Int,
+        intentMultiplier: Double
+    ): PrescribedPlan {
+        if (intervals.isEmpty() || ftpWatts <= 0 || samples.isEmpty()) return PrescribedPlan()
+
+        val lastSec = samples.last().timestampSec
+        val classDuration = intervals.maxOf { it.endSec }
+
+        val segments = intervals
+            .filter { it.startSec < lastSec && it.durationSec > 0 }
+            .map { interval ->
+                // Clipped to the ride's *duration*, which is one less than its
+                // sample count — a ride from second 0 to second 631 is 631
+                // seconds long, and a prescription totalling 632 next to a
+                // duration of 631 reads as an error in the same sentence.
+                val end = minOf(interval.endSec, lastSec)
+                val band = interval.powerZone.powerRange(ftpWatts.toDouble())
+                val low = band.start * intentMultiplier
+                val high = band.endInclusive * intentMultiplier
+                val ridden = samples.filter { it.timestampSec in interval.startSec until end }
+
+                PrescribedSegment(
+                    startSec = interval.startSec,
+                    endSec = end,
+                    zone = interval.powerZone,
+                    targetLowWatts = low,
+                    targetHighWatts = high,
+                    secondsRidden = ridden.size,
+                    secondsInBand = ridden.count { it.powerWatts in low..high }
+                )
+            }
+            .filter { it.durationSec > 0 }
+
+        return PrescribedPlan(
+            segments = segments,
+            classDurationSec = classDuration,
+            riddenSec = minOf(lastSec, classDuration)
+        )
+    }
+
     private const val DEFAULT_BUCKETS = 300
     private const val MIN_CHARTED_CADENCE = 20.0
 }
@@ -231,6 +358,26 @@ object RideChartSummaries {
         return "Power over ${formatDuration(trace.durationSec)}, $source. " +
             "Peak ${trace.maxValue.roundToInt()} watts, " +
             "average ${trace.buckets.map { it.mean }.average().roundToInt()} watts."
+    }
+
+    /**
+     * What you were asked for against what you did (16.1.5).
+     *
+     * Empty for a free ride, which was not asked for anything — a sentence
+     * saying "0% of nothing" would be worse than silence.
+     */
+    fun prescribed(plan: PrescribedPlan): String {
+        if (plan.isEmpty || plan.secondsRidden == 0) return ""
+
+        val percent = (plan.fractionInBand * 100).roundToInt()
+        val compliance = "Inside the class's target power for " +
+            "${formatDuration(plan.secondsInBand)} of " +
+            "${formatDuration(plan.secondsRidden)} prescribed — $percent%."
+
+        if (plan.finishedClass) return compliance
+
+        return "$compliance The class runs ${formatDuration(plan.classDurationSec)} " +
+            "and this ride stopped at ${formatDuration(plan.riddenSec)}."
     }
 
     fun heartRate(trace: RideTrace): String {

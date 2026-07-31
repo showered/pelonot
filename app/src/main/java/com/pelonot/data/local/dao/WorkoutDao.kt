@@ -76,10 +76,6 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     fun observeCompletedCount(userId: Int): Flow<Int>
 
-    /** The class a ride was recorded against, for the detail screen's header. */
-    @Query("SELECT title FROM class_templates WHERE id = :classId")
-    suspend fun getClassTitle(classId: String): String?
-
     @Query(
         """
         SELECT * FROM workouts
