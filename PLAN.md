@@ -66,9 +66,11 @@ Three consequences worth carrying forward:
    real rides, and 2.2.5 now has a way to fix it for simulated ones.
 2. **`SerialSensorSource` and `SerialProtocolParser` are dead on this
    hardware.** Correct code, wrong target. Kept only for a rooted tablet.
-3. **The next unknown is the HUD, not the sensors.** Phase 11's premise —
-   glance at a strip while watching something else — has still never been seen
-   on the bike, and 10.4 is the cheapest way to find out.
+3. **The next unknown was the HUD, not the sensors** — and the second sitting
+   answered it. Phase 11's premise, glancing at a strip while watching
+   something else, has now been seen on the bike over Netflix (10.4) and the
+   strip's controls work from the background (11.1.5). What remains in Phase 11
+   is code, not verification.
 
 ### What to do next, in order
 
@@ -473,7 +475,7 @@ and it was wrong in a way no amount of code reading would have exposed.
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
 - [x] **8.6a** `RideCoach` wired into the ride, driven by the pure `RideCoachPolicy`. Replaces `ZoneAlertManager`, which had no caller and no decision logic to call it with.
-- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates`, `UnitSystem`, `Formatters`, `RideDayGrouping` — **186 tests**
+- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates`, `UnitSystem`, `Formatters`, `RideDayGrouping`, `WorkoutSession` — **192 tests**
 - [x] **8.8** Instrumented tests for Room DAOs (foreign key ordering, `is_complete` filtering, cascade delete)
 - [x] **8.8a** Instrumented test for `WorkoutService` lifecycle — start/pause/resume/stop, the workout row existing before its first metric, the batched tail being flushed, and a finished ride no longer being offered for recovery
 - [x] **8.9** Manual testing on Gen 1 Peloton hardware — profile selector → dashboard → settings → Hardware telemetry → Just Ride → live board data → post-ride summary → persisted ride and 246 metric rows, 31 July 2026. Imperial units picked up from the device locale with no prompting (13.2), on the actual tablet this time
