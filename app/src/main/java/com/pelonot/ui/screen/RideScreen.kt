@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -144,6 +145,20 @@ fun RideScreen(
 
     LaunchedEffect(state.isFinished) {
         if (state.isFinished) onEndRide(viewModel.consumeFinishedWorkoutId())
+    }
+
+    // 19.1.1. A tablet that sleeps mid-class is experienced as the app being
+    // broken, and this screen is exactly the case the HUD's own
+    // FLAG_KEEP_SCREEN_ON does not cover: while the ride screen is on top the
+    // overlay has stood down, so nothing else is holding the screen awake.
+    //
+    // Held through a pause as well as through the ride. A rider refilling a
+    // bottle has not left — coming back to a black tablet and having to wake it
+    // with wet hands is the same defect in a smaller costume.
+    val view = LocalView.current
+    DisposableEffect(view, state.isFinished) {
+        view.keepScreenOn = !state.isFinished
+        onDispose { view.keepScreenOn = false }
     }
 
     if (state.overlayPermissionNeeded) {

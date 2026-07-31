@@ -104,7 +104,16 @@ class HudOverlayManager(private val context: Context) {
         // behind the clock. Staying inside the decor area means the HUD docks
         // against whatever the app below it is already respecting.
         flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            // 19.1.1. The strip is up for exactly as long as a ride is running
+            // and the rider is somewhere else, which makes it the right window
+            // to hold the screen awake from. Netflix holds its own lock, which
+            // is why this never showed up on the bike; a rider on the launcher,
+            // on a podcast, or on anything that does not, watches the tablet
+            // sleep mid-interval. Asserted on the strip and not the timeline
+            // bar — one window claiming it is enough, and the timeline is the
+            // one that can fail to attach.
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         width = WindowManager.LayoutParams.MATCH_PARENT
         height = WindowManager.LayoutParams.WRAP_CONTENT
         gravity = gravityFor(HudDock.DEFAULT)
