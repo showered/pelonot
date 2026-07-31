@@ -1,6 +1,7 @@
 package com.pelonot.data.service
 
 import com.pelonot.domain.model.RideIntent
+import kotlin.math.roundToInt
 
 /**
  * An in-flight or just-finished workout.
@@ -26,14 +27,74 @@ data class WorkoutSession(
     val distanceKm: Double = 0.0,
     val avgPower: Double = 0.0,
     val avgCadence: Double = 0.0,
-    val avgHeartRate: Int? = null,
+    /**
+     * Kept as a `Double` and rounded only for display.
+     *
+     * This used to be an `Int` updated by rounding the running mean on every
+     * tick, which froze it: once the ride is long enough that one new sample
+     * moves the mean by less than 1 bpm, truncation discards the whole
+     * increment and the average can never change again. A real ride recorded
+     * 79 bpm — the lowest sample of the warm-up — against a true mean of 105.
+     */
+    val avgHeartRateBpm: Double? = null,
+    /**
+     * Counted separately from [sampleCount] because heart rate is optional.
+     * A strap that connects thirty seconds into a ride contributes to far
+     * fewer ticks than the bike does, and dividing by the tick count would
+     * weight each of its samples far too lightly.
+     */
+    val heartRateSampleCount: Int = 0,
     val sampleCount: Int = 0
 ) {
     /** True for a guest ride, which the user is asked to save or discard. */
     val isGuestRide: Boolean get() = userId == null
 
+    /** Whole bpm for display; null still means *no strap*, never zero. */
+    val avgHeartRate: Int? get() = avgHeartRateBpm?.roundToInt()
+
+    /**
+     * Folds one sensor sample into the running means.
+     *
+     * Pure and here rather than in [WorkoutService] so it can be tested on the
+     * JVM: the defect this replaces — a heart-rate average that stuck at the
+     * lowest reading of the warm-up — was invisible from every screen and only
+     * showed up by comparing `workouts.avg_hr` against the mean of the ride's
+     * own `workout_metrics` rows.
+     *
+     * @param heartRateBpm null means *no reading*, and contributes nothing.
+     *   It must never be treated as zero.
+     */
+    fun withSample(
+        powerWatts: Double,
+        cadenceRpm: Double,
+        heartRateBpm: Int?
+    ): WorkoutSession {
+        val samples = sampleCount + 1
+        val hrSamples = heartRateSampleCount + if (heartRateBpm == null) 0 else 1
+
+        return copy(
+            avgPower = runningMean(avgPower, powerWatts, samples),
+            avgCadence = runningMean(avgCadence, cadenceRpm, samples),
+            avgHeartRateBpm = heartRateBpm?.let { bpm ->
+                runningMean(avgHeartRateBpm ?: bpm.toDouble(), bpm.toDouble(), hrSamples)
+            } ?: avgHeartRateBpm,
+            heartRateSampleCount = hrSamples,
+            sampleCount = samples
+        )
+    }
+
     companion object {
         const val DEFAULT_FTP = 150
+
+        /**
+         * Welford's incremental mean, so a ride never has to hold every
+         * sample in memory. [count] must be the number of samples that have
+         * contributed to [previousMean] — passing a larger count (the total
+         * tick count, say, for an optional signal like heart rate) silently
+         * under-weights each new sample.
+         */
+        internal fun runningMean(previousMean: Double, sample: Double, count: Int): Double =
+            previousMean + (sample - previousMean) / count
     }
 }
 

@@ -459,21 +459,18 @@ class WorkoutService : Service() {
             heartRate = reading.heartRateBpm
         )
 
-        val samples = session.sampleCount + 1
         _currentSession.update { current ->
-            current?.copy(
-                elapsedSeconds = elapsedSec,
-                totalOutputKj = derived.totalOutputKj,
-                distanceKm = derived.distanceKm,
-                // Running means, so the whole ride never has to be held in memory.
-                avgPower = runningMean(current.avgPower, reading.powerWatts, samples),
-                avgCadence = runningMean(current.avgCadence, reading.cadenceRpm, samples),
-                avgHeartRate = reading.heartRateBpm?.let { bpm ->
-                    val previous = current.avgHeartRate?.toDouble() ?: bpm.toDouble()
-                    runningMean(previous, bpm.toDouble(), samples).toInt()
-                } ?: current.avgHeartRate,
-                sampleCount = samples
-            )
+            current
+                ?.withSample(
+                    powerWatts = reading.powerWatts,
+                    cadenceRpm = reading.cadenceRpm,
+                    heartRateBpm = reading.heartRateBpm
+                )
+                ?.copy(
+                    elapsedSeconds = elapsedSec,
+                    totalOutputKj = derived.totalOutputKj,
+                    distanceKm = derived.distanceKm
+                )
         }
 
         if (pendingMetrics.size >= METRIC_BATCH_SIZE) flushPendingMetrics()
@@ -486,9 +483,6 @@ class WorkoutService : Service() {
         runCatching { workoutRepository.recordMetrics(batch) }
             .onFailure { Log.e(TAG, "Failed to persist ${batch.size} metrics", it) }
     }
-
-    private fun runningMean(previousMean: Double, sample: Double, count: Int): Double =
-        previousMean + (sample - previousMean) / count
 
     /** Ride time excluding paused periods, from the monotonic clock. */
     private fun elapsedSeconds(): Int {
@@ -508,7 +502,8 @@ class WorkoutService : Service() {
         totalDistanceKm = distanceKm,
         avgCadence = avgCadence,
         avgPower = avgPower,
-        avgHr = avgHeartRate?.toDouble(),
+        // The unrounded mean, matching how avg_power and avg_cadence are stored.
+        avgHr = avgHeartRateBpm,
         intentModifier = intent.multiplier,
         timestamp = startedAtEpochMs
     )
