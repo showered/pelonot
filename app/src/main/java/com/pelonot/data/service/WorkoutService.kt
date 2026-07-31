@@ -25,6 +25,7 @@ import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.PowerModel
+import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.data.sensor.WorkoutMetricsCalculator
 import com.pelonot.domain.calibration.CalibrationSample
@@ -136,6 +137,9 @@ class WorkoutService : Service() {
      */
     private val calibrationSamples = mutableListOf<CalibrationSample>()
 
+    /** Latches the stall so a dropout logs twice, not four times a second. */
+    private var telemetryStalled = false
+
     /** True while the in-app ride screen is on top; the HUD stands down. */
     private var rideScreenVisible = false
     private var hudEnabled = true
@@ -220,6 +224,7 @@ class WorkoutService : Service() {
         pausedAtRealtimeMs = 0L
         metricsCalculator.reset()
         coachPolicy.reset()
+        telemetryStalled = false
         pendingMetrics.clear()
         calibrationSamples.clear()
         intervalEngine = null
@@ -504,7 +509,11 @@ class WorkoutService : Service() {
                 elapsedSeconds = elapsedSec,
                 interval = intervalState,
                 totalOutputKj = session?.totalOutputKj ?: current.totalOutputKj,
-                distanceKm = session?.distanceKm ?: current.distanceKm
+                distanceKm = session?.distanceKm ?: current.distanceKm,
+                // Decided in recordMetric, which runs first on every tick, so
+                // what the rider is told matches what was recorded for the very
+                // same second.
+                telemetryLive = !telemetryStalled
             )
         }
     }
@@ -512,6 +521,28 @@ class WorkoutService : Service() {
     private suspend fun recordMetric(elapsedSec: Int) {
         val session = _currentSession.value ?: return
         val reading = sensorRepository.sensorReading.value
+
+        // 2.4.4. The reading flow holds its last value while the board is being
+        // retried, so without this the ride writes that frozen sample once a
+        // second for the length of the dropout — into `workout_metrics`, into
+        // `avg_power` and `avg_cadence`, and into the calibration grid with
+        // `powerIsMeasured` still true. The second is left with no sample
+        // instead: a gap in the series is what actually happened, the charts
+        // already draw gaps (16.1.2, 16.2.2), and the totals survive because
+        // `WorkoutMetricsCalculator` clamps the step across a gap to five
+        // seconds rather than integrating through it.
+        if (reading.isStaleAt(System.currentTimeMillis(), SensorReading.MAX_AGE_MS)) {
+            if (!telemetryStalled) {
+                telemetryStalled = true
+                Log.w(TAG, "Telemetry stale at ${elapsedSec}s; recording nothing until it returns")
+            }
+            return
+        }
+        if (telemetryStalled) {
+            telemetryStalled = false
+            Log.i(TAG, "Telemetry live again at ${elapsedSec}s")
+        }
+
         val derived = metricsCalculator.processReading(reading, session.ftpWatts)
 
         pendingMetrics += WorkoutMetricEntity(

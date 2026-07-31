@@ -691,15 +691,20 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
             maxLines = 1
         )
         Text(
+            // The bike going quiet outranks everything except a pause, because
+            // it is the only line here the rider cannot work out for
+            // themselves — and because it says the record has a hole in it
+            // (2.4.4), which they will want to know afterwards.
             text = when {
                 snapshot.isPaused -> "PAUSED"
+                !snapshot.telemetryLive -> "NO SIGNAL · NOT RECORDING"
                 snapshot.interval.hasClass ->
                     "${Formatters.duration(snapshot.interval.classRemainingSec)} LEFT"
                 else -> "${Formatters.kilojoules(snapshot.totalOutputKj)} · " +
                     Formatters.distance(snapshot.distanceKm, MaterialTheme.units)
             },
             style = MaterialTheme.typography.labelSmall,
-            color = if (snapshot.isPaused) {
+            color = if (snapshot.isPaused || !snapshot.telemetryLive) {
                 MaterialTheme.colorScheme.tertiary
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -787,13 +792,19 @@ private fun MetricsBlock(
     // Cadence and resistance first, together: they are the only two things the
     // rider can actually change. Power is what those two produce, and heart
     // rate is what the body makes of it.
+    // 2.4.5. A number the bike stopped sending is not a small number, it is no
+    // number, and the strip already has a word for that — the same "--" a
+    // missing heart-rate strap gets. A frozen 88 rpm over a rider who has
+    // stopped pedalling is the one thing this display must never say.
+    val live = snapshot.telemetryLive
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
         MetricReadout(
             label = "CADENCE",
-            value = reading.cadenceRpm.toInt().toString(),
+            value = if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
             unit = "RPM",
             accent = MetricCadenceCyan,
             band = if (showTargets) snapshot.cadenceTarget else TargetBand.NONE,
@@ -803,7 +814,7 @@ private fun MetricsBlock(
         )
         MetricReadout(
             label = "RESISTANCE",
-            value = reading.resistancePercent.toInt().toString(),
+            value = if (live) reading.resistancePercent.toInt().toString() else NO_READING,
             unit = "%",
             accent = MetricResistanceViolet,
             band = if (showTargets) snapshot.resistanceTarget else TargetBand.NONE,
@@ -813,7 +824,7 @@ private fun MetricsBlock(
         )
         MetricReadout(
             label = "POWER",
-            value = reading.powerWatts.toInt().toString(),
+            value = if (live) reading.powerWatts.toInt().toString() else NO_READING,
             unit = "W",
             accent = MetricPowerCoral,
             band = if (showTargets) snapshot.powerTarget else TargetBand.NONE,
@@ -1000,13 +1011,22 @@ private fun HudCollapsed(
                     }
                 }
 
-                CompactMetric(reading.cadenceRpm.toInt().toString(), "RPM", MetricCadenceCyan)
+                val live = snapshot.telemetryLive
                 CompactMetric(
-                    reading.resistancePercent.toInt().toString(),
+                    if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
+                    "RPM",
+                    MetricCadenceCyan
+                )
+                CompactMetric(
+                    if (live) reading.resistancePercent.toInt().toString() else NO_READING,
                     "%",
                     MetricResistanceViolet
                 )
-                CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
+                CompactMetric(
+                    if (live) reading.powerWatts.toInt().toString() else NO_READING,
+                    "W",
+                    MetricPowerCoral
+                )
                 CompactMetric(
                     reading.heartRateBpm?.toString() ?: "--",
                     "BPM",
@@ -1067,6 +1087,14 @@ private fun CompactMetric(value: String, unit: String, accent: Color) {
         )
     }
 }
+
+/**
+ * Shown in place of a metric the bike is no longer reporting (2.4.5).
+ *
+ * The same two dashes an absent heart-rate strap has always used, for the same
+ * reason: unknown is its own value and must never be drawn as a number.
+ */
+private const val NO_READING = "--"
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp

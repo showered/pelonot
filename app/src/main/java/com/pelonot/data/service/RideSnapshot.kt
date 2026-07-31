@@ -35,7 +35,18 @@ data class RideSnapshot(
     val ftpWatts: Int = WorkoutSession.DEFAULT_FTP,
     val intent: RideIntent = RideIntent.DEFAULT,
     val totalOutputKj: Double = 0.0,
-    val distanceKm: Double = 0.0
+    val distanceKm: Double = 0.0,
+    /**
+     * Whether the bike is still reporting (2.4.5).
+     *
+     * It rides on the snapshot rather than on the telemetry flow because it is
+     * a fact about the *absence* of telemetry: a flow that has stopped emitting
+     * cannot announce that it has stopped, and the service's tick is the only
+     * thing in the app that notices time passing without a reading. Both the
+     * ride screen and the strip render from here, so they cannot disagree about
+     * whether the numbers beside this are live.
+     */
+    val telemetryLive: Boolean = true
 ) {
     val isPaused: Boolean get() = state == WorkoutState.Paused
     val isRunning: Boolean get() = state == WorkoutState.Active || state == WorkoutState.Paused

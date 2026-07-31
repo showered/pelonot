@@ -363,18 +363,43 @@ private fun RideHeader(
             )
         }
 
-        if (state.isSimulated) {
-            AssistChip(
-                onClick = {},
-                enabled = false,
-                label = { Text("Simulated telemetry — no bike connected") },
-                colors = AssistChipDefaults.assistChipColors(
-                    disabledLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    disabledContainerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            )
-        }
+        TelemetryChip(state)
     }
+}
+
+/**
+ * What the numbers on this screen actually are (2.4.5).
+ *
+ * Three states, and only one of them used to be shown. The bike going quiet
+ * was rendered as nothing at all: `SensorStatus.Reconnecting` was constructed,
+ * logged and read by no one, so a rider in Hardware mode with a dead board saw
+ * four frozen numbers and no reason for them. Silence is the state that most
+ * needs saying, because it is the one where the screen looks fine.
+ *
+ * It says what is happening to the *record* as well as to the screen — "not
+ * recording" is the part a rider will want to know afterwards, and it is the
+ * truth as of 2.4.4.
+ */
+@Composable
+private fun TelemetryChip(state: RideUiState) {
+    val message = when {
+        !state.snapshot.telemetryLive -> "No signal from the bike — not recording"
+        state.isReconnecting -> "Reconnecting to the bike…"
+        state.isSimulated -> "Simulated telemetry — no bike connected"
+        else -> null
+    } ?: return
+
+    // Amber, never red: 8.11.82's argument applies here too — this is "look at
+    // this", not "something is broken beyond repair", and the ride goes on.
+    AssistChip(
+        onClick = {},
+        enabled = false,
+        label = { Text(message) },
+        colors = AssistChipDefaults.assistChipColors(
+            disabledLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            disabledContainerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    )
 }
 
 /** Clock, zone and how long is left of this effort. */
@@ -539,6 +564,12 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
     val snapshot = state.snapshot
     val hasTargets = snapshot.interval.hasClass
 
+    // 2.4.5. When the board stops reporting, the last reading it sent stays on
+    // the flow and these tiles go on showing it, 104 sp tall, indistinguishable
+    // from a rider holding a perfectly steady 88 rpm. Unknown gets the dashes
+    // that heart rate has always had.
+    val live = snapshot.telemetryLive
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
@@ -553,7 +584,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         ) {
             RideMetricTile(
                 label = "CADENCE",
-                value = state.reading.cadenceRpm.toInt().toString(),
+                value = if (live) state.reading.cadenceRpm.toInt().toString() else NO_READING,
                 unit = "rpm",
                 accent = MetricCadenceCyan,
                 band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
@@ -562,7 +593,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
             )
             RideMetricTile(
                 label = "RESISTANCE",
-                value = state.reading.resistancePercent.toInt().toString(),
+                value = if (live) state.reading.resistancePercent.toInt().toString() else NO_READING,
                 unit = "%",
                 accent = MetricResistanceViolet,
                 band = if (hasTargets) snapshot.resistanceTarget else TargetBand.NONE,
@@ -580,7 +611,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         ) {
             RideMetricTile(
                 label = "POWER",
-                value = state.reading.powerWatts.toInt().toString(),
+                value = if (live) state.reading.powerWatts.toInt().toString() else NO_READING,
                 unit = "watts",
                 accent = MetricPowerCoral,
                 band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
@@ -590,8 +621,9 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
             )
             RideMetricTile(
                 label = "HEART RATE",
-                // Null means no strap, never a measured zero.
-                value = state.reading.heartRateBpm?.toString() ?: "--",
+                // Null means no strap, never a measured zero. The strap is its
+                // own radio, so it is not silenced by the bike going quiet.
+                value = state.reading.heartRateBpm?.toString() ?: NO_READING,
                 unit = "bpm",
                 accent = MetricHeartRateGreen,
                 band = TargetBand.NONE,
@@ -847,3 +879,9 @@ private fun UpNextColumn(
         }
     }
 }
+
+/**
+ * Shown in place of a metric the bike is no longer reporting (2.4.5) — the
+ * same two dashes an absent heart-rate strap has always used.
+ */
+private const val NO_READING = "--"

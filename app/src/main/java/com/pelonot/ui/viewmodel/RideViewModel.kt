@@ -55,6 +55,17 @@ data class RideUiState(
     /** True when telemetry is fabricated, so the UI can say so plainly. */
     val isSimulated: Boolean
         get() = (sensorStatus as? SensorStatus.Streaming)?.simulated == true
+
+    /**
+     * True while the pipeline is backing off and retrying the source (2.4.5).
+     *
+     * Distinct from `snapshot.telemetryLive`, which is about readings having
+     * stopped arriving: a board can go silent for seconds before the source
+     * gives up and fails the flow, and it can fail the flow instantly on a
+     * broken bind without any reading ever having been stale. Either one means
+     * the numbers on screen are not live, and the rider is told either way.
+     */
+    val isReconnecting: Boolean get() = sensorStatus is SensorStatus.Reconnecting
 }
 
 /**
