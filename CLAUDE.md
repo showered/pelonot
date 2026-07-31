@@ -15,7 +15,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 186 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 192 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -121,3 +121,48 @@ Verifying telemetry needs someone **pedalling**, and that is a perishable
 resource: work out what you want to capture before asking, and say clearly
 when they can stop. Resistance reads from the knob without pedalling, so the
 service bind can be confirmed on your own.
+
+The tablet is not stock-stock: it has Nova Launcher and Netflix side-loaded,
+and Peloton's own member app is `com.onepeloton.weasel`. Drive the whole UI
+over `adb shell input tap` and read it back with `screencap` — but note the
+two blind spots below.
+
+**Screenshots come back empty over DRM video.** Netflix's player sets
+`FLAG_SECURE`, so `adb exec-out screencap` yields a black image and the HUD
+cannot be captured over a playing film. It captures fine over Netflix's own
+non-secure dialogs. Anything about how the HUD *looks* over moving video has
+to come from the rider.
+
+**Do not try to confirm audio ducking by polling `dumpsys audio`.** A cue
+lasts a second or two and five-second polling slides straight past it; the
+focus stack looked completely untouched while the rider was hearing the duck
+happen. Ask them.
+
+**The `avg_*` columns on `workouts` are worth checking against the samples
+they summarise**, because one of them was wrong for the project's whole
+history and looked fine everywhere:
+
+```bash
+sqlite3 db.sqlite "SELECT w.avg_hr, (SELECT AVG(heart_rate) FROM workout_metrics m WHERE m.workout_id=w.id) FROM workouts w ORDER BY w.rowid DESC LIMIT 1;"
+```
+
+### Permissions on this tablet
+
+A runtime permission the manifest does not declare is **denied instantly, with
+no dialog and nothing in logcat**. That has now caused two defects here
+(`VIBRATE`, then `ACCESS_FINE_LOCATION` — which below API 31 is the BLE scan
+permission, and this tablet is Android 11). Before believing any permission
+path, check the manifest declares what the code asks for.
+
+Overlay permission is already granted, and `SYSTEM_ALERT_WINDOW` can be
+checked with `adb shell appops get com.pelonot SYSTEM_ALERT_WINDOW`. Location
+is granted; it is the rider's to give, so raise the dialog and let them tap it
+rather than granting it yourself.
+
+### Calibrating `PowerModel`
+
+`calibration/` holds measured sweeps and the method. A Hardware-mode ride *is*
+the dataset — the board reports watts beside the cadence and resistance that
+the model takes as inputs. Read `calibration/README.md` before capturing
+another one; the first sweep produced a fit that failed cross-validation, and
+the README says exactly what coverage a sufficient sweep needs.

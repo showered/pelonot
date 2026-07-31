@@ -2,16 +2,20 @@ package com.pelonot.ui.overlay
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.coach.HapticStrength
 import com.pelonot.domain.coach.RideAlert
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Speaks and buzzes. Decides nothing.
@@ -22,10 +26,25 @@ import java.util.Locale
  * `triggerHapticAlert()` and `speakZoneChange(zone: Int)` and no caller — the
  * decision logic it would have needed did not exist.
  *
- * Speech is published with navigation-guidance audio attributes so the system
- * ducks whatever the rider is watching rather than talking over the top of it.
+ * Speech is published with navigation-guidance audio attributes *and* takes
+ * transient audio focus for the length of each cue, so the film the rider is
+ * watching dips under it rather than burying it.
  */
 class RideCoach(context: Context) {
+
+    private val appContext = context.applicationContext
+
+    private val audioManager =
+        appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+    /**
+     * Guidance rather than media, so the system treats a cue as something to
+     * hear over the top of a film rather than as a second film.
+     */
+    private val speechAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
 
     private val vibrator: Vibrator? = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -58,14 +77,7 @@ class RideCoach(context: Context) {
             }
 
             runCatching {
-                engine.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        // Guidance rather than media, so the film ducks under
-                        // it instead of the cue being drowned by it.
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                )
+                engine.setAudioAttributes(speechAttributes)
 
                 // A device with no voice for the rider's locale is not a
                 // reason to stay silent: the engine's own default still says
@@ -75,11 +87,96 @@ class RideCoach(context: Context) {
                 if (engine.setLanguage(locale) < TextToSpeech.LANG_AVAILABLE) {
                     Log.w(TAG, "No TTS voice for $locale; using the engine default")
                 }
+
+                // Focus is held from the first cue until the last one finishes
+                // speaking, so back-to-back utterances duck the film once
+                // rather than flickering its volume between them.
+                engine.setOnUtteranceProgressListener(
+                    object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) = Unit
+                        override fun onDone(utteranceId: String?) = utteranceFinished()
+
+                        @Deprecated("Required by the base class below API 21 semantics")
+                        override fun onError(utteranceId: String?) = utteranceFinished()
+                        override fun onError(utteranceId: String?, errorCode: Int) =
+                            utteranceFinished()
+                    }
+                )
             }.onFailure { Log.w(TAG, "Could not configure text-to-speech", it) }
 
             ttsReady = true
         }
         tts = engine
+    }
+
+    // ── Audio focus ─────────────────────────────────────────────────
+
+    /**
+     * Nothing to do when focus changes: we are the transient requester, never
+     * the one being ducked. A listener is required to make the request.
+     */
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { }
+
+    private val focusRequest: AudioFocusRequest? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(speechAttributes)
+                .setOnAudioFocusChangeListener(focusListener)
+                .build()
+        } else {
+            null
+        }
+
+    /**
+     * Utterances queued but not yet finished. Focus is taken on the way from
+     * zero and given back on the way to zero.
+     */
+    private val speaking = AtomicInteger(0)
+
+    /**
+     * Ask the system to dip whatever else is playing.
+     *
+     * Audio *attributes* only describe the sound; they ask for nothing. Ducking
+     * happens when someone requests AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK, and
+     * nothing here ever did — so on the bike, with Netflix playing, the cue was
+     * spoken at full volume underneath a film at full volume and the rider
+     * could not make it out. `dumpsys audio` showed Netflix holding GAIN with
+     * `loss: none` throughout, and an empty ducked-players list.
+     */
+    private fun acquireAudioFocus() {
+        val manager = audioManager ?: return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest?.let { manager.requestAudioFocus(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                manager.requestAudioFocus(
+                    focusListener,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                )
+            }
+        }.onFailure { Log.w(TAG, "Could not take audio focus", it) }
+    }
+
+    private fun releaseAudioFocus() {
+        val manager = audioManager ?: return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest?.let { manager.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                manager.abandonAudioFocus(focusListener)
+            }
+        }.onFailure { Log.w(TAG, "Could not release audio focus", it) }
+    }
+
+    private fun utteranceFinished() {
+        // updateAndGet rather than decrementAndGet: an error callback arriving
+        // after silence() has already reset the count must not drive it
+        // negative and strand the film at a reduced volume for the rest of the
+        // ride.
+        if (speaking.updateAndGet { (it - 1).coerceAtLeast(0) } == 0) releaseAudioFocus()
     }
 
     /** How much the rider has asked to be interrupted. */
@@ -98,11 +195,20 @@ class RideCoach(context: Context) {
 
     private fun speak(line: String) {
         if (!ttsReady) return
-        runCatching {
+
+        speaking.incrementAndGet()
+        acquireAudioFocus()
+
+        val queued = runCatching {
             // QUEUE_ADD: an interval announcement followed by its coaching cue
             // is two utterances that belong in that order.
             tts?.speak(line, TextToSpeech.QUEUE_ADD, null, "pelonot-${System.nanoTime()}")
         }.onFailure { Log.w(TAG, "Could not speak \"$line\"", it) }
+            .getOrNull()
+
+        // No utterance means no completion callback, so the count has to be
+        // unwound here or the film stays ducked for the rest of the ride.
+        if (queued != TextToSpeech.SUCCESS) utteranceFinished()
     }
 
     private fun buzz(strength: HapticStrength) {
@@ -133,13 +239,17 @@ class RideCoach(context: Context) {
     /** Cuts speech off immediately — used when a ride is stopped mid-sentence. */
     fun silence() {
         runCatching { tts?.stop() }
+        // stop() drops the queue without reliably reporting each dropped
+        // utterance, so the count is reset here rather than waited on. Leaving
+        // it non-zero would hold the duck forever and quietly turn the rider's
+        // film down for good.
+        speaking.set(0)
+        releaseAudioFocus()
     }
 
     fun release() {
-        runCatching {
-            tts?.stop()
-            tts?.shutdown()
-        }
+        silence()
+        runCatching { tts?.shutdown() }
         tts = null
         ttsReady = false
     }

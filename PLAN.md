@@ -17,9 +17,36 @@
 
 ## Where the work stands — read this first
 
-**Last session: 31 July 2026, on the real bike with a rider pedalling.** It
-changed the shape of the project, so start here rather than from the phase
-order.
+**Latest session: 31 July 2026 (second sitting), on the bike with a rider
+pedalling and wearing a heart-rate strap.** Everything that needed a human on
+the pedals is now done except the endurance ride (10.6).
+
+Closed this session: **10.4** (HUD over Netflix), **10.5 / 2.3.5** (real BLE
+strap), **11.1.5** (pause/resume/stop from the strip with the app in the
+background), **11.1.6** (coach audible over a playing film), **2.1a.5**
+(resistance is a true 0–100).
+
+Three defects were found in the process, all of them invisible from the UI and
+none findable without the hardware — the strap could never have been paired on
+this tablet at all, the coach had never once ducked the rider's video, and
+`avg_hr` had been recording the lowest reading of the warm-up instead of the
+average. All three are fixed, tested and in the *Corrections* table; the rule
+they sharpen is at the end of it and is worth reading.
+
+**2.2.5 was attempted and deliberately not shipped.** The sweep is checked in
+under `calibration/`; the fit failed cross-validation, and the reasoning is in
+2.2.5 and `calibration/README.md`.
+
+### Still needing a rider on the bike
+
+Only **10.6** (a full-length ride: battery, thermals, memory, dropped samples
+— longest so far is 8 minutes) and **another PowerModel sweep** for 2.2.5,
+denser at the low and high ends of the resistance range.
+
+---
+
+**The session before it, same day, established how telemetry gets in at all.**
+It changed the shape of the project, so read this too.
 
 **The headline: bike telemetry works on real hardware, and every assumption
 about how it would work was wrong.** The app had spent its whole history
@@ -47,14 +74,18 @@ Three consequences worth carrying forward:
 
 | Next | Why now |
 |------|---------|
-| **10.4** HUD over the Peloton video app | Needs the bike and five minutes. The whole of Phase 11 rests on the strip being readable over video, and that has never been observed. Needs the overlay permission granted on the tablet first — it is the rider's to give |
-| **14.1.6** Cloud round trip from the app | Does **not** need the bike; simulated telemetry drives it. It is the last thing standing between Phase 14 and done, and 15/17/18 all sit on it. Note a *guest* ride never syncs by design, so this needs a real profile |
-| **2.1a.5** Confirm the resistance scale | It is displayed as a percentage and moved plausibly, but neither end was driven to a stop. Assumed, not established |
-| **11.1a** Doors between the HUD and the app | Unchanged in priority and still the journey a rider makes most often |
-| **2.2.5** Calibrate `PowerModel` against the board | The bike can now produce measured and modelled watts for the same cadence and resistance. That is the calibration source 2.2.4 never had |
+| **14.1.6** Cloud round trip from the app | Does **not** need the bike; simulated telemetry drives it. It is the last thing standing between Phase 14 and done, and 15/17/18 all sit on it. Note a *guest* ride never syncs by design, so this needs a real profile — and there is still **no profile on the tablet**, every ride so far has been a guest ride |
+| **11.1a** Doors between the HUD and the app | Unchanged in priority and still the journey a rider makes most often. 11.1a.3 confirmed missing on the bike: the app does **not** come forward when a ride ends from the HUD — Netflix simply stayed in front |
+| **11.1.3 / 11.1.4** Tap-to-collapse and re-docking | The last two unverified HUD interactions, and unlike the rest of 11.1 they need *code* before they need a rider |
+| **20.1** The profile selector | Confirmed on the real tablet, not just the emulator: one small card in the top-left corner of a 1920×1080 screen with the rest black |
+| **2.2.5** A second `PowerModel` sweep | The method is proven and the first sweep is checked in; it needs denser coverage at resistance 5–20 and 80–100. Needs a rider |
 
-Still blocked on things not to hand: **10.5 / 2.3.5** need a BLE strap,
-**10.6** needs a full-length ride, **11.1.6** needs a listener rather than adb.
+Still blocked on things not to hand: **10.6** needs a full-length ride.
+
+Worth knowing before planning the next bike session: **the dashboard is fine in
+landscape** on the real tablet — it fills the width and does not show the empty
+right-hand side 11.3.1 describes. 11.3.1 may be stale or emulator-specific and
+should be re-checked before anyone spends a session on it.
 
 ---
 
@@ -64,7 +95,7 @@ Still blocked on things not to hand: **10.5 / 2.3.5** need a BLE strap,
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete — Supabase writes now land, app-driven sync unproven (14.1.6) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Bike telemetry verified on real hardware** (2.1a) — BLE strap still unverified |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Only `PowerModel` calibration remains open (2.2.5) |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
@@ -72,7 +103,7 @@ Still blocked on things not to hand: **10.5 / 2.3.5** need a BLE strap,
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — cloud sync wire path proven, worker unverified (14.1.6) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
-| 10 | Hardware validation | 🔶 Sensor path, protocol and a real ride done — HUD-over-video, strap and endurance remain |
+| 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
 | 11 | **HUD-first experience — the current priority** | 🔶 In progress |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
@@ -150,6 +181,9 @@ were the *reason* a downstream feature looked broken.
 | 8.8 Instrumented DAO tests | ✅ | Rewritten so they compiled, and ticked — but `@Before fun setup() = runBlocking { … }` infers its return type from the last expression, and `insertUser` returns a row id. JUnit rejects a `@Before` that is not void, so the class failed to initialise and **all ten tests silently never ran**. They pass now. |
 | 8.3a Crash recovery prompt | (untickable) | The service exposed `recoverableWorkout`, but nothing binds to the service on a cold start — which is exactly the situation a crash leaves behind — so the prompt could never have appeared wherever it was rendered. |
 | 2.1 Serial telemetry | (never ticked) | Not a false tick, but the same failure shape and the most expensive one yet: **the entire premise was wrong and no test could have said so.** The app spent its whole history preparing to read a character device that either does not exist (`ttyS1`) or belongs to Bluetooth (`ttyS2`), on a bike it assumed was jailbroken and is not. `SerialSensorSource`, `SerialProtocolParser`, `CadenceTracker` and `PowerModel` are all correct code aimed at the wrong target. Fifteen minutes on the actual hardware settled it. See 2.1a. |
+| 2.3 BLE heart rate (again) | ✅ | **The manifest never declared `ACCESS_FINE_LOCATION`**, which below API 31 *is* the BLE scan permission. A runtime request for an undeclared permission is denied instantly — no dialog, nothing in the log — so on the bike's own Android 11 tablet no strap could ever be found. The rewrite in 2.3 was correct code behind a door that was nailed shut. Behind it, the Scan button reported `PermissionRequired` and never requested anything, so there was no way to grant from inside the app either. Found the first time a strap was put on. |
+| 8.6 TTS audio cues | ✅ | Two defects, neither in the coaching logic. `RideCoach` set the language and audio attributes immediately after the `TextToSpeech` constructor, but the engine binds asynchronously, so both were discarded — the device said `setLanguage failed: not bound to TTS engine` and nothing read it. And audio attributes only *describe* a sound; they request nothing. Ducking needs `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, which nothing ever asked for, so the cue was spoken at full volume underneath a film at full volume. The tick claimed "the rider's video ducks under them" and the video had never ducked once. |
+| 3.4 / 9.5.2 Average heart rate | (untickable) | `workouts.avg_hr` was written as **79.0 against a true mean of 105.4** over the ride's own 314 metric rows — 79 being the lowest reading of the warm-up. The running mean was rounded to an `Int` every tick, so once one sample moved it by less than 1 bpm the whole increment was discarded and the average froze. `avg_power` and `avg_cadence` beside it, both `Double`, were exact. A second bug sat behind it: heart rate divided by the *tick* count rather than the heart-rate sample count, which would have buried the readings of any strap connecting mid-ride. Invisible from every screen; found by comparing the stored aggregate against the samples it claimed to summarise. |
 | 1.11 / 7.4 Cloud sync (again) | ✅ | **No row had ever reached the cloud** — `profiles` and `workouts` were both empty, by count. The cause was not the DTOs: `migration.sql` never granted `anon` a single table privilege, so every request failed `42501` before RLS was consulted. Behind that sat four more defects, one of which (epoch millis into a `TIMESTAMPTZ`) was invisible to code reading and only appeared on a real insert. Failures returned `SyncOutcome.Failed`, which nothing displays. Full detail in **14.0**. |
 
 All of the above are now fixed and covered by tests, **except the last** —
@@ -162,11 +196,29 @@ wrong about the cause and wrong about a security claim. Only a request to the
 live project produced the real answer. **For anything involving the cloud, read
 the code to form a hypothesis and then go and hit the endpoint.**
 
-The pattern is worth naming, because it has now happened eight times: a
+The pattern is worth naming, because it has now happened eleven times: a
 failure path that is caught, logged and returned as a value nothing reads is
 indistinguishable from success from every surface anyone looks at. Where a new
 phase below adds a feature that can fail quietly — sync, login, export,
 deletion — **it also has to add somewhere the rider can see that it failed.**
+
+The three added on 31 July 2026 sharpen it into a second rule. All three were
+found within an hour of a rider sitting on the bike with a strap on, and none
+of them could have been found any other way:
+
+- **A permission absent from the manifest is denied with no dialog and no log
+  line.** Two of the project's defects are now this exact shape (VIBRATE, then
+  ACCESS_FINE_LOCATION). Before trusting any runtime permission path, check the
+  manifest declares what the code asks for.
+- **Configuring an Android service object before it has bound silently does
+  nothing.** `TextToSpeech` warns and continues.
+- **An aggregate is only trustworthy when checked against the rows it
+  summarises.** `avg_hr` was wrong for the whole project's history beside two
+  neighbours that were right.
+
+> **Verify against the source data, not the surface.** Every one of these
+> looked correct from the UI. The database, `dumpsys` and logcat are where they
+> were visible — and for the ducking, only the rider's ears.
 
 ---
 
@@ -260,23 +312,71 @@ and it was wrong in a way no amount of code reading would have exposed.
       tracking the knob, power 0→176 W, 246 per-second rows written to
       `workout_metrics`, `avg_hr` NULL with no strap, ride persisted
       `is_complete = 1` at 245 s / 6.7 kJ
-- [ ] **2.1a.5** Confirm the resistance figure really is 0–100. It is displayed
-      as a percentage and moved 16→59 plausibly with the knob, but neither end
-      of the range was driven to a stop, so the scale is assumed rather than
-      established
+- [x] **2.1a.5** **Resistance is a true 0–100.** Both ends driven to the stop
+      on the bike, 31 July 2026: full anticlockwise reads `0.0` and full
+      clockwise reads `100.0`, each held flat for twenty seconds, and nothing
+      on the path from the board to `workout_metrics` clamps either value. The
+      rider could not turn the pedals at 100, which is the physical
+      corroboration
+- [ ] **2.1a.5a** **The sensor saturates at 100 before the knob does.** The
+      rider reports the display reaching 100 and the knob then continuing to
+      turn some way further before clicking against its stop. So there is dead
+      travel at the top where resistance is still rising and the app cannot
+      see it. Consequences: a prescribed band (11.2.1) can say "100" but cannot
+      distinguish 100 from well past it, and a rider at the top of the range
+      gets no feedback for the last part of the turn. Worth checking whether
+      the same dead band exists at the bottom
 
 ### 2.2 Protocol parsing
 - [x] `SerialProtocolParser` as a pure, testable state machine
 - [x] Carries partial commands across read boundaries (a trailing `R` used to lose its value byte)
 - [x] `CadenceTracker` smooths jitter and **decays to zero when pedalling stops** (cadence used to freeze at its last value forever)
 - [ ] **2.2.4** Validate `PowerModel` coefficients against a known curve or a real power meter. **Absolute watts from the model are not trustworthy** — they are self-consistent between your own rides only. **Largely superseded on real hardware** (2.1a): the sensor board reports watts directly, so a ride on the bike no longer infers power at all. `SensorReading.powerIsMeasured` marks which is which. The model still governs simulated rides and the resistance band in 11.2.1, so the caveat stays until it is either calibrated or confined to simulation
-- [ ] **2.2.5** Now that measured and modelled watts can be produced for the *same* cadence and resistance, the bike is itself the calibration source 2.2.4 has always lacked. Log both during a ride and fit the coefficients against it
+- [ ] **2.2.5** Now that measured and modelled watts can be produced for the *same* cadence and resistance, the bike is itself the calibration source 2.2.4 has always lacked. Log both during a ride and fit the coefficients against it.
+
+      **Attempted on the bike, 31 July 2026. The capture method works; one
+      sweep was not enough, and the coefficients are unchanged.** A 494-second
+      Just Ride sweeping resistance 0–75 against cadence 30–101 is checked in
+      at `calibration/2026-07-31-sweep-PLTN-RB1VQ.csv`, with the method and
+      full reasoning in `calibration/README.md`.
+
+      What it settled: **the shipped coefficients are badly wrong** — RMSE
+      137 W, median absolute error 66%, R² 0.21 over 310 steady-state samples.
+      2.2.4's caveat was, if anything, understated.
+
+      Why nothing was shipped: a refit of `P = (a + b·R^k)·rpm + c·rpm³`
+      (monotone in resistance, so the `resistanceForWatts` inverse stays
+      well-behaved) reaches median 10.7% *in sample*, but holding out one
+      resistance level and predicting it gives 13–25% above 75 W — and **at
+      R=40 the existing coefficients beat the refit**, 11.4% against 22.8%.
+      That is a fit interpolating between the six levels that happened to get
+      ridden, not a description of the machine. The unconstrained exponent
+      (k ≈ 2.86) also puts R=100 at 80 rpm near 1 kW, because nothing above
+      R=75 was sampled.
+
+      A sufficient sweep needs more resistance levels — especially **5–20 and
+      80–100**, barely touched here — each held at three or more cadences,
+      including high resistance at high cadence, and ideally a second rider to
+      separate the machine's curve from one person's pedalling
 
 ### 2.3 BLE heart rate
 - [x] Rewritten against the Bluetooth SIG spec: real Context, CCCD descriptor write, service-UUID scan filter, cancellable scanning, bounds-checked parsing
-- [x] Runtime permission handling across API 24–34
+- [x] Runtime permission handling across API 24–34 — **and the manifest entry
+      it needed.** `ACCESS_FINE_LOCATION` was never declared, and below API 31
+      that *is* the BLE scan permission; a runtime request for a permission
+      absent from the manifest is denied instantly with no dialog and nothing
+      in the log. The bike's tablet is Android 11, so heart rate could never
+      have worked on the one device this app exists for. Same shape as the
+      VIBRATE bug in 8.5
 - [x] `HeartRateStatus` surfaced in Settings
-- [ ] **2.3.5** Verify with a real strap — *needs hardware*
+- [x] **2.3.4a** Scan asks for the permission it needs. It previously reported
+      `HeartRateStatus.PermissionRequired` and stopped there —
+      `SettingsViewModel.heartRatePermissions()` existed and nothing called it
+      — so the message named the blocker and offered no way past it
+- [x] **2.3.5** **Verified with a real strap on the bike, 31 July 2026.**
+      Wahoo TICKR FIT found and connected on the first scan; a 314-second ride
+      wrote a heart rate on **every one of its 314 metric rows**, 79–125 bpm,
+      no nulls and no fabricated zeros
 
 ### 2.4 Sensor repository
 - [x] Unified `StateFlow<SensorReading>` merging bike telemetry and heart rate
@@ -476,8 +576,26 @@ being read in half a second from two metres away while out of breath.
 - [x] **11.1.2** Sits below the status bar rather than under the clock
 - [ ] **11.1.3** Tap-to-collapse and the slim strip it collapses to
 - [ ] **11.1.4** Drag to re-dock between top and bottom, and that the choice persists
-- [ ] **11.1.5** Pause, resume and stop from the HUD with the app in the background
-- [ ] **11.1.6** Spoken coach mode actually audible over a playing video (needs a device with a TTS voice installed)
+- [x] **11.1.5** **Pause, resume and stop from the HUD with the app in the
+      background** — driven from the strip on the bike with Netflix in the
+      foreground, 31 July 2026. Pause froze the ride at 03:00 and it was still
+      03:00 twelve seconds later, so the pause genuinely leaves elapsed alone
+      (3.7); resume advanced it again; stop tore down the notification and the
+      overlay window and left Netflix undisturbed. The overlay never took focus
+      from the video app at any point
+- [x] **11.1.6** **Spoken coach audible over a playing video** — but only
+      after two defects, and neither was in the coaching logic. `RideCoach`
+      configured the engine straight after the `TextToSpeech` constructor,
+      before the service had bound, so both the language *and the audio
+      attributes* were discarded ("setLanguage failed: not bound to TTS
+      engine", in logcat on the bike). And attributes alone ask the system for
+      nothing: ducking requires an explicit
+      `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` request, and nothing ever made one.
+      `dumpsys audio` showed Netflix holding `GAIN` with `loss: none` and an
+      empty ducked-players list throughout, and the rider reported the cue
+      inaudible under the film. With focus requested per cue and released when
+      the last utterance finishes: **observed ducking, and the coach clearly
+      audible over Netflix**
 
 ### 11.1a Getting between the HUD and the app
 
@@ -930,12 +1048,27 @@ finding rather than an obstacle — see 2.1a.
 - [x] **10.3** Superseded for real rides: the board reports watts directly, so
       there is nothing to calibrate on the bike itself. The remaining
       calibration question is about simulated rides — see 2.2.5
-- [ ] **10.4** Verify the HUD renders over the Peloton video app. **Not done**:
-      needs the overlay permission granted on the tablet, which is the rider's
-      to give
-- [ ] **10.5** Verify a BLE strap connects and streams — no strap to hand
+- [x] **10.4** **HUD renders over a video app** — verified over Netflix on the
+      bike, 31 July 2026. Full-width strip docked to the top edge, middle of
+      the screen clear, every figure live (cadence 84, resistance 32, power
+      71 W, heart rate 98, interval countdown and next-interval preview). The
+      overlay window is present as an `appop=SYSTEM_ALERT_WINDOW` window and
+      never takes focus from the video app. Overlay permission turned out to be
+      granted already
+- [x] **10.5** **BLE strap connects and streams** — Wahoo TICKR FIT, found and
+      connected on the first scan, a heart rate on all 314 rows of a ride. See
+      2.3.5 for the two manifest and UI defects that had to be fixed first
 - [ ] **10.6** Full-length ride: battery, thermals, memory, no dropped samples.
-      The longest run so far is 4 minutes
+      The longest run so far is 8 minutes
+
+> **Screenshots do not work over a playing film.** Netflix's player sets
+> `FLAG_SECURE`, so `adb exec-out screencap` returns an empty image and the HUD
+> cannot be captured over DRM video — it captured fine over Netflix's own
+> non-secure PIN dialog. Anything about readability over moving video (11.1b.2)
+> has to be judged by the rider's eyes, not from a screenshot. Likewise a
+> spoken cue lasts a second or two, so polling `dumpsys audio` every five
+> seconds slides straight past the duck; the rider hearing it is the
+> measurement.
 
 ---
 
