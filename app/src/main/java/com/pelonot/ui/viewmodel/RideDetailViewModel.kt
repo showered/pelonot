@@ -2,9 +2,16 @@ package com.pelonot.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.chart.ChartSample
+import com.pelonot.domain.chart.RideChartBuilder
+import com.pelonot.domain.chart.RideCharts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +22,15 @@ data class RideDetailUiState(
     val workout: WorkoutEntity? = null,
     val classTitle: String? = null,
     val isLoading: Boolean = true,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    /**
+     * The ride's own time series, reduced to what can be drawn (16.1).
+     *
+     * Null while it is still being built, which is a different thing from a
+     * ride with nothing in it — a screen that cannot tell those apart flashes
+     * "no data" at every rider on the way in.
+     */
+    val charts: RideCharts? = null
 ) {
     val displayTitle: String get() = classTitle ?: "Just Ride"
 }
@@ -33,7 +48,8 @@ data class RideDetailUiState(
  * number, and there has been no way to correct it afterwards.
  */
 class RideDetailViewModel(
-    private val workoutRepository: WorkoutRepository
+    private val workoutRepository: WorkoutRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RideDetailUiState())
@@ -56,7 +72,45 @@ class RideDetailViewModel(
                     isLoading = false
                 )
             }
+
+            // Built after the summary is on screen, not before it. A ride's
+            // series is a few thousand rows and the totals are the thing the
+            // rider opened this screen for; making them wait on the charts
+            // would be the wrong way round.
+            if (workout != null) buildCharts(workout)
         }
+    }
+
+    /**
+     * Off the main thread and computed once (16.2.3).
+     *
+     * The FTP used for the zone bands is the rider's **current** one, which is
+     * a deliberate simplification worth knowing about: a ride from before an
+     * FTP change is banded against today's zones, not the ones it was ridden
+     * under. Storing the FTP on the workout row would fix it and needs a
+     * migration (12.5).
+     */
+    private suspend fun buildCharts(workout: WorkoutEntity) {
+        val charts = withContext(Dispatchers.Default) {
+            val metrics = workoutRepository.getMetrics(workout.id)
+            val ftp = workout.userId
+                ?.let { userRepository.getUser(it)?.ftpWatts }
+                ?: UserEntity.DEFAULT_FTP
+
+            RideChartBuilder.build(
+                samples = metrics.map { metric ->
+                    ChartSample(
+                        timestampSec = metric.timestampSec,
+                        powerWatts = metric.power,
+                        cadenceRpm = metric.cadence,
+                        // Preserved as null: 16.1.2 depends on it.
+                        heartRateBpm = metric.heartRate
+                    )
+                },
+                ftpWatts = ftp
+            )
+        }
+        _uiState.update { it.copy(charts = charts) }
     }
 
     fun setRpe(rpe: Int) {
@@ -84,7 +138,10 @@ class RideDetailViewModel(
 
     companion object {
         val Factory = viewModelFactory {
-            RideDetailViewModel(workoutRepository = ServiceLocator.workoutRepository)
+            RideDetailViewModel(
+                workoutRepository = ServiceLocator.workoutRepository,
+                userRepository = ServiceLocator.userRepository
+            )
         }
     }
 }

@@ -2,9 +2,11 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,7 +48,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
+import com.pelonot.domain.chart.RideChartSummaries
+import com.pelonot.domain.chart.RideCharts
+import com.pelonot.ui.components.CadenceDistributionChart
+import com.pelonot.ui.components.ChartCard
+import com.pelonot.ui.components.HeartRateTraceChart
+import com.pelonot.ui.components.PowerTraceChart
 import com.pelonot.ui.components.RideSummaryCard
+import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailViewModel
@@ -188,12 +197,130 @@ fun RideDetailScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
+            // 16.1. Every ride since the foreign-key fix has written a full
+            // per-second series and no screen had ever drawn one, which is what
+            // makes recording it worth doing in the first place.
+            RideChartsSection(state.charts)
+
+            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+
             RpeEditor(selected = workout.rpeRating, onSelect = viewModel::setRpe)
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
     }
 }
+
+/**
+ * The four charts, laid out for the width this app actually has.
+ *
+ * Two columns on the tablet — 1280 dp is a great deal of width to spend on one
+ * 140 dp chart at a time — and a single column anywhere narrower.
+ */
+@Composable
+private fun RideChartsSection(charts: RideCharts?) {
+    if (charts == null) {
+        // Distinguished from "this ride recorded nothing", which is a
+        // different sentence and a permanent one.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            Text(
+                text = "Working out how the ride went…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    if (!charts.hasAnything) {
+        Text(
+            text = "This ride has no second-by-second record — only its totals. " +
+                "Rides recorded before the app started keeping one look like this.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    BoxWithConstraints {
+        val twoUp = maxWidth >= TWO_COLUMN_BREAKPOINT
+
+        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            if (twoUp) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                ) {
+                    PowerCard(charts, Modifier.weight(1f))
+                    HeartCard(charts, Modifier.weight(1f))
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                ) {
+                    CadenceCard(charts, Modifier.weight(1f))
+                    ZoneCard(charts, Modifier.weight(1f))
+                }
+            } else {
+                PowerCard(charts, Modifier.fillMaxWidth())
+                HeartCard(charts, Modifier.fillMaxWidth())
+                CadenceCard(charts, Modifier.fillMaxWidth())
+                ZoneCard(charts, Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun PowerCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Power",
+    // 16.1.6 wants this to read from where the watts actually came from, and
+    // it cannot yet: **nothing records it**. `SensorReading.powerIsMeasured`
+    // exists per reading and `workout_metrics` has no column for it, so a ride
+    // off the real board is indistinguishable on disk from a simulated one.
+    // Until that migration exists (12.5) this errs towards "estimated", which
+    // is the safe direction — the rule this project cares about is never
+    // presenting a modelled watt as measured.
+    caption = if (charts.powerIsMeasured) {
+        "Measured by the bike"
+    } else {
+        "Estimated from cadence and resistance — see Settings"
+    },
+    summary = RideChartSummaries.power(charts.power, charts.powerIsMeasured),
+    modifier = modifier
+) {
+    PowerTraceChart(trace = charts.power, ftpWatts = charts.ftpWatts)
+}
+
+@Composable
+private fun HeartCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Heart rate",
+    summary = RideChartSummaries.heartRate(charts.heartRate),
+    modifier = modifier
+) {
+    HeartRateTraceChart(trace = charts.heartRate)
+}
+
+@Composable
+private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Cadence",
+    caption = "How long was spent at each cadence",
+    summary = RideChartSummaries.cadence(charts.cadence),
+    modifier = modifier
+) {
+    CadenceDistributionChart(distribution = charts.cadence)
+}
+
+@Composable
+private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Time in zone",
+    summary = RideChartSummaries.timeInZone(charts.timeInZone),
+    modifier = modifier
+) {
+    TimeInZoneBar(timeInZone = charts.timeInZone)
+}
+
+private val TWO_COLUMN_BREAKPOINT = 900.dp
 
 /**
  * RPE, after the fact.

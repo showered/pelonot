@@ -104,7 +104,7 @@ Three consequences worth carrying forward:
 | Next | Why now |
 |------|---------|
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
-| **16.1 / 16.2** Post-ride charts | Now the most valuable thing that needs neither the bike nor a credential. Every ride has recorded a full per-second series since the foreign-key fix and no screen has ever drawn one, which is what makes recording it worth doing |
+| **16.1.5** Prescribed intervals under the actual trace | The rest of 16.1 landed this session; this is the one piece left, and it is the most useful post-ride view there is — "what you were asked for" against "what you did" |
 | **11.1b** The HUD getting out of the way | Opacity, resizing and side docking. All emulator-checkable, and the strip's fill was just simplified to one flat colour plus a fixed feather, so 11.1b.1 is now one alpha rather than a gradient to re-tune |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
 | **19.1.5** README and CONTRIBUTING | The README still advertises a root prerequisite the app does not have and does not want (2.1a). That is the difference between a project people try and one they assume they cannot |
@@ -146,7 +146,7 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
-| 16 | Data visualisation | ❌ Not started — half fundamental, half polish |
+| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.4, 16.2) — the fundamental half. Prescribed-vs-actual (16.1.5) and trends (16.3) remain |
 | 17 | Companion web application | ❌ Not started — *nice to have* |
 | 18 | Social features in the Android app | ❌ Not started — *nice to have* |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
@@ -1154,18 +1154,61 @@ recorded time series worth recording. The trend work in 16.3 is genuinely
 nice-to-have and only becomes interesting after a few dozen rides exist.
 
 ### 16.1 The ride itself
-- [ ] **16.1.1** Power over time with zone bands behind it (was 8.11.53)
-- [ ] **16.1.2** Heart rate over time, drawn **only where samples exist** — null is unknown, and a line dropping to the axis says the rider's heart stopped
-- [ ] **16.1.3** Cadence distribution
-- [ ] **16.1.4** Time in zone as a stacked bar, shared with the HUD's collapsed strip (11.2.2)
+
+All of these are on the **ride detail** screen (12.2), which is where a ride
+lives once it is finished. Two columns on the tablet, one anywhere narrower.
+
+- [x] **16.1.1** Power over time with zone bands behind it (was 8.11.53).
+      *Drawn as a min/max envelope with the mean through it, over the rider's
+      own zone bands and a dashed rule at FTP. Observed on the tablet AVD*
+- [x] **16.1.2** Heart rate over time, drawn **only where samples exist** —
+      null is unknown, and a line dropping to the axis says the rider's heart
+      stopped. *Each contiguous run of samples is its own path; a strap that
+      pairs mid-ride charts only the part it saw, and one that drops out gets a
+      break rather than a straight line across the gap. Covered by tests both
+      ways*
+- [x] **16.1.3** Cadence distribution. *Banded at 10 rpm, with coasting
+      excluded — without that filter every ride has a large spike in the 0–9
+      band that says nothing about how it was ridden*
+- [x] **16.1.4** Time in zone as a stacked bar, shared with the HUD's collapsed
+      strip (11.2.2). *With a legend: seven colours in a bar is a code nobody
+      has been given the key to*
 - [ ] **16.1.5** The class's prescribed intervals drawn under the actual trace — "what you were asked for" against "what you did" is the single most useful post-ride view
-- [ ] **16.1.6** Axis label reads from `SensorReading.powerIsMeasured` rather than saying **estimated** unconditionally. On the bike it *is* a meter (2.1a); on a simulated ride it is a model (2.2.4). A ride can in principle contain both, so decide what a mixed series is labelled
+- [ ] **16.1.6** Axis label reads from `SensorReading.powerIsMeasured` rather
+      than saying **estimated** unconditionally. On the bike it *is* a meter
+      (2.1a); on a simulated ride it is a model (2.2.4). A ride can in principle
+      contain both, so decide what a mixed series is labelled.
+      **Blocked, and on something smaller than it looks: nothing records it.**
+      `powerIsMeasured` exists on each `SensorReading` and is thrown away at the
+      database boundary — `workout_metrics` has no column for it — so a ride off
+      the real board is indistinguishable on disk from a simulated one. The
+      chart therefore errs towards "estimated", which is the safe direction
+      given the rule that a modelled watt is never presented as measured. It
+      needs one column, a `Migration`, an exported schema and a
+      `MigrationTestHelper` test (12.5). Do that and this becomes a one-line
+      change
 
 ### 16.2 Building them
-- [ ] **16.2.1** Compose `Canvas`, no charting dependency — these are four fixed chart types, and a library is a large surface for a small need
-- [ ] **16.2.2** Downsample before drawing: 2,700 points into ~300 buckets keeps peaks (min/max per bucket, not mean — averaging erases exactly the sprint the rider wants to see)
-- [ ] **16.2.3** Off the main thread, cached on the ride, computed once
-- [ ] **16.2.4** Accessible: every chart has a text summary, since a chart is unreadable to a screen reader and a fair amount of this data is a sentence
+- [x] **16.2.1** Compose `Canvas`, no charting dependency — these are four
+      fixed chart types, and a library is a large surface for a small need.
+      *Also a library would have to be taught that a null heart rate is
+      unknown rather than zero, which is the defect this project has already
+      fixed twice*
+- [x] **16.2.2** Downsample before drawing: 2,700 points into ~300 buckets
+      keeps peaks (min/max per bucket, not mean — averaging erases exactly the
+      sprint the rider wants to see). *Bucketed by **elapsed time**, not sample
+      index: a recovered ride has gaps, and bucketing by index would compress
+      them out and draw a ride that looks continuous. A test rides 2,700
+      seconds with a one-second 600 W spike in the middle and asserts the spike
+      survives while its bucket's mean does not reach it*
+- [x] **16.2.3** Off the main thread, cached on the ride, computed once.
+      *Built on `Dispatchers.Default` after the summary is already on screen —
+      the totals are what the rider opened the screen for*
+- [x] **16.2.4** Accessible: every chart has a text summary, since a chart is
+      unreadable to a screen reader and a fair amount of this data is a
+      sentence. *The canvas itself carries the summary as its content
+      description and the visible copy of it is cleared from the tree, so it is
+      announced once rather than twice*
 
 ### 16.3 Trends — nice to have
 - [ ] **16.3.1** FTP over time, marked with the rides that triggered each change
