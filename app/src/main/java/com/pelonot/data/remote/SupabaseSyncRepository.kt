@@ -33,9 +33,18 @@ class SupabaseSyncRepository(
         supabase.from(TABLE_WORKOUTS).insert(WorkoutDto.from(workout, metrics))
     }
 
-    /** Creates or updates the rider's cloud profile. */
+    /**
+     * Creates or updates the rider's cloud profile.
+     *
+     * `onConflict` is not optional. Without it the upsert conflicts on the
+     * primary key `id` — a UUID the DTO does not send — so every call inserted
+     * a fresh row instead of updating the rider's. `local_user_id` is the
+     * natural key and is `UNIQUE` in the schema.
+     */
     suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> = execute("syncProfile") { supabase ->
-        supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user))
+        supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user)) {
+            onConflict = "local_user_id"
+        }
     }
 
     /** Fetches the shared class library for seeding. */

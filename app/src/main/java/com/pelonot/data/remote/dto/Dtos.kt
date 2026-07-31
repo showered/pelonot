@@ -6,6 +6,27 @@ import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
+/**
+ * Epoch milliseconds as ISO-8601 UTC.
+ *
+ * The cloud columns are `TIMESTAMPTZ`. Sending the raw epoch millis Long that
+ * Room stores makes Postgres try to parse `1753900000000` as a date and fail
+ * with `22008 date/time field value out of range` — verified against the live
+ * project. Room keeps epoch millis locally; this is the boundary that converts.
+ *
+ * `SimpleDateFormat` rather than `java.time` because minSdk is 24 and core
+ * library desugaring is not enabled. It is not thread-safe, so it is built per
+ * call — this runs once per sync, not per sample.
+ */
+internal fun Long.toIso8601Utc(): String =
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        .apply { timeZone = TimeZone.getTimeZone("UTC") }
+        .format(Date(this))
 
 /**
  * Wire types for the Supabase tables.
@@ -67,7 +88,7 @@ data class WorkoutDto(
     @SerialName("avg_hr") val avgHr: Double? = null,
     @SerialName("intent_modifier") val intentModifier: Double,
     @SerialName("rpe_rating") val rpeRating: Int? = null,
-    @SerialName("recorded_at") val recordedAtEpochMs: Long,
+    @SerialName("recorded_at") val recordedAt: String,
     @SerialName("metrics_payload") val metrics: List<WorkoutMetricDto>
 ) {
     companion object {
@@ -82,7 +103,7 @@ data class WorkoutDto(
             avgHr = workout.avgHr,
             intentModifier = workout.intentModifier,
             rpeRating = workout.rpeRating,
-            recordedAtEpochMs = workout.timestamp,
+            recordedAt = workout.timestamp.toIso8601Utc(),
             metrics = metrics.map(WorkoutMetricDto::from)
         )
     }

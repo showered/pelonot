@@ -18,17 +18,56 @@
 | Phase | Area | State |
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
-| 1 | Local database (Room) + Supabase | ✅ Complete |
+| 1 | Local database (Room) + Supabase | 🔶 Room complete — Supabase writes now land, app-driven sync unproven (14.1.6) |
 | 2 | Telemetry engine (serial, BLE, simulated) | ✅ Code complete — ⚠️ unverified on real hardware |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | ✅ Complete |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — cloud sync wire path proven, worker unverified (14.1.6) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | ❌ Blocked on bike access |
 | 11 | **HUD-first experience — the current priority** | 🔶 In progress |
+| 12 | Ride history & the rider's own record | ❌ Not started — *fundamental* |
+| 13 | Units and display preferences | ❌ Not started — *fundamental, small* |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 **In progress** — schema fixed and writes verified against the live project; app-driven round trip still open (14.1.6) |
+| 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
+| 16 | Data visualisation | ❌ Not started — half fundamental, half polish |
+| 17 | Companion web application | ❌ Not started — *nice to have* |
+| 18 | Social features in the Android app | ❌ Not started — *nice to have* |
+| 19 | Ideas worth having, ranked | ❌ Not started — mixed |
+
+---
+
+## What is fundamental and what is not
+
+Phases 12–19 were requested together, but they are not the same kind of work,
+and building them in the order they were listed would be a mistake. The
+ordering below is the one to work in.
+
+**Fundamental — the app is incomplete without these:**
+
+| # | Why it is not optional |
+|---|------------------------|
+| 12 Ride history + delete | The app records rides and offers the rider no way to see them or get rid of a bad one. Everything downstream — charts, sync, social — is a view onto a history screen that does not exist. |
+| 13 Units | A UK rider is shown kilometres with no way to change it. It is an afternoon's work and it is currently wrong for a large fraction of the audience. |
+| 14 Working sync | Cloud sync was ticked as complete having **never written a single row** — see 14.0. The schema is fixed and writes now land; the app driving it is still unproven. Every feature in 15, 17 and 18 sits on top of this. |
+| 15 Accounts | Sync without an identity puts every rider's data in one anonymous pool. This is also where the current RLS policies stop being a placeholder and start being a security problem. |
+| 12.7 Room migrations | `fallbackToDestructiveMigration()` deletes the rider's entire training history on any schema change. Phases 12–19 all change the schema. This has to go first. |
+
+**Nice to have — real value, none of it load-bearing:**
+
+16 (beyond the post-ride charts), 17, 18, and most of 19. A companion web app
+and a friends feed are good ideas for an app people already use daily; they
+are not what makes people use it daily. The bike, the HUD and an honest record
+of the ride are.
+
+> One caution that applies to all of 16–18: `PowerModel` is uncalibrated
+> (2.2.4). Charts, leaderboards and friend comparisons all take these watts and
+> present them as fact. Numbers are only comparable **between one rider's own
+> rides** until the curve is validated, and anything social has to say so
+> rather than quietly implying otherwise.
 
 ---
 
@@ -52,8 +91,23 @@ were the *reason* a downstream feature looked broken.
 | 8.5 Haptic feedback | ✅ | The app never declared `android.permission.VIBRATE`. Every call threw `SecurityException` into a `runCatching`, so the buzz simply never happened. Found by reading logcat during a real ride — it is invisible from the UI. |
 | 8.8 Instrumented DAO tests | ✅ | Rewritten so they compiled, and ticked — but `@Before fun setup() = runBlocking { … }` infers its return type from the last expression, and `insertUser` returns a row id. JUnit rejects a `@Before` that is not void, so the class failed to initialise and **all ten tests silently never ran**. They pass now. |
 | 8.3a Crash recovery prompt | (untickable) | The service exposed `recoverableWorkout`, but nothing binds to the service on a cold start — which is exactly the situation a crash leaves behind — so the prompt could never have appeared wherever it was rendered. |
+| 1.11 / 7.4 Cloud sync (again) | ✅ | **No row had ever reached the cloud** — `profiles` and `workouts` were both empty, by count. The cause was not the DTOs: `migration.sql` never granted `anon` a single table privilege, so every request failed `42501` before RLS was consulted. Behind that sat four more defects, one of which (epoch millis into a `TIMESTAMPTZ`) was invisible to code reading and only appeared on a real insert. Failures returned `SyncOutcome.Failed`, which nothing displays. Full detail in **14.0**. |
 
-All of the above are now fixed and covered by tests.
+All of the above are now fixed and covered by tests, **except the last** —
+the wire path is proven and `WorkoutSyncWorker` driving it end to end is not,
+which is 14.1.6.
+
+Note the shape of that one, because it is the most expensive kind here: the
+first diagnosis, made by reading the code against the migration, was confidently
+wrong about the cause and wrong about a security claim. Only a request to the
+live project produced the real answer. **For anything involving the cloud, read
+the code to form a hypothesis and then go and hit the endpoint.**
+
+The pattern is worth naming, because it has now happened eight times: a
+failure path that is caught, logged and returned as a value nothing reads is
+indistinguishable from success from every surface anyone looks at. Where a new
+phase below adds a feature that can fail quietly — sync, login, export,
+deletion — **it also has to add somewhere the rider can see that it failed.**
 
 ---
 
@@ -82,13 +136,14 @@ All of the above are now fixed and covered by tests.
 
 > **Note:** the database uses `fallbackToDestructiveMigration()` while pre-release. **Replace this with explicit migrations before the first real user installs a build** — after that, a schema change silently deletes their entire training history.
 
-### Supabase (Cloud) ✅
+### Supabase (Cloud) — ⚠️ wired, never connected
 
 - [x] **1.8** Supabase project created
 - [x] **1.9** SQL migration in `supabase/migration.sql`
 - [x] **1.10** Client provider, now null when unconfigured so the app is fully offline-capable
 - [x] **1.11** Sync repository with **typed DTOs** (was `Map<String, Any?>`, which could not serialize)
 - [x] **1.14** `SyncOutcome` distinguishes *disabled* from *failed*, so the worker knows what is worth retrying
+- [ ] **1.15** A row actually arriving in the cloud. The DTOs serialize now, and they serialize into columns the schema does not have — see **14.0**. Everything above is real; none of it has ever completed a request
 
 ---
 
@@ -257,7 +312,7 @@ All of the above are now fixed and covered by tests.
 
 ---
 
-## Phase 9: Ride Integration — the current priority
+## Phase 9: Ride Integration ✅
 
 **Goal:** Make a class actually run. Today a ride records telemetry and totals, but the class's own intervals do nothing and the floating HUD never appears.
 
@@ -332,6 +387,297 @@ being read in half a second from two metres away while out of breath.
 ### 11.4 Re-home the leaderboard
 - [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it
 - [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
+
+---
+
+## Phase 12: Ride history & the rider's own record — fundamental
+
+**The gap:** every ride since the foreign-key fix has been writing a full
+per-second time series to `workout_metrics`, and there is no screen in the app
+that shows a rider a ride they finished yesterday. `WorkoutRepository` already
+has `observeWorkouts(userId)`, `getRecentWorkouts` and `getMetrics`; the data
+layer is done and nothing renders it.
+
+### 12.1 History screen
+- [ ] **12.1.1** `HistoryScreen` + `HistoryViewModel` over `observeWorkouts(userId)`, as a real `NavHost` destination
+- [ ] **12.1.2** Rides grouped by day, newest first, with date headers — a list of forty undifferentiated rows is not a record
+- [ ] **12.1.3** Row shows class title (or "Just Ride"), duration, output, avg power, and whether the ride was recovered from a crash
+- [ ] **12.1.4** Only complete rides. `is_complete = 0` means a crashed or in-flight ride and must not appear as history
+- [ ] **12.1.5** Empty state that says what to do, not "No data"
+- [ ] **12.1.6** Paging or a windowed query — a year of daily rides is 365 rows and ~1M metric samples; the list query must never touch `workout_metrics`
+
+### 12.2 Ride detail
+- [ ] **12.2.1** Tapping a ride opens a detail screen — the same content as the post-ride summary, minus the RPE prompt and FTP dialog
+- [ ] **12.2.2** Extract the shared summary content out of `PostRideSummaryScreen` rather than copying it
+- [ ] **12.2.3** Charts (phase 16) land here first
+- [ ] **12.2.4** Edit RPE after the fact — riders rate a ride badly in the ninety seconds after finishing it
+
+### 12.3 Delete
+- [ ] **12.3.1** Delete from the detail screen and via swipe on the row. `WorkoutDao.deleteWorkout` exists and `workout_metrics` cascades; the UI is what is missing
+- [ ] **12.3.2** Confirm before deleting, and name what is going ("Delete Tabata Sprint 20, 14 June?"). A ride is not recoverable and the row is a small target
+- [ ] **12.3.3** Undo snackbar — better than a dialog for the common case of a mis-swipe, and worth having *as well* for the ones that are
+- [ ] **12.3.4** Verify the cascade actually fires with `PRAGMA foreign_keys` on in the shipping database, not just in the DAO test — an orphaned metric series is invisible and grows forever
+- [ ] **12.3.5** **Deleting a synced ride must delete it in the cloud too**, or the next pull resurrects it. Needs a tombstone (`deleted_at`) rather than a hard delete, since the device may be offline when the rider deletes. Blocked on 14; until then a delete is local-only and should say so
+- [ ] **12.3.6** Bulk delete / select mode — after 12.3.5, not before
+
+### 12.4 Housekeeping the record
+- [ ] **12.4.1** Re-file a household guest ride against a profile from history (the post-ride flow in 8.4 is the only chance to do it today, and the rider is usually still breathing hard)
+- [ ] **12.4.2** Filter by class category and by date range
+- [ ] **12.4.3** Export a ride — CSV of the metric series, and `.tcx`/`.fit` for Strava and everything else. This is an open-source app: not being able to get your own data out is the thing the subscription product does
+- [ ] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has
+
+### 12.5 Room migrations — do this before anything in 12–19 ships
+- [ ] **12.5.1** Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects
+- [ ] **12.5.2** Export the Room schema to `app/schemas/` and check it in, so migrations can be written against a known starting point
+- [ ] **12.5.3** `MigrationTestHelper` instrumented test for each migration
+- [ ] **12.5.4** Only then, the schema changes phases 13–15 need (unit preference, `deleted_at`, `synced_at`, `auth_user_id`)
+
+> This is listed last in the phase and is first in the work. Every remaining
+> phase adds a column. The moment a build with a real training history is
+> installed on the bike's tablet, a destructive fallback stops being a
+> pre-release convenience and becomes a data-loss bug that has already happened
+> by the time anyone notices.
+
+---
+
+## Phase 13: Units and display preferences — fundamental, small
+
+Distance is hardcoded to kilometres (`Formatters.kilometres`), which is the
+wrong default for a UK or US rider looking at a Peloton bike whose own display
+is in miles.
+
+- [ ] **13.1** `UnitSystem` (`METRIC` / `IMPERIAL`) in `SettingsRepository`, defaulting from the device locale rather than to metric
+- [ ] **13.2** Settings toggle, next to the existing FTP and weight fields
+- [ ] **13.3** `Formatters` takes the unit system: distance km/mi, speed km/h/mph, body weight kg/lb
+- [ ] **13.4** **Store SI, convert at the edge.** `total_distance_km` and `weight_kg` stay canonical in Room and in the cloud; nothing but the formatter ever sees miles. A unit preference that reaches the database is a data corruption bug waiting for the rider to change their mind
+- [ ] **13.5** Every surface reads the same setting: dashboard, post-ride summary, history, ride detail, and the HUD
+- [ ] **13.6** Watts, RPM, BPM and kJ are unit-agnostic and stay as they are. Resist the temptation to offer calories — kJ is what the bike measures and the conversion invites a nutrition claim the power model cannot support
+- [ ] **13.7** JVM tests for the conversions and for locale-derived defaults
+
+---
+
+## Phase 14: Cloud sync that actually reaches the cloud — fundamental
+
+### 14.0 Are we connected? — findings, 31 July 2026
+
+Short answer at the time of asking: **no, and not for the reason the code
+suggested.** Established against the live project (`podsmtujqarlqhvorpdh`,
+eu-west-1) rather than by reading, which changed the answer twice.
+
+**The first failure was missing `GRANT`s, not the payload.** `migration.sql`
+creates three tables, enables RLS and writes six policies, and never grants a
+single table privilege to `anon`. RLS *narrows* access a role already has; it
+cannot confer any. So every request — read and write — died with `42501
+permission denied for table` before a policy was ever evaluated, and PostgREST
+returned 401. The `anon` role held only `REFERENCES`, `TRIGGER` and `TRUNCATE`:
+no `SELECT`, no `INSERT`.
+
+Proof the tables themselves were fine: a genuinely missing table returns
+`PGRST205`, an absent key returns a different 401, and `class_templates` held
+all 72 seeded rows. `profiles` and `workouts` held **0 rows each** — nothing had
+ever synced, confirmed by count rather than inferred.
+
+| Path | What was wrong | State |
+|------|---------------|-------|
+| everything | `anon` had no DML grants at all. First and total blocker. | ✅ fixed in `002` |
+| `syncWorkout` | `WorkoutDto` sends `recorded_at`; the table's column was `timestamp`. | ✅ column renamed in `002` |
+| `syncWorkout` | `recordedAtEpochMs: Long` serialises as `1753900000000` into a `TIMESTAMPTZ` → `22008 date/time field value out of range`. **Found only by attempting a real insert** — invisible to every code reading. | ✅ DTO now emits ISO-8601 UTC |
+| `syncProfile` | `profiles` had policies for `SELECT` and `UPDATE`, none for `INSERT`. | ✅ policy added in `002` |
+| `syncProfile` | Upsert with no `onConflict` targets the primary key `id`, a UUID the DTO never sends — so every call inserts instead of updating. | ✅ `onConflict = "local_user_id"` |
+| `syncWorkout` | The DTO carries **no `user_id`**, so a synced ride is anonymous and unattributable. | ❌ 14.3 |
+| `fetchClassTemplates` | Cloud `intervals_json` is `JSONB` holding an array; `ClassTemplateDto` reads it as `String`. Decode throws. | ❌ 14.5 |
+| all policies | Every one is `USING (true)`. **Not currently an exposure** — the grants in `002` are narrow and `workouts` has no `SELECT` grant at all — but they activate the moment anyone widens a grant. | ❌ 15.5 |
+
+> An earlier draft of this section claimed any client could read every rider's
+> data. That was wrong: with no grants, nothing was readable by anyone. The
+> `USING (true)` policies are a loaded gun rather than a fired one, and 15.5 is
+> still where they get fixed.
+
+### 14.1 Verified working
+
+- [x] **14.1.1** `002_grants_and_sync_fix.sql` applied to the live project. Narrow grants by design: `class_templates` SELECT, `profiles` SELECT/INSERT/UPDATE, `workouts` **INSERT only** — a leaked publishable key cannot enumerate ride history
+- [x] **14.1.2** A `workouts` row inserted with the anon key using the app's exact `WorkoutDto` shape — **HTTP 201**, `metrics_payload` intact as JSONB. The first row this project has ever accepted. Test row deleted afterwards
+- [x] **14.1.3** Profile upsert round trip: `201` then `200` on repeat, one row, FTP updated in place rather than duplicated. Test row deleted afterwards
+- [x] **14.1.4** `WorkoutDto` emits ISO-8601 UTC, with JVM tests covering the timezone drift and locale (`th-TH-u-ca-buddhist`) cases that would silently corrupt it
+- [x] **14.1.5** A test asserting the serialised keys are a subset of the real column list — the failure mode that started all of this
+
+- [ ] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works"
+
+### 14.2 The rest of the path to full connectivity
+
+- [ ] **14.2.1** Carry the rider through: local `user_id` (Int) → cloud `profiles.id` (UUID). Requires the profile to sync first and its cloud id to be stored locally. Until this lands, every uploaded ride is anonymous
+- [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`
+- [ ] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history
+- [ ] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable
+- [ ] **14.2.5** Retry the backlog when connectivity returns, not only at ride end
+- [ ] **14.2.6** Upload the rides already sitting in the local database — there is a real history on the tablet that predates sync working
+- [ ] **14.2.7** Decide the metrics payload ceiling. A 45-minute ride is ~2,700 samples in one JSONB column; a 90-minute ride is double that. Find the point where the insert starts failing before a rider does
+- [ ] **14.2.8** `supabase/003_*.sql` for whatever 14.2.1 and 14.2.2 need, keeping migrations incremental and non-destructive — `002` deliberately did not drop or recreate anything, and the 72 class templates are still the originals
+
+### 14.3 Keeping it working
+
+- [ ] **14.3.1** A round-trip check that can be re-run against a throwaway project, scripted and documented in `supabase/README.md`. Three of the five defects above were invisible to `assembleDebug` and to all 158 JVM tests
+- [ ] **14.3.2** Keep `supabase/*.sql` and the DTOs verifiably in step — the column-name test in `WorkoutDtoTest` is a start, but it hardcodes the column list and nothing forces it to match the live schema
+- [ ] **14.3.3** Fold the schema into CI (19.1.4) once there is a CI to fold it into
+
+### 14.10 Configuring the endpoint — open-source hygiene
+
+The endpoint must be configurable **in code, not in the app's UI**: a rider
+should never be asked to type a URL, and a self-hoster should not need to fork
+a screen.
+
+- [ ] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
+- [ ] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
+- [ ] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
+- [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it
+- [ ] **14.10.5** `supabase/README.md`: how to stand up your own project, run the migrations in order, and point a build at it
+
+### 14.11 Credential hygiene
+
+`local.properties` currently holds three values, and one of them is far more
+dangerous than its name suggests.
+
+- [x] **14.11.1** `local.properties`' third Supabase value (was `supabase.serviceKey`) is **not** a service-role key — it is an `sbp_` **personal access token**, which is account-wide and can create, modify and delete *every project on the account*, not just this one. It is correctly gitignored and, verified, is read by nothing in `app/build.gradle.kts` and referenced nowhere in the source, so it cannot reach `BuildConfig` or an APK
+- [x] **14.11.2** Renamed to `supabase.accessToken` so nobody wires it into `BuildConfig` on the assumption that it belongs there. A service-role key in a client app would be bad; **this one is worse**
+- [ ] **14.11.3** Never add a `secret()` call for it. The two that exist (`supabase.url`, `supabase.anonKey`) are the only two that may ever become `buildConfigField`s
+- [ ] **14.11.4** Rotate it when the schema work is done — it has been used from a shell and lives in a plaintext file
+- [x] **14.11.5** Said in `supabase/README.md`, since a contributor following the setup will otherwise put whatever key they find into the same file
+
+---
+
+## Phase 15: Accounts, login and multi-device sync — fundamental once 14 works
+
+**The rule this phase must not break:** the app works with no account, no
+network, and no cloud, exactly as it does today. Login is something a rider
+opts into to get their history onto a second device and to use anything
+social. A signed-out app is not a degraded app.
+
+### 15.1 Auth
+- [ ] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
+- [ ] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
+- [ ] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
+- [ ] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
+
+### 15.2 Identity model
+- [ ] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
+- [ ] **15.2.2** `profiles.auth_user_id UUID REFERENCES auth.users` in the cloud schema; `cloud_id` on the local `UserEntity`
+- [ ] **15.2.3** Household guests never sync. A guest ride has no owner by definition
+- [ ] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
+
+### 15.3 Sync in both directions
+- [ ] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background
+- [ ] **15.3.2** Pull on a new device: restore rides and profile
+- [ ] **15.3.3** Idempotent by the local workout UUID, so a retry or a re-install cannot double a ride
+- [ ] **15.3.4** Conflict rule, written down and one line long: **local wins for a ride in progress, last-write-wins for RPE and profile fields, tombstones win over everything** (12.3.5)
+- [ ] **15.3.5** Metric series are large — a 45-minute ride is ~2,700 samples. Decide deliberately whether the full series goes up or only the aggregates plus a downsampled trace, and record the reasoning
+- [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
+
+### 15.4 Leaving
+- [ ] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history
+- [ ] **15.4.2** "Delete my cloud data" as a separate, explicit action, with the local record untouched
+- [ ] **15.4.3** Account deletion end to end, since GDPR applies to a hobby project too
+
+### 15.5 RLS, properly
+- [ ] **15.5.1** Rewrite every policy against `auth.uid()` — currently all six are `USING (true)`
+- [ ] **15.5.2** A rider can read and write only their own profile and their own workouts
+- [ ] **15.5.3** `class_templates` stays world-readable; it is public data
+- [ ] **15.5.4** Verify each policy from a second account, not by reading the SQL. This is the one place where being wrong is a breach rather than a bug
+
+---
+
+## Phase 16: Data visualisation
+
+The post-ride charts (16.1) are close to fundamental — they are what makes a
+recorded time series worth recording. The trend work in 16.3 is genuinely
+nice-to-have and only becomes interesting after a few dozen rides exist.
+
+### 16.1 The ride itself
+- [ ] **16.1.1** Power over time with zone bands behind it (was 8.11.53)
+- [ ] **16.1.2** Heart rate over time, drawn **only where samples exist** — null is unknown, and a line dropping to the axis says the rider's heart stopped
+- [ ] **16.1.3** Cadence distribution
+- [ ] **16.1.4** Time in zone as a stacked bar, shared with the HUD's collapsed strip (11.2.2)
+- [ ] **16.1.5** The class's prescribed intervals drawn under the actual trace — "what you were asked for" against "what you did" is the single most useful post-ride view
+- [ ] **16.1.6** Axis label says **estimated** watts. It is a model, not a meter (2.2.4)
+
+### 16.2 Building them
+- [ ] **16.2.1** Compose `Canvas`, no charting dependency — these are four fixed chart types, and a library is a large surface for a small need
+- [ ] **16.2.2** Downsample before drawing: 2,700 points into ~300 buckets keeps peaks (min/max per bucket, not mean — averaging erases exactly the sprint the rider wants to see)
+- [ ] **16.2.3** Off the main thread, cached on the ride, computed once
+- [ ] **16.2.4** Accessible: every chart has a text summary, since a chart is unreadable to a screen reader and a fair amount of this data is a sentence
+
+### 16.3 Trends — nice to have
+- [ ] **16.3.1** FTP over time, marked with the rides that triggered each change
+- [ ] **16.3.2** Weekly volume and output
+- [ ] **16.3.3** Personal bests by duration
+- [ ] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
+- [ ] **16.3.5** A calendar heatmap of ride days. Cheap, and the streak is the thing that gets people on the bike
+
+---
+
+## Phase 17: Companion web application — nice to have
+
+Only worth starting once 14 and 15 work; it is a view onto the same Supabase
+project and has nothing to show before rides are reaching it.
+
+- [ ] **17.1** Stack and repo layout. A separate top-level `web/` directory or a separate repo — **the Android build must never depend on it**
+- [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
+- [ ] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
+- [ ] **17.4** Profile customisation: display name, avatar, bio, FTP, units
+- [ ] **17.5** Friends — request, accept, block. New `friendships` table with its own RLS; this is the first schema where a rider can see another rider's data and it deserves more care than the rest
+- [ ] **17.6** A light activity feed: friends' recent rides, kudos, a comment. Deliberately not a full social network
+- [ ] **17.7** **Private by default.** Nothing is visible to anyone until the rider opts in, with per-ride visibility (private / friends / public). Defaulting to visible would publish training history people did not know they were publishing
+- [ ] **17.8** Self-hosters get the same deal as 14.10 — the endpoint is configured at build time, not typed in
+- [ ] **17.9** Decide what "public" means before shipping it: a public profile URL is an outward-facing surface with moderation and abuse implications a hobby project has to actually think about
+
+---
+
+## Phase 18: Social in the Android app — nice to have
+
+Everything here is behind a signed-in account and must vanish cleanly when
+signed out — not grey out, not prompt, not appear at all.
+
+- [ ] **18.1** Friends list and requests, mirroring 17.5
+- [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
+- [ ] **18.3** Kudos, and nothing that requires typing during or just after a ride
+- [ ] **18.4** Compare a class you both rode — same class, both traces, one chart. This is the version of a leaderboard that is actually motivating
+- [ ] **18.5** Friend leaderboard on the post-ride summary, alongside the rider's own history (11.4.1)
+- [ ] **18.6** **The HUD stays social-free.** Nothing on the strip during a ride. It has half a second of attention and it belongs to the interval
+- [ ] **18.7** Every comparison across riders carries the uncalibrated-power caveat, or it is comparing two different bikes' guesses and presenting the difference as fitness
+- [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
+
+---
+
+## Phase 19: Ideas worth having, ranked
+
+Sorted by value per unit of work. The first group is arguably fundamental and
+has simply never been written down.
+
+### 19.1 High value, small
+- [ ] **19.1.1** **Screen-on lock during a ride** (also 11.3.5) — the tablet sleeping mid-class is a bug the rider experiences as the app being broken
+- [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
+- [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
+- [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
+- [ ] **19.1.5** **README and CONTRIBUTING** covering the jailbreak prerequisite, the build, and the fact that simulated telemetry makes the whole app usable with no bike
+
+### 19.2 High value, medium
+- [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
+- [ ] **19.2.2** **Community class library** — share and import classes. `class_templates` is already a cloud table and already world-readable
+- [ ] **19.2.3** **Guided FTP test** — a proper 20-minute protocol with pacing cues, rather than inferring FTP from whatever the rider happened to ride. `PostWorkoutAnalyzer` already does the maths
+- [ ] **19.2.4** **Strava upload**, following the `.tcx` export in 12.4.3
+- [ ] **19.2.5** **Training load and freshness** over weeks. Flag it hard: built on estimated watts, this is a *relative* trend for one rider and nothing more
+
+### 19.3 Worth doing eventually
+- [ ] **19.3.1** Multi-week training programmes
+- [ ] **19.3.2** Achievements and streaks (pairs with 16.3.5)
+- [ ] **19.3.3** Heart-rate zones and HR-based targets, for riders who trust their strap more than the power model — which today they should
+- [ ] **19.3.4** Localisation, once the string catalogue is stable
+- [ ] **19.3.5** Wear OS or a phone companion as a second HR source
+- [ ] **19.3.6** Opt-in, off-by-default crash reporting. For this audience the default matters more than the feature
+
+### 19.4 Explicitly not doing
+- Calorie estimates (13.6) — a nutrition claim the power model cannot support
+- Anything that requires a network to start a ride
+- Anything on the HUD that is not about the next sixty seconds of pedalling
 
 ---
 
