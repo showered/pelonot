@@ -678,26 +678,44 @@ way back into the app except through the launcher — and no way back out to the
 HUD except by leaving the app again. That is a gap in the product, not a
 polish item: it is the single journey a rider makes most often during a class.
 
-- [ ] **11.1a.1** **Double-tap the HUD brings the full app forward.** Double
+- [x] **11.1a.1** **Double-tap the HUD brings the full app forward.** Double
       rather than single, because single tap already collapses and expands the
       strip (11.1.3) and that is the gesture a rider fires by accident while
       reaching past the tablet. A single tap that yanked Netflix off the screen
-      mid-scene would be the worst possible mis-fire on this surface
-- [ ] **11.1a.2** A **"back to the HUD" control on the ride screen**, so the
+      mid-scene would be the worst possible mis-fire on this surface.
+      *Observed on the tablet AVD: double-tapped the strip with the launcher in
+      front, Pelonot came forward on the ride screen with the ride still
+      running and the overlay stood down.* One trap for anyone verifying this
+      by `adb`: Compose ignores a second tap that lands inside
+      `doubleTapMinTimeMillis` (**40 ms**), and two back-to-back
+      `input tap`s are about 26 ms apart, so the gesture reads as a single tap
+      and nothing happens. Put a `sleep 0.12` between them
+- [x] **11.1a.2** A **"back to the HUD" control on the ride screen**, so the
       journey is symmetric and does not route through the launcher or the
-      recents switcher
-- [ ] **11.1a.3** **The full app comes forward when the ride ends.** The class
+      recents switcher. `moveTaskToBack` rather than `finish()` — the ride
+      screen has to survive, because the rider is coming back to it. Hidden
+      when the HUD is off or ungranted, since it would then only hide the app.
+      *Observed: tapped it, the launcher returned and the strip came up with
+      live telemetry on it*
+- [x] **11.1a.3** **The full app comes forward when the ride ends.** The class
       finishing is the one moment the rider definitely wants the whole screen —
       the summary, the RPE question and any FTP proposal are all there and none
-      of them fit on a strip. Needs care on Android 10+, where background
-      activity starts are restricted; a foreground service with an active
-      notification is the sanctioned route and should be verified on the actual
-      tablet rather than assumed
-- [ ] **11.1a.4** **Discard the ride from the post-ride summary**, for the
+      of them fit on a strip. **A foreground service is *not* exempt from
+      Android 10's background-activity-start rules** — the note here previously
+      assumed it was. `SYSTEM_ALERT_WINDOW` is on the exemption list, which is
+      the same grant the HUD is already drawn under, so the app that can show a
+      strip can always open itself from one. *Observed: stopped the ride from
+      the strip with the app in the background and the summary came up by
+      itself, showing the ride's real figures*
+- [x] **11.1a.4** **Discard the ride from the post-ride summary**, for the
       session that was a warm-up, a mistake, or somebody else pedalling for
       thirty seconds. Guests get this today (8.4) and riders with a profile do
       not — they have to finish, leave, open history and delete. It has to name
-      what is going and be as hard to hit by accident as the delete in 12.3.2
+      what is going and be as hard to hit by accident as the delete in 12.3.2.
+      *Observed: the dialog names the duration, and confirming took the ride
+      and all 135 of its `workout_metrics` rows with it — checked by count
+      against the database, not by the screen returning.* Local only: an
+      already-uploaded ride stays in the cloud until tombstones exist (15.3.4)
 
 ### 11.1b The HUD getting out of the way
 

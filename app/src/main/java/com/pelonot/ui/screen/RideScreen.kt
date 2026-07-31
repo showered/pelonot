@@ -692,7 +692,13 @@ private fun SmallStat(
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
                     color = accent,
-                    maxLines = 1
+                    maxLines = 1,
+                    // Weighted, and `fill = false` so it still only takes what
+                    // it needs. A Row measures its unweighted children first,
+                    // so an unweighted "0.20" claimed the whole tile and left
+                    // the label beside it clipped to "m" — a distance in miles
+                    // reading as metres, which is worse than no label at all.
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
