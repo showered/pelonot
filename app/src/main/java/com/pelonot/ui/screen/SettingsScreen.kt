@@ -1,6 +1,10 @@
 package com.pelonot.ui.screen
 
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -77,6 +81,29 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Scan used to report HeartRateStatus.PermissionRequired and stop there:
+    // the screen said what was wrong and offered no way to put it right, so a
+    // strap could never be paired from inside the app. `heartRatePermissions()`
+    // existed on the ViewModel and nothing called it.
+    val heartRatePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        // Scan only on success. A denial leaves the status where it was, which
+        // is the message explaining what is missing.
+        if (granted.values.all { it }) viewModel.scanForHeartRateMonitors()
+    }
+
+    val scanForHeartRate = {
+        val needed = viewModel.heartRatePermissions().filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (needed.isEmpty()) {
+            viewModel.scanForHeartRateMonitors()
+        } else {
+            heartRatePermissionLauncher.launch(needed.toTypedArray())
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -155,7 +182,7 @@ fun SettingsScreen(
                 status = state.heartRateStatus,
                 deviceCount = state.heartRateDevices.size,
                 selectedAddress = state.settings.heartRateDeviceAddress,
-                onScan = viewModel::scanForHeartRateMonitors,
+                onScan = scanForHeartRate,
                 onForget = { viewModel.selectHeartRateDevice(null) }
             )
 

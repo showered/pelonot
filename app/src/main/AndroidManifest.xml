@@ -4,9 +4,41 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!--
+      BLE heart rate. The permission model splits at API 31, and both halves
+      have to be declared or the half that applies to the running device is
+      dead: a runtime request for a permission absent from the manifest is
+      denied instantly, with no dialog and nothing in the log.
+
+      That is not hypothetical — ACCESS_FINE_LOCATION was missing here, so on
+      the bike's own Android 11 tablet Settings could only ever say "Pelonot
+      needs Bluetooth permission" and no strap could ever be found. Below API
+      31 there is no BLUETOOTH_SCAN to fall back on; location *is* the scan
+      permission. Same failure shape as VIBRATE above.
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <!--
+      maxSdkVersion so API 31+ is never asked for location: it has
+      BLUETOOTH_SCAN instead, and asking a modern device for the rider's
+      location to read their heart rate is a permission prompt that deserves
+      to be refused.
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!--
+      neverForLocation: we scan for a heart rate service UUID and derive no
+      location from the results, which lets API 31+ grant the scan without
+      dragging location into it.
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
