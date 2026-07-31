@@ -9,6 +9,7 @@ activityCompose = "1.9.3"
 lifecycle = "2.8.7"
 navigationCompose = "2.8.4"
 datastore = "1.1.1"
+graphicsShapes = "1.0.1"
 
 room = "2.6.1"
 work = "2.9.1"
@@ -43,6 +44,9 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycle" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+# Rounded-polygon geometry and shape morphing — the mechanism behind Material 3
+# Expressive's shape language, usable without moving to the material3 alpha.
+androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
 
 # Room
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

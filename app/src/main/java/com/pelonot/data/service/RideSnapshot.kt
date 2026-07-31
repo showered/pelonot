@@ -1,5 +1,6 @@
 package com.pelonot.data.service
 
+import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
@@ -22,6 +23,13 @@ data class RideSnapshot(
     val state: WorkoutState = WorkoutState.Idle,
     val elapsedSeconds: Int = 0,
     val interval: IntervalState = IntervalState.NONE,
+    /**
+     * The whole class, for the timeline strip. [IntervalState] deliberately
+     * carries only the current and next segments; drawing "how much of this is
+     * left, and does it get harder?" needs all of them. Set once at ride start,
+     * so the identity check `StateFlow` performs on every update stays cheap.
+     */
+    val intervals: List<Interval> = emptyList(),
     val classTitle: String? = null,
     val ftpWatts: Int = WorkoutSession.DEFAULT_FTP,
     val intent: RideIntent = RideIntent.DEFAULT,

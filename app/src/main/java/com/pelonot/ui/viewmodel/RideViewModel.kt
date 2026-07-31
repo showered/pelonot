@@ -11,28 +11,39 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorStatus
+import com.pelonot.data.service.RideSnapshot
 import com.pelonot.data.service.WorkoutService
 import com.pelonot.data.service.WorkoutSession
 import com.pelonot.data.service.WorkoutState
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.ui.overlay.OverlayPermissionHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class RideUiState(
     val reading: SensorReading = SensorReading.EMPTY,
+    val snapshot: RideSnapshot = RideSnapshot.IDLE,
     val session: WorkoutSession? = null,
     val workoutState: WorkoutState = WorkoutState.Idle,
     val sensorStatus: SensorStatus = SensorStatus.Stopped,
-    val ftpWatts: Int = 0
+    val ftpWatts: Int = 0,
+    /**
+     * Set when the ride wants to raise the HUD but has not been allowed to.
+     * Asked at ride start rather than discovered later as "the overlay just
+     * never appeared".
+     */
+    val overlayPermissionNeeded: Boolean = false
 ) {
-    val elapsedSeconds: Int get() = session?.elapsedSeconds ?: 0
+    val elapsedSeconds: Int get() = snapshot.elapsedSeconds
     val isPaused: Boolean get() = workoutState == WorkoutState.Paused
+    val isFinished: Boolean get() = workoutState == WorkoutState.Completed
     val currentZone: PowerZone get() = PowerZone.forPower(reading.powerWatts, ftpWatts.toDouble())
 
     /** True when telemetry is fabricated, so the UI can say so plainly. */
@@ -46,35 +57,51 @@ data class RideUiState(
  * The screen previously called `startService(...)` and then ignored the
  * service entirely, reading the sensor repository directly and rendering a
  * hardcoded `00:00` timer. Binding means the screen shows the service's own
- * authoritative session state — elapsed time, totals, pause state — and can
+ * authoritative state — elapsed time, interval, totals, pause state — and can
  * drive its controls.
+ *
+ * The service, not this class, owns the floating HUD: a ride outlives the
+ * screen, and so must its overlay. All this does is tell the service whether
+ * the screen is currently on top, so the two never draw at once.
  */
 class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sensorRepository = ServiceLocator.sensorRepository
+    private val settingsRepository = ServiceLocator.settingsRepository
 
     private val _uiState = MutableStateFlow(RideUiState())
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
 
     private var service: WorkoutService? = null
     private var bound = false
-    private var sessionJob: Job? = null
-    private var stateJob: Job? = null
+    private val serviceJobs = mutableListOf<Job>()
+
+    /** Held so the screen can navigate to the summary after the ride ends. */
+    private var finishedWorkoutId: String? = null
+
+    private var screenVisible = false
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val workoutService = (binder as? WorkoutService.WorkoutBinder)?.getService() ?: return
             service = workoutService
             bound = true
+            workoutService.setRideScreenVisible(screenVisible)
 
-            sessionJob = viewModelScope.launch {
+            serviceJobs += viewModelScope.launch {
                 workoutService.currentSession.collect { session ->
+                    if (session != null) finishedWorkoutId = session.workoutId
                     _uiState.update { it.copy(session = session) }
                 }
             }
-            stateJob = viewModelScope.launch {
+            serviceJobs += viewModelScope.launch {
                 workoutService.workoutState.collect { state ->
                     _uiState.update { it.copy(workoutState = state) }
+                }
+            }
+            serviceJobs += viewModelScope.launch {
+                workoutService.rideSnapshot.collect { snapshot ->
+                    _uiState.update { it.copy(snapshot = snapshot) }
                 }
             }
         }
@@ -112,25 +139,76 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             context.startService(serviceIntent)
         }
         context.bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+
+        checkOverlayPermission()
+    }
+
+    /**
+     * Asks once, at ride start, rather than letting the rider discover
+     * mid-class that the HUD they were promised is simply not there.
+     */
+    private fun checkOverlayPermission() {
+        viewModelScope.launch {
+            val wantsHud = settingsRepository.settings.first().hudEnabled
+            val granted = OverlayPermissionHelper.canDrawOverlays(getApplication())
+            _uiState.update { it.copy(overlayPermissionNeeded = wantsHud && !granted) }
+        }
+    }
+
+    fun requestOverlayPermission() {
+        OverlayPermissionHelper.requestOverlayPermission(getApplication())
+        dismissOverlayPrompt()
+    }
+
+    fun dismissOverlayPrompt() {
+        _uiState.update { it.copy(overlayPermissionNeeded = false) }
+    }
+
+    /** "Don't ask again" — the rider is happy riding on the app's own screen. */
+    fun disableHud() {
+        viewModelScope.launch { settingsRepository.setHudEnabled(false) }
+        dismissOverlayPrompt()
+    }
+
+    /**
+     * Whether the app's own ride screen is on top. The service raises or drops
+     * the overlay accordingly, so the rider never sees two of everything.
+     */
+    fun setScreenVisible(visible: Boolean) {
+        screenVisible = visible
+        service?.setRideScreenVisible(visible)
     }
 
     fun pause() = service?.pauseWorkout()
 
     fun resume() = service?.resumeWorkout()
 
-    /** Ends the ride and returns the completed workout's id, if there was one. */
-    fun endRide(): String? {
-        val workoutId = service?.currentSession?.value?.workoutId
+    /**
+     * Ends the ride. Navigation does not happen here: the service publishes
+     * [WorkoutState.Completed] and the screen reacts to that, so a ride ended
+     * from the HUD — or by the class timer running out — takes exactly the
+     * same path as one ended from this screen.
+     */
+    fun endRide() {
         service?.stopWorkout()
+    }
+
+    /** The id to hand to the summary screen, released as the screen leaves. */
+    fun consumeFinishedWorkoutId(): String? {
+        val id = finishedWorkoutId
+        finishedWorkoutId = null
         unbind()
-        return workoutId
+        return id
     }
 
     private fun unbind() {
-        sessionJob?.cancel()
-        stateJob?.cancel()
+        serviceJobs.forEach { it.cancel() }
+        serviceJobs.clear()
         if (bound) {
-            runCatching { getApplication<Application>().unbindService(connection) }
+            runCatching {
+                service?.setRideScreenVisible(false)
+                getApplication<Application>().unbindService(connection)
+            }
             bound = false
         }
         service = null
@@ -139,7 +217,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         // Unbinding alone does not stop the service: a ride deliberately keeps
         // running when the screen goes away, which is the point of it being a
-        // foreground service.
+        // foreground service — and of the HUD.
         unbind()
         super.onCleared()
     }

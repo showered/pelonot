@@ -20,11 +20,22 @@ import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.repository.ClassRepository
+import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.data.sensor.WorkoutMetricsCalculator
+import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.coach.CoachInput
+import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.coach.RideCoachPolicy
+import com.pelonot.domain.model.ClassIntervalEngine
+import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.ui.overlay.HudOverlayManager
+import com.pelonot.ui.overlay.RideCoach
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,36 +52,63 @@ import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 /**
- * Foreground service owning workout lifecycle, telemetry collection and
- * per-second metric recording.
+ * Foreground service owning workout lifecycle, telemetry collection,
+ * per-second metric recording, the class interval clock and the floating HUD.
  *
- * Two structural fixes over the previous implementation:
+ * It owns the HUD deliberately. The rider's ride does not stop when they leave
+ * the app — that is the entire point of it being a foreground service — and the
+ * HUD is what they look at while they are away from it. Hanging the overlay off
+ * the ride screen's ViewModel would tear it down at exactly the moment it
+ * becomes useful.
+ *
+ * Structural notes carried over from earlier fixes:
  *
  *  - **Elapsed time is measured, not counted.** It used to increment a counter
  *    inside a `while (true) { delay(1000) }` loop, which drifts — `delay` is a
- *    lower bound, and the loop body's own cost accumulates. Over an hour that
- *    is tens of seconds of error, and any missed tick was lost outright.
- *    Elapsed time is now derived from [SystemClock.elapsedRealtime].
- *  - **Metrics are buffered and written in batches.** One insert per second on
- *    the IO dispatcher for the length of a ride is a lot of individual
- *    transactions on tablet-grade flash.
+ *    lower bound, and the loop body's own cost accumulates. Elapsed time comes
+ *    from [SystemClock.elapsedRealtime].
+ *  - **Metrics are buffered and written in batches.** One insert per second for
+ *    the length of a ride is a lot of transactions on tablet-grade flash.
+ *  - **The class clock is the same clock.** [ClassIntervalEngine] is a pure
+ *    function of elapsed time evaluated here, rather than a second timer that
+ *    would drift away from this one over a 45-minute class.
  */
 class WorkoutService : Service() {
 
     private val binder = WorkoutBinder()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Window and view work has to happen on the main thread, and the ride's own
+     * work deliberately does not — the ticker and every database write run on
+     * IO. Anything touching the overlay goes through here.
+     */
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private lateinit var sensorRepository: SensorRepository
     private lateinit var workoutRepository: WorkoutRepository
+    private lateinit var classRepository: ClassRepository
+    private lateinit var settingsRepository: SettingsRepository
     private val metricsCalculator = WorkoutMetricsCalculator()
 
+    private var hudOverlay: HudOverlayManager? = null
+    private var coach: RideCoach? = null
+    private val coachPolicy = RideCoachPolicy()
+
     private var tickerJob: Job? = null
+    private var intervalEngine: ClassIntervalEngine? = null
 
     private val _workoutState = MutableStateFlow(WorkoutState.Idle)
     val workoutState: StateFlow<WorkoutState> = _workoutState.asStateFlow()
 
     private val _currentSession = MutableStateFlow<WorkoutSession?>(null)
     val currentSession: StateFlow<WorkoutSession?> = _currentSession.asStateFlow()
+
+    /** Everything the HUD and the ride screen render from. */
+    private val _rideSnapshot = MutableStateFlow(RideSnapshot.IDLE)
+    val rideSnapshot: StateFlow<RideSnapshot> = _rideSnapshot.asStateFlow()
+
+    private val _coachStyle = MutableStateFlow(CoachStyle.DEFAULT)
 
     /** Set when a previous run was killed mid-ride; the UI offers to resume. */
     private val _recoverableWorkout = MutableStateFlow<WorkoutEntity?>(null)
@@ -84,6 +122,11 @@ class WorkoutService : Service() {
 
     private val pendingMetrics = mutableListOf<WorkoutMetricEntity>()
 
+    /** True while the in-app ride screen is on top; the HUD stands down. */
+    private var rideScreenVisible = false
+    private var hudEnabled = true
+    private var hudDock = HudDock.DEFAULT
+
     inner class WorkoutBinder : Binder() {
         fun getService(): WorkoutService = this@WorkoutService
     }
@@ -92,9 +135,28 @@ class WorkoutService : Service() {
         super.onCreate()
         sensorRepository = ServiceLocator.sensorRepository
         workoutRepository = ServiceLocator.workoutRepository
+        classRepository = ServiceLocator.classRepository
+        settingsRepository = ServiceLocator.settingsRepository
+
+        hudOverlay = HudOverlayManager(this).apply {
+            onDockChanged = { dock ->
+                hudDock = dock
+                serviceScope.launch { settingsRepository.setHudDock(dock) }
+            }
+        }
+        coach = RideCoach(this)
 
         serviceScope.launch {
             _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
+        }
+        serviceScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _coachStyle.value = settings.coachStyle
+                coach?.style = settings.coachStyle
+                hudEnabled = settings.hudEnabled
+                hudDock = settings.hudDock
+                syncHudVisibility()
+            }
         }
         Log.d(TAG, "WorkoutService created")
     }
@@ -141,10 +203,17 @@ class WorkoutService : Service() {
         accumulatedPausedMs = 0L
         pausedAtRealtimeMs = 0L
         metricsCalculator.reset()
+        coachPolicy.reset()
         pendingMetrics.clear()
+        intervalEngine = null
 
         _currentSession.value = session
         _workoutState.value = WorkoutState.Active
+        _rideSnapshot.value = RideSnapshot(
+            state = WorkoutState.Active,
+            ftpWatts = ftpWatts,
+            intent = intent
+        )
 
         startForegroundNotification()
 
@@ -153,16 +222,52 @@ class WorkoutService : Service() {
             workoutRepository.beginWorkout(session.toEntity())
         }
 
+        if (classId != null) loadClass(classId)
+
         sensorRepository.start()
         startTicker()
+        syncHudVisibility()
 
         Log.i(TAG, "Workout started: ${session.workoutId}")
+    }
+
+    /**
+     * Loads the class the ride is following.
+     *
+     * Asynchronous, so the ride starts recording immediately rather than
+     * waiting on a database read. Until it lands the ride simply has no
+     * prescription, which is exactly what a free ride looks like.
+     */
+    private fun loadClass(classId: String) {
+        serviceScope.launch {
+            val plan = runCatching { classRepository.getPlan(classId) }
+                .onFailure { Log.e(TAG, "Could not load class $classId", it) }
+                .getOrNull() ?: return@launch
+
+            if (plan.intervals.isEmpty()) {
+                Log.w(TAG, "Class ${plan.id} has no usable intervals; riding free")
+                _rideSnapshot.update { it.copy(classTitle = plan.title) }
+                return@launch
+            }
+
+            val engine = ClassIntervalEngine(plan.intervals)
+            intervalEngine = engine
+            _rideSnapshot.update {
+                it.copy(
+                    classTitle = plan.title,
+                    intervals = plan.intervals,
+                    interval = engine.stateAt(elapsedSeconds())
+                )
+            }
+            Log.i(TAG, "Class loaded: ${plan.title}, ${plan.intervals.size} intervals")
+        }
     }
 
     fun pauseWorkout() {
         if (_workoutState.value != WorkoutState.Active) return
         pausedAtRealtimeMs = SystemClock.elapsedRealtime()
         _workoutState.value = WorkoutState.Paused
+        _rideSnapshot.update { it.copy(state = WorkoutState.Paused) }
         updateNotification()
     }
 
@@ -173,6 +278,7 @@ class WorkoutService : Service() {
             pausedAtRealtimeMs = 0L
         }
         _workoutState.value = WorkoutState.Active
+        _rideSnapshot.update { it.copy(state = WorkoutState.Active) }
         updateNotification()
     }
 
@@ -180,19 +286,31 @@ class WorkoutService : Service() {
     fun stopWorkout() {
         val session = _currentSession.value ?: return
         if (_workoutState.value == WorkoutState.Idle) return
+        if (_workoutState.value == WorkoutState.Completed) return
 
         tickerJob?.cancel()
         tickerJob = null
         sensorRepository.stop()
+        hideHud()
+        coach?.silence()
 
         val finalSession = session.copy(elapsedSeconds = elapsedSeconds())
         _currentSession.value = finalSession
         _workoutState.value = WorkoutState.Completed
+        _rideSnapshot.update { it.copy(state = WorkoutState.Completed) }
 
         serviceScope.launch {
             flushPendingMetrics()
             workoutRepository.finaliseWorkout(finalSession.toEntity())
             Log.i(TAG, "Workout saved: ${finalSession.workoutId}")
+
+            // A ride against a profile is worth mirroring to the cloud. A guest
+            // ride is not: it has no owner yet, and the rider is about to be
+            // asked whether to keep it at all. PostRideViewModel enqueues it
+            // if they save it to a profile.
+            if (finalSession.userId != null) {
+                WorkoutSyncWorker.enqueue(applicationContext, finalSession.workoutId)
+            }
 
             ServiceCompat.stopForeground(this@WorkoutService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -207,12 +325,54 @@ class WorkoutService : Service() {
         }
     }
 
+    // ── The HUD ─────────────────────────────────────────────────────
+
+    /**
+     * Told by the ride screen whether it is on top.
+     *
+     * Two full-size readouts of the same ride, one over the other, is worse
+     * than either alone — so the overlay stands down while the app's own ride
+     * screen is visible and comes back the moment the rider switches to their
+     * video app.
+     */
+    fun setRideScreenVisible(visible: Boolean) {
+        if (rideScreenVisible == visible) return
+        rideScreenVisible = visible
+        syncHudVisibility()
+    }
+
+    private fun syncHudVisibility() = mainScope.launch {
+        val overlay = hudOverlay ?: return@launch
+        val shouldShow = hudEnabled &&
+            !rideScreenVisible &&
+            _workoutState.value.let { it == WorkoutState.Active || it == WorkoutState.Paused }
+
+        if (shouldShow && !overlay.isShowing) {
+            overlay.show(
+                snapshotFlow = rideSnapshot,
+                coachStyleFlow = _coachStyle,
+                dock = hudDock,
+                onPause = ::pauseWorkout,
+                onResume = ::resumeWorkout,
+                onStop = ::stopWorkout
+            )
+        } else if (!shouldShow && overlay.isShowing) {
+            overlay.hide()
+        }
+    }
+
+    private fun hideHud() {
+        mainScope.launch { hudOverlay?.hide() }
+    }
+
     // ── Recording loop ──────────────────────────────────────────────
 
     private fun startTicker() {
         tickerJob?.cancel()
         tickerJob = serviceScope.launch {
             var lastRecordedSecond = -1
+            var classFinished = false
+
             while (isActive) {
                 if (_workoutState.value == WorkoutState.Active) {
                     val elapsed = elapsedSeconds()
@@ -221,11 +381,67 @@ class WorkoutService : Service() {
                     if (elapsed > lastRecordedSecond) {
                         recordMetric(elapsed)
                         lastRecordedSecond = elapsed
+
+                        if (advanceClass(elapsed)) {
+                            classFinished = true
+                            break
+                        }
                     }
                     if (elapsed % NOTIFICATION_REFRESH_SEC == 0) updateNotification()
                 }
                 delay(TICK_INTERVAL_MS)
             }
+
+            if (classFinished) {
+                Log.i(TAG, "Class timer finished; completing the ride")
+                stopWorkout()
+            }
+        }
+    }
+
+    /**
+     * Moves the class on and lets the coach react.
+     *
+     * @return true when the class has run out and the ride should finish.
+     */
+    private fun advanceClass(elapsedSec: Int): Boolean {
+        val engine = intervalEngine ?: run {
+            // No class: the snapshot still needs its clock and totals.
+            publishSnapshot(elapsedSec, IntervalState.NONE)
+            return false
+        }
+
+        val intervalState = engine.stateAt(elapsedSec)
+        publishSnapshot(elapsedSec, intervalState)
+
+        val snapshot = _rideSnapshot.value
+        val reading = sensorRepository.sensorReading.value
+        val alerts = coachPolicy.onTick(
+            CoachInput(
+                elapsedSec = elapsedSec,
+                isPaused = false,
+                interval = intervalState,
+                cadence = reading.cadenceRpm,
+                power = reading.powerWatts,
+                cadenceTarget = snapshot.cadenceTarget,
+                powerTarget = snapshot.powerTarget
+            )
+        )
+        coach?.deliver(alerts)
+
+        return intervalState.isComplete
+    }
+
+    private fun publishSnapshot(elapsedSec: Int, intervalState: IntervalState) {
+        val session = _currentSession.value
+        _rideSnapshot.update { current ->
+            current.copy(
+                state = _workoutState.value,
+                elapsedSeconds = elapsedSec,
+                interval = intervalState,
+                totalOutputKj = session?.totalOutputKj ?: current.totalOutputKj,
+                distanceKm = session?.distanceKm ?: current.distanceKm
+            )
         }
     }
 
@@ -359,6 +575,13 @@ class WorkoutService : Service() {
                 runBlocking { flushPendingMetrics() }
             }.onFailure { Log.e(TAG, "Failed to flush metrics on destroy", it) }
         }
+        // Not through hideHud(): mainScope is about to be cancelled, and the
+        // window must come down before the service does or it is orphaned.
+        runCatching { hudOverlay?.hide() }
+        coach?.release()
+        coach = null
+        hudOverlay = null
+        mainScope.cancel()
         serviceScope.cancel()
         super.onDestroy()
         Log.d(TAG, "WorkoutService destroyed")

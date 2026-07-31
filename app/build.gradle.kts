@@ -115,6 +115,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.graphics.shapes)
 
     // Room
     implementation(libs.room.runtime)

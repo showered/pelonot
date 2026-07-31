@@ -1,15 +1,24 @@
 package com.pelonot.ui.overlay
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,413 +31,678 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pelonot.R
 import com.pelonot.core.Formatters
-import com.pelonot.domain.model.PowerZone
-import com.pelonot.domain.model.RideIntent
-import com.pelonot.domain.model.targetPowerRange
-import com.pelonot.ui.theme.AlertRed
+import com.pelonot.data.sensor.SensorReading
+import com.pelonot.data.service.RideSnapshot
+import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.RideCue
+import com.pelonot.ui.components.CountdownBanner
+import com.pelonot.ui.components.IntervalTimeline
+import com.pelonot.ui.components.MetricReadout
+import com.pelonot.ui.components.NextUpPreview
+import com.pelonot.ui.components.ProgressArc
+import com.pelonot.ui.components.ZoneGlyph
+import com.pelonot.ui.components.attentionBounce
+import com.pelonot.ui.components.rememberPulse
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.color
-import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 
 /**
- * The floating heads-up display shown over a third-party video app.
+ * The floating ride HUD.
  *
- * Colours come from the theme's `colorScheme` rather than the hardcoded
- * `DarkBackground` / `TextPrimary` constants this used previously, which meant
- * the HUD ignored the theme entirely and rendered dark-on-dark in light mode.
+ * This is the app's primary surface, not a secondary one. The rider is almost
+ * always watching something else full-screen on the same tablet, so the HUD is
+ * docked to one edge and spans the full width of it, leaving the middle of the
+ * screen — where faces and subtitles live — completely clear. It is not a
+ * draggable card: dragging snaps it between the top and bottom edges, and
+ * nothing parks it over the film.
+ *
+ * The previous version was a 300dp square panel floating wherever it was last
+ * dropped, with no class information at all.
+ *
+ * Everything on it is arranged for peripheral vision. Intensity is encoded
+ * three times over (colour, digit, and how spiky the zone badge is), targets
+ * are gauges rather than numbers to compare, and the countdown into the next
+ * effort is the one element that is never optional — see [CountdownBanner].
  */
 @Composable
 fun HudOverlayMain(
-    cadence: Double,
-    resistance: Double,
-    power: Double,
-    heartRate: Int?,
-    elapsedSeconds: Int,
-    ftp: Double,
-    isPaused: Boolean = false,
-    targetCadenceMin: Double = DEFAULT_TARGET_CADENCE_MIN,
-    targetCadenceMax: Double = DEFAULT_TARGET_CADENCE_MAX,
-    targetZone: PowerZone = PowerZone.Z3,
-    intent: RideIntent = RideIntent.DEFAULT,
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    dock: HudDock,
+    collapsed: Boolean,
+    coachStyle: CoachStyle,
+    onToggleCollapsed: () -> Unit,
+    onDockChange: (HudDock) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
-    onDrag: (Float, Float) -> Unit
-) {
-    val targetPower = targetZone.targetPowerRange(ftp, intent)
-    // Only flag a cadence miss once the rider is actually pedalling; a
-    // stationary bike is not "below target".
-    val cadenceAlert = cadence > 1.0 && (cadence < targetCadenceMin || cadence > targetCadenceMax)
-    val powerAlert = power > 1.0 && power !in targetPower
-    val currentZone = PowerZone.forPower(power, ftp)
-
-    Card(
-        modifier = Modifier.width(300.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-        ),
-        shape = MaterialTheme.expressiveShapes.large,
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.medium),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Drag handle. The gesture detector lives here rather than on the
-            // whole card, so dragging cannot be swallowed by the buttons.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(24.dp)
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount.x, dragAmount.y)
-                        }
-                    }
-                    .semantics {
-                        contentDescription = "Drag to reposition the heads-up display"
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 40.dp, height = 4.dp)
-                        .background(
-                            MaterialTheme.colorScheme.outline,
-                            MaterialTheme.expressiveShapes.pill
-                        )
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = Formatters.duration(elapsedSeconds),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = "Z${currentZone.number}",
-                    color = currentZone.color,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-            ) {
-                HudMetric(
-                    label = "CADENCE",
-                    value = cadence.toInt().toString(),
-                    unit = "RPM",
-                    accent = MetricCadenceCyan,
-                    isAlert = cadenceAlert,
-                    modifier = Modifier.weight(1f)
-                )
-                HudMetric(
-                    label = "POWER",
-                    value = power.toInt().toString(),
-                    unit = "W",
-                    accent = MetricPowerCoral,
-                    isAlert = powerAlert,
-                    modifier = Modifier.weight(1f)
-                )
-                HudMetric(
-                    label = "HR",
-                    value = heartRate?.toString() ?: "--",
-                    unit = "BPM",
-                    accent = MetricHeartRateGreen,
-                    isAlert = false,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.size(MaterialTheme.spacing.small))
-
-            TargetsPanel(
-                targetCadenceMin = targetCadenceMin,
-                targetCadenceMax = targetCadenceMax,
-                targetPowerRange = targetPower,
-                targetZone = targetZone,
-                resistance = resistance
-            )
-
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    MaterialTheme.spacing.medium,
-                    Alignment.CenterHorizontally
-                )
-            ) {
-                // A single toggle rather than separate Pause and Resume
-                // buttons, one of which was always a no-op.
-                FilledIconButton(
-                    onClick = if (isPaused) onResume else onPause,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = stringResource(
-                            if (isPaused) R.string.cd_resume_ride else R.string.cd_pause_ride
-                        )
-                    )
-                }
-
-                FilledIconButton(
-                    onClick = onStop,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Stop,
-                        contentDescription = stringResource(R.string.cd_end_ride)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HudMetric(
-    label: String,
-    value: String,
-    unit: String,
-    accent: Color,
-    isAlert: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val containerColor by animateColorAsState(
-        targetValue = if (isAlert) {
-            AlertRed.copy(alpha = 0.25f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
+    val interval = snapshot.interval
+    val zone = interval.targetZone
+    val accent by animateColorAsState(
+        targetValue = if (interval.hasClass) zone.color else MaterialTheme.colorScheme.primary,
+        animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
+        label = "HudAccent"
+    )
+
+    // The strip itself bounces when the effort changes. With the coach set to
+    // Silent this is the *only* announcement the rider gets, so it has to be
+    // visible from the corner of the eye.
+    val bounceTrigger = if (interval.hasClass) interval.index else null
+
+    val edgeGlow by animateDpAsState(
+        targetValue = if (interval.isChangeImminent) 6.dp else 2.dp,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "HudMetricContainer"
+        label = "HudEdgeGlow"
     )
+    val glowPulse = if (interval.isChangeImminent && coachStyle.animates) {
+        rememberPulse(periodMs = 450, from = 0.45f, to = 1f)
+    } else {
+        1f
+    }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isAlert) ALERT_SCALE else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "HudMetricScale"
-    )
+    // A hairline of the current zone's colour along the inner edge. It stays
+    // quiet until a change is coming, then thickens and pulses — the earliest
+    // warning on the whole HUD, and the one that needs no reading at all.
+    val edge: @Composable () -> Unit = {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(edgeGlow)
+                .background(
+                    accent.copy(
+                        alpha = if (interval.isChangeImminent) glowPulse else 0.45f
+                    )
+                )
+        )
+    }
 
-    Card(
+    Surface(
         modifier = modifier
-            .scale(scale)
-            .clearAndSetSemantics { contentDescription = "$label $value $unit" },
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = MaterialTheme.expressiveShapes.medium
+            .fillMaxWidth()
+            .attentionBounce(trigger = bounceTrigger, enabled = coachStyle.animates)
+            .clip(hudShape(dock)),
+        color = Color.Transparent
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.small),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(
+                    // A gradient into the screen edge rather than a flat panel:
+                    // over video, a hard rectangle reads as a bug, a fade reads
+                    // as part of the picture.
+                    // Nearly opaque. A translucent panel looks better in a
+                    // screenshot and is unreadable over a bright scene, which is
+                    // the only place it will ever actually be used.
+                    Brush.verticalGradient(
+                        if (dock == HudDock.Bottom) {
+                            listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f)
+                            )
+                        } else {
+                            listOf(
+                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                            )
+                        }
+                    )
+                )
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                // Was typography.displayLarge — 72sp — inside a 300dp-wide card
-                // split three ways, so every value was clipped.
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (isAlert) AlertRed else accent,
-                maxLines = 1
-            )
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (dock == HudDock.Bottom) edge()
+
+            if (dock == HudDock.Top) {
+                HudBody(snapshot, reading, collapsed, coachStyle, accent, onPause, onResume, onStop)
+                HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
+            } else {
+                HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
+                HudBody(snapshot, reading, collapsed, coachStyle, accent, onPause, onResume, onStop)
+            }
+
+            if (dock == HudDock.Top) edge()
         }
     }
 }
 
+private fun hudShape(dock: HudDock) = if (dock == HudDock.Bottom) {
+    androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+} else {
+    androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+}
+
+/**
+ * The grab bar. Tapping collapses the HUD to a slim strip; dragging away from
+ * the current edge sends it to the other one.
+ */
 @Composable
-private fun TargetsPanel(
-    targetCadenceMin: Double,
-    targetCadenceMax: Double,
-    targetPowerRange: ClosedFloatingPointRange<Double>,
-    targetZone: PowerZone,
-    resistance: Double
+private fun HudHandle(
+    dock: HudDock,
+    collapsed: Boolean,
+    onToggleCollapsed: () -> Unit,
+    onDockChange: (HudDock) -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surfaceContainerLow,
-                MaterialTheme.expressiveShapes.medium
-            )
-            .padding(MaterialTheme.spacing.small)
+            .height(22.dp)
+            .clickable(onClick = onToggleCollapsed)
+            .pointerInput(dock) {
+                detectVerticalDragGestures { change, dragAmount ->
+                    change.consume()
+                    // Only a decisive drag away from the current edge moves it,
+                    // so brushing the handle mid-ride does nothing.
+                    if (dock == HudDock.Bottom && dragAmount < -DRAG_SNAP_PX) {
+                        onDockChange(HudDock.Top)
+                    } else if (dock == HudDock.Top && dragAmount > DRAG_SNAP_PX) {
+                        onDockChange(HudDock.Bottom)
+                    }
+                }
+            }
+            .semantics {
+                contentDescription = if (collapsed) {
+                    "Expand the heads-up display. Drag to move it to the other edge."
+                } else {
+                    "Collapse the heads-up display. Drag to move it to the other edge."
+                }
+            },
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "TARGET · ${targetZone.displayName}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "RES ${resistance.toInt()}%",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Box(
+            modifier = Modifier
+                .size(width = 56.dp, height = 4.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+        )
+    }
+}
+
+@Composable
+private fun HudBody(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    collapsed: Boolean,
+    coachStyle: CoachStyle,
+    accent: Color,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    AnimatedContent(
+        targetState = collapsed,
+        transitionSpec = {
+            (fadeIn() + expandVertically()).togetherWith(fadeOut() + shrinkVertically())
+        },
+        label = "HudDensity"
+    ) { isCollapsed ->
+        if (isCollapsed) {
+            HudCollapsed(snapshot, reading, accent, onPause, onResume, onStop)
+        } else {
+            HudExpanded(snapshot, reading, coachStyle, accent, onPause, onResume, onStop)
+        }
+    }
+}
+
+// ==========================================================================
+// Expanded
+// ==========================================================================
+
+@Composable
+private fun HudExpanded(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    coachStyle: CoachStyle,
+    accent: Color,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    val interval = snapshot.interval
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+
+        CueBand(interval.cue, accent, animate = coachStyle.animates)
+
+        if (interval.hasClass) {
+            IntervalTimeline(
+                intervals = snapshot.intervals,
+                elapsedSec = interval.classElapsedSec,
+                durationSec = interval.classDurationSec,
+                currentIndex = interval.index,
+                modifier = Modifier.padding(
+                    horizontal = MaterialTheme.spacing.large,
+                    vertical = MaterialTheme.spacing.small
+                )
             )
         }
 
-        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val wide = maxWidth >= WIDE_BREAKPOINT
+            val roomy = maxWidth >= ROOMY_BREAKPOINT
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "${targetCadenceMin.toInt()}–${targetCadenceMax.toInt()} RPM",
-                color = MetricCadenceCyan,
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                text = "${targetPowerRange.start.toInt()}–" +
-                    "${targetPowerRange.endInclusive.toInt()} W",
-                color = MetricPowerCoral,
-                style = MaterialTheme.typography.bodySmall
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = MaterialTheme.spacing.large,
+                        end = MaterialTheme.spacing.large,
+                        bottom = MaterialTheme.spacing.medium,
+                        top = MaterialTheme.spacing.extraSmall
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            ) {
+                ClockBlock(snapshot, Modifier.width(if (roomy) 168.dp else 140.dp))
+
+                if (interval.hasClass) {
+                    NowBlock(snapshot, accent, Modifier.width(if (roomy) 250.dp else 200.dp))
+                }
+
+                MetricsBlock(
+                    snapshot = snapshot,
+                    reading = reading,
+                    showTargets = interval.hasClass,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (wide && interval.hasClass) {
+                    NextSlot(interval, coachStyle, Modifier.width(256.dp))
+                }
+
+                Controls(
+                    isPaused = snapshot.isPaused,
+                    onPause = onPause,
+                    onResume = onResume,
+                    onStop = onStop
+                )
+            }
         }
     }
 }
 
 /**
- * Personal best, personal average and household best for the current ride
- * length. Collapsible, since the HUD sits over video the rider is watching.
+ * The class's headline instruction, when it has one — the last hard effort or
+ * the cooldown. A full-width band because it is the one thing on the HUD worth
+ * reading a whole sentence of.
  */
 @Composable
-fun LeaderboardPanel(
-    currentOutputKj: Double,
-    personalBestKj: Double?,
-    personalAverageKj: Double?,
-    householdBestKj: Double?,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(true) }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surfaceContainerLow,
-                MaterialTheme.expressiveShapes.medium
-            )
-            .padding(MaterialTheme.spacing.small)
+private fun CueBand(cue: RideCue, accent: Color, animate: Boolean) {
+    AnimatedVisibility(
+        visible = cue != RideCue.None,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
     ) {
-        Row(
+        val pulse = if (animate && cue == RideCue.FinalPush) {
+            rememberPulse(periodMs = 1100, from = 0.55f, to = 1f)
+        } else {
+            1f
+        }
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .semantics {
-                    contentDescription =
-                        if (expanded) "Collapse leaderboard" else "Expand leaderboard"
-                },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .background(accent.copy(alpha = 0.16f * pulse))
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "LEADERBOARD",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = cue.message.uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = accent,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 3.sp
             )
-            Text(
-                text = if (expanded) "▾" else "▸",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        AnimatedVisibility(visible = expanded) {
-            Column {
-                LeaderboardRow("Current", currentOutputKj, isHighlight = true)
-                LeaderboardRow("Personal best", personalBestKj, isHighlight = false)
-                LeaderboardRow("Personal average", personalAverageKj, isHighlight = false)
-                LeaderboardRow("Household best", householdBestKj, isHighlight = false)
-            }
         }
     }
 }
 
 @Composable
-private fun LeaderboardRow(label: String, value: Double?, isHighlight: Boolean) {
+private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = snapshot.classTitle?.uppercase() ?: "JUST RIDE",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = Formatters.duration(snapshot.elapsedSeconds),
+            fontSize = 40.sp,
+            lineHeight = 42.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-1.5).sp,
+            color = if (snapshot.isPaused) {
+                MaterialTheme.colorScheme.tertiary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1
+        )
+        Text(
+            text = when {
+                snapshot.isPaused -> "PAUSED"
+                snapshot.interval.hasClass ->
+                    "${Formatters.duration(snapshot.interval.classRemainingSec)} LEFT"
+                else -> "${Formatters.kilojoules(snapshot.totalOutputKj)} · " +
+                    Formatters.kilometres(snapshot.distanceKm)
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (snapshot.isPaused) {
+                MaterialTheme.colorScheme.tertiary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            maxLines = 1
+        )
+    }
+}
+
+/** The current interval: zone badge inside its own countdown ring, and targets. */
+@Composable
+private fun NowBlock(snapshot: RideSnapshot, accent: Color, modifier: Modifier = Modifier) {
+    val interval = snapshot.interval
+    val zone = interval.targetZone
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ProgressArc(
+            // Drains rather than fills: what the rider wants is how much of
+            // this effort is left, not how much they have done.
+            progress = 1f - interval.intervalProgress,
+            color = accent,
+            strokeWidth = 5.dp,
+            modifier = Modifier.size(78.dp)
+        ) {
+            ZoneGlyph(
+                zone = zone,
+                modifier = Modifier.size(54.dp),
+                rotating = zone.number >= 5
+            ) {
+                Text(
+                    text = "${zone.number}",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(MaterialTheme.spacing.medium))
+
+        Column {
+            Text(
+                text = zone.displayName.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = accent,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = Formatters.duration(interval.remainingInIntervalSec),
+                fontSize = 28.sp,
+                lineHeight = 30.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "TARGET ${snapshot.cadenceTarget.min.toInt()}–" +
+                    "${snapshot.cadenceTarget.max.toInt()} RPM",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricsBlock(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    showTargets: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+    ) {
+        MetricReadout(
+            label = "POWER",
+            value = reading.powerWatts.toInt().toString(),
+            unit = "W",
+            accent = MetricPowerCoral,
+            band = if (showTargets) snapshot.powerTarget else com.pelonot.domain.model.TargetBand.NONE,
+            rawValue = reading.powerWatts,
+            valueSize = 46.sp,
+            modifier = Modifier.weight(1f)
+        )
+        MetricReadout(
+            label = "CADENCE",
+            value = reading.cadenceRpm.toInt().toString(),
+            unit = "RPM",
+            accent = MetricCadenceCyan,
+            band = if (showTargets) snapshot.cadenceTarget else com.pelonot.domain.model.TargetBand.NONE,
+            rawValue = reading.cadenceRpm,
+            valueSize = 46.sp,
+            modifier = Modifier.weight(1f)
+        )
+        MetricReadout(
+            label = "HEART RATE",
+            // Null means no strap, never a measured zero.
+            value = reading.heartRateBpm?.toString() ?: "--",
+            unit = "BPM",
+            accent = MetricHeartRateGreen,
+            rawValue = (reading.heartRateBpm ?: 0).toDouble(),
+            valueSize = 46.sp,
+            compact = true,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/**
+ * What is coming next, swapping to a countdown for the final five seconds.
+ *
+ * The swap is an [AnimatedContent] scale rather than a crossfade so it reads as
+ * the same object growing in urgency.
+ */
+@Composable
+private fun NextSlot(
+    interval: IntervalState,
+    coachStyle: CoachStyle,
+    modifier: Modifier = Modifier
+) {
+    val next = interval.next ?: return
+
+    AnimatedContent(
+        targetState = interval.isChangeImminent,
+        transitionSpec = {
+            (fadeIn() + scaleIn(initialScale = 0.85f))
+                .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
+        },
+        modifier = modifier,
+        label = "NextOrCountdown"
+    ) { imminent ->
+        if (imminent) {
+            CountdownBanner(
+                secondsRemaining = interval.remainingInIntervalSec,
+                nextZone = next.powerZone,
+                animate = coachStyle.animates
+            )
+        } else {
+            NextUpPreview(
+                next = next,
+                secondsUntil = interval.remainingInIntervalSec,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun Controls(
+    isPaused: Boolean,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        // A single toggle rather than separate Pause and Resume buttons, one of
+        // which is always a no-op.
+        FilledIconButton(
+            onClick = if (isPaused) onResume else onPause,
+            modifier = Modifier.size(52.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Icon(
+                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                contentDescription = stringResource(
+                    if (isPaused) R.string.cd_resume_ride else R.string.cd_pause_ride
+                )
+            )
+        }
+        FilledIconButton(
+            onClick = onStop,
+            modifier = Modifier.size(52.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Stop,
+                contentDescription = stringResource(R.string.cd_end_ride)
+            )
+        }
+    }
+}
+
+// ==========================================================================
+// Collapsed
+// ==========================================================================
+
+/**
+ * The minimum a rider will accept while giving the screen back to the film:
+ * the clock, the three live numbers, and the countdown when one is running.
+ */
+@Composable
+private fun HudCollapsed(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    accent: Color,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    val interval = snapshot.interval
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isHighlight) {
-                MetricCadenceCyan
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            text = Formatters.duration(snapshot.elapsedSeconds),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onSurface
         )
-        Text(
-            text = value?.let(Formatters::kilojoules) ?: "--",
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isHighlight) MetricCadenceCyan else MaterialTheme.colorScheme.onSurface
+
+        if (interval.hasClass) {
+            ZoneGlyph(zone = interval.targetZone, modifier = Modifier.size(28.dp)) {
+                Text(
+                    text = "${interval.targetZone.number}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+            }
+        }
+
+        CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
+        CompactMetric(reading.cadenceRpm.toInt().toString(), "RPM", MetricCadenceCyan)
+        CompactMetric(reading.heartRateBpm?.toString() ?: "--", "BPM", MetricHeartRateGreen)
+
+        Spacer(Modifier.weight(1f))
+
+        val next = interval.next
+        if (interval.isChangeImminent && next != null) {
+            // The countdown survives collapsing. It is the one thing on this
+            // HUD that is never optional.
+            Text(
+                text = "Z${next.powerZone.number} in ${interval.remainingInIntervalSec}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                color = next.powerZone.color
+            )
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+        }
+
+        Controls(
+            isPaused = snapshot.isPaused,
+            onPause = onPause,
+            onResume = onResume,
+            onStop = onStop
         )
     }
 }
 
-private const val ALERT_SCALE = 1.05f
-private const val DEFAULT_TARGET_CADENCE_MIN = 80.0
-private const val DEFAULT_TARGET_CADENCE_MAX = 100.0
+@Composable
+private fun CompactMetric(value: String, unit: String, accent: Color) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+            color = accent
+        )
+        Spacer(Modifier.width(3.dp))
+        Text(
+            text = unit,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 3.dp)
+        )
+    }
+}
+
+private const val DRAG_SNAP_PX = 12f
+private val WIDE_BREAKPOINT = 900.dp
+private val ROOMY_BREAKPOINT = 1100.dp

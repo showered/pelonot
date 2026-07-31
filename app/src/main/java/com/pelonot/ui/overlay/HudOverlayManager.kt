@@ -20,18 +20,27 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.pelonot.data.service.RideSnapshot
 import com.pelonot.di.ServiceLocator
-import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.model.HudDock
 import com.pelonot.ui.theme.PelonotTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Hosts the floating ride HUD in a `WindowManager` overlay so it can sit on
- * top of a third-party video app.
+ * top of whatever the rider is actually watching.
  *
- * Note the Compose content is themed with `darkTheme = true` and dynamic
- * colour off, regardless of the app's own setting: the HUD is translucent over
- * arbitrary video, and a light scheme is unreadable there.
+ * The window is **full width and docked to one screen edge**, not a floating
+ * card. That is the whole design: the rider has a film on, and the middle of
+ * the screen has to stay clear. It also means the overlay only intercepts
+ * touches within its own strip, so the video underneath stays fully usable.
+ *
+ * The Compose content is themed `darkTheme = true` with dynamic colour off
+ * regardless of the app's own setting — the HUD is translucent over arbitrary
+ * video, and a light scheme is unreadable there.
  */
 class HudOverlayManager(private val context: Context) {
 
@@ -41,6 +50,15 @@ class HudOverlayManager(private val context: Context) {
     private var composeView: ComposeView? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
+    private val _dock = MutableStateFlow(HudDock.DEFAULT)
+    val dock: StateFlow<HudDock> = _dock.asStateFlow()
+
+    private val _collapsed = MutableStateFlow(false)
+    val collapsed: StateFlow<Boolean> = _collapsed.asStateFlow()
+
+    /** Notified when the rider drags the HUD to the other edge, so it persists. */
+    var onDockChanged: ((HudDock) -> Unit)? = null
+
     private val layoutParams = WindowManager.LayoutParams().apply {
         type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -49,26 +67,28 @@ class HudOverlayManager(private val context: Context) {
             WindowManager.LayoutParams.TYPE_PHONE
         }
         format = PixelFormat.TRANSLUCENT
+        // Deliberately *not* LAYOUT_IN_SCREEN or LAYOUT_NO_LIMITS: those put
+        // the strip underneath the status bar, where the class timeline ends up
+        // behind the clock. Staying inside the decor area means the HUD docks
+        // against whatever the app below it is already respecting.
         flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-        width = WindowManager.LayoutParams.WRAP_CONTENT
+        width = WindowManager.LayoutParams.MATCH_PARENT
         height = WindowManager.LayoutParams.WRAP_CONTENT
-        gravity = Gravity.TOP or Gravity.START
-        x = INITIAL_X
-        y = INITIAL_Y
+        gravity = gravityFor(HudDock.DEFAULT)
     }
 
     val isShowing: Boolean get() = composeView != null
 
     /**
-     * Adds the overlay. No-op when already visible or when the
-     * "display over other apps" permission has not been granted.
+     * Raises the overlay. No-op when already visible or when "display over
+     * other apps" has not been granted — the caller is expected to have asked
+     * for it, and a silent failure here is preferable to crashing a ride.
      */
     fun show(
-        ftp: Double,
-        intent: RideIntent = RideIntent.DEFAULT,
-        elapsedSecondsFlow: StateFlow<Int>? = null,
+        snapshotFlow: StateFlow<RideSnapshot>,
+        coachStyleFlow: StateFlow<CoachStyle>,
+        dock: HudDock = HudDock.DEFAULT,
         onPause: () -> Unit = {},
         onResume: () -> Unit = {},
         onStop: () -> Unit = {}
@@ -79,6 +99,9 @@ class HudOverlayManager(private val context: Context) {
             Log.w(TAG, "Overlay permission not granted; cannot show HUD")
             return
         }
+
+        _dock.value = dock
+        layoutParams.gravity = gravityFor(dock)
 
         val owner = OverlayLifecycleOwner().apply {
             performRestore(null)
@@ -93,24 +116,28 @@ class HudOverlayManager(private val context: Context) {
             setViewTreeViewModelStoreOwner(owner)
 
             setContent {
-                val sensorRepository = ServiceLocator.sensorRepository
-                val reading by sensorRepository.sensorReading.collectAsStateWithLifecycle()
-                val elapsedSeconds by (elapsedSecondsFlow ?: ZERO_ELAPSED)
+                val snapshot by snapshotFlow.collectAsStateWithLifecycle()
+                val coachStyle by coachStyleFlow.collectAsStateWithLifecycle()
+                val currentDock by _dock.collectAsStateWithLifecycle()
+                val isCollapsed by _collapsed.collectAsStateWithLifecycle()
+
+                // Telemetry is collected separately from the ride snapshot: it
+                // changes several times a second and the snapshot does not.
+                val reading by ServiceLocator.sensorRepository.sensorReading
                     .collectAsStateWithLifecycle()
 
                 PelonotTheme(darkTheme = true, useDynamicColor = false) {
                     HudOverlayMain(
-                        cadence = reading.cadenceRpm,
-                        resistance = reading.resistancePercent,
-                        power = reading.powerWatts,
-                        heartRate = reading.heartRateBpm,
-                        elapsedSeconds = elapsedSeconds,
-                        ftp = ftp,
-                        intent = intent,
+                        snapshot = snapshot,
+                        reading = reading,
+                        dock = currentDock,
+                        collapsed = isCollapsed,
+                        coachStyle = coachStyle,
+                        onToggleCollapsed = { _collapsed.value = !_collapsed.value },
+                        onDockChange = ::moveTo,
                         onPause = onPause,
                         onResume = onResume,
-                        onStop = onStop,
-                        onDrag = ::moveBy
+                        onStop = onStop
                     )
                 }
             }
@@ -120,18 +147,23 @@ class HudOverlayManager(private val context: Context) {
             windowManager.addView(view, layoutParams)
             composeView = view
             lifecycleOwner = owner
-            Log.d(TAG, "HUD overlay attached")
+            Log.d(TAG, "HUD overlay attached, docked $dock")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to attach HUD overlay", e)
             owner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         }
     }
 
-    private fun moveBy(dx: Float, dy: Float) {
-        val view = composeView ?: return
-        layoutParams.x += dx.toInt()
-        layoutParams.y += dy.toInt()
-        runCatching { windowManager.updateViewLayout(view, layoutParams) }
+    /** Snaps the HUD to the given screen edge. */
+    fun moveTo(dock: HudDock) {
+        if (_dock.value == dock) return
+        _dock.value = dock
+        layoutParams.gravity = gravityFor(dock)
+        composeView?.let { view ->
+            runCatching { windowManager.updateViewLayout(view, layoutParams) }
+                .onFailure { Log.w(TAG, "Could not re-dock the HUD", it) }
+        }
+        onDockChanged?.invoke(dock)
     }
 
     fun hide() {
@@ -139,13 +171,19 @@ class HudOverlayManager(private val context: Context) {
             runCatching { windowManager.removeView(view) }
                 .onFailure { Log.w(TAG, "Overlay was already detached", it) }
             // Disposing the composition and retiring the lifecycle releases the
-            // ViewModelStore. The previous version removed the view but left the
+            // ViewModelStore. An earlier version removed the view but left the
             // lifecycle at RESUMED forever, so every ride leaked its composition.
             view.disposeComposition()
         }
         lifecycleOwner?.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         composeView = null
         lifecycleOwner = null
+        _collapsed.value = false
+    }
+
+    private fun gravityFor(dock: HudDock): Int = when (dock) {
+        HudDock.Top -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        HudDock.Bottom -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
     }
 
     /**
@@ -175,10 +213,5 @@ class HudOverlayManager(private val context: Context) {
 
     private companion object {
         const val TAG = "HudOverlayManager"
-        const val INITIAL_X = 200
-        const val INITIAL_Y = 200
-
-        val ZERO_ELAPSED: StateFlow<Int> =
-            kotlinx.coroutines.flow.MutableStateFlow(0)
     }
 }
