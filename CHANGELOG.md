@@ -498,7 +498,7 @@ rider's film ducks under it.
 
 ## Verification
 
-- `./gradlew testDebugUnitTest` — **150 tests, 0 failures**
+- `./gradlew testDebugUnitTest` — **153 tests, 0 failures**
 - `./gradlew connectedDebugAndroidTest` — **17 tests, 0 failures** (10 DAO,
   7 `WorkoutService` lifecycle)
 - On a 1920×1080 landscape tablet emulator, checked against the database rather
@@ -516,10 +516,18 @@ rider's film ducks under it.
   - Crash recovery rebuilt a killed ride from its samples (6:29, 53.4 kJ) and
     then correctly offered the *second* orphaned ride rather than abandoning it.
 
+## Resistance
+
+Added after the first pass, because leaving it out was the wrong omission.
+`PowerModel` is analytically invertible, so the HUD now derives a resistance
+band from the interval's power target at the middle of its cadence target, and
+shows it beside cadence — the two things the rider can actually change, then
+the two that result. It reports no band at all rather than a clamped percentage
+when the target is out of the knob's reach at that cadence, because the honest
+instruction there is "spin faster".
+
 ## Known gaps (see PLAN.md phase 11)
 
-- **Resistance is not on the HUD.** The knob is the rider's only actuator; power
-  is an output. This is the largest single omission.
 - The leaderboard panel was removed with the old floating card and has not been
   re-homed. `WorkoutRepository.leaderboardFor` is still correct and unused.
 - The profile selector, dashboard and post-ride summary are still phone-shaped

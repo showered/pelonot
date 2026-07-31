@@ -409,8 +409,21 @@ assumptions and the power curve are all unproven on hardware, and `PowerModel`'s
 coefficients are unvalidated — absolute watts are self-consistent between the
 rider's own rides and meaningless against anyone else's.
 
-Beyond that, see PLAN.md phase 11. The largest known gap is **resistance**: the
-knob is the rider's only actuator, and the redesigned HUD does not show it.
+### The inverse power model
+
+`PowerModel` is analytically invertible, and the HUD uses it that way:
+
+```
+P = base(rpm) × (1 + R/50)   ⇒   R = 50 × (P / base(rpm) − 1)
+```
+
+That turns "hold 250 W" — which nobody can act on directly, because power is an
+*output* — into "set the knob to about here at this cadence", which they can.
+`resistanceForWatts` returns null rather than a clamped percentage when the
+target is beyond the knob at that cadence: the honest instruction there is
+"spin faster", and disguising it as 100% would be a lie the rider acts on.
+
+Beyond that, see PLAN.md phase 11.
 
 ---
 
@@ -418,7 +431,7 @@ knob is the rider's only actuator, and the redesigned HUD does not show it.
 
 ```bash
 ./gradlew assembleDebug            # Build
-./gradlew testDebugUnitTest        # 150 JVM tests
+./gradlew testDebugUnitTest        # 153 JVM tests
 ./gradlew connectedDebugAndroidTest # DAO + service tests (needs a device)
 ./gradlew installDebug             # Install
 ```
