@@ -80,7 +80,8 @@ Three consequences worth carrying forward:
 | **11.1a** Doors between the HUD and the app | Unchanged in priority and still the journey a rider makes most often. 11.1a.3 confirmed missing on the bike: the app does **not** come forward when a ride ends from the HUD — Netflix simply stayed in front |
 | **11.1.3 / 11.1.4** Tap-to-collapse and re-docking | The last two unverified HUD interactions, and unlike the rest of 11.1 they need *code* before they need a rider |
 | **20.1** The profile selector | Confirmed on the real tablet, not just the emulator: one small card in the top-left corner of a 1920×1080 screen with the rest black |
-| **2.2.5** A second `PowerModel` sweep | The method is proven and the first sweep is checked in; it needs denser coverage at resistance 5–20 and 80–100. Needs a rider |
+| **11.5** Volume sliders | Small, and closer to fundamental than it sounds: the tablet has **no status bar and therefore no system volume UI**, so the app is the only place either level can be changed. Needs no bike |
+| **2.2a** Auto-calibrate `PowerModel` per bike | Supersedes the manual sweep (2.2.5), which does not scale to anyone else's bike. Every hardware ride already records measured watts beside the model's own inputs. Needs no bike to build, only rides to feed it |
 
 Still blocked on things not to hand: **10.6** needs a full-length ride.
 
@@ -359,7 +360,77 @@ and it was wrong in a way no amount of code reading would have exposed.
       A sufficient sweep needs more resistance levels — especially **5–20 and
       80–100**, barely touched here — each held at three or more cadences,
       including high resistance at high cadence, and ideally a second rider to
-      separate the machine's curve from one person's pedalling
+      separate the machine's curve from one person's pedalling.
+
+      **But prefer 2.2a to doing this again.** A manual sweep does not scale
+      past the one person willing to perform it, and per-unit variation and
+      wear mean a constant in the source is the wrong shape of answer anyway.
+      Every hardware ride already carries the data; 2.2a is the version of this
+      that works on a stranger's bike
+
+### 2.2a Auto-calibration — the answer to "what about everyone else's bike?"
+
+**This supersedes the manual sweep as the way `PowerModel` gets calibrated.**
+2.2.5 asked one rider to sweep the operating range for five minutes; that does
+not scale to other people's bikes, and the cross-validation failure showed it
+barely worked for one. The realisation that makes it unnecessary:
+
+> **On real hardware every ride is already a calibration dataset.** The board
+> reports measured watts alongside the cadence and resistance that
+> `PowerModel` takes as inputs (2.1a). The app does not need a special ride —
+> it needs to notice what it is already recording.
+
+Three reasons this has to be per-bike and continuous rather than a constant
+shipped in the source:
+
+1. **Per-unit variation.** The resistance figure comes from a position sensor
+   whose mapping is unit-specific, and this bike already proves it: the sensor
+   pins at 100 while the knob keeps turning (2.1a.5a). A curve keyed on
+   "resistance percent" inherits that bike's own quirk.
+2. **Drift over time.** Whatever the Gen 1's braking mechanism turns out to be
+   — the repo has never established it, and it is worth writing down when
+   someone does — a resistance system that is worn, warm or dirty does not
+   behave like a new one. If the mechanism is friction-based, pad wear alone
+   makes a fixed constant wrong within months.
+3. **It costs the rider nothing.** Normal riding covers the operating range
+   over a few weeks without anyone being asked to perform a calibration
+   ritual, which is the only version of this that a stranger will ever do.
+
+- [ ] **2.2a.1** Accumulate steady-state `(cadence, resistance, measured
+      watts)` from rides where `powerIsMeasured` is true. Reuse the filter that
+      worked on the 31 July sweep: drop samples where the knob is mid-turn or
+      cadence is lurching, since those are transitions rather than operating
+      points. Store a compact summary, not every sample — a grid of binned
+      means is enough to fit against and does not grow without bound
+- [ ] **2.2a.2** **Calibration belongs to the bike, not the rider.** A
+      household bike has several profiles and one resistance mechanism, so this
+      is device-level state that every profile shares. It must not live on
+      `profiles` and must not sync as if it were personal (15)
+- [ ] **2.2a.3** **Do not adopt a fit that cannot beat the shipped curve.**
+      This is the whole lesson of 2.2.5: hold out a resistance level, predict
+      it, and keep the generic coefficients unless the fit genuinely wins. An
+      auto-calibration that silently makes the numbers worse is the same
+      failure as everything in the *Corrections* table
+- [ ] **2.2a.4** Require coverage before fitting at all. The 31 July sweep had
+      six distinct resistance levels and that was not enough to determine the
+      exponent. Track which cells of the resistance × cadence grid have been
+      ridden and stay on the shipped curve until enough of them have
+- [ ] **2.2a.5** Weight recent rides more heavily so the fit tracks drift
+      rather than averaging a worn mechanism together with how it behaved when
+      it was new
+- [ ] **2.2a.6** Say so in Settings: whether this bike is running the shipped
+      curve or its own, how much of the range it has seen, and when it last
+      re-fitted. A calibration that silently does nothing is indistinguishable
+      from one that works (see the *Corrections* rule)
+- [ ] **2.2a.7** Simulated rides keep the shipped curve. There is no bike to
+      calibrate against and the numbers are fiction by construction
+
+> **Scope worth keeping in view before anyone builds this.** On real hardware
+> `PowerModel` does not run: a ride records the board's measured watts, and
+> another rider's recorded history is unaffected by any of this. Calibration
+> only governs **simulated rides** and the **prescribed resistance band**
+> (11.2.1) — that is, the quality of a *suggestion*, never the integrity of a
+> record. Worth doing, and not worth blocking anything else on.
 
 ### 2.3 BLE heart rate
 - [x] Rewritten against the Bluetooth SIG spec: real Context, CCCD descriptor write, service-UUID scan filter, cancellable scanning, bounds-checked parsing
@@ -672,6 +743,47 @@ less of the screen and less of the attention.
 ### 11.4 Re-home the leaderboard
 - [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it
 - [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
+
+### 11.5 Volume control — the tablet has nowhere else to change it
+
+**The reason this is not a nicety.** On the bike's tablet there is no status
+bar to pull down, so there is **no system volume UI at all**. A rider watching
+Netflix with the coach speaking over it has no way to change either level
+without leaving what they are doing. The app is the only surface that can
+offer it, which makes this closer to fundamental than to polish.
+
+- [ ] **11.5.1** **Media volume**, controlling `STREAM_MUSIC` — which is what
+      Netflix and everything else plays on. Needs `MODIFY_AUDIO_SETTINGS` in
+      the manifest (a normal, install-time permission, no prompt). Declare it
+      *before* wiring the slider: an undeclared permission fails silently and
+      this project has shipped that bug twice already (8.5, 2.3)
+- [ ] **11.5.2** **Coach volume, independent of the media volume.** Do this
+      with `TextToSpeech.Engine.KEY_PARAM_VOLUME` in the `Bundle` passed to
+      `speak()` — a per-utterance 0..1 scalar — rather than by moving a stream
+      volume. A stream-level control would fight the ducking in 11.1.6 and
+      could not make the coach quieter *than* the film, which is exactly what
+      a rider who finds it shouty will want
+- [ ] **11.5.3** Both in **Settings**, as the place they are set deliberately
+- [ ] **11.5.4** Both reachable from the **HUD**, since mid-ride is when a
+      rider actually discovers the film is too loud, and going to Settings
+      means abandoning the ride screen and the film together
+- [ ] **11.5.5** **This is the deliberate exception to 18.6 / 19.4** — "nothing
+      on the strip that is not about the next sixty seconds of pedalling". It
+      earns its place only because the tablet offers no alternative. Keep it
+      out of the resting strip: put it behind the collapse/expand (11.1.3) or
+      a single small control that opens the sliders, so the default HUD is
+      still three big numbers and a countdown
+- [ ] **11.5.6** Volume changes persist, and the coach level survives a
+      restart. A rider who turned the coach down did not mean "until the next
+      ride"
+- [ ] **11.5.7** Setting a stream volume can throw `SecurityException` when a
+      Do Not Disturb policy is active on API 23+. Catch it and say so rather
+      than letting the slider move and nothing happen — a control that lies
+      about having worked is worse than one that is absent
+- [ ] **11.5.8** Check whether the tablet's own hardware volume buttons reach
+      the app at all. If they do, honouring them may be most of the feature;
+      if they do not, that is worth recording next to 2.1a as another thing
+      this hardware does not have
 
 ---
 
