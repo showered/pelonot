@@ -32,14 +32,39 @@ them are of the family this plan's *Corrections* table exists to catch**:
 something fails, the failure is caught and returned as a value nothing reads,
 and every screen goes on looking correct.
 
-| Found | Item | Why it is a blocker |
-|-------|------|---------------------|
-| Nothing keeps the screen on during a ride | **19.1.1** *(already on the plan, untouched)* | The tablet sleeps mid-class. Hidden on the bike only because Netflix holds its own wake lock |
-| A stalled board's last reading is recorded once a second as measured | **2.4.4** | Corrupts `workout_metrics`, `avg_power`, `avg_cadence` and the calibration grid |
-| `SensorStatus.Reconnecting` is rendered nowhere | **2.4.5** | The rider sees frozen numbers and no reason for them |
-| Crash recovery cannot tell a crashed ride from a live one, and *Discard* deletes the live one | **8.3b** | Data loss, mid-ride, from a dialog the rider did not ask for |
-| No route back into a ride already running once the Activity is gone | **11.1a.5** | The ride notification does not open the ride |
-| *End ride* is one tap with no confirmation and no resume | **11.6.6** | A mis-tap ends the class |
+| Found | Item | Why it is a blocker | State |
+|-------|------|---------------------|-------|
+| Nothing keeps the screen on during a ride | **19.1.1** *(already on the plan, untouched)* | The tablet sleeps mid-class. Hidden on the bike only because Netflix holds its own wake lock | ✅ |
+| A stalled board's last reading is recorded once a second as measured | **2.4.4** | Corrupts `workout_metrics`, `avg_power`, `avg_cadence` and the calibration grid | ✅ |
+| `SensorStatus.Reconnecting` is rendered nowhere | **2.4.5** | The rider sees frozen numbers and no reason for them | ✅ |
+| The telemetry source the rider chose is forgotten at the next launch | **2.4.6** *(found while verifying 2.4.5)* | **Hardware** exists so a ride never records fabricated numbers, and it silently reverted to Auto | ✅ |
+| Crash recovery cannot tell a crashed ride from a live one, and *Discard* deletes the live one | **8.3b** | Data loss, mid-ride, from a dialog the rider did not ask for | ✅ |
+| No route back into a ride already running once the Activity is gone | **11.1a.5** | The ride notification does not open the ride | ✅ |
+| *End ride* is one tap with no confirmation and no resume | **11.6.6** | A mis-tap ends the class | ✅ |
+| The ride notification is never posted on Android 13+ | **11.1a.6** *(found while verifying 11.1a.5)* | `POST_NOTIFICATIONS` is declared and requested by nothing. The bike is Android 11, so it does not bite there — yet | ❌ |
+
+**All six were then built and observed on the tablet AVD in the same sitting,
+along with one more that the verifying turned up.** Closed: **19.1.1**,
+**2.4.4**, **2.4.5**, **2.4.6**, **8.3b**, **11.1a.5**, **11.6.6** and the
+greeting in **22.3.1**. 253 JVM tests and 23 instrumented tests green.
+
+**2.4.6 is the find of the sitting, and it was found by checking the fix for
+something else.** While confirming that a dead board says so on screen, the
+ride recorded a plausible simulated 68 rpm — with Settings showing **Hardware**
+selected two taps away. `SensorRepository.setMode` had exactly one caller, so
+the rider's choice was applied to the pipeline **only in the session it was
+tapped in**; every launch after that silently reverted to `Auto`, which falls
+back to simulated telemetry. The mode that exists so that *a ride never records
+fabricated numbers* could not survive the app being closed. It is in
+*Corrections* against 2.6.
+
+Two more things worth carrying forward. **8.3b was reproduced before it was
+fixed**, and the screenshot is the clearest statement of the problem anyone
+will write: a modal saying the app "was closed part-way through a ride" with
+the HUD strip two inches above it showing 02:11 and 66 rpm, live. And the
+verification work turned up **11.1a.6** — `POST_NOTIFICATIONS` is declared and
+requested by nothing, so on Android 13+ the ride notification never appears at
+all. The bike's tablet is Android 11, which is exactly why nobody had seen it.
 
 Also raised, not blockers: **19.1.6** (the first run explains nothing — FTP
 prefilled at 200 with no way to find a real one, the overlay permission first
@@ -209,11 +234,15 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
-**Superseded by the MVP readiness pass above.** The table below was written
-before the fifth sitting and is kept because its reasoning is still good; the
-order now is **19.1.1, 2.4.4, 2.4.5, 8.3b, 11.1a.5, 11.6.6 first**, because all
-six are things a rider hits in their first week and three of them can lose or
-corrupt a ride. Then this:
+**The six MVP blockers above are done.** What is left of the readiness pass is
+**11.1a.6** (the ride notification never posted on Android 13+ — small, and it
+undercuts the door 11.1a.5 just built), then **19.1.2** auto-pause and
+**19.1.3 / 12.4.4** local backup, which were on the plan already and belong in
+the same conversation: one is the other half of "the rider is not pedalling",
+and the other is the only safety net that exists before accounts.
+
+Then the table below, which was written before the fifth sitting and is kept
+because its reasoning is still good:
 
 | Next | Why now |
 |------|---------|
@@ -265,7 +294,7 @@ Two notes worth carrying into the next bike session:
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
-| 22 | The dashboard | ❌ Not started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using* |
+| 22 | The dashboard | 🔶 Barely started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using. The greeting no longer says "Good morning" at midnight (22.3.1)* |
 
 ---
 
@@ -2294,6 +2323,16 @@ time.
 - [ ] **22.2.5** Verify against the real system furniture — a 48 dp bottom
       navigation bar and no top status bar (`HARDWARE.md`) — and on the tablet
       itself before ticking anything here
+
+### 22.3 Small things on the dashboard
+
+- [x] **22.3.1** **"Good morning" was a string literal**, shown at every hour
+      of the day — cheerfully wrong for two thirds of it, on a bike that mostly
+      gets ridden in the evening. It reads the clock now, with a fourth case
+      for the small hours because somebody riding at 2 a.m. is not having a
+      morning. Read once per composition rather than from a flow: nobody's
+      evening turns into night while they look at this screen. *Observed on the
+      tablet AVD at 23:42: "Good evening,"*
 
 ---
 

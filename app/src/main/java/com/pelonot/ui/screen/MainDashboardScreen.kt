@@ -150,11 +150,32 @@ fun MainDashboardScreen(
 // =========================================================================
 // Greeting Header
 // =========================================================================
+/**
+ * Time of day, read once per composition of the dashboard.
+ *
+ * Not a flow: nobody's evening turns into night while they are looking at this
+ * screen, and a ride that starts at 17:59 does not need the greeting to change
+ * underneath the rider at 18:00. It is re-read every time the dashboard is
+ * composed, which is every time they come back to it.
+ */
+private fun greetingFor(hour: Int): String = when (hour) {
+    in 0..4 -> "Still up,"
+    in 5..11 -> "Good morning,"
+    in 12..17 -> "Good afternoon,"
+    else -> "Good evening,"
+}
+
 @Composable
 private fun GreetingHeader(userName: String) {
+    // Was hardcoded "Good morning," — cheerfully wrong for two thirds of the
+    // day, and on a bike that mostly gets ridden in the evening.
+    val greeting = remember {
+        greetingFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Good morning,",
+            text = greeting,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             fontWeight = FontWeight.Normal
