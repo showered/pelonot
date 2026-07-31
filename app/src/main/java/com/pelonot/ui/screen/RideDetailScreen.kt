@@ -1,5 +1,7 @@
 package com.pelonot.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,7 +28,10 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -35,9 +40,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.export.ExportFormat
 import com.pelonot.ui.components.CadenceDistributionChart
 import com.pelonot.ui.components.ChartCard
 import com.pelonot.ui.components.HeartRateTraceChart
@@ -59,6 +67,9 @@ import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 
@@ -84,6 +95,55 @@ fun RideDetailScreen(
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(workoutId) { viewModel.load(workoutId) }
+
+    // 12.4.3. Through the system's own file picker rather than a share sheet:
+    // the rider says where it goes, no FileProvider is involved, and on the
+    // bike's tablet — which has almost nothing installed to share *to* — a
+    // share sheet would be an empty list.
+    val scope = rememberCoroutineScope()
+    val snackbarHost = remember { SnackbarHostState() }
+    var pendingExport by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val context = LocalContext.current
+
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        val export = pendingExport
+        pendingExport = null
+        // A cancelled picker is not a failure and does not deserve a message.
+        if (uri == null || export == null) return@rememberLauncherForActivityResult
+
+        scope.launch {
+            val written = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(export.second.toByteArray())
+                    } ?: error("could not open $uri for writing")
+                }
+            }
+            // Said out loud either way. A silent export is indistinguishable
+            // from a successful one, which is the failure shape this project
+            // has shipped eleven times.
+            snackbarHost.showSnackbar(
+                written.fold(
+                    onSuccess = { "Saved ${export.first}" },
+                    onFailure = { "Could not save the file: ${it.message}" }
+                )
+            )
+        }
+    }
+
+    val export: (ExportFormat) -> Unit = { format ->
+        scope.launch {
+            val built = viewModel.buildExport(format)
+            if (built == null) {
+                snackbarHost.showSnackbar("There is nothing to export from this ride.")
+            } else {
+                pendingExport = built
+                saveLauncher.launch(built.first)
+            }
+        }
+    }
 
     val workout = state.workout
 
@@ -118,6 +178,7 @@ fun RideDetailScreen(
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
                 title = { Text(state.displayTitle) },
@@ -205,6 +266,10 @@ fun RideDetailScreen(
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
             RpeEditor(selected = workout.rpeRating, onSelect = viewModel::setRpe)
+
+            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+
+            ExportSection(onExport = export)
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -330,6 +395,50 @@ private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     modifier = modifier
 ) {
     TimeInZoneBar(timeInZone = charts.timeInZone)
+}
+
+/**
+ * Taking your own data with you (12.4.3).
+ *
+ * This is an open-source app, and not being able to get your ride out of it is
+ * the thing the subscription product does.
+ */
+@Composable
+private fun ExportSection(onExport: (ExportFormat) -> Unit) {
+    Text(
+        text = "Take it with you",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.semantics { heading() }
+    )
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+    ExportFormat.entries.forEach { format ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = format.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = format.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            OutlinedButton(
+                onClick = { onExport(format) },
+                shape = MaterialTheme.expressiveShapes.pill
+            ) {
+                Text("Save")
+            }
+        }
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+    }
 }
 
 private val TWO_COLUMN_BREAKPOINT = 900.dp

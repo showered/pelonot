@@ -1331,7 +1331,31 @@ layer is done and nothing renders it.
 ### 12.4 Housekeeping the record
 - [ ] **12.4.1** Re-file a household guest ride against a profile from history (the post-ride flow in 8.4 is the only chance to do it today, and the rider is usually still breathing hard)
 - [ ] **12.4.2** Filter by class category and by date range
-- [ ] **12.4.3** Export a ride — CSV of the metric series, and `.tcx`/`.fit` for Strava and everything else. This is an open-source app: not being able to get your own data out is the thing the subscription product does
+- [x] **12.4.3** Export a ride — CSV of the metric series, and `.tcx` for Strava and everything else. This is an open-source app: not being able to get your own data out is the thing the subscription product does.
+      *Both written from the **samples**, never the aggregates: an export that
+      disagreed with the database would be worse than none, and `avg_hr` has
+      already been wrong here once. A null heart rate stays null all the way to
+      the file — blank in CSV, element absent in TCX — because a zero there is a
+      fabricated reading in a file the rider may well average later. Numbers are
+      formatted `Locale.US` on purpose: a French device writes 91,5, which in a
+      comma-separated file is two columns and in XML is a parse error at the far
+      end. Saved through the system file picker rather than a share sheet — the
+      rider says where it goes, no `FileProvider` is involved, and the bike's
+      tablet has almost nothing installed to share **to**. Observed on the
+      tablet AVD: both files written to Downloads, pulled back, and the TCX
+      parses as XML with **632 trackpoints against 632 rows in
+      `workout_metrics`**. Success and failure are both said out loud in a
+      snackbar; a silent export is indistinguishable from a successful one*
+- [ ] **12.4.3a** `.fit` as well as `.tcx` — a binary format needing a real
+      encoder, where TCX is text. Nothing reads `.fit` that will not read
+      `.tcx`, so this is for completeness rather than reach
+- [ ] **12.4.3b** **The TCX has no per-second distance, and cannot have one.**
+      `workout_metrics` stores cadence, resistance, power and heart rate — there
+      is no speed or distance column — so a per-trackpoint `DistanceMeters`
+      could only be invented by spreading the ride's total evenly across its
+      seconds, which describes a ride nobody did. The lap carries the real
+      total. Whether Strava is content with that needs an actual upload to find
+      out. Same family as 16.1.6: a missing column, not a missing calculation
 - [ ] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has
 
 ### 12.5 Room migrations — do this before anything in 12–19 ships

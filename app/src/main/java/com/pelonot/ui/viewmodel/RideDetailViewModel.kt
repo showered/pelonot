@@ -11,6 +11,10 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.export.ExportFormat
+import com.pelonot.domain.export.ExportRide
+import com.pelonot.domain.export.ExportSample
+import com.pelonot.domain.export.RideExport
 import com.pelonot.domain.model.Interval
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -121,6 +125,50 @@ class RideDetailViewModel(
             )
         }
         _uiState.update { it.copy(charts = charts) }
+    }
+
+    /**
+     * Builds the file the rider asked for (12.4.3).
+     *
+     * Reads the **samples**, never the aggregates — an export that disagreed
+     * with the database would be worse than none. Returns null when the ride
+     * has gone, which the caller reports rather than swallowing: an export that
+     * silently produces nothing is exactly the failure shape the *Corrections*
+     * table exists to stop.
+     */
+    suspend fun buildExport(format: ExportFormat): Pair<String, String>? {
+        val workout = _uiState.value.workout ?: return null
+        val title = _uiState.value.displayTitle
+
+        return withContext(Dispatchers.Default) {
+            val ride = ExportRide(
+                id = workout.id,
+                title = title,
+                startedAtMillis = workout.timestamp,
+                durationSec = workout.durationSec,
+                totalOutputKj = workout.totalOutputKj,
+                totalDistanceKm = workout.totalDistanceKm,
+                avgPower = workout.avgPower,
+                avgCadence = workout.avgCadence,
+                avgHeartRate = workout.avgHr
+            )
+            val samples = workoutRepository.getMetrics(workout.id).map { metric ->
+                ExportSample(
+                    timestampSec = metric.timestampSec,
+                    cadenceRpm = metric.cadence,
+                    resistancePercent = metric.resistance,
+                    powerWatts = metric.power,
+                    // Preserved as null all the way to the file.
+                    heartRateBpm = metric.heartRate
+                )
+            }
+
+            val content = when (format) {
+                ExportFormat.Csv -> RideExport.csv(ride, samples)
+                ExportFormat.Tcx -> RideExport.tcx(ride, samples)
+            }
+            RideExport.filename(ride, format) to content
+        }
     }
 
     fun setRpe(rpe: Int) {
