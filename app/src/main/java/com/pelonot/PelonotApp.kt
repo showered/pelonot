@@ -9,6 +9,8 @@ import com.pelonot.di.ServiceLocator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class PelonotApp : Application() {
@@ -28,6 +30,34 @@ class PelonotApp : Application() {
 
         appScope.launch {
             runCatching { ServiceLocator.classTemplateSeeder.seedIfEmpty() }
+        }
+
+        applyTelemetrySource()
+    }
+
+    /**
+     * Keeps `SensorRepository`'s mode in step with the rider's preference
+     * (2.4.6).
+     *
+     * `SensorRepository.setMode` had exactly one caller — `SettingsViewModel`,
+     * on tap — so the persisted choice was applied to the *object* only in the
+     * session where it was made. On every launch after that the repository was
+     * back to its default of `Auto`, while Settings went on drawing the chip
+     * the rider had chosen, because Settings reads DataStore and the pipeline
+     * reads its own field. Chosen "Hardware" and restarted the app? The setting
+     * whose entire purpose is that **a ride never records fabricated numbers**
+     * was silently back to the mode that falls back to simulated telemetry.
+     *
+     * Collected here rather than re-applied at ride start, so the one place
+     * that owns the pipeline is the one place that decides what feeds it, for
+     * the life of the process and not the life of a screen.
+     */
+    private fun applyTelemetrySource() {
+        appScope.launch {
+            ServiceLocator.settingsRepository.settings
+                .map { it.sensorMode }
+                .distinctUntilChanged()
+                .collect { ServiceLocator.sensorRepository.setMode(it) }
         }
     }
 

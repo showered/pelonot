@@ -697,7 +697,13 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
             // (2.4.4), which they will want to know afterwards.
             text = when {
                 snapshot.isPaused -> "PAUSED"
-                !snapshot.telemetryLive -> "NO SIGNAL · NOT RECORDING"
+                // Two words, because this chip is only as wide as the clock
+                // above it: "NO SIGNAL · NOT RECORDING" was clipped mid-word to
+                // "NO SIGNAL · NOT", which reads as an unfinished sentence and
+                // is worse than the short version. The full sentence, and what
+                // it means for the record, is on the ride screen where there
+                // is room for it.
+                !snapshot.telemetryLive -> "NO SIGNAL"
                 snapshot.interval.hasClass ->
                     "${Formatters.duration(snapshot.interval.classRemainingSec)} LEFT"
                 else -> "${Formatters.kilojoules(snapshot.totalOutputKj)} · " +
@@ -709,7 +715,9 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-            maxLines = 1
+            maxLines = 1,
+            // A clipped word here is a half-sentence in the corner of a film.
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

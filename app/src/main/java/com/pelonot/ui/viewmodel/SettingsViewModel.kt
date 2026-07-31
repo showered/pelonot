@@ -120,11 +120,18 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setDynamicColor(enabled) }
     }
 
+    /**
+     * Writes the preference and nothing else (2.4.6).
+     *
+     * It used to call `sensorRepository.setMode` here as well, which is why the
+     * choice appeared to work: it took effect in the session it was made in and
+     * was forgotten at the next launch, because nothing else ever applied it.
+     * `PelonotApp` now collects the preference for the life of the process, so
+     * this writing to it *is* applying it — and there is one path rather than
+     * two that could disagree.
+     */
     fun setSensorMode(mode: SensorMode) {
-        viewModelScope.launch {
-            settingsRepository.setSensorMode(mode)
-            sensorRepository.setMode(mode)
-        }
+        viewModelScope.launch { settingsRepository.setSensorMode(mode) }
     }
 
     fun setCloudSyncEnabled(enabled: Boolean) {
