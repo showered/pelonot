@@ -1075,12 +1075,22 @@ less of the screen and less of the attention.
       rider who wants the whole timeline can both have it. Persisted like the
       dock
 - [ ] **11.1b.4** **Dock to the left and right edges too**, not only top and
-      bottom. A vertical strip down one side leaves subtitles *and* faces clear
-      and is probably the better default on a 16:9 tablet in landscape — which
-      is the shape of the device this actually runs on (8.13)
+      bottom — **asked for directly by the owner, 31 July 2026**: "I would like
+      a version of the HUD on the right and left too, should be able to drag it
+      where you want." So this is four edges and one gesture, not two edges and
+      a preference. A vertical strip down one side leaves subtitles *and* faces
+      clear and is probably the better default on a 16:9 tablet in landscape —
+      which is the shape of the device this actually runs on (8.13).
+      `HudDock` is a two-value enum with an `opposite()` and a `gravityFor()`
+      either side of it; both extend to four cleanly, and the drag detector on
+      the handle is currently `detectVerticalDragGestures`, which does not
 - [ ] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
-      rotate: the timeline, the zone badge and the three live numbers each need
-      a tall arrangement. Extends 11.1.4, which only ever considered top/bottom
+      rotate: the timeline, the zone badge and the live numbers each need a tall
+      arrangement. Extends 11.1.4, which only ever considered top/bottom. The
+      chip redesign in 11.1b.1 makes this materially easier than it was — a
+      column of chips is the same components in a `Column` — but the metrics
+      chip holds four readouts in a `Row` and a 200 dp-wide dock will not take
+      them side by side
 - [ ] **11.1b.6** Every one of these choices persists, and the HUD comes back
       where and how the rider left it. *Opacity and dock do; the rest of this
       waits on 11.1b.3 and 11.1b.4 existing*
@@ -1090,7 +1100,14 @@ less of the screen and less of the attention.
       window is `FLAG_NOT_TOUCHABLE` — every tap in that band goes straight
       through to the film. The strip itself can never make that promise; it has
       a stop button on it. *Observed on the tablet AVD: timeline top, numbers
-      bottom, re-docking swaps both*
+      bottom, re-docking swaps both.* **The owner is not sold on the split** and
+      left it to judgement — so treat it as provisional. If it turns out to read
+      as two unrelated things rather than one instrument, the fix is small: the
+      bar is a standalone composable in a window of its own, and putting it back
+      above the chips is a layout change, not a rewrite. Worth settling on the
+      bike rather than by argument, and worth considering alongside 11.1b.4 —
+      the answer may well differ for a vertical dock, where the opposite edge
+      is a *column* and the timeline would have to run down it
 - [ ] **11.1b.8** **The strip still eats touches between the chips.** The window
       is full-width and the gaps are now invisible, so a rider tapping their
       film in the space between two chips gets nothing and cannot see why. It
