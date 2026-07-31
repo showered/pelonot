@@ -17,6 +17,28 @@
 
 ## Where the work stands — read this first
 
+### Latest session — 31 July 2026 (fourth sitting), tablet AVD only
+
+Closed: **16.1.5** (prescribed intervals under the actual trace), **11.1b.1 /
+11.1b.2 / 11.1b.7** (the HUD redesign below), **12.4.3** (ride export), and
+**19.1.5** (README and CONTRIBUTING, which turned out to mean writing the first
+and correcting `ARCHITECTURE.md` instead).
+
+**The HUD stopped being a panel.** 11.1b.1 asks for adjustable opacity, and a
+single alpha over a full-width slab cannot deliver what that item is for: a
+rider asking for more of their film back only ever got a lighter wash over all
+of it, so the numbers got harder to read and the picture never came back. The
+strip is now a transparent band with chips floating in it — backing only where a
+number or a control sits — and the class timeline moved to the opposite screen
+edge in a `FLAG_NOT_TOUCHABLE` window of its own, so taps in that band reach the
+film. Two contrast bugs fell out of building the floor, both recorded in
+11.1b.2; the second one (the worst backdrop is not white) is the more
+interesting.
+
+**Open and deliberately so**: 11.1b.8 (the gaps between chips still eat taps),
+11.1b.9 (correct, not yet beautiful), 11.1b.4/11.1b.4a (the owner wants left and
+right docks and drag-anywhere, and corners once collapsed).
+
 ### Newly raised, nothing actioned — snags from using the app, 31 July 2026
 
 A batch of ten observations from the owner riding the app, written up and
@@ -150,8 +172,8 @@ Three consequences worth carrying forward:
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
 | **11.1b.3 / 11.1b.4** Resizing and side docking | The half of 11.1b still outstanding. Opacity and the two-band layout landed; a vertical dock down one side is probably the better default on a 16:9 tablet and needs a genuine re-flow, not a rotation |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
-| **19.1.5** README and CONTRIBUTING | The README still advertises a root prerequisite the app does not have and does not want (2.1a). That is the difference between a project people try and one they assume they cannot |
-| **12.4** Export, and **19.1.3** local backup | The only safety net that exists before accounts (15) |
+| **19.1.3** Local backup, and **12.4.4** restore | Ride export landed (12.4.3); this is the other half — the whole database as one file. Until accounts exist (15) it is the only backup a rider has, and the destructive-downgrade path is still there |
+| **11.1b.9** The chips as a piece of design | The HUD redesign is correct and not yet beautiful, and the owner has said he will come back to it. Read 11.1b.8 and 11.1b.4a first — they are the same conversation |
 
 Still blocked on things not to hand: **10.6** needs a full-length ride, and the
 four bike items listed above.
