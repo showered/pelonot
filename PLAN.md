@@ -17,6 +17,34 @@
 
 ## Where the work stands — read this first
 
+### Newly raised, nothing actioned — snags from using the app, 31 July 2026
+
+A batch of ten observations from the owner riding the app, written up and
+**deliberately not implemented**. None of them is prioritised against the *What
+to do next* table below yet; that is a decision for whoever picks them up.
+Where they landed:
+
+| Snag | Item |
+|------|------|
+| "Up next" is on the far side of the screen from the current interval | **11.6.1** |
+| No sign of which power zone the rider is in *right now* | **11.6.2** |
+| No icons on the live numbers | **11.6.3** |
+| The target gauge never says what the target *is* | **11.6.4** |
+| "Back to the HUD" is geeky and factually wrong | **11.6.5** |
+| No gesture to dismiss the HUD's volume panel | **11.5.9** |
+| Heart-rate zones — shown, logged and tracked, and the age they need | **Phase 21** |
+| Classes built on heart-rate zones — is it advisable? | **21.5** (verdict: yes, with limits) |
+| "Your Progress" on the dashboard is meaningless | **22.1** |
+| The dashboard stretches too wide on a 1280 dp screen | **22.2** |
+
+Two of these contradict something already in the plan, and both contradictions
+are written into the items rather than papered over: **11.6.5** changes copy
+that 11.1a.2 ticked as done, and **22.2** sits next to **11.3.1**, which says
+the dashboard is fine in landscape. 11.3.1 is still right about what it
+measured — there is no dead space — and 22.2 is about the opposite failure.
+
+---
+
 **Latest session: 31 July 2026 (third sitting), on the tablet AVD only — no
 bike, by request.** Everything below was driven on a 1920 × 1080 / 240 dpi
 emulator matching `HARDWARE.md`, and each tick says what was observed.
@@ -151,6 +179,8 @@ Two notes worth carrying into the next bike session:
 | 18 | Social features in the Android app | ❌ Not started — *nice to have* |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
+| 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
+| 22 | The dashboard | ❌ Not started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using* |
 
 ---
 
@@ -906,6 +936,91 @@ offer it, which makes this closer to fundamental than to polish.
       whether or not buttons are populated. **Settle it with `adb shell getevent
       -l` and a press of every physical button**; ten seconds with someone at
       the bike. Honour the keys if they arrive, but nothing may depend on them
+- [ ] **11.5.9** **A gesture to dismiss the expanded volume panel.** It opens
+      and closes from one small button today (11.5.4), so a rider who opened it
+      mid-ride has to find that same control again with the sliders now in the
+      way. A swipe on the panel towards the strip's own edge should close it —
+      *towards the edge*, so the direction follows the dock rather than being
+      hardcoded down (11.1.4). Two traps: the strip already carries drag-to-move
+      and drag-to-re-dock on the same surface (4.4, 11.1.4), so an ambiguous
+      swipe must not both close the panel and move the strip; and a slider is a
+      horizontal drag consumer sitting inside whatever gesture this adds, so the
+      dismiss has to be on the panel's own chrome or clearly vertical. A timeout
+      that closes it after a few idle seconds is worth considering alongside,
+      since the panel is the one part of the strip that is not about the next
+      sixty seconds of pedalling (11.5.5)
+
+### 11.6 The full-screen ride screen — what a rider cannot read on it
+
+The strip gets the attention in this phase because that is where the ride is
+watched from. But the ride screen is where a rider looks when they want to
+actually *read* something — before the class starts, on a recovery block, when
+the film is paused — and everything below came from riding with it in front of
+them. All of it is emulator-checkable at 1920 × 1080 / 240 dpi.
+
+*(Note 5.4 says the removed leaderboard panel is "tracked as 11.6"; that work
+is **11.4**, and the cross-reference in 5.4 is stale.)*
+
+- [ ] **11.6.1** **"Up next" belongs directly under the current interval, not
+      across the screen from it.** In landscape the ride screen is three
+      columns: `EffortColumn` on the left holds the current interval, and
+      `UpNextColumn` on the right holds what is coming, with the whole metric
+      grid between them. The two things a rider reads *together* — what I am
+      doing, and what I have to be ready for — are at opposite ends of a
+      1280 dp-wide screen, and nothing on screen says they are related. Put the
+      next interval immediately beneath the current one. This is a re-layout of
+      both columns rather than a move of one composable: the right column also
+      carries pause, end and back-to-HUD, and those stay where a thumb expects
+      them. `UpcomingIntervals` (the rest of the class beyond the next block)
+      is a separate question — it can stay on the right, or fold into the
+      timeline at the top, which already draws the same information
+- [ ] **11.6.2** **Which power zone is the rider in *right now*.** The screen
+      shows the *prescribed* zone large and unmissable — that is what the
+      `ProgressArc` and `ZoneGlyph` in the interval card are — and never says
+      which zone the current power actually falls in. The rider learns they are
+      off target from an amber number and an arrow, which says "wrong" without
+      saying "you are in 3 and you were asked for 4". `PowerZone.forPower`
+      already computes it. Three things to decide rather than assume: a free
+      ride has no target but a current zone is still meaningful and should
+      probably show; the current and target zone must be tellable apart at a
+      glance and not two identical badges side by side; and the HUD has exactly
+      the same gap, so whatever is designed here should be shrinkable to the
+      strip
+- [ ] **11.6.3** **Iconography on the live numbers** — a heart for bpm, and the
+      same for cadence, resistance and power. The label is `labelSmall` under a
+      104 sp number, which makes the only thing identifying the number the
+      smallest text on the tile, read from a metre away mid-effort. An icon is
+      recognised faster than a word is read. Keep the text label *beside* it
+      rather than replacing it — a bare glyph for "resistance" is not something
+      anyone recognises unaided — and give the icon `contentDescription = null`,
+      because `MetricReadout` already sets a `clearAndSetSemantics` description
+      for the whole tile and a labelled icon inside it would be announced twice.
+      Same treatment for `SmallStat` (output, distance, avg power) and for the
+      HUD's compact readouts
+- [ ] **11.6.4** **The target gauge does not say what the target is.** This is
+      the biggest of these. `TargetGauge` draws a track, a highlighted band and
+      the rider's position on it, with **no numbers anywhere** — a rider can see
+      they are below the band without ever learning that the interval asks for
+      85–95 rpm. `TargetBand` already carries `min` and `max`; show them.
+      Prominently on the ride screen, where there is room for "85–95" set large
+      next to or under the live value. The HUD strip is a different problem with
+      a different amount of space and should be decided separately rather than
+      by shrinking one design until it fits both. Two details that will bite:
+      the band needs its unit stated once or "85–95" beside a resistance tile is
+      ambiguous, and a *missing* band (11.2.1 deliberately reports none when the
+      target is out of the knob's reach) must not render as "0–0"
+- [ ] **11.6.5** **"Back to the HUD" is the wrong label, twice over.** It is
+      jargon — "HUD" is a word this project's authors use and a rider does not
+      — and it is factually wrong: "back" implies the rider has been there, and
+      most of the time they have not been anywhere yet. What the button actually
+      does is `moveTaskToBack`: it puts the app away and leaves the strip on top
+      of whatever they were watching. Candidates, best first: **"Minimise to the
+      strip"**, "Hide the app, keep riding", "Back to my film". The string is
+      `R.string.ride_back_to_hud`. Note the same jargon is in the ride screen's
+      HUD prompt ("Don't use the HUD") and in Settings, so pick the rider-facing
+      word for this thing **once** and change it everywhere, or the app will
+      have two names for one feature. This revises copy that 11.1a.2 ticked; the
+      behaviour it describes is right and only the label is wrong
 
 ---
 
@@ -1274,7 +1389,7 @@ has simply never been written down.
 ### 19.3 Worth doing eventually
 - [ ] **19.3.1** Multi-week training programmes
 - [ ] **19.3.2** Achievements and streaks (pairs with 16.3.5)
-- [ ] **19.3.3** Heart-rate zones and HR-based targets, for riders who trust their strap more than the power model — which today they should
+- [ ] **19.3.3** ~~Heart-rate zones and HR-based targets~~ — **moved to Phase 21**, which is what this one line actually is: a profile schema change, a zone model, live display, per-ride tracking and HR-targeted classes
 - [ ] **19.3.4** Localisation, once the string catalogue is stable
 - [ ] **19.3.5** Wear OS or a phone companion as a second HR source
 - [ ] **19.3.6** Opt-in, off-by-default crash reporting. For this audience the default matters more than the feature
@@ -1364,6 +1479,214 @@ right one — same device shape, same distance, same job.
 - [ ] **20.2.8** Change your avatar from the companion web app — **much later**,
       and strictly after 17 exists. Listed here so it is not re-invented as a
       separate feature when it is the same field
+
+---
+
+## Phase 21: Heart-rate zones — the metric that is measured for everyone
+
+The app writes a heart rate on every sample it can (2.3.5: 314 rows, 314
+readings, no nulls) and does almost nothing with it — a live number, an
+average, and a line on the ride detail chart. **Zones are what make a heart
+rate mean anything.** They are also the one framing on this bike that does not
+depend on the power model: on hardware the watts are measured (2.1a) but on a
+simulated ride they are modelled and wrong (2.2.4), whereas a strap on the
+rider's chest is measuring the rider either way.
+
+This supersedes **19.3.3**, which was one line in a backlog and is really this
+whole phase.
+
+### 21.1 What the zones are computed from
+
+- [ ] **21.1.1** **Date of birth on the profile.** `profiles` today is name,
+      weight, FTP and a created-at, so this is a schema change and gets the full
+      treatment: a `Migration`, an exported schema in `app/schemas/` and a
+      `MigrationTestHelper` test (12.5). Three decisions to make deliberately:
+      **date of birth rather than an age integer**, or every rider's zones go
+      quietly stale on their birthday; **nullable**, so a rider who does not
+      want to tell the app their age gets *no* HR zones rather than wrong ones;
+      and whether it goes to the cloud at all (14) — this is the first properly
+      personal datum the app would store about someone, and "we sync everything
+      in the row" is not a decision, it is a default. There's no need to have a precise birthday. Stick to month and year.
+- [ ] **21.1.2** Estimated maximum heart rate from age, using **Tanaka
+      (208 − 0.7 × age)** rather than the folk formula 220 − age, which
+      overestimates for younger riders and underestimates for older ones. Say on
+      screen, once and plainly, that it is an estimate
+- [ ] **21.1.3** **A measured max HR that overrides the estimate.** Any
+      age-based formula has a between-individual spread of roughly 10–12 bpm,
+      which is wider than a zone — so for a meaningful fraction of riders the
+      estimated zones are simply the wrong zones. Let a rider who knows their
+      own number type it, and offer the highest heart rate the app has ever
+      recorded for them as a starting point (it already has every sample)
+- [ ] **21.1.4** Resting heart rate, if and only if the model chosen in 21.2
+      needs it. Do not collect a field nothing reads
+- [ ] **21.1.5** Threshold heart rate (LTHR) as the best-quality basis, optional
+      and much later. The guided FTP test in 19.2.3 is the same twenty minutes
+      of riding, so if that is built, this comes almost free from it
+
+### 21.2 The zone model
+
+- [ ] **21.2.1** A `HeartRateZone` in `domain/`, pure and JVM-tested at every
+      boundary, mirroring `PowerZone` in shape but **not sharing its bands or
+      its colours**. Five zones is the usual HR convention against seven for
+      power, and reusing the power palette would tell a rider that HR zone 4 and
+      power zone 4 are the same thing, which they are not
+- [ ] **21.2.2** Pick a basis and name it in the UI: %HRmax is simplest, %HRR
+      (Karvonen) is better and needs 21.1.4, %LTHR is best and needs 21.1.5.
+      One of them, chosen on purpose, stated where the zones are shown
+- [ ] **21.2.3** **The boundaries used for a ride are stored with the ride, not
+      recomputed on read.** A rider who corrects their max HR in March must not
+      silently rewrite what every ride in January said they did. This is the
+      same shape as the `avg_*` trap in CLAUDE.md — and worth noting that
+      `workouts` does not snapshot FTP either, so the power charts already have
+      this latent bug and could be fixed in the same migration
+- [ ] **21.2.4** Nothing anywhere displays a zone when the heart rate is null.
+      Unknown is unknown; this project has already corrupted a rider's record
+      twice by treating a missing heart rate as a number
+
+### 21.3 Seeing it during the ride
+
+- [ ] **21.3.1** Current HR zone on the ride screen beside the live bpm — the
+      same job 11.6.2 does for power, and worth designing as one thing so the
+      screen does not end up with two unrelated zone treatments
+- [ ] **21.3.2** On the HUD only if it earns its half-second (11.5.5, 18.6). A
+      zone number is arguably a better use of strip space than raw bpm, since
+      the rider cannot act on "148" without doing arithmetic first
+- [ ] **21.3.3** Honest states for the two riders who have no zones: no strap
+      connected, and no date of birth recorded. Neither gets a blank tile, and
+      the second gets a way to fix it
+
+### 21.4 Recording and tracking it
+
+- [ ] **21.4.1** Time in each HR zone for a ride, computed from the samples
+      exactly as 16.1.4 does for power. With 21.2.3 in place this needs no new
+      table — the samples and the boundaries are both already there
+- [ ] **21.4.2** Post-ride: an HR-zone distribution beside the power one, and
+      the HR trace (16.1.2) banded by zone. Note 16.1.2 deliberately breaks the
+      line across gaps; the banding must not paper over them
+- [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
+      actually drives a training decision — "how much easy riding did I do this
+      month" — and it is the honest answer to what the dashboard's progress
+      section is reaching for (22.1)
+- [ ] **21.4.4** Be careful what a zone summary is allowed to imply. Heart rate
+      **lags effort by 30–60 seconds**, drifts upward across a long ride at
+      constant power (cardiac drift), and moves with heat, sleep, caffeine and
+      illness. Time-in-zone across a 45-minute class is meaningful; the "zone"
+      of a 30-second interval is mostly the previous interval's
+
+### 21.5 Classes built on heart-rate zones — worth doing, within limits
+
+**The verdict, since the question was asked: yes — but only for long blocks,
+and never as a replacement for the power and cadence targets on short ones.**
+
+For it: this is exactly what current polarised / "80-20" training practice
+asks for — most of the work genuinely easy, a little of it hard — and the
+entire difficulty of riding easy is that riders overshoot when they are chasing
+watts. A *ceiling* is what a zone-2 ride needs, and a heart rate measured off
+the rider's own chest is a more trustworthy ceiling than an uncalibrated power
+model (2.2.4).
+
+Against it: the 30–60 second lag in 21.4.4 makes a short interval untargetable
+by heart rate — the rider is out the other side of a 40-second surge before the
+number arrives. And it depends on a strap, which is optional hardware that can
+drop out mid-class.
+
+- [ ] **21.5.1** An interval may carry an HR-zone target **as well as**, not
+      instead of, its power and cadence targets. `Interval` is a serialised
+      model and `intervals_json` is snake_case with `@SerialName` matching the
+      assets exactly — a new optional field has to land on both sides (the
+      bundled assets *and* the cloud `class_templates`). This is precisely the
+      shape of the 14.2.2a defect: a decode mismatch throws, the sync reports
+      failure, and the app quietly falls back to five bundled classes with
+      nothing wrong on screen and nothing in the log
+- [ ] **21.5.2** A minimum interval length before an HR target is even allowed —
+      on the order of three minutes. Below that the target is power and cadence,
+      enforced in the model rather than left to whoever writes a class
+- [ ] **21.5.3** An HR-targeted class **requires a connected strap**: say so
+      before the ride starts rather than thirty seconds in, and if the strap
+      drops mid-ride fall back to the interval's power/cadence target rather
+      than showing a rider nothing to aim at
+- [ ] **21.5.4** "Zone 2 base" is the obvious first class: one long block, one
+      target, and the app's whole job is to keep saying *ease off* — the cue
+      riders most need and least want to hear
+- [ ] **21.5.5** Wherever a zone came from an age estimate rather than a
+      measured maximum (21.1.2 vs 21.1.3), the class says so. Prescribing effort
+      from a formula with a 12 bpm spread is fine; doing it silently is not
+
+---
+
+## Phase 22: The dashboard — the first screen, and the least considered
+
+Two separate complaints, both raised from riding the app: the progress section
+does not show progress, and the layout is stretched across a screen it should
+be *using*.
+
+### 22.1 "Your Progress" shows no progress
+
+As it stands the section is a heading, the subtitle "Track your performance over
+time", and two cards: today's output in kJ and the last ride's output in kJ.
+Nothing there is a trend, nothing is compared to anything, one of the two is
+usually 0.0, and both are the same quantity on the same axis. The honest empty
+state (see *Corrections*) fixed an outright lie — it used to show hardcoded
+figures on a device that had never recorded a ride — without making what
+replaced it mean anything.
+
+- [ ] **22.1.1** **Decide in one sentence what the dashboard is for**, and let
+      the section follow from that rather than from what fits. The candidate
+      answer: *"should I ride today, and what should I ride?"* — anything that
+      is really "what have I done" belongs to history (12) and trends (16.3)
+- [ ] **22.1.2** Replace the two kJ cards with **consistency**: rides this week
+      against the rider's own recent norm, and the calendar heatmap (16.3.5).
+      What gets somebody onto a bike is a streak they do not want to break, not
+      a kilojoule total they cannot interpret
+- [ ] **22.1.3** **A trend that is genuinely a trend** — output or minutes per
+      week over the last six to eight weeks, sparkline-sized. The history query
+      already returns what this needs
+- [ ] **22.1.4** FTP, with the date it last changed and what changed it
+      (16.3.1). The app already computes this (7.1) and it is the closest thing
+      to a real progress number it owns
+- [ ] **22.1.5** A **last ride** card that opens the ride detail (12.2) —
+      class name, RPE, and whether it beat the rider's own previous ride of the
+      same class, which `leaderboardFor` already computes and nothing renders
+- [ ] **22.1.6** Personal bests (16.3.3), suppressed entirely until there are
+      enough rides for them to be true. A "best" computed from one ride is noise
+      wearing a trophy
+- [ ] **22.1.7** Every figure here has to be honest about whose watts it is
+      (16.1.6). A rider who moved from simulated to hardware telemetry gets a
+      step change in their own history, and an unexplained cliff in a progress
+      chart reads as the app being broken
+- [ ] **22.1.8** Rebuild `DashboardStats` and the dashboard ViewModel around
+      whatever 22.1.1 decides, rather than bolting cards onto the current two
+      totals. Keep every query windowed the way 12.1.6 does — this is the first
+      screen after profile selection and it must never touch `workout_metrics`
+
+### 22.2 A tablet-shaped dashboard
+
+**Read 11.3.1 first, and note it is not wrong.** It says the dashboard fills
+the width with no dead right-hand side, re-checked twice on the bike and once
+on a matching AVD, and that is true. The complaint here is the opposite
+failure: a single column of full-width cards *stretched* across 1280 dp. A card
+1200 dp wide with a two-word label in it is harder to read than the same card
+at 600 dp, and the screen is big enough to be showing more than one thing at a
+time.
+
+- [ ] **22.2.1** Cap the main column and centre it — on the order of 700–800 dp
+      — so a card reads as a card rather than a band across the room. Measured
+      on the 1280 × 720 dp AVD from `HARDWARE.md`, never on a phone
+- [ ] **22.2.2** Then use the two rails that opens up **deliberately**, rather
+      than leaving symmetrical dead space: for instance who is riding and
+      today's context on one side, the last ride and the streak on the other.
+      The rails exist only in landscape and must fold back into the column below
+      a breakpoint
+- [ ] **22.2.3** Decide the three regions as one layout — what the middle is
+      for, what a rail is for, and what a rail does when it has nothing to say
+      (it disappears; it does not show an empty card). Doing this card by card
+      produces three columns of unrelated things, which is worse than one
+- [ ] **22.2.4** The same question applies to Settings and History, which are
+      also full-width cards on a wide screen. Do the dashboard first and find
+      out whether the answer generalises before rolling it out
+- [ ] **22.2.5** Verify against the real system furniture — a 48 dp bottom
+      navigation bar and no top status bar (`HARDWARE.md`) — and on the tablet
+      itself before ticking anything here
 
 ---
 
