@@ -17,7 +17,49 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 31 July 2026 (fourth sitting), tablet AVD only
+### Latest session — 31 July 2026 (fifth sitting): an MVP readiness pass
+
+The question asked was "are we near MVP, and where are the genuine gaps?" The
+answer is that **the happy path is finished and the unhappy paths are not**.
+A ride records, the HUD runs over a film, the class ends, the app comes forward,
+the summary is real, the charts are real, the ride exports. Nothing on that
+path is faked any more. What is missing is almost entirely what happens when
+something does not go to plan — the tablet sleeping, the board dropping out, the
+Activity being destroyed mid-class, a thumb landing on *End ride*.
+
+Six new items came out of tracing the journey against the code, and **four of
+them are of the family this plan's *Corrections* table exists to catch**:
+something fails, the failure is caught and returned as a value nothing reads,
+and every screen goes on looking correct.
+
+| Found | Item | Why it is a blocker |
+|-------|------|---------------------|
+| Nothing keeps the screen on during a ride | **19.1.1** *(already on the plan, untouched)* | The tablet sleeps mid-class. Hidden on the bike only because Netflix holds its own wake lock |
+| A stalled board's last reading is recorded once a second as measured | **2.4.4** | Corrupts `workout_metrics`, `avg_power`, `avg_cadence` and the calibration grid |
+| `SensorStatus.Reconnecting` is rendered nowhere | **2.4.5** | The rider sees frozen numbers and no reason for them |
+| Crash recovery cannot tell a crashed ride from a live one, and *Discard* deletes the live one | **8.3b** | Data loss, mid-ride, from a dialog the rider did not ask for |
+| No route back into a ride already running once the Activity is gone | **11.1a.5** | The ride notification does not open the ride |
+| *End ride* is one tap with no confirmation and no resume | **11.6.6** | A mis-tap ends the class |
+
+Also raised, not blockers: **19.1.6** (the first run explains nothing — FTP
+prefilled at 200 with no way to find a real one, the overlay permission first
+mentioned at ride start). And two on the plan already that belong in the same
+conversation: **19.1.2** auto-pause (every bottle stop drags the averages down,
+and it is the same "the rider is not pedalling" signal as 2.4.4) and
+**19.1.3 / 12.4.4** local backup (until accounts exist a wipe costs the rider
+everything; per-ride export does not cover it).
+
+**A deliberate scoping call for MVP, written down so it is a decision and not a
+drift: ship with cloud sync off and labelled off.** 14 is one sighting from
+proven (14.1.6) but several from useful — an uploaded ride still carries no
+`user_id` (14.2.1), no surface anywhere says whether sync worked (14.2.3), and
+the existing local history has never been uploaded (14.2.6). Half-attributed
+rides in a shared pool is a worse first release than an honestly offline one.
+
+Bookkeeping fixed in passing: **12.2.3** was open while the work behind it was
+done and observed, and `CLAUDE.md` said 230 JVM tests where there are **253**.
+
+### The session before it — 31 July 2026 (fourth sitting), tablet AVD only
 
 Closed: **16.1.5** (prescribed intervals under the actual trace), **11.1b.1 /
 11.1b.2 / 11.1b.7** (the HUD redesign below), **12.4.3** (ride export), and
@@ -167,6 +209,12 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
+**Superseded by the MVP readiness pass above.** The table below was written
+before the fifth sitting and is kept because its reasoning is still good; the
+order now is **19.1.1, 2.4.4, 2.4.5, 8.3b, 11.1a.5, 11.6.6 first**, because all
+six are things a rider hits in their first week and three of them can lose or
+corrupt a ride. Then this:
+
 | Next | Why now |
 |------|---------|
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
@@ -197,13 +245,13 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete — the app now both reads (72 class templates) and writes to the cloud; the written row has not been *seen* (14.1.6) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a), and **the question of whether to calibrate at all is now settled in writing at the head of 2.2a — yes**; it has yet to see a hardware ride (2.2a.1) |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a), and **the question of whether to calibrate at all is now settled in writing at the head of 2.2a — yes**; it has yet to see a hardware ride (2.2a.1). **Newly opened: a stalled board's last reading is recorded as a fresh measured sample (2.4.4), and the rider is never told the sensor stopped (2.4.5)** |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete — `WorkoutSyncWorker` observed running and reporting success; the row itself unseen (14.1.6). **Newly opened: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9)** |
-| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
+| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains — **plus 8.3b, newly opened: the recovery prompt cannot tell a crashed ride from a live one** |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
@@ -668,6 +716,31 @@ Settings section. The gates are exercised against the real 31 July sweep in
 - [x] Unified `StateFlow<SensorReading>` merging bike telemetry and heart rate
 - [x] **One** reconnect policy with exponential backoff (there were previously three competing ones)
 - [x] Hardware mode retries rather than falling back to simulation, so a ride never records fabricated numbers
+- [ ] **2.4.4** **A stale reading is an absence, not a sample.** When the board
+      stops answering, `PelotonSensorServiceSource` closes the flow and
+      `SensorRepository` backs off and retries — but `_sensorReading` is a
+      `StateFlow`, so it goes on holding **the last value that arrived**. The
+      ticker in `WorkoutService.recordMetric` reads `.value` unconditionally
+      once a second, so a dropout writes that frozen reading into
+      `workout_metrics` every second for as long as it lasts, folds it into
+      `avg_power` and `avg_cadence`, and feeds it to the calibration grid with
+      `powerIsMeasured` still true. Total output is the one figure that escapes,
+      by accident: `WorkoutMetricsCalculator` integrates against
+      `reading.timestampMs`, and a repeated reading carries a repeated
+      timestamp, so `dt` is zero. That accident is the shape of the fix —
+      **`timestampMs` already says how old a reading is and nothing else asks.**
+      Same family as nullable `heartRateBpm` and the `TIME_OUT` payload in
+      2.1a.3: a zero or a repeat that means *we do not know* must not enter the
+      rider's permanent record as though it were measured
+- [ ] **2.4.5** **The rider is never told the sensor stopped.**
+      `SensorStatus.Reconnecting` is constructed, logged and rendered nowhere:
+      the only consumer of `SensorStatus` in the whole UI is `isSimulated` on
+      `RideUiState`. In Hardware mode with a dead board the ride screen shows
+      frozen numbers with no explanation and the HUD shows nothing at all — and
+      the strip has no simulated-telemetry marker either, though the ride screen
+      does. This is the *Corrections* rule applied to telemetry: a failure path
+      that is caught, logged and returned as a value nothing reads is
+      indistinguishable from success from every surface anyone looks at
 
 ### 2.5 Metrics calculator
 - [x] Total output by integrating power over **elapsed time**
@@ -869,6 +942,23 @@ exists; nothing creates one. The previous value is overwritten and gone.
 - [x] **8.2** BLE disconnection handled without self-triggered reconnect loops
 - [x] **8.3** Crash recovery via `is_complete`, surfaced through `WorkoutService.recoverableWorkout`
 - [x] **8.3a** Recovery prompt shown at launch, driven from `AppViewModel` rather than the service. It offers to **keep** the ride, not resume it: the rider stopped pedalling when the app went away, and restarting the clock would splice a gap of unknown length into the record. `WorkoutAggregates` rebuilds the totals from the samples that did land.
+- [ ] **8.3b** **Crash recovery cannot tell a crashed ride from one that is
+      running right now.** `getIncompleteWorkout()` is
+      `SELECT * FROM workouts WHERE is_complete = 0 ORDER BY timestamp DESC
+      LIMIT 1` and `clearRecoverableWorkouts()` is
+      `DELETE FROM workouts WHERE is_complete = 0`. Neither excludes the ride
+      in flight — and a ride in flight is `is_complete = 0` by design (1.12).
+      `AppViewModel` runs the query in `init`, so **any** creation of
+      `MainActivity` while a ride is recording raises the non-dismissible "You
+      have an unfinished ride" dialog over the profile picker, mid-class, and
+      *Discard* deletes the live row out from under the service — taking its
+      metric series with it by cascade and leaving the next per-second insert to
+      violate the foreign key that historically killed all recording (3.4). The
+      trigger is not exotic: the rider starts a class, minimises to the strip,
+      and forty minutes of Netflix on a tablet this size is ample reason for
+      Android to destroy a backgrounded Activity. Same shape as the 8.3
+      correction one layer down — that one returned the ride you had just
+      finished, this one returns the ride you are still on
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
@@ -1054,6 +1144,21 @@ polish item: it is the single journey a rider makes most often during a class.
       and all 135 of its `workout_metrics` rows with it — checked by count
       against the database, not by the screen returning.* Local only: an
       already-uploaded ride stays in the cloud until tombstones exist (15.3.4)
+- [ ] **11.1a.5** **The cold-start door — there is no way back into a ride that
+      is already running.** 11.1a.1–11.1a.3 all assume the app's task still
+      exists: `AppForeground.bringForward` sends `ACTION_MAIN` +
+      `CATEGORY_LAUNCHER` precisely so an existing task resumes where it was
+      left, which is the right behaviour and covers the common case. When the
+      Activity is gone it resumes nothing — the graph's start destination is the
+      profile selector, and **nothing outside `WorkoutService` knows a ride
+      exists**. So the strip's double-tap, the ride notification and the
+      launcher icon all land the rider on "who's riding?" with a class still
+      recording behind it and no route to it. The notification is the worse of
+      the three, because a ride notification that does not open the ride is the
+      one thing a notification is for. Needs the running ride to be knowable
+      from outside the service — the incomplete workout row already says so, and
+      8.3b has to be fixed first or asking the question raises the recovery
+      dialog instead
 
 ### 11.1b The HUD getting out of the way
 
@@ -1317,6 +1422,17 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       word for this thing **once** and change it everywhere, or the app will
       have two names for one feature. This revises copy that 11.1a.2 ticked; the
       behaviour it describes is right and only the label is wrong
+- [ ] **11.6.6** **Ending a ride takes one tap and cannot be undone.** The end
+      button is a 72 dp pill at the bottom of the right-hand column, directly
+      under pause, pressed with sweaty hands while moving; the HUD's stop is the
+      same. There is no resume — `stopWorkout` finalises the row, tears down the
+      overlay and stops the service — so a mis-tap at minute 20 of a 45-minute
+      class ends the class. The ride itself survives, which is why this is not
+      a data-loss item; what it destroys is the remaining twenty-five minutes.
+      Confirm it, in the same weight as 12.3.2 and 11.1a.4. Two things to get
+      right: the confirmation must be **dismissible by a tap anywhere**, because
+      it is raised mid-effort and the common case is "I did not mean that", and
+      it must not appear when the class timer ends the ride by itself
 
 ---
 
@@ -1339,7 +1455,10 @@ layer is done and nothing renders it.
 ### 12.2 Ride detail
 - [x] **12.2.1** `RideDetailScreen`, a separate destination from `PostRide`. Not `PostRideViewModel` with a flag: that one runs the FTP analyser over the whole series on load and offers to rewrite the rider's FTP, which is right ninety seconds after a ride and bizarre on a ride from March
 - [x] **12.2.2** `RideSummaryCard` extracted out of `PostRideSummaryScreen` and shared by both
-- [ ] **12.2.3** Charts (phase 16) land here first
+- [x] **12.2.3** Charts (phase 16) land here first. *Bookkeeping: this box was
+      left open while the work behind it was done and observed. `RideChartsSection`
+      is on this screen and 16.1.1–16.1.5 were each ticked against it on the
+      tablet AVD; there was never a separate piece of work here*
 - [x] **12.2.4** Edit RPE after the fact, saving on each tap. **Observed**: rated 7 from the detail screen, `rpe_rating = 7` in the row
 
 ### 12.3 Delete
@@ -1717,6 +1836,16 @@ has simply never been written down.
 - [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
 - [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
+- [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped
+      straight onto the profile picker; profile creation asks for an FTP with
+      **200 prefilled** and no way to find a real one (19.2.3 is the guided test
+      and is unbuilt); the overlay permission — the thing the entire product is
+      built on — is first mentioned at ride start; and a heart-rate strap is
+      discoverable only by opening Settings. None of it is broken, and all of it
+      assumes the rider already knows what this app is. The smallest honest
+      version: say what FTP is and that a guess is fine and the app will correct
+      it (7.1 already does), offer the overlay permission before the first ride
+      rather than during it, and mention the strap once
 - [x] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot.
       *Written. Note the item's own premise was wrong: there was no README at
       all to correct — the root prerequisite was being advertised by
