@@ -262,7 +262,9 @@ fun MetricReadout(
             )
         }
 
-        if (!compact) {
+        // No gauge without a target. An empty track under a free ride's numbers
+        // is a gauge that measures nothing, which is worse than no gauge.
+        if (!compact && band.isDefined) {
             Spacer(Modifier.height(6.dp))
             TargetGauge(band = band, value = rawValue, accent = accent)
             Spacer(Modifier.height(4.dp))

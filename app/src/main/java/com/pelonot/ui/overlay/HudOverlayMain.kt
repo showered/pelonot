@@ -160,27 +160,7 @@ fun HudOverlayMain(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    // A gradient into the screen edge rather than a flat panel:
-                    // over video, a hard rectangle reads as a bug, a fade reads
-                    // as part of the picture.
-                    // Nearly opaque. A translucent panel looks better in a
-                    // screenshot and is unreadable over a bright scene, which is
-                    // the only place it will ever actually be used.
-                    Brush.verticalGradient(
-                        if (dock == HudDock.Bottom) {
-                            listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f)
-                            )
-                        } else {
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f),
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
-                            )
-                        }
-                    )
-                )
+                .background(hudBackground(dock))
                 // Layered after the gradient so it washes over the panel
                 // rather than being painted under it.
                 .background(accent.copy(alpha = 0.30f * flash))
@@ -197,6 +177,28 @@ fun HudOverlayMain(
 
             if (dock == HudDock.Top) edge()
         }
+    }
+}
+
+/**
+ * The strip's fill: a short translucent lead-in at the inner edge so the
+ * boundary is not a hard line across the picture, then effectively opaque
+ * wherever the numbers actually sit.
+ *
+ * The first version graded the *whole* strip from 0.90 to 0.97, which looks
+ * elegant in a screenshot against a black wallpaper and is unreadable over
+ * anything bright — which is the only place it will ever really be used.
+ */
+@Composable
+private fun hudBackground(dock: HudDock): Brush {
+    val edge = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
+    val body = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.985f)
+    val deep = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.995f)
+
+    return if (dock == HudDock.Bottom) {
+        Brush.verticalGradient(0f to edge, 0.14f to body, 1f to deep)
+    } else {
+        Brush.verticalGradient(0f to deep, 0.86f to body, 1f to edge)
     }
 }
 

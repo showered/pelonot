@@ -399,3 +399,131 @@ by `catch` blocks and `runCatching`, so the app looked healthy.
 - The HUD overlay is built but never shown.
 - `WorkoutSyncWorker` is correct but nothing calls `enqueue()`.
 - Nothing has run against real Peloton hardware; `PowerModel`'s coefficients are unvalidated.
+
+---
+
+# Ride Integration & the HUD-First Redesign — 2026-07-31
+
+The app could not previously run a class. It recorded telemetry and totals, but
+the intervals a class prescribes did nothing, and the floating HUD — the surface
+this app is actually for — was never shown. Both are now real, and the HUD has
+been rebuilt around how the device is used rather than how it is demoed.
+
+## The premise
+
+A rider starts a class and switches to Netflix on the same 21.5" tablet. They
+look at Pelonot in glances for the next forty minutes. So the HUD is not an
+accessory to the ride screen — it *is* the product, and everything below is
+judged by whether it survives being read in half a second, from two metres
+away, out of breath.
+
+## Ride integration (PLAN phase 9)
+
+**`ClassIntervalEngine`** advances a class through its intervals as a pure
+function of elapsed time, evaluated on the service's existing ticker. It is
+deliberately not a timer: the ride already has one authoritative clock, and a
+second one would drift away from it over a 45-minute class until the two
+disagreed about which interval was running. Pausing the ride pauses the class
+for free.
+
+**`RideSnapshot`** is the single object the HUD and the ride screen both render
+from, so the two can never disagree. Telemetry stays on its own higher-rate
+flow — folding it in would recompose the entire strip several times a second
+for numbers that had not moved.
+
+**The closing cue lands on the last *hard* interval**, not the last one. Most
+classes end on a cooldown, and shouting "give it everything" over a Zone 1
+spin-down is worse than saying nothing. A class that ends on a Z4+ effort gets
+it on the final interval instead. No class ever previews a "next up" interval
+on its last one.
+
+**The ride finishes itself** when the class timer runs out, and ending from the
+HUD, from the screen, or by expiry all take the same path.
+
+## The HUD
+
+Docked full-width to one screen edge — top by default, because subtitles live
+along the bottom — carrying the class timeline, the clock, the current interval
+in a draining progress ring, three live numbers with target gauges, what is
+coming next, and the controls. Dragging snaps it to the other edge; tapping
+collapses it to a slim strip that still carries the countdown. The middle of
+the screen is never covered and the overlay only takes touches inside its own
+strip. `WorkoutService` owns it, because a ride outlives the screen.
+
+**The countdown is the one thing on it that is never optional.** Five seconds
+out, the edge hairline thickens and pulses in the next zone's colour, the
+preview card scales up into a countdown with the digit at 44sp, the strip washes
+with that colour, and a haptic fires on each tick.
+
+**Zone is encoded three times over** so it reads from peripheral vision without
+being read: colour, digit, and a badge whose shape sharpens with intensity — a
+circle at Zone 1, a twelve-point star at Zone 7, morphing between them on a
+change. Built on `androidx.graphics.shapes`, the same machinery behind Material
+3 Expressive's shape language, without moving to the material3 alpha.
+
+**Targets are gauges, not numbers.** A rider at 240 W being asked for 250–280 W
+should not have to compare two figures while breathing hard.
+
+## The coach
+
+Split into a pure, unit-tested `RideCoachPolicy` that decides *whether* to say
+something, and a `RideCoach` that only speaks and buzzes. All the restraint is
+in the policy: drift has to persist 12 s before it is mentioned and 45 s before
+it is mentioned again, a stationary rider is never told to pedal harder, and
+the countdown buzzes on every tick but speaks once.
+
+`CoachStyle` — Spoken, Silent, or Off — is a real setting. Silent by default: a
+bike in a shared room should not talk unasked, and in that mode the HUD's motion
+*is* the announcement. Speech uses navigation-guidance audio attributes so the
+rider's film ducks under it.
+
+## Also
+
+- Crash recovery is offered at launch and rebuilds a killed ride's totals from
+  the samples that did land. It offers to *keep* the ride, not resume it.
+- Guest rides can be filed against a profile, or a new one created on the spot.
+- `WorkoutSyncWorker` is finally enqueued by something.
+- The ride screen is rebuilt for the landscape tablet it runs on.
+
+## Defects found by running it, not reading it
+
+| Defect | Effect |
+|--------|--------|
+| **`android.permission.VIBRATE` was never declared** | Every haptic threw `SecurityException` into a `runCatching`. The buzz simply never happened, and nothing said why. Invisible from the UI; found in logcat during a real ride. |
+| **`WorkoutDaoTest` never ran** | `@Before fun setup() = runBlocking { … }` returns the last expression's type, and `insertUser` returns a row id. JUnit rejects a non-void `@Before`, so the class failed to initialise and all ten tests silently did nothing — while PLAN 8.8 was ticked. |
+| **The HUD sat under the status bar** | `FLAG_LAYOUT_IN_SCREEN` put the class timeline behind the system clock. |
+| **The HUD was legible only over black** | A 0.90–0.97 gradient across the whole strip looks elegant against a dark wallpaper and is unreadable over a bright scene, which is the only place it will ever be used. |
+| **Scaling the strip to catch the eye peeled it off the screen edge** | Reads as a rendering fault. Replaced with a colour wash. |
+| **The countdown banner clipped inside its slot** | The zone name and the digit did not both fit in 256dp. |
+
+## Verification
+
+- `./gradlew testDebugUnitTest` — **150 tests, 0 failures**
+- `./gradlew connectedDebugAndroidTest` — **17 tests, 0 failures** (10 DAO,
+  7 `WorkoutService` lifecycle)
+- On a 1920×1080 landscape tablet emulator, checked against the database rather
+  than the screen:
+  - A 20-minute Threshold class ran to its end and finished itself: 1200 s,
+    171.6 kJ, 143 W average, **1201 metric rows covering seconds 0–1200 with no
+    gaps**. 143 W × 1200 s = 171.6 kJ, so the integration is right.
+  - Returning to the app after it ended in the background went straight to the
+    summary with those figures.
+  - "Cool down — ride easy" appeared on the final Z1 interval, with no next-up
+    preview on it.
+  - The HUD rendered over the launcher at both edges, collapsed and re-expanded,
+    dragged between edges with the choice persisted, and stopped the ride from
+    its own button.
+  - Crash recovery rebuilt a killed ride from its samples (6:29, 53.4 kJ) and
+    then correctly offered the *second* orphaned ride rather than abandoning it.
+
+## Known gaps (see PLAN.md phase 11)
+
+- **Resistance is not on the HUD.** The knob is the rider's only actuator; power
+  is an output. This is the largest single omission.
+- The leaderboard panel was removed with the old floating card and has not been
+  re-homed. `WorkoutRepository.leaderboardFor` is still correct and unused.
+- The profile selector, dashboard and post-ride summary are still phone-shaped
+  columns on a 1920×1080 screen.
+- Spoken coach mode has not been heard over a playing video on a device with a
+  real TTS voice installed.
+- Nothing has run against a real Peloton.
