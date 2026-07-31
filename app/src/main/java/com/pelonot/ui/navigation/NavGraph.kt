@@ -298,7 +298,27 @@ fun PelonotNavGraph(
                 workoutId = workoutId,
                 isGuest = uiState.selectedProfile == null,
                 onDone = {
-                    navController.popBackStack(Destination.Dashboard.route, inclusive = false)
+                    // 8.3c. `popBackStack` returns false when the destination
+                    // asked for was never on the stack, and that Boolean was
+                    // read by nobody — the same shape as everything in the
+                    // Corrections table. The crash-recovery dialog navigates
+                    // here straight from "Who's riding?", where Dashboard has
+                    // never been pushed, so *both* buttons on this screen did
+                    // nothing whatever and the rider was stranded on the
+                    // summary of a ride they had just been asked to keep.
+                    //
+                    // Back to the profile selector rather than to a Dashboard
+                    // that was never entered: at this point nobody has said who
+                    // is riding.
+                    val popped = navController.popBackStack(
+                        Destination.Dashboard.route,
+                        inclusive = false
+                    )
+                    if (!popped) {
+                        navController.navigate(Destination.ProfileSelector.route) {
+                            popUpTo(Destination.PostRide.route) { inclusive = true }
+                        }
+                    }
                 }
             )
         }
