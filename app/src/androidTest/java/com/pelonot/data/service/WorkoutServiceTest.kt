@@ -40,13 +40,35 @@ class WorkoutServiceTest {
     private var startedWorkoutId: String? = null
 
     @Before
-    fun setup() {
+    fun setup() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         ServiceLocator.init(context)
-        ServiceLocator.sensorRepository.setMode(SensorMode.Simulated)
+
+        // Set the *preference*, not the repository (2.4.6). `PelonotApp`
+        // collects that preference for the life of the process and applies it,
+        // so a test that reached past it and called `setMode` directly was
+        // racing the collector: whichever landed last won, and in a full-suite
+        // run that was sometimes the device's own stored setting — which is
+        // Hardware on any machine where somebody has tried Hardware mode. The
+        // symptom was two unrelated tests timing out with no telemetry.
+        ServiceLocator.settingsRepository.setSensorMode(SensorMode.Simulated)
+        awaitSensorMode(SensorMode.Simulated)
 
         val binder = serviceRule.bindService(Intent(context, WorkoutService::class.java))
         service = (binder as WorkoutService.WorkoutBinder).getService()
+    }
+
+    /** The preference reaches the pipeline through a flow, so it is not instant. */
+    private fun awaitSensorMode(mode: SensorMode) {
+        val deadline = System.currentTimeMillis() + TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            if (ServiceLocator.sensorRepository.currentMode() == mode) return
+            Thread.sleep(POLL_MS)
+        }
+        throw AssertionError(
+            "telemetry never switched to $mode " +
+                "(stuck at ${ServiceLocator.sensorRepository.currentMode()})"
+        )
     }
 
     @After

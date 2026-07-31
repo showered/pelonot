@@ -1505,7 +1505,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       word for this thing **once** and change it everywhere, or the app will
       have two names for one feature. This revises copy that 11.1a.2 ticked; the
       behaviour it describes is right and only the label is wrong
-- [ ] **11.6.6** **Ending a ride takes one tap and cannot be undone.** The end
+- [x] **11.6.6** **Ending a ride takes one tap and cannot be undone.** The end
       button is a 72 dp pill at the bottom of the right-hand column, directly
       under pause, pressed with sweaty hands while moving; the HUD's stop is the
       same. There is no resume — `stopWorkout` finalises the row, tears down the
@@ -1515,7 +1515,21 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       Confirm it, in the same weight as 12.3.2 and 11.1a.4. Two things to get
       right: the confirmation must be **dismissible by a tap anywhere**, because
       it is raised mid-effort and the common case is "I did not mean that", and
-      it must not appear when the class timer ends the ride by itself
+      it must not appear when the class timer ends the ride by itself.
+      *Both surfaces, and they had to be answered differently. The ride screen
+      gets a dialog naming the elapsed time and what is left of the class —
+      that second number is the one the rider does not have in their head
+      mid-effort — dismissible by tapping anywhere. **The strip cannot raise a
+      dialog at all**: it is `FLAG_NOT_FOCUSABLE` by design, which is the whole
+      reason the film keeps focus, so the button asks for itself — first tap
+      turns it into "END?", second answers it, four seconds of silence is also
+      an answer. Asked in the UI and not the service, so a class that runs out
+      of intervals still ends by itself with nobody there to answer. One thing
+      found only by looking: an `IconButton` sizes to a 52 dp circle whatever
+      is inside it, so the word wrapped to "EN / D?" — it swaps to a pill
+      button rather than restyling the icon one. **Observed on the tablet AVD**:
+      Keep riding returns to a still-running ride; on the strip, one tap leaves
+      the service up, the button reverts on its own, and two taps end it*
 
 ---
 
