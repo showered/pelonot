@@ -83,6 +83,7 @@ import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
+import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.RideUiState
 import com.pelonot.ui.viewmodel.RideViewModel
 
@@ -585,8 +586,8 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
         )
         SmallStat(
             label = "DISTANCE",
-            value = String.format(java.util.Locale.US, "%.2f", snapshot.distanceKm),
-            unit = "km",
+            value = Formatters.distanceValue(snapshot.distanceKm, MaterialTheme.units),
+            unit = MaterialTheme.units.distanceLabel,
             accent = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f)
         )

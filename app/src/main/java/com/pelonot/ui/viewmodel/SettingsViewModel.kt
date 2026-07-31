@@ -15,6 +15,7 @@ import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.UnitSystem
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -115,6 +116,10 @@ class SettingsViewModel(
 
     fun setHudDock(dock: HudDock) {
         viewModelScope.launch { settingsRepository.setHudDock(dock) }
+    }
+
+    fun setUnitSystem(units: UnitSystem) {
+        viewModelScope.launch { settingsRepository.setUnitSystem(units) }
     }
 
     fun scanForHeartRateMonitors() = sensorRepository.scanForHeartRateDevices()

@@ -75,6 +75,7 @@ import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.spacing
+import com.pelonot.ui.theme.units
 
 /**
  * The floating ride HUD.
@@ -423,7 +424,7 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
                 snapshot.interval.hasClass ->
                     "${Formatters.duration(snapshot.interval.classRemainingSec)} LEFT"
                 else -> "${Formatters.kilojoules(snapshot.totalOutputKj)} · " +
-                    Formatters.kilometres(snapshot.distanceKm)
+                    Formatters.distance(snapshot.distanceKm, MaterialTheme.units)
             },
             style = MaterialTheme.typography.labelSmall,
             color = if (snapshot.isPaused) {

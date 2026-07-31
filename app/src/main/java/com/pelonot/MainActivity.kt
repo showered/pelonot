@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
 
             PelonotTheme(
                 darkTheme = darkTheme,
-                useDynamicColor = uiState.settings.useDynamicColor
+                useDynamicColor = uiState.settings.useDynamicColor,
+                units = uiState.settings.unitSystem
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

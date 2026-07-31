@@ -29,8 +29,8 @@
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | ❌ Blocked on bike access |
 | 11 | **HUD-first experience — the current priority** | 🔶 In progress |
-| 12 | Ride history & the rider's own record | ❌ Not started — *fundamental* |
-| 13 | Units and display preferences | ❌ Not started — *fundamental, small* |
+| 12 | Ride history & the rider's own record | 🔶 12.5 migrations done; history screen next — *fundamental* |
+| 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **In progress** — schema fixed and writes verified against the live project; app-driven round trip still open (14.1.6) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
 | 16 | Data visualisation | ❌ Not started — half fundamental, half polish |
@@ -427,10 +427,15 @@ layer is done and nothing renders it.
 - [ ] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has
 
 ### 12.5 Room migrations — do this before anything in 12–19 ships
-- [ ] **12.5.1** Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects
-- [ ] **12.5.2** Export the Room schema to `app/schemas/` and check it in, so migrations can be written against a known starting point
-- [ ] **12.5.3** `MigrationTestHelper` instrumented test for each migration
-- [ ] **12.5.4** Only then, the schema changes phases 13–15 need (unit preference, `deleted_at`, `synced_at`, `auth_user_id`)
+- [x] **12.5.1** Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects. `AppMigrations.ALL` is the list; a downgrade still falls back destructively, since that only happens when an older APK is installed over a newer one on a development device
+- [x] **12.5.2** Export the Room schema to `app/schemas/` and check it in. The stale `2.json` left over from an abandoned `theme_preference` column has been deleted; `1.json` and `2.json` are now the real history
+- [x] **12.5.3** `MigrationTestHelper` instrumented test for each migration. 1→2 runs against a real SQLite file created from the exported v1 schema, with rows written beforehand, and asserts they — and the cascade onto `workout_metrics` — survive. **Observed: 18 instrumented tests pass on the tablet emulator**
+- [x] **12.5.5** The first migration is one the app needed anyway rather than a placeholder: `workouts.was_recovered`, so history can distinguish a ride rebuilt from its samples after a crash from one that finished normally (12.1.3)
+- [ ] **12.5.4** Only then, the schema changes phases 14–15 need (`deleted_at`, `synced_at`, `auth_user_id`). Units (13) turned out to need none — the preference is a display concern and lives in DataStore
+
+> Deliberate consequence: a development device still holding a pre-migration
+> database now fails to open rather than silently emptying itself. No shipped
+> build has ever existed, so no rider is affected; uninstall and reinstall.
 
 > This is listed last in the phase and is first in the work. Every remaining
 > phase adds a column. The moment a build with a real training history is
@@ -446,13 +451,13 @@ Distance is hardcoded to kilometres (`Formatters.kilometres`), which is the
 wrong default for a UK or US rider looking at a Peloton bike whose own display
 is in miles.
 
-- [ ] **13.1** `UnitSystem` (`METRIC` / `IMPERIAL`) in `SettingsRepository`, defaulting from the device locale rather than to metric
-- [ ] **13.2** Settings toggle, next to the existing FTP and weight fields
-- [ ] **13.3** `Formatters` takes the unit system: distance km/mi, speed km/h/mph, body weight kg/lb
-- [ ] **13.4** **Store SI, convert at the edge.** `total_distance_km` and `weight_kg` stay canonical in Room and in the cloud; nothing but the formatter ever sees miles. A unit preference that reaches the database is a data corruption bug waiting for the rider to change their mind
-- [ ] **13.5** Every surface reads the same setting: dashboard, post-ride summary, history, ride detail, and the HUD
-- [ ] **13.6** Watts, RPM, BPM and kJ are unit-agnostic and stay as they are. Resist the temptation to offer calories — kJ is what the bike measures and the conversion invites a nutrition claim the power model cannot support
-- [ ] **13.7** JVM tests for the conversions and for locale-derived defaults
+- [x] **13.1** `UnitSystem` (`METRIC` / `IMPERIAL`) in `SettingsRepository`, defaulting from the device locale. Absent-means-never-chosen, so the locale is consulted on every read rather than metric being pinned on first launch
+- [x] **13.2** Settings toggle, next to the existing FTP and weight fields. **Observed on the emulator**: an `en-US` device opens on Imperial with no prompting
+- [x] **13.3** `Formatters` takes the unit system: distance km/mi, speed km/h/mph, body weight kg/lb. No no-argument overload survives — a caller that forgot the preference is a compile error rather than a silent kilometre
+- [x] **13.4** **Store SI, convert at the edge.** **Observed**: 160 lb typed into profile creation is `72.5747792016057` in `profiles.weight_kg`, read back as `160.0 lb`, and switching to Metric mid-session redraws it as `72.6 kg` without touching the row
+- [x] **13.5** Every surface reads the same setting, delivered through `LocalUnitSystem` from `PelonotTheme` — which is what lets the HUD read it, since the overlay is composed from the service and has no ViewModel to thread it through. Ride screen, post-ride summary, HUD strip, settings and profile creation all consume it
+- [x] **13.6** Watts, RPM, BPM and kJ are unit-agnostic and stay as they are. No calories, and the Settings copy says why
+- [x] **13.7** JVM tests for the conversions, the settings-field round trip, and locale-derived defaults — **plus** `FormattersTest`, which pins every number under `fr-FR` and `hi-IN-u-nu-deva`. A missing `Locale.US` is the same defect class that put epoch millis into a `TIMESTAMPTZ` (14.0)
 
 ---
 

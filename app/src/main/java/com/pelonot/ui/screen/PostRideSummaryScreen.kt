@@ -43,6 +43,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
+import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.PostRideViewModel
 
 /**
@@ -126,7 +127,10 @@ fun PostRideSummaryScreen(
                     SummaryRow("Average power", Formatters.watts(workout.avgPower ?: 0.0))
                     SummaryRow("Average cadence", Formatters.rpm(workout.avgCadence ?: 0.0))
                     SummaryRow("Average heart rate", Formatters.bpm(workout.avgHr?.toInt()))
-                    SummaryRow("Distance", Formatters.kilometres(workout.totalDistanceKm))
+                    SummaryRow(
+                        "Distance",
+                        Formatters.distance(workout.totalDistanceKm, MaterialTheme.units)
+                    )
                 }
             }
 

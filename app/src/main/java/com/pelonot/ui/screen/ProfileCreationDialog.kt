@@ -12,12 +12,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.pelonot.domain.model.UnitSystem
+import com.pelonot.ui.theme.units
 
+/**
+ * The weight field is shown in the rider's own units and handed back in
+ * kilograms, which is what `profiles.weight_kg` means and the only thing that
+ * is ever stored. See [UnitSystem].
+ */
 @Composable
 fun ProfileCreationDialog(
     onProfileCreated: (name: String, weightKg: Double?, ftpWatts: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val units = MaterialTheme.units
     var name by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var ftp by remember { mutableStateOf("200") }
@@ -44,7 +52,7 @@ fun ProfileCreationDialog(
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { weight = it },
-                    label = { Text("Weight (kg)") },
+                    label = { Text("Weight (${units.weightLabel})") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -64,7 +72,7 @@ fun ProfileCreationDialog(
                     if (name.isNotBlank()) {
                         onProfileCreated(
                             name,
-                            weight.toDoubleOrNull(),
+                            weight.toDoubleOrNull()?.let(units::weightToKg),
                             ftp.toIntOrNull() ?: 200
                         )
                     }

@@ -24,10 +24,12 @@ import com.pelonot.data.service.RideSnapshot
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.theme.PelonotTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 
 /**
  * Hosts the floating ride HUD in a `WindowManager` overlay so it can sit on
@@ -126,7 +128,13 @@ class HudOverlayManager(private val context: Context) {
                 val reading by ServiceLocator.sensorRepository.sensorReading
                     .collectAsStateWithLifecycle()
 
-                PelonotTheme(darkTheme = true, useDynamicColor = false) {
+                // 13.5: the strip shows distance, so it reads the same
+                // preference as every other surface rather than a second one.
+                val units by ServiceLocator.settingsRepository.settings
+                    .map { it.unitSystem }
+                    .collectAsStateWithLifecycle(UnitSystem.DEFAULT)
+
+                PelonotTheme(darkTheme = true, useDynamicColor = false, units = units) {
                     HudOverlayMain(
                         snapshot = snapshot,
                         reading = reading,

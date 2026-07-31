@@ -54,10 +54,12 @@ import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.SettingsViewModel
+import java.util.Locale
 
 /**
  * Settings, backed by [SettingsViewModel] so every change persists.
@@ -113,10 +115,16 @@ fun SettingsScreen(
                 RiderSection(
                     ftp = state.ftpWatts,
                     weightKg = state.weightKg,
+                    units = state.settings.unitSystem,
                     onFtpChange = viewModel::setFtp,
                     onWeightChange = viewModel::setWeight
                 )
             }
+
+            UnitsSection(
+                units = state.settings.unitSystem,
+                onUnitsChange = viewModel::setUnitSystem
+            )
 
             AppearanceSection(
                 themeMode = state.settings.themeMode,
@@ -166,16 +174,23 @@ fun SettingsScreen(
 private fun RiderSection(
     ftp: Int,
     weightKg: Double?,
+    units: UnitSystem,
     onFtpChange: (Int) -> Unit,
     onWeightChange: (Double) -> Unit
 ) {
     // Seeded from the persisted value, then re-seeded whenever it changes
-    // underneath us (e.g. an accepted FTP breakthrough).
+    // underneath us (e.g. an accepted FTP breakthrough) — or whenever the unit
+    // preference changes, since 72 kg and 159 lb are the same rider.
     var ftpText by remember(ftp) { mutableStateOf(ftp.toString()) }
-    var weightText by remember(weightKg) { mutableStateOf(weightKg?.toString().orEmpty()) }
+    var weightText by remember(weightKg, units) {
+        mutableStateOf(
+            weightKg?.let { String.format(Locale.US, "%.1f", units.weightFromKg(it)) }.orEmpty()
+        )
+    }
 
     val ftpValue = ftpText.toIntOrNull()
-    val weightValue = weightText.toDoubleOrNull()
+    // The field is in the rider's units; the profile row is always kilograms.
+    val weightValue = weightText.toDoubleOrNull()?.let(units::weightToKg)
     val ftpError = ftpText.isNotBlank() && (ftpValue == null || ftpValue !in MIN_FTP..MAX_FTP)
     val weightError = weightText.isNotBlank() &&
         (weightValue == null || weightValue !in MIN_WEIGHT..MAX_WEIGHT)
@@ -202,9 +217,15 @@ private fun RiderSection(
         OutlinedTextField(
             value = weightText,
             onValueChange = { weightText = it },
-            label = { Text("Weight (kg)") },
+            label = { Text("Weight (${units.weightLabel})") },
             supportingText = {
-                if (weightError) Text("Enter a value between $MIN_WEIGHT and $MAX_WEIGHT")
+                if (weightError) {
+                    Text(
+                        "Enter a value between " +
+                            "${units.weightFromKg(MIN_WEIGHT).toInt()} and " +
+                            "${units.weightFromKg(MAX_WEIGHT).toInt()} ${units.weightLabel}"
+                    )
+                }
             },
             isError = weightError,
             singleLine = true,
@@ -225,6 +246,49 @@ private fun RiderSection(
         ) {
             Text("Save")
         }
+    }
+}
+
+/**
+ * Miles or kilometres.
+ *
+ * The default comes from the device locale rather than being fixed at metric,
+ * which is what the app did before — wrong for a UK or US rider, and wrong on
+ * a Peloton bike whose own display is in miles.
+ *
+ * Changing it re-renders every existing ride; it does not rewrite one. Distance
+ * and weight are stored in SI and converted here at the edge, so flipping this
+ * back and forth is lossless.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun UnitsSection(
+    units: UnitSystem,
+    onUnitsChange: (UnitSystem) -> Unit
+) {
+    SettingsSection("Units") {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            UnitSystem.entries.forEach { option ->
+                FilterChip(
+                    selected = units == option,
+                    onClick = { onUnitsChange(option) },
+                    label = {
+                        Text("${option.displayName} (${option.distanceLabel}, ${option.weightLabel})")
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+        Text(
+            text = "Applies to distance, speed and your body weight. Power, cadence, " +
+                "heart rate and output have no imperial form and stay as they are — " +
+                "and kilojoules is what the bike measures, so Pelonot doesn't offer " +
+                "calories.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

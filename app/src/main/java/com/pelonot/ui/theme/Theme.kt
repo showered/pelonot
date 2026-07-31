@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.pelonot.domain.model.UnitSystem
 
 // ==========================================
 // Design tokens
@@ -78,6 +79,17 @@ val LocalElevation = staticCompositionLocalOf { Elevation() }
 val LocalIconSizes = staticCompositionLocalOf { IconSizes() }
 val LocalMotion = staticCompositionLocalOf { MotionTokens() }
 
+/**
+ * The rider's miles-or-kilometres preference, so every surface reads the same
+ * one — including the HUD, which is composed from the service rather than the
+ * activity and has no ViewModel of its own to thread it through.
+ *
+ * Deliberately *not* static: this one changes at runtime when the rider flips
+ * the setting mid-session, and a `staticCompositionLocalOf` would recompose the
+ * entire tree to deliver it.
+ */
+val LocalUnitSystem = androidx.compose.runtime.compositionLocalOf { UnitSystem.DEFAULT }
+
 val MaterialTheme.spacing: Spacing
     @Composable @ReadOnlyComposable get() = LocalSpacing.current
 
@@ -92,6 +104,9 @@ val MaterialTheme.motionTokens: MotionTokens
 
 val MaterialTheme.expressiveShapes: ExpressiveShapes
     @Composable @ReadOnlyComposable get() = LocalExpressiveShapes.current
+
+val MaterialTheme.units: UnitSystem
+    @Composable @ReadOnlyComposable get() = LocalUnitSystem.current
 
 // ==========================================
 // Colour schemes
@@ -181,6 +196,7 @@ private val PelonotLightColorScheme = lightColorScheme(
 fun PelonotTheme(
     darkTheme: Boolean = true,
     useDynamicColor: Boolean = false,
+    units: UnitSystem = UnitSystem.DEFAULT,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -214,7 +230,8 @@ fun PelonotTheme(
         LocalElevation provides Elevation(),
         LocalIconSizes provides IconSizes(),
         LocalMotion provides MotionTokens(),
-        LocalExpressiveShapes provides ExpressiveShapes()
+        LocalExpressiveShapes provides ExpressiveShapes(),
+        LocalUnitSystem provides units
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

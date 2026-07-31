@@ -12,6 +12,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.UnitSystem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -43,7 +44,16 @@ data class AppSettings(
     val hudEnabled: Boolean = true,
 
     /** Which screen edge the HUD is pinned to. */
-    val hudDock: HudDock = HudDock.DEFAULT
+    val hudDock: HudDock = HudDock.DEFAULT,
+
+    /**
+     * Miles or kilometres. Display only — see [UnitSystem].
+     *
+     * The default is derived from the device locale rather than fixed at
+     * metric, so a UK or US rider is not shown kilometres on a bike whose own
+     * display is in miles.
+     */
+    val unitSystem: UnitSystem = UnitSystem.fromLocale()
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "pelonot_settings")
@@ -71,7 +81,11 @@ class SettingsRepository(context: Context) {
                 cloudSyncEnabled = prefs[Keys.CLOUD_SYNC_ENABLED] ?: true,
                 coachStyle = CoachStyle.fromName(prefs[Keys.COACH_STYLE]),
                 hudEnabled = prefs[Keys.HUD_ENABLED] ?: true,
-                hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK])
+                hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK]),
+                // Absent means the rider has never chosen, so fall back to the
+                // locale each time rather than pinning metric on first read.
+                unitSystem = UnitSystem.fromName(prefs[Keys.UNIT_SYSTEM])
+                    ?: UnitSystem.fromLocale()
             )
         }
 
@@ -99,6 +113,8 @@ class SettingsRepository(context: Context) {
     /** Persisted so the HUD returns to the edge the rider last dragged it to. */
     suspend fun setHudDock(dock: HudDock) = edit { it[Keys.HUD_DOCK] = dock.name }
 
+    suspend fun setUnitSystem(units: UnitSystem) = edit { it[Keys.UNIT_SYSTEM] = units.name }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         dataStore.edit(block)
     }
@@ -113,5 +129,6 @@ class SettingsRepository(context: Context) {
         val COACH_STYLE = stringPreferencesKey("coach_style")
         val HUD_ENABLED = booleanPreferencesKey("hud_enabled")
         val HUD_DOCK = stringPreferencesKey("hud_dock")
+        val UNIT_SYSTEM = stringPreferencesKey("unit_system")
     }
 }
