@@ -1198,20 +1198,40 @@ right one — same device shape, same distance, same job.
 
 ### 20.1 The profile selector
 
-- [ ] **20.1.1** **Centre the profiles and make them big.** Today they are
+- [x] **20.1.1** **Centre the profiles and make them big.** Today they are
       small cards in a grid pinned to the top-left of a 1920×1080 screen, with
       the rest of it empty. Confirmed by screenshot on the tablet emulator, 31
-      July 2026
-- [ ] **20.1.2** Landscape-first, centred both ways, sized off the screen rather
-      than a fixed dp — this app runs on a tablet bolted to a bike, not a phone
-- [ ] **20.1.3** Guest keeps its distinct treatment (6.1) but stops competing
-      with the real riders for the eye. It is the exception, not a peer
-- [ ] **20.1.4** "Create a new profile" belongs alongside the riders as one more
+      July 2026. *Rebuilt as a TV-picker: one centred row of square tiles with
+      the heading above it, observed at 1920×1080/240 dpi*
+- [x] **20.1.2** Landscape-first, centred both ways, sized off the screen rather
+      than a fixed dp — this app runs on a tablet bolted to a bike, not a phone.
+      *Tile size is derived from the available width and the number of tiles,
+      bounded at both ends: a floor so a household of six stays tappable with
+      sweaty hands, and a ceiling so one lone rider does not get a comic 500 dp
+      square. The avatar and its initial scale with the tile — a fixed type
+      style left a small letter marooned in a large circle*
+- [x] **20.1.3** Guest keeps its distinct treatment (6.1) but stops competing
+      with the real riders for the eye. It is the exception, not a peer.
+      *A peer in layout, deliberately not in weight: riders are filled cards,
+      Guest and New rider are outlined, so the eye lands on a real rider
+      without having to read anything*
+- [x] **20.1.4** "Create a new profile" belongs alongside the riders as one more
       tile, not as a full-width bar at the bottom of an otherwise empty screen
-- [ ] **20.1.5** Edit and delete a profile from here. Deleting one has to say
+- [x] **20.1.5** Edit and delete a profile from here. Deleting one has to say
       what happens to their rides — `workouts.user_id` is `ON DELETE SET NULL`,
       so the rides survive as unattributed rather than being destroyed, and the
-      dialog should say so rather than letting the rider guess
+      dialog should say so rather than letting the rider guess. *Press and hold
+      a rider. Rename is here because it is the one field Settings cannot
+      change; FTP and weight stay there and the dialog says so. Removal reads
+      "Their rides are kept — they stop being filed against anyone and stay in
+      the history as unattributed."* Deleting the selected profile also clears
+      `lastProfileId`, or the dashboard would go on greeting a rider who has
+      been removed.
+      **One trap worth carrying forward:** `Card(onClick = …)` has no
+      long-press, and the first version put `onLongClick` in `semantics` only.
+      That is an accessibility action, not a gesture — a real press-and-hold
+      fell straight through to the click and opened the dashboard. It needs
+      `Modifier.combinedClickable`
 
 ### 20.2 Avatars
 

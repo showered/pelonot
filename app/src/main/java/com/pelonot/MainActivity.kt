@@ -59,7 +59,11 @@ class MainActivity : ComponentActivity() {
                             onCreateProfile = viewModel::createProfile,
                             onSelectProfile = viewModel::selectProfile,
                             onRecoverWorkout = viewModel::recoverWorkout,
-                            onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout
+                            onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout,
+                            onRenameProfile = { user, name ->
+                                viewModel.renameProfile(user.localUserId, name)
+                            },
+                            onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) }
                         )
                     }
                 }

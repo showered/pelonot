@@ -39,6 +39,24 @@ class UserRepository(
         save(user.copy(weightKg = weightKg))
     }
 
+    /**
+     * Renames a profile (20.1.5).
+     *
+     * The one field Settings cannot change — it edits FTP and weight — and the
+     * one most likely to have been typed in a hurry on a bike.
+     */
+    suspend fun updateName(userId: Int, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        val user = userDao.getUserById(userId) ?: return
+        save(user.copy(name = trimmed))
+    }
+
+    /**
+     * Removes a profile. **Their rides survive**: `workouts.user_id` is
+     * `ON DELETE SET NULL`, so the history becomes unattributed rather than
+     * being destroyed. Whatever calls this has to say so.
+     */
     suspend fun delete(userId: Int) = userDao.deleteUser(userId)
 
     suspend fun count(): Int = userDao.getUserCount()

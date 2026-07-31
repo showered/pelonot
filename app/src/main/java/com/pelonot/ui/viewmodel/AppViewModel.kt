@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -121,6 +122,27 @@ class AppViewModel(
 
     fun selectProfile(userId: Int?) {
         viewModelScope.launch { settingsRepository.setLastProfileId(userId) }
+    }
+
+    /** Renames a rider from the profile selector (20.1.5). */
+    fun renameProfile(userId: Int, name: String) {
+        viewModelScope.launch { userRepository.updateName(userId, name) }
+    }
+
+    /**
+     * Removes a rider. Their rides survive as unattributed —
+     * `workouts.user_id` is `ON DELETE SET NULL` — which the dialog that leads
+     * here says out loud.
+     */
+    fun deleteProfile(userId: Int) {
+        viewModelScope.launch {
+            userRepository.delete(userId)
+            // A selected profile that no longer exists would leave the
+            // dashboard greeting a rider who has been removed.
+            if (settingsRepository.settings.first().lastProfileId == userId) {
+                settingsRepository.setLastProfileId(null)
+            }
+        }
     }
 
     /**

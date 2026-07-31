@@ -57,7 +57,9 @@ fun PelonotNavGraph(
     onCreateProfile: (name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) -> Unit,
     onSelectProfile: (Int?) -> Unit,
     onRecoverWorkout: (onRecovered: (String) -> Unit) -> Unit = {},
-    onDiscardRecoverableWorkout: () -> Unit = {}
+    onDiscardRecoverableWorkout: () -> Unit = {},
+    onRenameProfile: (com.pelonot.data.local.entity.UserEntity, String) -> Unit = { _, _ -> },
+    onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {}
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -130,7 +132,9 @@ fun PelonotNavGraph(
                     onSelectProfile(null)
                     navController.navigate(Destination.Dashboard.route)
                 },
-                onCreateProfile = { showProfileDialog = true }
+                onCreateProfile = { showProfileDialog = true },
+                onRenameProfile = onRenameProfile,
+                onDeleteProfile = onDeleteProfile
             )
         }
 
