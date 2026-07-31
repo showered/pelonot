@@ -16,7 +16,7 @@
     <string name="cd_pause_ride">Pause ride</string>
     <string name="cd_resume_ride">Resume ride</string>
     <string name="cd_end_ride">End ride</string>
-    <string name="cd_drag_handle">Drag to reposition the ride strip</string>
+    <string name="cd_drag_handle">Drag to reposition the ride overlay</string>
 
     <string name="cd_show_volume">Show the volume sliders</string>
     <string name="cd_hide_volume">Hide the volume sliders</string>
@@ -25,9 +25,10 @@
     <!--
       11.6.5. "Back to the HUD" was jargon and, worse, untrue: "back" implies
       the rider has been there, and most of the time they have not been anywhere
-      yet. The button puts the app away and leaves the strip over whatever they
-      are watching. "The strip" is the rider-facing name for this thing
-      throughout the app — Settings and the permission prompt say the same.
+      yet. What the button does is put the app away and leave the overlay on top
+      of whatever they are watching. **"Overlay" is the rider-facing name for
+      this thing throughout the app** — the owner's word, chosen over "strip" —
+      and Settings, the permission prompt and the drag handle all say the same.
     -->
-    <string name="ride_minimise_to_strip">Minimise to the strip</string>
+    <string name="ride_view_in_overlay">View in Overlay Mode</string>
 </resources>

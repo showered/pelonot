@@ -72,10 +72,12 @@ import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.service.RideSnapshot
+import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
+import com.pelonot.ui.components.CurrentZoneBar
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
@@ -209,15 +211,14 @@ private fun OverlayPermissionDialog(
         text = {
             Text(
                 "Pelonot can dock your metrics, targets and interval countdown to " +
-                    "the edge of the screen — a strip along one edge while you " +
-                    "watch something else. Android needs your permission to draw " +
-                    "over other apps first."
+                    "the edge of the screen while you watch something else. Android " +
+                    "needs your permission to draw over other apps first."
             )
         },
         confirmButton = { TextButton(onClick = onGrant) { Text("Open settings") } },
         dismissButton = {
             Row {
-                TextButton(onClick = onNever) { Text("Don't show the strip") }
+                TextButton(onClick = onNever) { Text("Don't use the overlay") }
                 TextButton(onClick = onNotNow) { Text("Not now") }
             }
         }
@@ -576,6 +577,13 @@ private fun EffortColumn(
             }
 
             CueBanner(interval.cue, accent)
+
+            // 11.6.1. What I am doing, and what I have to be ready for, are the
+            // two things a rider reads together — and they used to sit at
+            // opposite ends of a 1280 dp screen with the whole metric grid
+            // between them, with nothing saying they were related. The next
+            // effort now hangs directly off the current one.
+            NextUpBlock(interval, Modifier.fillMaxWidth())
         }
 
         Spacer(Modifier.weight(1f))
@@ -640,6 +648,21 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
+        // 11.6.2. Over the numbers rather than beside the prescribed zone: the
+        // zone a rider is *in* is a reading of their live power, and this is
+        // the column live power lives in. It carries "asked for Z4" with it, so
+        // the comparison travels with the number rather than needing the two
+        // badges to be adjacent — and a strip of words beside the interval
+        // card's glyph could never be mistaken for it.
+        //
+        // Shown on a free ride too, where nothing is prescribed: "which zone am
+        // I in" is a question a class does not have to have asked.
+        CurrentZoneBar(
+            zone = state.currentZone,
+            prescribed = if (hasTargets) snapshot.interval.targetZone else null,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         // The two inputs, given the most room: cadence and resistance are the
         // only things the rider can actually change.
         Row(
@@ -854,7 +877,51 @@ private fun SmallStat(
     }
 }
 
-/** What is coming, and the controls. */
+/**
+ * The next effort, swapping to a countdown for the final seconds (11.6.1).
+ *
+ * Lives beside the current interval rather than in the right-hand column. The
+ * countdown is the one thing on this screen that must not be missed, and the
+ * rider's eyes are already on the interval card when it fires.
+ */
+@Composable
+private fun NextUpBlock(
+    interval: IntervalState,
+    modifier: Modifier = Modifier
+) {
+    val next = interval.next ?: return
+
+    AnimatedContent(
+        targetState = interval.isChangeImminent,
+        transitionSpec = {
+            (fadeIn() + scaleIn(initialScale = 0.85f))
+                .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
+        },
+        modifier = modifier,
+        label = "RideNextOrCountdown"
+    ) { imminent ->
+        if (imminent) {
+            CountdownBanner(
+                secondsRemaining = interval.remainingInIntervalSec,
+                nextZone = next.powerZone
+            )
+        } else {
+            NextUpPreview(
+                next = next,
+                secondsUntil = interval.remainingInIntervalSec,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * The rest of the class, and the controls.
+ *
+ * The *next* effort moved out of here to sit under the current one (11.6.1);
+ * what stays is the shape of the class beyond it, and pause / end / overlay,
+ * which stay put because a thumb learns where they are.
+ */
 @Composable
 private fun UpNextColumn(
     state: RideUiState,
@@ -865,36 +932,11 @@ private fun UpNextColumn(
     modifier: Modifier = Modifier
 ) {
     val interval = state.snapshot.interval
-    val next = interval.next
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        if (next != null) {
-            AnimatedContent(
-                targetState = interval.isChangeImminent,
-                transitionSpec = {
-                    (fadeIn() + scaleIn(initialScale = 0.85f))
-                        .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
-                },
-                label = "RideNextOrCountdown"
-            ) { imminent ->
-                if (imminent) {
-                    CountdownBanner(
-                        secondsRemaining = interval.remainingInIntervalSec,
-                        nextZone = next.powerZone
-                    )
-                } else {
-                    NextUpPreview(
-                        next = next,
-                        secondsUntil = interval.remainingInIntervalSec,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
         if (interval.hasClass) {
             UpcomingIntervals(
                 intervals = state.snapshot.intervals,
@@ -920,7 +962,7 @@ private fun UpNextColumn(
                 Icon(imageVector = Icons.Default.PictureInPictureAlt, contentDescription = null)
                 Spacer(Modifier.width(MaterialTheme.spacing.small))
                 Text(
-                    text = stringResource(R.string.ride_minimise_to_strip),
+                    text = stringResource(R.string.ride_view_in_overlay),
                     style = MaterialTheme.typography.titleMedium
                 )
             }

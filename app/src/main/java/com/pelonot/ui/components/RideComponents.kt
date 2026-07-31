@@ -399,6 +399,111 @@ private val TargetStatus.spokenSuffix: String
     }
 
 // ==========================================================================
+// The zone the rider is actually in
+// ==========================================================================
+
+/**
+ * Which power zone the rider is in *right now* (11.6.2).
+ *
+ * Everything else on the ride screen shows the zone that was *prescribed* —
+ * the big glyph in the interval card, the wash of colour behind the whole
+ * screen. Being off it was rendered as an amber number and an arrow, which
+ * says "wrong" without ever saying "you are in 3 and you were asked for 4".
+ *
+ * Deliberately not a second badge beside the first. The prescribed zone is a
+ * glyph with a shape per zone; this is a strip of words, so the two cannot be
+ * confused at a glance even though they carry the same colour scheme. When
+ * they agree, the sentence collapses to "ON TARGET" rather than repeating the
+ * number back — a rider on target does not need to be told twice.
+ *
+ * [zone] is null when there is no power to speak of: a dead board, or a rider
+ * who has stopped pedalling. [PowerZone.forPower] answers Z1 for zero watts,
+ * which is true and useless, and printing "ACTIVE RECOVERY" over a bike nobody
+ * is on is the same class of lie as a frozen cadence.
+ */
+@Composable
+fun CurrentZoneBar(
+    zone: PowerZone?,
+    modifier: Modifier = Modifier,
+    prescribed: PowerZone? = null,
+    compact: Boolean = false
+) {
+    val color by animateColorAsState(
+        targetValue = zone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "CurrentZoneColor"
+    )
+
+    val onTarget = zone != null && prescribed != null && zone == prescribed
+    val spoken = when {
+        zone == null -> "No power reading, so no current zone"
+        prescribed == null -> "You are in zone ${zone.number}, ${zone.displayName}"
+        onTarget -> "You are in zone ${zone.number}, on target"
+        else -> "You are in zone ${zone.number}, ${zone.displayName}; " +
+            "asked for zone ${prescribed.number}"
+    }
+
+    Row(
+        modifier = modifier
+            .clip(MaterialTheme.expressiveShapes.large)
+            .background(color.copy(alpha = 0.14f))
+            .padding(
+                horizontal = if (compact) 8.dp else MaterialTheme.spacing.medium,
+                vertical = if (compact) 4.dp else MaterialTheme.spacing.small
+            )
+            .clearAndSetSemantics { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "NOW",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.width(if (compact) 6.dp else MaterialTheme.spacing.small))
+        Text(
+            text = zone?.let { "Z${it.number}" } ?: "--",
+            style = if (compact) {
+                MaterialTheme.typography.labelLarge
+            } else {
+                MaterialTheme.typography.titleMedium
+            },
+            color = color,
+            fontWeight = FontWeight.Black,
+            maxLines = 1
+        )
+
+        if (!compact && zone != null) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = zone.displayName.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
+
+        if (prescribed != null && zone != null) {
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = if (onTarget) "ON TARGET" else "ASKED FOR Z${prescribed.number}",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (onTarget) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    AlertAmber
+                },
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
+// ==========================================================================
 // Class timeline
 // ==========================================================================
 

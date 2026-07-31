@@ -50,7 +50,22 @@ data class RideUiState(
     val elapsedSeconds: Int get() = snapshot.elapsedSeconds
     val isPaused: Boolean get() = workoutState == WorkoutState.Paused
     val isFinished: Boolean get() = workoutState == WorkoutState.Completed
-    val currentZone: PowerZone get() = PowerZone.forPower(reading.powerWatts, ftpWatts.toDouble())
+    /**
+     * The zone the rider's power actually falls in (11.6.2), or null when there
+     * is no power to speak of.
+     *
+     * [PowerZone.forPower] answers Z1 for zero watts and for an unknown FTP,
+     * which is true and useless: "Active Recovery" printed over a bike nobody
+     * is pedalling, or over a board that has gone quiet, is the same class of
+     * claim as a frozen cadence (2.4.4). The absence is the answer, so the
+     * caller gets a null it has to render as one.
+     */
+    val currentZone: PowerZone?
+        get() = if (ftpWatts <= 0 || reading.powerWatts <= 0.0 || !snapshot.telemetryLive) {
+            null
+        } else {
+            PowerZone.forPower(reading.powerWatts, ftpWatts.toDouble())
+        }
 
     /** True when telemetry is fabricated, so the UI can say so plainly. */
     val isSimulated: Boolean

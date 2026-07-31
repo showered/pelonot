@@ -421,10 +421,10 @@ private fun HudHandle(
                 }
                 .semantics {
                     contentDescription = if (collapsed) {
-                        "Expand the ride strip. Drag to move it to the other " +
+                        "Expand the ride overlay. Drag to move it to the other " +
                             "edge, or double tap it to open Pelonot."
                     } else {
-                        "Collapse the ride strip. Drag to move it to the other " +
+                        "Collapse the ride overlay. Drag to move it to the other " +
                             "edge, or double tap it to open Pelonot."
                     }
                 },

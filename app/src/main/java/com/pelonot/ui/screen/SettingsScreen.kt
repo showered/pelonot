@@ -518,9 +518,9 @@ private fun RideHudSection(
     onCoachStyleChange: (CoachStyle) -> Unit,
     onRequestPermission: () -> Unit
 ) {
-    SettingsSection("The ride strip") {
+    SettingsSection("Ride overlay") {
         SettingsToggle(
-            title = "Show the strip over other apps",
+            title = "Show the ride overlay over other apps",
             description = "Docks your metrics, targets and interval countdown to one " +
                 "edge of the screen while you watch something else.",
             checked = hudEnabled,
@@ -531,7 +531,7 @@ private fun RideHudSection(
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
             Text(
                 text = "Android still needs \"display over other apps\" permission " +
-                    "before the strip can appear.",
+                    "before the overlay can appear.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
@@ -563,7 +563,7 @@ private fun RideHudSection(
         }
         Spacer(Modifier.size(MaterialTheme.spacing.small))
         Text(
-            text = "You can also drag the strip's handle to move it between edges " +
+            text = "You can also drag the overlay's handle to move it between edges " +
                 "mid-ride. Top is the default because subtitles live along the bottom.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -626,7 +626,7 @@ private fun HudOpacityControl(opacity: Float, onOpacityChange: (Float) -> Unit) 
     val percent = (current * 100).roundToInt()
 
     Text(
-        text = "How solid the strip is",
+        text = "How solid the overlay is",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface
     )
@@ -640,7 +640,7 @@ private fun HudOpacityControl(opacity: Float, onOpacityChange: (Float) -> Unit) 
             modifier = Modifier
                 .weight(1f)
                 .clearAndSetSemantics {
-                    contentDescription = "Strip opacity, $percent percent"
+                    contentDescription = "Overlay opacity, $percent percent"
                 }
         )
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
@@ -806,7 +806,7 @@ private fun VolumeSection(
         )
         Spacer(Modifier.size(MaterialTheme.spacing.small))
         Text(
-            text = "Both are also on the strip mid-ride, behind the volume button — " +
+            text = "Both are also on the overlay mid-ride, behind the volume button — " +
                 "which is when you actually find out the film is too loud.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
