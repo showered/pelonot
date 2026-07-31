@@ -233,6 +233,18 @@ class WorkoutService : Service() {
                 .getOrDefault(PowerModel.curve)
         }
 
+        // Published before anything can ask: the recovery query (8.3b) has to
+        // be able to tell this ride apart from a crashed one from the moment
+        // the row exists, and the row is written a few lines below.
+        RideInProgress.begin(
+            ActiveRide(
+                workoutId = session.workoutId,
+                classId = classId,
+                intentId = intent.id,
+                ftpWatts = ftpWatts
+            )
+        )
+
         _currentSession.value = session
         _workoutState.value = WorkoutState.Active
         _rideSnapshot.value = RideSnapshot(
@@ -339,6 +351,10 @@ class WorkoutService : Service() {
         serviceScope.launch {
             flushPendingMetrics()
             workoutRepository.finaliseWorkout(finalSession.toEntity())
+            // Only now: until the row is `is_complete = 1` it still looks like
+            // a crash artifact, and a cold start in that window would offer to
+            // recover the ride that is in the middle of being saved.
+            RideInProgress.end()
             Log.i(TAG, "Workout saved: ${finalSession.workoutId}")
 
             // After the ride is safely on disk, never before: calibration is
@@ -622,6 +638,11 @@ class WorkoutService : Service() {
     }
 
     override fun onDestroy() {
+        // A ride whose service has gone really has become a crash artifact, so
+        // it stops being the live ride and starts being recoverable. Ordinary
+        // stops have already cleared this after finalising.
+        RideInProgress.end()
+
         // A ride still in flight when the service dies must not lose the
         // metrics already buffered in memory.
         if (pendingMetrics.isNotEmpty()) {

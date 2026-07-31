@@ -169,16 +169,47 @@ class WorkoutDaoTest {
         // Regression: the old query was `ORDER BY timestamp DESC LIMIT 1` with
         // no completion filter, so the app offered to resume the ride the user
         // had just finished, on every single launch.
-        assertNull(workoutDao.getIncompleteWorkout())
+        assertNull(workoutDao.getIncompleteWorkout(excludingId = null))
 
         workoutDao.insertWorkout(
             workout("crashed", isComplete = false, timestamp = System.currentTimeMillis() + 1000)
         )
-        assertEquals("crashed", workoutDao.getIncompleteWorkout()?.id)
+        assertEquals("crashed", workoutDao.getIncompleteWorkout(excludingId = null)?.id)
 
-        workoutDao.deleteIncompleteWorkouts()
-        assertNull(workoutDao.getIncompleteWorkout())
+        workoutDao.deleteIncompleteWorkouts(excludingId = null)
+        assertNull(workoutDao.getIncompleteWorkout(excludingId = null))
         assertNotNull(workoutDao.getWorkoutById("finished"))
+    }
+
+    /**
+     * 8.3b. A ride in progress is `is_complete = 0` exactly like a crashed one,
+     * and the app used to offer to discard the class the rider was still on —
+     * then delete the row out from under the running service.
+     */
+    @Test
+    fun theRideInProgressIsNeitherOfferedForRecoveryNorDeleted() = runBlocking {
+        val now = System.currentTimeMillis()
+        workoutDao.insertWorkout(workout("crashed", isComplete = false, timestamp = now - 1000))
+        workoutDao.insertWorkout(workout("live", isComplete = false, timestamp = now))
+
+        // Newest first would otherwise hand back the live ride every time.
+        assertEquals("crashed", workoutDao.getIncompleteWorkout(excludingId = "live")?.id)
+
+        workoutDao.deleteIncompleteWorkouts(excludingId = "live")
+        assertNull(workoutDao.getIncompleteWorkout(excludingId = "live"))
+        assertNotNull(workoutDao.getWorkoutById("live"))
+    }
+
+    /**
+     * The null case is spelled out in the SQL because `id != NULL` is never
+     * true: written the obvious way, excluding nothing would exclude
+     * everything and no ride could ever be recovered.
+     */
+    @Test
+    fun excludingNothingStillFindsTheCrashedRide() = runBlocking {
+        workoutDao.insertWorkout(workout("crashed", isComplete = false))
+
+        assertEquals("crashed", workoutDao.getIncompleteWorkout(excludingId = null)?.id)
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.service.RideInProgress
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
@@ -108,9 +109,21 @@ class WorkoutRepository(
      */
     suspend fun discardWorkout(workoutId: String) = workoutDao.deleteWorkout(workoutId)
 
-    suspend fun findRecoverableWorkout(): WorkoutEntity? = workoutDao.getIncompleteWorkout()
+    /**
+     * A ride the app was killed in the middle of, or null.
+     *
+     * The exclusion is the whole point (8.3b). A ride in progress is
+     * `is_complete = 0` — that ordering is what lets `workout_metrics`
+     * reference it at all (1.12) — so without it this returns the ride the
+     * rider is on, and the app offers to discard the class they are currently
+     * pedalling. The guard lives here rather than at each call site because
+     * there are three of them and forgetting it is silent.
+     */
+    suspend fun findRecoverableWorkout(): WorkoutEntity? =
+        workoutDao.getIncompleteWorkout(excludingId = RideInProgress.workoutId)
 
-    suspend fun clearRecoverableWorkouts() = workoutDao.deleteIncompleteWorkouts()
+    suspend fun clearRecoverableWorkouts() =
+        workoutDao.deleteIncompleteWorkouts(excludingId = RideInProgress.workoutId)
 
     /**
      * Finalises a ride the app was killed in the middle of.

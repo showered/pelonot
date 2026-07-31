@@ -157,11 +157,31 @@ interface WorkoutDao {
     /**
      * The most recent ride that was never finalised — i.e. the app was killed
      * mid-workout. Returns null in the normal case.
+     *
+     * [excludingId] is the ride being recorded right now, which is also
+     * `is_complete = 0` and is emphatically not a crash artifact (8.3b). Room
+     * cannot express "skip nothing" with a null parameter and an inequality, so
+     * the null case is spelled out in the predicate rather than left to
+     * `id != NULL`, which is never true and would return no rows at all.
      */
-    @Query("SELECT * FROM workouts WHERE is_complete = 0 ORDER BY timestamp DESC LIMIT 1")
-    suspend fun getIncompleteWorkout(): WorkoutEntity?
+    @Query(
+        """
+        SELECT * FROM workouts
+        WHERE is_complete = 0 AND (:excludingId IS NULL OR id != :excludingId)
+        ORDER BY timestamp DESC LIMIT 1
+        """
+    )
+    suspend fun getIncompleteWorkout(excludingId: String?): WorkoutEntity?
 
-    /** Abandons any stale in-progress rides, e.g. after the user declines recovery. */
-    @Query("DELETE FROM workouts WHERE is_complete = 0")
-    suspend fun deleteIncompleteWorkouts()
+    /**
+     * Abandons stale in-progress rides, e.g. after the rider declines recovery.
+     *
+     * This used to be an unqualified `DELETE FROM workouts WHERE is_complete = 0`,
+     * which took the live ride with it — see 8.3b. It keeps the bulk form
+     * because a device that has crashed twice has two orphaned rides and the
+     * rider should not be asked twice, but it can no longer reach the one ride
+     * that is not orphaned.
+     */
+    @Query("DELETE FROM workouts WHERE is_complete = 0 AND (:excludingId IS NULL OR id != :excludingId)")
+    suspend fun deleteIncompleteWorkouts(excludingId: String?)
 }
