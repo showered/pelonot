@@ -46,7 +46,7 @@ and every screen goes on looking correct.
 **All six were then built and observed on the tablet AVD in the same sitting,
 along with one more that the verifying turned up.** Closed: **19.1.1**,
 **2.4.4**, **2.4.5**, **2.4.6**, **8.3b**, **11.1a.5**, **11.6.6** and the
-greeting in **22.3.1**. 253 JVM tests and 23 instrumented tests green.
+greeting in **22.3.1**. 260 JVM tests and 23 instrumented tests green.
 
 **2.4.6 is the find of the sitting, and it was found by checking the fix for
 something else.** While confirming that a dead board says so on screen, the

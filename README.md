@@ -100,7 +100,7 @@ Two things worth knowing before reading any code:
 - **The pure logic is deliberately free of Android imports** — `PowerModel`,
   `CadenceTracker`, `WorkoutMetricsCalculator`, `PostWorkoutAnalyzer` and
   everything under `domain/` are plain Kotlin and JVM-testable. That is why
-  there are 253 unit tests that run in a couple of seconds.
+  there are 260 unit tests that run in a couple of seconds.
 - **`PowerModel` is not trustworthy and the code says so out loud.** Its shipped
   coefficients score RMSE 137 W against 310 measured samples from a real board.
   It never produces a recorded number: on hardware the board reports watts

@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 253 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 260 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -98,6 +98,20 @@ an AVD at the right resolution but the wrong density hides half of them.
   caveat below applies to simulated rides and to the 11.2.1 resistance band.
 - **Sensor sources must not reconnect themselves.** `SensorRepository` owns the
   single retry policy. Adding another creates competing schedules.
+- **`sensorReading` is a `StateFlow`, so it holds its last value when the board
+  dies.** A frozen reading looks exactly like a rider holding a steady 88 rpm.
+  Anything that *records* or *averages* a reading must check
+  `isStaleAt(now, SensorReading.MAX_AGE_MS)` first; a stale reading is an
+  absence, and the honest answer is a gap in the series (PLAN.md 2.4.4).
+- **Nothing may call `SensorRepository.setMode` except `PelonotApp`**, which
+  collects the stored preference for the life of the process. Calling it
+  directly races that collector, and a second caller is how the rider's choice
+  of *Hardware* came to survive only until the next launch (2.4.6). Write the
+  preference; the pipeline follows.
+- **A ride in progress is `is_complete = 0`, exactly like a crashed one.**
+  Anything asking "is there a ride to recover?" must exclude
+  `RideInProgress.workoutId`, or it offers to discard the class the rider is
+  currently pedalling (8.3b).
 - **`SensorMode.Hardware` deliberately does not fall back to simulation.**
   Substituting fabricated telemetry mid-ride would corrupt a permanent record.
 - **The database uses explicit migrations** (`AppMigrations.ALL`) — the
