@@ -6,10 +6,13 @@ import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseModule
 import com.pelonot.data.repository.AppSettings
+import com.pelonot.data.repository.CalibrationRepository
+import com.pelonot.data.repository.CalibrationState
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.sensor.HeartRateDevice
+import com.pelonot.data.sensor.PowerModel
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.data.sensor.SensorRepository
@@ -34,7 +37,9 @@ data class SettingsUiState(
     val cloudConfigured: Boolean = false,
     /** System media volume as 0..1 — read live, not stored by us (11.5.1). */
     val mediaVolume: Float = 0f,
-    val volumeError: String? = null
+    val volumeError: String? = null,
+    /** What this bike has learnt about its own power curve (2.2a.6). */
+    val calibration: CalibrationState = CalibrationState()
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -54,7 +59,8 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val userRepository: UserRepository,
     private val sensorRepository: SensorRepository,
-    private val volumeController: VolumeController
+    private val volumeController: VolumeController,
+    private val calibrationRepository: CalibrationRepository
 ) : ViewModel() {
 
     private val profile = settingsRepository.settings
@@ -77,8 +83,9 @@ class SettingsViewModel(
         settingsRepository.settings,
         profile,
         sensors,
-        volume
-    ) { settings, user, (hrStatus, hrDevices), (mediaVolume, volumeError) ->
+        volume,
+        calibrationRepository.state
+    ) { settings, user, (hrStatus, hrDevices), (mediaVolume, volumeError), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -86,7 +93,8 @@ class SettingsViewModel(
             heartRateDevices = hrDevices,
             cloudConfigured = SupabaseModule.isConfigured,
             mediaVolume = mediaVolume,
-            volumeError = volumeError
+            volumeError = volumeError,
+            calibration = calibration
         )
     }.stateIn(
         scope = viewModelScope,
@@ -165,6 +173,21 @@ class SettingsViewModel(
 
     fun heartRatePermissions(): List<String> = sensorRepository.heartRatePermissions()
 
+    /**
+     * Throws away what this bike has learnt and returns to the shipped curve.
+     *
+     * Worth offering because calibration is derived from measurement: a
+     * sensor board replaced, a resistance mechanism serviced, or simply a
+     * suspicion that the numbers have gone wrong all leave a rider with no
+     * other way to start again.
+     */
+    fun resetCalibration() {
+        viewModelScope.launch {
+            calibrationRepository.reset()
+            PowerModel.useShippedCurve()
+        }
+    }
+
     override fun onCleared() {
         // A scan left running is a meaningful battery drain.
         sensorRepository.stopHeartRateScan()
@@ -179,7 +202,8 @@ class SettingsViewModel(
                 settingsRepository = ServiceLocator.settingsRepository,
                 userRepository = ServiceLocator.userRepository,
                 sensorRepository = ServiceLocator.sensorRepository,
-                volumeController = ServiceLocator.volumeController
+                volumeController = ServiceLocator.volumeController,
+                calibrationRepository = ServiceLocator.calibrationRepository
             )
         }
     }

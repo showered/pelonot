@@ -1,40 +1,42 @@
 package com.pelonot.data.sensor
 
-import kotlin.math.pow
+import com.pelonot.domain.calibration.PowerCurve
+import com.pelonot.domain.calibration.ShippedPowerCurve
 
 /**
  * Estimates crank power from cadence and resistance.
  *
  * The Gen 1/Gen 2 Peloton sensor board reports flywheel ticks and a resistance
- * potentiometer position; it does **not** report power. Every subscription-free
- * client therefore models it.
+ * potentiometer position; it does **not** report power over the serial
+ * protocol. Every subscription-free client therefore models it.
  *
- * > **These coefficients are unvalidated.** They were carried over verbatim
- * > from the previous implementation, which attributes them to the Grupetto
- * > reverse-engineering effort without a citation. Absolute watts should not
- * > be trusted against a real power meter, and FTP derived from them is only
- * > self-consistent — comparable between your own rides, not with anyone
- * > else's. PLAN.md item 2.2 tracks validating this against a known curve.
+ * > **On a real bike this does not run.** Peloton's own sensor service reports
+ * > measured watts (PLAN 2.1a), and `SensorReading.powerIsMeasured` says which
+ * > is which. What this governs is **simulated rides** and the **prescribed
+ * > resistance band** (11.2.1) — the quality of a suggestion, never the
+ * > integrity of a record.
  *
- * Kept as a separate object so the curve can be swapped or calibrated without
- * touching transport code, and so it can be unit-tested.
+ * > **The shipped coefficients are not merely unvalidated, they are measurably
+ * > wrong**: RMSE 137 W, median absolute error 66%, R² 0.21 against 310
+ * > steady-state samples off a real board (`calibration/`). Never present a
+ * > modelled watt as measured.
+ *
+ * Which curve is in force is [curve], set from
+ * [com.pelonot.data.repository.CalibrationRepository] at ride start. This file
+ * stays free of Android imports so it remains JVM-testable, which is why the
+ * curve is pushed in rather than read from a repository here.
  */
 object PowerModel {
 
     /**
-     * Cubic in cadence, scaled linearly by resistance.
-     *
-     * `P = (c3·rpm³ + c2·rpm² + c1·rpm + c0) · (1 + R/50)`
+     * The curve in force. Defaults to the shipped one and is replaced only by
+     * a fit that beat it out of sample on this bike's own rides (2.2a.3).
      */
-    fun estimateWatts(cadenceRpm: Double, resistancePercent: Double): Double {
-        if (cadenceRpm < MIN_CADENCE_RPM) return 0.0
+    @Volatile
+    var curve: PowerCurve = ShippedPowerCurve
 
-        val base = baseWatts(cadenceRpm)
-
-        val resistanceFactor = 1.0 + (resistancePercent.coerceIn(0.0, 100.0) / RESISTANCE_DIVISOR)
-
-        return (base * resistanceFactor).coerceIn(0.0, MAX_PLAUSIBLE_WATTS)
-    }
+    fun estimateWatts(cadenceRpm: Double, resistancePercent: Double): Double =
+        curve.watts(cadenceRpm, resistancePercent)
 
     /**
      * The inverse: what resistance would produce [targetWatts] at [cadenceRpm].
@@ -42,44 +44,18 @@ object PowerModel {
      * This is the number a rider can actually *do* something with. Power is an
      * output — the knob and their legs are the only two inputs on the machine —
      * so a prescription of "250 W" is really "hold this cadence and set the
-     * resistance to about here", and until now the app made them work that out
-     * themselves.
-     *
-     * The same caveat as [estimateWatts] applies twice over: the curve is
-     * unvalidated, so this is self-consistent guidance rather than a
-     * calibrated figure. It is still the right *shape* of instruction.
+     * resistance to about here", and until 11.2.1 the app made them work that
+     * out themselves.
      *
      * @return null when the target cannot be reached at that cadence — the
      *   answer is then "change your legs, not the knob", which is a different
      *   instruction and must not be disguised as a clamped percentage.
      */
-    fun resistanceForWatts(targetWatts: Double, cadenceRpm: Double): Double? {
-        if (cadenceRpm < MIN_CADENCE_RPM || targetWatts <= 0.0) return null
+    fun resistanceForWatts(targetWatts: Double, cadenceRpm: Double): Double? =
+        curve.resistanceForWatts(targetWatts, cadenceRpm)
 
-        val base = baseWatts(cadenceRpm)
-        // Below roughly 23 rpm the cubic is at or under zero: no amount of
-        // resistance produces power because the flywheel is barely turning.
-        if (base <= 0.0) return null
-
-        val resistance = RESISTANCE_DIVISOR * ((targetWatts / base) - 1.0)
-        return resistance.takeIf { it in 0.0..100.0 }
+    /** Restores the shipped curve. For tests, and for the reset in Settings. */
+    fun useShippedCurve() {
+        curve = ShippedPowerCurve
     }
-
-    private fun baseWatts(cadenceRpm: Double): Double =
-        (C3 * cadenceRpm.pow(3)) +
-            (C2 * cadenceRpm.pow(2)) +
-            (C1 * cadenceRpm) +
-            C0
-
-    /** Below this the flywheel is coasting, not being driven. */
-    private const val MIN_CADENCE_RPM = 10.0
-
-    private const val C3 = 0.000185
-    private const val C2 = -0.0125
-    private const val C1 = 0.85
-    private const val C0 = -15.0
-    private const val RESISTANCE_DIVISOR = 50.0
-
-    /** Track sprinters peak near 2000W; anything beyond is a bad reading. */
-    private const val MAX_PLAUSIBLE_WATTS = 2_500.0
 }

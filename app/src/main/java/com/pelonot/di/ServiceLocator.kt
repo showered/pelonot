@@ -5,6 +5,7 @@ import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
@@ -68,6 +69,14 @@ object ServiceLocator {
      * of where it is.
      */
     val volumeController: VolumeController by lazy { VolumeController(context) }
+
+    /**
+     * What this *bike* has learnt about its own power curve (2.2a).
+     *
+     * Device state, not rider state: a household bike has several profiles and
+     * one resistance mechanism.
+     */
+    val calibrationRepository: CalibrationRepository by lazy { CalibrationRepository(context) }
 
     val syncRepository: SupabaseSyncRepository by lazy {
         SupabaseSyncRepository(enabled = { cloudSyncEnabled() })

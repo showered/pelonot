@@ -396,34 +396,72 @@ shipped in the source:
    over a few weeks without anyone being asked to perform a calibration
    ritual, which is the only version of this that a stranger will ever do.
 
+**Built and tested; one half of it still needs a bike.** Everything below is in
+`domain/calibration/` (pure, JVM-tested) plus a `CalibrationRepository` and a
+Settings section. The gates are exercised against the real 31 July sweep in
+`RealSweepCalibrationTest`, which is the only measured data this project has.
+
 - [ ] **2.2a.1** Accumulate steady-state `(cadence, resistance, measured
       watts)` from rides where `powerIsMeasured` is true. Reuse the filter that
       worked on the 31 July sweep: drop samples where the knob is mid-turn or
       cadence is lurching, since those are transitions rather than operating
       points. Store a compact summary, not every sample — a grid of binned
-      means is enough to fit against and does not grow without bound
-- [ ] **2.2a.2** **Calibration belongs to the bike, not the rider.** A
+      means is enough to fit against and does not grow without bound.
+      **Written and unit-tested — 3,000 samples collapse to ≤4 cells, and the
+      steady-state filter drops mid-knob-turn and lurching-cadence samples —
+      but the hardware half is unobserved.** Nothing has yet watched a real
+      Hardware-mode ride land in the grid, and per the house rule that is what
+      this box is for. Ride the bike and check Settings says more than
+      "0 measured seconds"
+- [x] **2.2a.2** **Calibration belongs to the bike, not the rider.** A
       household bike has several profiles and one resistance mechanism, so this
       is device-level state that every profile shares. It must not live on
-      `profiles` and must not sync as if it were personal (15)
-- [ ] **2.2a.3** **Do not adopt a fit that cannot beat the shipped curve.**
+      `profiles` and must not sync as if it were personal (15). *Its own
+      `pelonot_bike_calibration` DataStore: no profile column, no Room table,
+      not in any DTO — so there is nothing for 15's sync to pick up by
+      accident.* Deliberately not a Room migration either: it is derived state,
+      and losing it costs a few weeks of passive accumulation rather than a
+      rider's record
+- [x] **2.2a.3** **Do not adopt a fit that cannot beat the shipped curve.**
       This is the whole lesson of 2.2.5: hold out a resistance level, predict
       it, and keep the generic coefficients unless the fit genuinely wins. An
       auto-calibration that silently makes the numbers worse is the same
-      failure as everything in the *Corrections* table
-- [ ] **2.2a.4** Require coverage before fitting at all. The 31 July sweep had
+      failure as everything in the *Corrections* table.
+      **And a second gate the first test of this found the hard way**: "better
+      than shipped" is a bar a fit to *pure noise* clears, because the shipped
+      curve's median error on real data is 66%. So a candidate must also be
+      within an absolute 25% out of sample before it is used at all — chosen
+      against what the number is for, since a resistance band 25% out still
+      puts a rider in the right part of the knob
+- [x] **2.2a.4** Require coverage before fitting at all. The 31 July sweep had
       six distinct resistance levels and that was not enough to determine the
       exponent. Track which cells of the resistance × cadence grid have been
-      ridden and stay on the shipped curve until enough of them have
-- [ ] **2.2a.5** Weight recent rides more heavily so the fit tracks drift
+      ridden and stay on the shipped curve until enough of them have.
+      *Seven levels, each at three or more cadences, spanning at least 40
+      percentage points. The regression test that matters: **the 31 July sweep
+      itself does not clear this gate**, and is refused for want of coverage
+      rather than for want of accuracy — exactly the conclusion
+      `calibration/README.md` reached by hand. If that test ever goes green on
+      an `Adopted`, the thresholds have drifted below what was already known to
+      be insufficient*
+- [x] **2.2a.5** Weight recent rides more heavily so the fit tracks drift
       rather than averaging a worn mechanism together with how it behaved when
-      it was new
-- [ ] **2.2a.6** Say so in Settings: whether this bike is running the shipped
+      it was new. *Each cell's weight decays 3% per ride and a cell that falls
+      below 0.5 is forgotten, so a mechanism that has since been serviced stops
+      voting*
+- [x] **2.2a.6** Say so in Settings: whether this bike is running the shipped
       curve or its own, how much of the range it has seen, and when it last
       re-fitted. A calibration that silently does nothing is indistinguishable
-      from one that works (see the *Corrections* rule)
-- [ ] **2.2a.7** Simulated rides keep the shipped curve. There is no bike to
-      calibrate against and the numbers are fiction by construction
+      from one that works (see the *Corrections* rule). *Observed: "Using the
+      built-in curve", the coverage bar, "0 of 7 levels, from 0 measured
+      seconds", and a "Start again" that appears only once there is something
+      to throw away.* It also says out loud that the built-in curve is known to
+      be well out, and that recorded watts are unaffected either way
+- [x] **2.2a.7** Simulated rides keep the shipped curve. There is no bike to
+      calibrate against and the numbers are fiction by construction — learning
+      from one would be the model teaching itself its own answer. *Observed: a
+      full simulated ride left Settings reading "0 of 7 levels, from 0 measured
+      seconds", and the calibration DataStore file was never even created*
 
 > **Scope worth keeping in view before anyone builds this.** On real hardware
 > `PowerModel` does not run: a ride records the board's measured watts, and

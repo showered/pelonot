@@ -20,11 +20,14 @@ import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.WorkoutRepository
+import com.pelonot.data.sensor.PowerModel
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.data.sensor.WorkoutMetricsCalculator
+import com.pelonot.domain.calibration.CalibrationSample
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachInput
@@ -90,6 +93,7 @@ class WorkoutService : Service() {
     private lateinit var workoutRepository: WorkoutRepository
     private lateinit var classRepository: ClassRepository
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var calibrationRepository: CalibrationRepository
     private val metricsCalculator = WorkoutMetricsCalculator()
 
     private var hudOverlay: HudOverlayManager? = null
@@ -123,6 +127,15 @@ class WorkoutService : Service() {
 
     private val pendingMetrics = mutableListOf<WorkoutMetricEntity>()
 
+    /**
+     * Measured operating points from this ride, for 2.2a.
+     *
+     * Collected only while `powerIsMeasured` is true. A simulated ride's watts
+     * came out of `PowerModel` itself, so learning from one would be the model
+     * teaching itself its own answer (2.2a.7).
+     */
+    private val calibrationSamples = mutableListOf<CalibrationSample>()
+
     /** True while the in-app ride screen is on top; the HUD stands down. */
     private var rideScreenVisible = false
     private var hudEnabled = true
@@ -138,6 +151,7 @@ class WorkoutService : Service() {
         workoutRepository = ServiceLocator.workoutRepository
         classRepository = ServiceLocator.classRepository
         settingsRepository = ServiceLocator.settingsRepository
+        calibrationRepository = ServiceLocator.calibrationRepository
 
         hudOverlay = HudOverlayManager(this).apply {
             onDockChanged = { dock ->
@@ -207,7 +221,17 @@ class WorkoutService : Service() {
         metricsCalculator.reset()
         coachPolicy.reset()
         pendingMetrics.clear()
+        calibrationSamples.clear()
         intervalEngine = null
+
+        // The curve this bike has earned, read once here rather than per
+        // sample. On hardware it will not be consulted at all — the board
+        // measures the watts — but the prescribed resistance band (11.2.1)
+        // inverts it every tick.
+        serviceScope.launch {
+            PowerModel.curve = runCatching { calibrationRepository.activeCurve() }
+                .getOrDefault(PowerModel.curve)
+        }
 
         _currentSession.value = session
         _workoutState.value = WorkoutState.Active
@@ -316,6 +340,16 @@ class WorkoutService : Service() {
             flushPendingMetrics()
             workoutRepository.finaliseWorkout(finalSession.toEntity())
             Log.i(TAG, "Workout saved: ${finalSession.workoutId}")
+
+            // After the ride is safely on disk, never before: calibration is
+            // derived state and losing it costs a few weeks of accumulation,
+            // whereas losing the ride costs the rider their record.
+            if (calibrationSamples.isNotEmpty()) {
+                val samples = calibrationSamples.toList()
+                calibrationSamples.clear()
+                runCatching { calibrationRepository.recordRide(samples) }
+                    .onFailure { Log.w(TAG, "Could not update this bike's calibration", it) }
+            }
 
             // A ride against a profile is worth mirroring to the cloud. A guest
             // ride is not: it has no owner yet, and the rider is about to be
@@ -472,6 +506,17 @@ class WorkoutService : Service() {
             power = reading.powerWatts,
             heartRate = reading.heartRateBpm
         )
+
+        // 2.2a.1: the ride is already the calibration dataset. Kept in memory
+        // for the length of the ride and folded in once at the end, so a fit
+        // never runs on the recording path.
+        if (reading.powerIsMeasured) {
+            calibrationSamples += CalibrationSample(
+                cadenceRpm = reading.cadenceRpm,
+                resistancePercent = reading.resistancePercent,
+                measuredWatts = reading.powerWatts
+            )
+        }
 
         _currentSession.update { current ->
             current

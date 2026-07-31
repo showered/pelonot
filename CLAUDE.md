@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 196 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 218 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -63,9 +63,12 @@ an AVD at the right resolution but the wrong density hides half of them.
 - **`PowerModel`'s coefficients are not merely unvalidated, they are measurably
   wrong.** Against 310 steady-state samples off the real board they score
   **RMSE 137 W, median absolute error 66%, R² 0.21** (`calibration/`). Never
-  present a modelled watt as measured. They have not been replaced because one
-  sweep produced a fit that failed cross-validation — PLAN.md 2.2a is the
-  per-bike auto-calibration that supersedes hand-fitting.
+  present a modelled watt as measured. `PowerModel` now delegates to a
+  `PowerCurve` — the shipped one, or one auto-calibrated to this bike from its
+  own measured rides (PLAN.md 2.2a, `domain/calibration/`). Note the trap that
+  builds into: **"beats the shipped curve" is a bar a fit to pure noise
+  clears**, precisely because the shipped curve is so bad. Any new acceptance
+  test on this needs an absolute accuracy floor as well as a relative one.
 - **Bike telemetry does not come from a serial port.** The bike's tablet is
   stock, not jailbroken, and no app can open the sensor board's UART
   (`/dev/ttyO0`, `system:system`). `/dev/ttyS1` does not exist and `/dev/ttyS2`

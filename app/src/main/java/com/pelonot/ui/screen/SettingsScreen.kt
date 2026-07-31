@@ -28,6 +28,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -53,6 +54,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
+import com.pelonot.data.repository.CalibrationState
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
@@ -64,6 +66,8 @@ import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.SettingsViewModel
+import java.text.DateFormat
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -189,6 +193,11 @@ fun SettingsScreen(
             SensorSection(
                 sensorMode = state.settings.sensorMode,
                 onSensorModeChange = viewModel::setSensorMode
+            )
+
+            CalibrationSection(
+                calibration = state.calibration,
+                onReset = viewModel::resetCalibration
             )
 
             HeartRateSection(
@@ -571,6 +580,88 @@ private fun RideHudSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/**
+ * What this bike has learnt about its own power curve (2.2a.6).
+ *
+ * Shown because **a calibration that silently does nothing is
+ * indistinguishable from one that works** — which is the failure mode the
+ * whole *Corrections* table in PLAN.md exists to prevent. It says which curve
+ * is in force, how much of the resistance range this bike has been ridden
+ * across, and when it last re-fitted.
+ */
+@Composable
+private fun CalibrationSection(
+    calibration: CalibrationState,
+    onReset: () -> Unit
+) {
+    SettingsSection("This bike's power curve") {
+        Text(
+            text = if (calibration.isCalibrated) {
+                "Calibrated to this bike from your own rides."
+            } else {
+                "Using the built-in curve."
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+
+        Text(
+            text = if (calibration.isCalibrated) {
+                val error = calibration.errorPercent?.let { " Typically within ${it.toInt()}%." }
+                    ?: ""
+                "Peloton's board measures your watts directly, so this only affects the " +
+                    "suggested resistance range and rides without a bike.$error"
+            } else {
+                // Said plainly rather than hidden: the shipped numbers are
+                // measurably wrong, and a rider comparing them to a gym bike
+                // deserves to know why they disagree.
+                "The built-in curve is a rough guess and is known to be well out. Ride " +
+                    "the bike normally and Pelonot will learn this one's own curve — " +
+                    "no calibration ride needed. Your recorded watts are unaffected " +
+                    "either way: the board measures those."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        LinearProgressIndicator(
+            progress = { calibration.coverage },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+        Text(
+            text = "Resistance range seen: ${calibration.resistanceLevelsCovered} of " +
+                "${calibration.resistanceLevelsNeeded} levels, from " +
+                "${calibration.sampleCount} measured seconds.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        calibration.lastFitAtEpochMs?.let { at ->
+            val when_ = remember(at) {
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    .format(Date(at))
+            }
+            Text(
+                text = "Last recalibrated $when_.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (calibration.sampleCount > 0) {
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            OutlinedButton(onClick = onReset, shape = MaterialTheme.expressiveShapes.pill) {
+                Text("Start again")
+            }
+        }
     }
 }
 
