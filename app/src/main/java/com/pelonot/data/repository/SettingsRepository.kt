@@ -13,6 +13,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.UnitSystem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -55,6 +56,16 @@ data class AppSettings(
 
     /** Which screen edge the HUD is pinned to. */
     val hudDock: HudDock = HudDock.DEFAULT,
+
+    /**
+     * How solid the HUD's panel is, 0..1 (11.1b.1).
+     *
+     * Set once in Settings rather than fiddled with mid-ride. Stored as the
+     * rider left it and floored at the point of use, where the strip's own
+     * colours are known — see `HudMinimumOpacity`, which derives the floor
+     * from a contrast calculation rather than a guess.
+     */
+    val hudOpacity: Float = HudOpacity.DEFAULT,
 
     /**
      * Miles or kilometres. Display only — see [UnitSystem].
@@ -103,6 +114,7 @@ class SettingsRepository(context: Context) {
                     .coerceIn(0f, 1f),
                 hudEnabled = prefs[Keys.HUD_ENABLED] ?: true,
                 hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK]),
+                hudOpacity = (prefs[Keys.HUD_OPACITY] ?: HudOpacity.DEFAULT).coerceIn(0f, 1f),
                 // Absent means the rider has never chosen, so fall back to the
                 // locale each time rather than pinning metric on first read.
                 unitSystem = UnitSystem.fromName(prefs[Keys.UNIT_SYSTEM])
@@ -138,6 +150,10 @@ class SettingsRepository(context: Context) {
     /** Persisted so the HUD returns to the edge the rider last dragged it to. */
     suspend fun setHudDock(dock: HudDock) = edit { it[Keys.HUD_DOCK] = dock.name }
 
+    suspend fun setHudOpacity(opacity: Float) = edit {
+        it[Keys.HUD_OPACITY] = opacity.coerceIn(0f, 1f)
+    }
+
     suspend fun setUnitSystem(units: UnitSystem) = edit { it[Keys.UNIT_SYSTEM] = units.name }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -155,6 +171,7 @@ class SettingsRepository(context: Context) {
         val COACH_VOLUME = floatPreferencesKey("coach_volume")
         val HUD_ENABLED = booleanPreferencesKey("hud_enabled")
         val HUD_DOCK = stringPreferencesKey("hud_dock")
+        val HUD_OPACITY = floatPreferencesKey("hud_opacity")
         val UNIT_SYSTEM = stringPreferencesKey("unit_system")
     }
 }

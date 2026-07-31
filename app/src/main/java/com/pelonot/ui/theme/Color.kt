@@ -1,6 +1,8 @@
 package com.pelonot.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.PowerZone
 
 // ==========================================
@@ -146,3 +148,59 @@ val PowerZone.color: Color
         PowerZone.Z6 -> PowerZone6Anaerobic
         PowerZone.Z7 -> PowerZone7Neuromuscular
     }
+
+/**
+ * How see-through the rider is allowed to make the HUD (11.1b.2).
+ *
+ * Derived from the colours above rather than picked. Composite the strip's own
+ * panel over the brightest thing a film can be, and take the least opaque it
+ * can be while **every** colour it draws text in still passes WCAG — AA for the
+ * labels, the large-text 3:1 for the 42sp metric numbers.
+ *
+ * The metric accents are what set it. A rider reads cadence by its cyan and
+ * power by its coral, so those cannot be brightened to buy contrast; the grey
+ * labels can, and are — see `HudLabelColor`. Deriving the floor from the white
+ * clock alone gave 0.59, at which the coral power figure sat at a contrast
+ * ratio of 1.55 against the frame that suits it worst. It is about 0.76 with all of them counted.
+ *
+ * The HUD is always composed `darkTheme = true` with dynamic colour off (see
+ * `HudOverlayManager`), so these are the only colours it is ever drawn in,
+ * whatever the app's own theme is set to.
+ */
+val HudMinimumOpacity: Float = HudOpacity.lowestReadable(
+    panel = DarkSurfaceContainerLowest.rgb,
+    samples = listOf(
+        HudOpacity.TextSample(DarkTextPrimary.rgb),
+        HudOpacity.TextSample(MetricCadenceCyan.rgb, HudOpacity.MIN_CONTRAST_LARGE),
+        HudOpacity.TextSample(MetricResistanceViolet.rgb, HudOpacity.MIN_CONTRAST_LARGE),
+        HudOpacity.TextSample(MetricPowerCoral.rgb, HudOpacity.MIN_CONTRAST_LARGE),
+        HudOpacity.TextSample(MetricHeartRateGreen.rgb, HudOpacity.MIN_CONTRAST_LARGE)
+    )
+)
+
+/**
+ * The strip's secondary label colour, brightened as far as the rider's chosen
+ * transparency requires (11.1b.2).
+ *
+ * `DarkTextSecondary` is a quiet grey by design, and at 0.76 against the worst
+ * frame it has a contrast ratio of about 2.3 — the labels under the numbers would be
+ * the first thing to go. It has no meaning in its greyness, so rather than drag
+ * the floor up to 0.81 for everybody it moves towards [DarkTextPrimary] by
+ * exactly as much as it has to and no further. At full opacity it does not move
+ * at all.
+ */
+fun hudLabelColor(opacity: Float): Color {
+    val lift = HudOpacity.liftToward(
+        from = DarkTextSecondary.rgb,
+        to = DarkTextPrimary.rgb,
+        panel = DarkSurfaceContainerLowest.rgb,
+        opacity = opacity,
+        target = HudOpacity.MIN_CONTRAST
+    )
+    return Color(HudOpacity.blend(DarkTextSecondary.rgb, DarkTextPrimary.rgb, lift) or ALPHA_OPAQUE)
+}
+
+/** The packed `0xRRGGBB` behind a [Color], which is what the contrast maths takes. */
+private val Color.rgb: Int get() = toArgb() and 0xFFFFFF
+
+private const val ALPHA_OPAQUE = 0xFF shl 24

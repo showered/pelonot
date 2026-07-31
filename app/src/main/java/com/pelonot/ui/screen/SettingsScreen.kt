@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,8 +48,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,15 +69,21 @@ import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.HudOpacity
 import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.overlay.OverlayPermissionHelper
+import com.pelonot.ui.theme.DarkSurfaceContainerLowest
+import com.pelonot.ui.theme.DarkTextPrimary
+import com.pelonot.ui.theme.HudMinimumOpacity
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.SettingsViewModel
+import androidx.compose.ui.unit.dp
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Settings, backed by [SettingsViewModel] so every change persists.
@@ -172,10 +187,12 @@ fun SettingsScreen(
             RideHudSection(
                 hudEnabled = state.settings.hudEnabled,
                 dock = state.settings.hudDock,
+                hudOpacity = state.settings.hudOpacity,
                 coachStyle = state.settings.coachStyle,
                 overlayGranted = OverlayPermissionHelper.canDrawOverlays(context),
                 onHudEnabledChange = viewModel::setHudEnabled,
                 onDockChange = viewModel::setHudDock,
+                onHudOpacityChange = viewModel::setHudOpacity,
                 onCoachStyleChange = viewModel::setCoachStyle,
                 onRequestPermission = {
                     OverlayPermissionHelper.requestOverlayPermission(context)
@@ -492,10 +509,12 @@ private fun CloudSection(
 private fun RideHudSection(
     hudEnabled: Boolean,
     dock: HudDock,
+    hudOpacity: Float,
     coachStyle: CoachStyle,
     overlayGranted: Boolean,
     onHudEnabledChange: (Boolean) -> Unit,
     onDockChange: (HudDock) -> Unit,
+    onHudOpacityChange: (Float) -> Unit,
     onCoachStyleChange: (CoachStyle) -> Unit,
     onRequestPermission: () -> Unit
 ) {
@@ -552,6 +571,10 @@ private fun RideHudSection(
 
         Spacer(Modifier.size(MaterialTheme.spacing.large))
 
+        HudOpacityControl(opacity = hudOpacity, onOpacityChange = onHudOpacityChange)
+
+        Spacer(Modifier.size(MaterialTheme.spacing.large))
+
         Text(
             text = "Coaching alerts",
             style = MaterialTheme.typography.labelLarge,
@@ -580,6 +603,99 @@ private fun RideHudSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/**
+ * How much of the film the HUD gives back (11.1b.1).
+ *
+ * Set here rather than on the strip: it is a decision about how the rider likes
+ * to watch, not something to fiddle with while pedalling, and the strip is
+ * already carrying one control (11.5.5) that only earns its place because this
+ * tablet has nowhere else to put it.
+ *
+ * The slider stops at [HudMinimumOpacity] rather than at zero (11.1b.2). That
+ * floor is calculated, not chosen — see `HudOpacity` — and the preview below it
+ * is drawn in the HUD's own two colours over the brightest frame a film can
+ * produce, which is the case the floor is derived from.
+ */
+@Composable
+private fun HudOpacityControl(opacity: Float, onOpacityChange: (Float) -> Unit) {
+    val floor = HudMinimumOpacity
+    val current = HudOpacity.clamp(opacity, floor)
+    val percent = (current * 100).roundToInt()
+
+    Text(
+        text = "How solid the strip is",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Slider(
+            value = current,
+            onValueChange = onOpacityChange,
+            valueRange = floor..HudOpacity.OPAQUE,
+            modifier = Modifier
+                .weight(1f)
+                .clearAndSetSemantics {
+                    contentDescription = "HUD opacity, $percent percent"
+                }
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+        Text(
+            text = "$percent%",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    HudOpacityPreview(current)
+
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+    Text(
+        text = "It will not go below ${(floor * 100).roundToInt()}% — under that " +
+            "the strip's smallest labels stop being readable over a bright scene. " +
+            "Check it against something actually moving; a still frame is kinder " +
+            "than a film is.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+/** The strip's own colours over the worst backdrop it will ever have. */
+@Composable
+private fun HudOpacityPreview(opacity: Float) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(MaterialTheme.expressiveShapes.small)
+            .background(Brush.horizontalGradient(listOf(Color.White, Color(0xFFFFD54F))))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkSurfaceContainerLowest.copy(alpha = opacity))
+                .padding(horizontal = MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        ) {
+            Text(
+                text = "12:04",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                color = DarkTextPrimary
+            )
+            // The smallest type the strip carries, which is what the floor is
+            // set by — a preview of the big numbers alone would flatter it.
+            Text(
+                text = "CADENCE 84 RPM · 61% · 212 W",
+                style = MaterialTheme.typography.labelSmall,
+                color = DarkTextPrimary
+            )
+        }
     }
 }
 

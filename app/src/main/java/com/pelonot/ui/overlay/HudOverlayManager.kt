@@ -25,6 +25,7 @@ import com.pelonot.data.service.RideSnapshot
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.theme.PelonotTheme
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,17 @@ class HudOverlayManager(private val context: Context) {
         context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
     private var composeView: ComposeView? = null
+
+    /**
+     * The class timeline, in a window of its own at the *other* screen edge
+     * (11.1b.1).
+     *
+     * Two thin bands rather than one tall block, and this one is
+     * `FLAG_NOT_TOUCHABLE` — it holds nothing the rider can press, so every tap
+     * in it reaches the film underneath. The strip cannot make that promise;
+     * it has a stop button on it.
+     */
+    private var timelineView: ComposeView? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     /** Outlives the composition, so a preference write cannot be half-applied. */
@@ -96,6 +108,24 @@ class HudOverlayManager(private val context: Context) {
         width = WindowManager.LayoutParams.MATCH_PARENT
         height = WindowManager.LayoutParams.WRAP_CONTENT
         gravity = gravityFor(HudDock.DEFAULT)
+    }
+
+    private val timelineParams = WindowManager.LayoutParams().apply {
+        type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+        format = PixelFormat.TRANSLUCENT
+        flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            // The whole reason this is a separate window: a bar the rider can
+            // never press should never eat a press.
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        width = WindowManager.LayoutParams.MATCH_PARENT
+        height = WindowManager.LayoutParams.WRAP_CONTENT
+        gravity = gravityFor(HudDock.DEFAULT.opposite())
     }
 
     val isShowing: Boolean get() = composeView != null
@@ -153,6 +183,13 @@ class HudOverlayManager(private val context: Context) {
                     .map { it.coachVolume }
                     .collectAsStateWithLifecycle(AppSettings.DEFAULT_COACH_VOLUME)
 
+                // 11.1b.1. Collected rather than passed in at show(): a rider
+                // who moves the slider in Settings during a ride sees the strip
+                // change behind them, which is the only way to judge it.
+                val opacity by ServiceLocator.settingsRepository.settings
+                    .map { it.hudOpacity }
+                    .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
+
                 // Telemetry is collected separately from the ride snapshot: it
                 // changes several times a second and the snapshot does not.
                 val reading by ServiceLocator.sensorRepository.sensorReading
@@ -188,8 +225,26 @@ class HudOverlayManager(private val context: Context) {
                             _volumeOpen.value = !_volumeOpen.value
                         },
                         onMediaVolumeChange = volumeController::setMediaVolume,
-                        onCoachVolumeChange = ::setCoachVolume
+                        onCoachVolumeChange = ::setCoachVolume,
+                        opacity = opacity
                     )
+                }
+            }
+        }
+
+        val timeline = ComposeView(context).apply {
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+
+            setContent {
+                val snapshot by snapshotFlow.collectAsStateWithLifecycle()
+                val opacity by ServiceLocator.settingsRepository.settings
+                    .map { it.hudOpacity }
+                    .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
+
+                PelonotTheme(darkTheme = true, useDynamicColor = false) {
+                    HudTimelineBar(snapshot = snapshot, opacity = opacity)
                 }
             }
         }
@@ -202,7 +257,15 @@ class HudOverlayManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to attach HUD overlay", e)
             owner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+            return
         }
+
+        // Failing to attach the timeline must not take the ride controls down
+        // with it: the strip is the part the rider needs.
+        timelineParams.gravity = gravityFor(dock.opposite())
+        runCatching { windowManager.addView(timeline, timelineParams) }
+            .onSuccess { timelineView = timeline }
+            .onFailure { Log.w(TAG, "Could not attach the timeline bar", it) }
     }
 
     /**
@@ -225,10 +288,23 @@ class HudOverlayManager(private val context: Context) {
             runCatching { windowManager.updateViewLayout(view, layoutParams) }
                 .onFailure { Log.w(TAG, "Could not re-dock the HUD", it) }
         }
+        // The timeline always sits opposite, so re-docking swaps both.
+        timelineParams.gravity = gravityFor(dock.opposite())
+        timelineView?.let { view ->
+            runCatching { windowManager.updateViewLayout(view, timelineParams) }
+                .onFailure { Log.w(TAG, "Could not re-dock the timeline bar", it) }
+        }
         onDockChanged?.invoke(dock)
     }
 
     fun hide() {
+        timelineView?.let { view ->
+            runCatching { windowManager.removeView(view) }
+                .onFailure { Log.w(TAG, "Timeline bar was already detached", it) }
+            view.disposeComposition()
+        }
+        timelineView = null
+
         composeView?.let { view ->
             runCatching { windowManager.removeView(view) }
                 .onFailure { Log.w(TAG, "Overlay was already detached", it) }

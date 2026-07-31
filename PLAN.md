@@ -148,7 +148,7 @@ Three consequences worth carrying forward:
 | Next | Why now |
 |------|---------|
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
-| **11.1b** The HUD getting out of the way | Opacity, resizing and side docking. All emulator-checkable, and the strip's fill was just simplified to one flat colour plus a fixed feather, so 11.1b.1 is now one alpha rather than a gradient to re-tune |
+| **11.1b.3 / 11.1b.4** Resizing and side docking | The half of 11.1b still outstanding. Opacity and the two-band layout landed; a vertical dock down one side is probably the better default on a 16:9 tablet and needs a genuine re-flow, not a rotation |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
 | **19.1.5** README and CONTRIBUTING | The README still advertises a root prerequisite the app does not have and does not want (2.1a). That is the difference between a project people try and one they assume they cannot |
 | **12.4** Export, and **19.1.3** local backup | The only safety net that exists before accounts (15) |
@@ -184,7 +184,7 @@ Two notes worth carrying into the next bike session:
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
-| 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. 11.1b and the rest of 11.2 remain |
+| 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6) |
@@ -1040,15 +1040,37 @@ The strip currently sits on top of that film as a solid block, in a fixed size,
 pinned to the top or bottom edge. Every item here is about the HUD taking up
 less of the screen and less of the attention.
 
-- [ ] **11.1b.1** **Adjustable opacity**, from solid down to nearly invisible,
+- [x] **11.1b.1** **Adjustable opacity**, from solid down to nearly invisible,
       with the film readable through it. Set once in Settings rather than
-      fiddled with mid-ride. Note the strip's fill is now a flat colour plus a
-      fixed-height feather at the inner edge (see 11.5's note), so there is one
-      alpha to make adjustable rather than a gradient to re-tune
-- [ ] **11.1b.2** A floor on how transparent it can go, and a check that the
+      fiddled with mid-ride.
+      *Done, and it turned into a redesign rather than a slider. A single alpha
+      over a full-width panel is the wrong instrument: a rider asking for more
+      of their picture back only ever got a lighter wash over all of it — the
+      numbers got harder to read and the picture never came back. **The panel is
+      gone.** The strip is a transparent band with a handful of chips floating
+      in it, and backing is painted only where a number or a control sits;
+      everything between them is untouched film at any setting. The slider now
+      moves the chips, defaulting to 0.82. Observed on the tablet AVD over a
+      full-white page: expanded, collapsed, and the class timeline*
+- [x] **11.1b.2** A floor on how transparent it can go, and a check that the
       text still passes contrast against **moving** video rather than against
-      one paused frame. A HUD nobody can read at a glance has failed at the one
-      thing it is for (8.11.82 made the same argument about colour)
+      one paused frame.
+      *The floor is **calculated, not chosen** — `HudOpacity` composites the
+      chip over a backdrop and finds the least opaque it can be while every
+      colour the strip draws text in still passes WCAG. Two things fell out of
+      building it, both of which had been quietly wrong. A floor derived from
+      the brightest colour on the strip says nothing about the rest of it: at
+      0.59 the white clock passed at 4.5 and the coral power figure sat at 1.55.
+      And **the worst backdrop is not white** — the backdrop is a film, so it is
+      every colour there is, and a partly-transparent panel can land the
+      composited background right on the text's own luminance, where contrast is
+      1.0 and the number is invisible. Bisecting on the over-white contrast
+      made coral look fine at zero opacity. The floor is about 0.76 with all
+      seven colours counted, and the grey labels are lifted towards the primary
+      text colour rather than dragging it to 0.81 for everybody. 9 JVM tests.*
+      **The moving-video half of this item is still open and always was**: a
+      still frame is kinder than a film, screenshots over DRM video come back
+      black (10.4), so this needs the rider's eyes on the bike
 - [ ] **11.1b.3** **Resizable**, so a rider who wants three big numbers and a
       rider who wants the whole timeline can both have it. Persisted like the
       dock
@@ -1060,7 +1082,29 @@ less of the screen and less of the attention.
       rotate: the timeline, the zone badge and the three live numbers each need
       a tall arrangement. Extends 11.1.4, which only ever considered top/bottom
 - [ ] **11.1b.6** Every one of these choices persists, and the HUD comes back
-      where and how the rider left it
+      where and how the rider left it. *Opacity and dock do; the rest of this
+      waits on 11.1b.3 and 11.1b.4 existing*
+- [x] **11.1b.7** **The class timeline moved to the opposite screen edge**, in
+      an overlay window of its own. Splits the furniture into two thin bands
+      instead of one tall block, and because nothing on it is interactive that
+      window is `FLAG_NOT_TOUCHABLE` — every tap in that band goes straight
+      through to the film. The strip itself can never make that promise; it has
+      a stop button on it. *Observed on the tablet AVD: timeline top, numbers
+      bottom, re-docking swaps both*
+- [ ] **11.1b.8** **The strip still eats touches between the chips.** The window
+      is full-width and the gaps are now invisible, so a rider tapping their
+      film in the space between two chips gets nothing and cannot see why. It
+      was the same before the redesign — the difference is that the slab at
+      least *looked* like something. A window cannot have holes punched in it,
+      so this is either a row of narrow windows or nothing; 11.1b.7 shows the
+      shape of the fix for anything non-interactive
+- [ ] **11.1b.9** **Revisit the chips as a piece of visual design.** They are
+      correct and they are not yet beautiful. Open questions: whether the metric
+      accents should hold their colour at low opacity or take a treatment that
+      survives any backdrop; whether the chip hairline is doing enough over
+      bright scenes; whether the timeline deserves the same silhouette as the
+      chips or a deliberately different one; and whether the zone-change flash
+      still reads now that it washes chips rather than a whole band
 
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".

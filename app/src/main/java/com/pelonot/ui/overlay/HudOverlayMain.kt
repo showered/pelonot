@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -61,6 +64,7 @@ import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.TargetBand
@@ -73,11 +77,14 @@ import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.rememberFlash
 import com.pelonot.ui.components.rememberPulse
+import com.pelonot.ui.theme.HudMinimumOpacity
+import com.pelonot.ui.theme.hudLabelColor
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
+import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.theme.units
 
@@ -119,7 +126,9 @@ fun HudOverlayMain(
     onToggleVolume: () -> Unit,
     onMediaVolumeChange: (Float) -> Unit,
     onCoachVolumeChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** How solid the rider has asked the strip to be (11.1b.1). */
+    opacity: Float = HudOpacity.DEFAULT
 ) {
     val interval = snapshot.interval
     val zone = interval.targetZone
@@ -150,9 +159,11 @@ fun HudOverlayMain(
         1f
     }
 
-    // A hairline of the current zone's colour along the inner edge. It stays
-    // quiet until a change is coming, then thickens and pulses — the earliest
-    // warning on the whole HUD, and the one that needs no reading at all.
+    // A hairline of the current zone's colour along the very screen edge. It
+    // stays quiet until a change is coming, then thickens and pulses — the
+    // earliest warning on the whole HUD, and the one that needs no reading at
+    // all. Full strength, never dimmed by the opacity setting: it is an alert,
+    // and it is one pixel band of a screen the rider has otherwise got back.
     val edge: @Composable () -> Unit = {
         Box(
             modifier = Modifier
@@ -166,19 +177,28 @@ fun HudOverlayMain(
         )
     }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(hudShape(dock)),
-        color = Color.Transparent
+    // 11.1b.2. Every label on the strip reads `onSurfaceVariant`, including the
+    // ones inside shared components, so the lift is applied once here rather
+    // than at thirty call sites. At full opacity it is the same grey it always
+    // was; as the rider gives the film back, it climbs towards the primary text
+    // colour by exactly as much as contrast requires.
+    val panelOpacity = HudOpacity.clamp(opacity, HudMinimumOpacity)
+    val scheme = MaterialTheme.colorScheme
+
+    MaterialTheme(
+        colorScheme = scheme.copy(onSurfaceVariant = hudLabelColor(panelOpacity)),
+        typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes
     ) {
+        // No panel. The strip is a *transparent* full-width band with a handful
+        // of chips floating in it, and everything between them is film. The
+        // previous version painted the whole band, which meant a rider asking
+        // for more of their picture back could only ask for a lighter wash over
+        // all of it — the numbers got harder to read and the picture never came
+        // back. Backing goes only where a number or a control sits.
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .background(hudBodyColor())
-                // Layered after the fill so it washes over the panel rather
-                // than being painted under it.
-                .background(accent.copy(alpha = 0.30f * flash))
                 // 11.1a.1: double tap anywhere on the strip opens the full app.
                 // Double rather than single deliberately — a single tap is what
                 // a rider fires by accident reaching past the tablet, and one
@@ -194,8 +214,6 @@ fun HudOverlayMain(
                     onClick(label = "Open Pelonot") { onOpenApp(); true }
                 }
         ) {
-            if (dock == HudDock.Bottom) edge()
-
             val body: @Composable () -> Unit = {
                 HudBody(
                     snapshot = snapshot,
@@ -203,6 +221,8 @@ fun HudOverlayMain(
                     collapsed = collapsed,
                     coachStyle = coachStyle,
                     accent = accent,
+                    opacity = panelOpacity,
+                    flash = flash,
                     volumeOpen = volumeOpen,
                     onToggleVolume = onToggleVolume,
                     onPause = onPause,
@@ -217,6 +237,7 @@ fun HudOverlayMain(
             val volumePanel: @Composable () -> Unit = {
                 HudVolumePanel(
                     visible = volumeOpen,
+                    opacity = panelOpacity,
                     mediaVolume = mediaVolume,
                     coachVolume = coachVolume,
                     error = volumeError,
@@ -228,110 +249,183 @@ fun HudOverlayMain(
             if (dock == HudDock.Top) {
                 body()
                 volumePanel()
-                HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
-                HudFeather(dock)
+                HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
+                edge()
             } else {
-                HudFeather(dock)
-                HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
+                edge()
+                HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
                 volumePanel()
                 body()
             }
-
-            if (dock == HudDock.Top) edge()
         }
     }
 }
 
 /**
- * Effectively opaque wherever the numbers actually sit.
+ * One floating panel — a clock, a group of numbers, a control.
  *
- * The first version graded the *whole* strip from 0.90 to 0.97, which looks
- * elegant in a screenshot against a black wallpaper and is unreadable over
- * anything bright — which is the only place it will ever really be used.
+ * This is the only thing on the HUD that paints over the rider's film, so it
+ * paints as little as it can: a rounded container exactly the size of what it
+ * holds, and a hairline that keeps its edge legible against a bright scene
+ * without adding a second visible surface.
+ *
+ * [wash] is the zone-change flash. It washes the chips rather than the whole
+ * band, because the band is the film.
  */
 @Composable
-private fun hudBodyColor(): Color =
-    MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f)
+private fun HudChip(
+    opacity: Float,
+    modifier: Modifier = Modifier,
+    shape: Shape = MaterialTheme.expressiveShapes.extraLarge,
+    wash: Color = Color.Transparent,
+    padding: PaddingValues = PaddingValues(
+        horizontal = MaterialTheme.spacing.medium,
+        vertical = MaterialTheme.spacing.small
+    ),
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(hudChipColor(opacity))
+            // Layered after the fill so it washes over the chip rather than
+            // being painted under it.
+            .background(wash)
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f), shape)
+            .padding(padding)
+    ) {
+        content()
+    }
+}
 
 /**
- * A short translucent lead-in at the inner edge, so the boundary is not a hard
- * line across the picture.
+ * The class timeline, alone on the **opposite** screen edge from the numbers.
  *
- * A **fixed height**, not a fraction of the strip. It used to be a gradient
- * stop at 0.86 of the whole background, which is fine while the strip is one
- * height and wrong the moment it is another: opening the volume sliders
- * (11.5.4) more than doubled the strip, so the fade moved into the middle of
- * it and the launcher's wallpaper showed through between the two sliders.
- * Anything that makes the strip taller — 11.1b.3's resizing especially — would
- * have done the same.
+ * It lives in its own overlay window (see `HudOverlayManager`) for two reasons.
+ * The furniture is split into two thin bands instead of one tall block, which
+ * is the difference between losing a strip of a film and losing a corner of it;
+ * and because nothing here is interactive, that window is `FLAG_NOT_TOUCHABLE`
+ * — every tap in this band goes straight through to whatever is playing. The
+ * strip below cannot do that: it has a pause button on it.
  */
 @Composable
-private fun HudFeather(dock: HudDock) {
-    val body = hudBodyColor()
-    val outer = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(FEATHER_HEIGHT)
-            .background(
-                Brush.verticalGradient(
-                    if (dock == HudDock.Top) listOf(body, outer) else listOf(outer, body)
+fun HudTimelineBar(
+    snapshot: RideSnapshot,
+    modifier: Modifier = Modifier,
+    opacity: Float = HudOpacity.DEFAULT
+) {
+    val interval = snapshot.interval
+    if (!interval.hasClass) return
+
+    val panelOpacity = HudOpacity.clamp(opacity, HudMinimumOpacity)
+
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.copy(
+            onSurfaceVariant = hudLabelColor(panelOpacity)
+        ),
+        typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small)
+        ) {
+            HudChip(
+                opacity = panelOpacity,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.expressiveShapes.pill,
+                // Slim: it is a 10 dp bar, and a pill with room to breathe
+                // around it becomes the largest object on the screen.
+                padding = PaddingValues(
+                    horizontal = MaterialTheme.spacing.medium,
+                    vertical = MaterialTheme.spacing.extraSmall
                 )
-            )
-    )
+            ) {
+                IntervalTimeline(
+                    intervals = snapshot.intervals,
+                    elapsedSec = interval.classElapsedSec,
+                    durationSec = interval.classDurationSec,
+                    currentIndex = interval.index
+                )
+            }
+        }
+    }
 }
 
-private fun hudShape(dock: HudDock) = if (dock == HudDock.Bottom) {
-    androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-} else {
-    androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-}
+/**
+ * A chip's fill, as solid as the rider has asked for it to be (11.1b.1).
+ *
+ * Floored at [HudMinimumOpacity], which is calculated from the strip's own
+ * colours rather than chosen — see `HudOpacity`. Note what the floor is *not*
+ * protecting any more: there is no full-width panel, so this alpha applies only
+ * behind numbers and controls, and everything else on the band is untouched
+ * film at any setting.
+ */
+@Composable
+private fun hudChipColor(opacity: Float): Color =
+    MaterialTheme.colorScheme.surfaceContainerLowest
+        .copy(alpha = HudOpacity.clamp(opacity, HudMinimumOpacity))
 
 /**
  * The grab bar. Tapping collapses the HUD to a slim strip; dragging away from
  * the current edge sends it to the other one.
+ *
+ * A small centred pill rather than the full-width invisible band it used to be:
+ * with no panel behind it, a 1280 dp drag target that shows nothing is a
+ * gesture the rider fires by accident over their film and can never find on
+ * purpose.
  */
 @Composable
 private fun HudHandle(
     dock: HudDock,
     collapsed: Boolean,
+    opacity: Float,
     onToggleCollapsed: () -> Unit,
     onDockChange: (HudDock) -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(22.dp)
-            .clickable(onClick = onToggleCollapsed)
-            .pointerInput(dock) {
-                detectVerticalDragGestures { change, dragAmount ->
-                    change.consume()
-                    // Only a decisive drag away from the current edge moves it,
-                    // so brushing the handle mid-ride does nothing.
-                    if (dock == HudDock.Bottom && dragAmount < -DRAG_SNAP_PX) {
-                        onDockChange(HudDock.Top)
-                    } else if (dock == HudDock.Top && dragAmount > DRAG_SNAP_PX) {
-                        onDockChange(HudDock.Bottom)
-                    }
-                }
-            }
-            .semantics {
-                contentDescription = if (collapsed) {
-                    "Expand the heads-up display. Drag to move it to the other " +
-                        "edge, or double tap it to open Pelonot."
-                } else {
-                    "Collapse the heads-up display. Drag to move it to the other " +
-                        "edge, or double tap it to open Pelonot."
-                }
-            },
+            .padding(vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(width = 56.dp, height = 4.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
-                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-        )
+                .size(width = 72.dp, height = 18.dp)
+                .clip(MaterialTheme.expressiveShapes.pill)
+                .background(hudChipColor(opacity))
+                .clickable(onClick = onToggleCollapsed)
+                .pointerInput(dock) {
+                    detectVerticalDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Only a decisive drag away from the current edge moves
+                        // it, so brushing the handle mid-ride does nothing.
+                        if (dock == HudDock.Bottom && dragAmount < -DRAG_SNAP_PX) {
+                            onDockChange(HudDock.Top)
+                        } else if (dock == HudDock.Top && dragAmount > DRAG_SNAP_PX) {
+                            onDockChange(HudDock.Bottom)
+                        }
+                    }
+                }
+                .semantics {
+                    contentDescription = if (collapsed) {
+                        "Expand the heads-up display. Drag to move it to the other " +
+                            "edge, or double tap it to open Pelonot."
+                    } else {
+                        "Collapse the heads-up display. Drag to move it to the other " +
+                            "edge, or double tap it to open Pelonot."
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 36.dp, height = 3.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            )
+        }
     }
 }
 
@@ -342,6 +436,8 @@ private fun HudBody(
     collapsed: Boolean,
     coachStyle: CoachStyle,
     accent: Color,
+    opacity: Float,
+    flash: Float,
     volumeOpen: Boolean,
     onToggleVolume: () -> Unit,
     onPause: () -> Unit,
@@ -357,12 +453,12 @@ private fun HudBody(
     ) { isCollapsed ->
         if (isCollapsed) {
             HudCollapsed(
-                snapshot, reading, accent,
+                snapshot, reading, accent, opacity, flash,
                 volumeOpen, onToggleVolume, onPause, onResume, onStop
             )
         } else {
             HudExpanded(
-                snapshot, reading, coachStyle, accent,
+                snapshot, reading, coachStyle, accent, opacity, flash,
                 volumeOpen, onToggleVolume, onPause, onResume, onStop
             )
         }
@@ -381,6 +477,7 @@ private fun HudBody(
 @Composable
 private fun HudVolumePanel(
     visible: Boolean,
+    opacity: Float,
     mediaVolume: Float,
     coachVolume: Float,
     error: String?,
@@ -396,22 +493,23 @@ private fun HudVolumePanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    horizontal = MaterialTheme.spacing.large,
-                    vertical = MaterialTheme.spacing.small
-                ),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge)
+                    horizontal = HUD_MARGIN,
+                    vertical = MaterialTheme.spacing.extraSmall
+                )
         ) {
-            // Two columns, not two stacked rows: this strip is 1280 dp wide and
-            // barely 170 dp tall, and height is the thing it cannot spend.
-            VolumeSliders(
-                mediaVolume = mediaVolume,
-                coachVolume = coachVolume,
-                onMediaVolumeChange = onMediaVolumeChange,
-                onCoachVolumeChange = onCoachVolumeChange,
-                error = error,
-                compact = true,
-                modifier = Modifier.weight(1f)
-            )
+            // Half the width, not the whole of it: this is two sliders, and a
+            // panel that reaches the far edge of a 1280 dp screen to hold them
+            // is covering film for nothing.
+            HudChip(opacity = opacity, modifier = Modifier.weight(1f)) {
+                VolumeSliders(
+                    mediaVolume = mediaVolume,
+                    coachVolume = coachVolume,
+                    onMediaVolumeChange = onMediaVolumeChange,
+                    onCoachVolumeChange = onCoachVolumeChange,
+                    error = error,
+                    compact = true
+                )
+            }
             Spacer(Modifier.weight(1f))
         }
     }
@@ -427,6 +525,8 @@ private fun HudExpanded(
     reading: SensorReading,
     coachStyle: CoachStyle,
     accent: Color,
+    opacity: Float,
+    flash: Float,
     volumeOpen: Boolean,
     onToggleVolume: () -> Unit,
     onPause: () -> Unit,
@@ -434,57 +534,68 @@ private fun HudExpanded(
     onStop: () -> Unit
 ) {
     val interval = snapshot.interval
+    val wash = accent.copy(alpha = 0.30f * flash)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
         CueBand(interval.cue, accent, animate = coachStyle.animates)
-
-        if (interval.hasClass) {
-            IntervalTimeline(
-                intervals = snapshot.intervals,
-                elapsedSec = interval.classElapsedSec,
-                durationSec = interval.classDurationSec,
-                currentIndex = interval.index,
-                modifier = Modifier.padding(
-                    horizontal = MaterialTheme.spacing.large,
-                    vertical = MaterialTheme.spacing.small
-                )
-            )
-        }
 
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val wide = maxWidth >= WIDE_BREAKPOINT
             val roomy = maxWidth >= ROOMY_BREAKPOINT
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = MaterialTheme.spacing.large,
-                        end = MaterialTheme.spacing.large,
-                        bottom = MaterialTheme.spacing.medium,
-                        top = MaterialTheme.spacing.extraSmall
-                    ),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
-                ClockBlock(snapshot, Modifier.width(if (roomy) 168.dp else 140.dp))
+                HudChip(opacity = opacity, wash = wash) {
+                    ClockBlock(snapshot, Modifier.width(if (roomy) 150.dp else 128.dp))
+                }
 
                 if (interval.hasClass) {
-                    NowBlock(snapshot, accent, Modifier.width(if (roomy) 250.dp else 200.dp))
+                    HudChip(opacity = opacity, wash = wash) {
+                        NowBlock(
+                            snapshot,
+                            accent,
+                            Modifier.width(if (roomy) 216.dp else 188.dp)
+                        )
+                    }
                 }
 
-                MetricsBlock(
-                    snapshot = snapshot,
-                    reading = reading,
-                    showTargets = interval.hasClass,
-                    modifier = Modifier.weight(1f)
-                )
+                // The four live numbers travel together in one chip rather than
+                // four: they are read as a group, and four separate containers
+                // put three gaps of film through the middle of the one thing on
+                // this HUD the rider is actually looking at.
+                HudChip(opacity = opacity, wash = wash, modifier = Modifier.weight(1f)) {
+                    MetricsBlock(
+                        snapshot = snapshot,
+                        reading = reading,
+                        showTargets = interval.hasClass,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 if (wide && interval.hasClass) {
-                    NextSlot(interval, coachStyle, Modifier.width(256.dp))
+                    // Its own chip after all. NextUpPreview and CountdownBanner
+                    // paint a *tinted* container — 10-24% of a zone colour —
+                    // which was a fine surface while a solid panel sat behind
+                    // it and is a pale smear over a white scene without one.
+                    HudChip(
+                        opacity = opacity,
+                        wash = wash,
+                        padding = PaddingValues(4.dp)
+                    ) {
+                        NextSlot(interval, coachStyle, Modifier.width(208.dp))
+                    }
                 }
 
+                // The controls are filled buttons — already solid, already the
+                // right size to hit, and needing no container of their own.
                 Controls(
                     isPaused = snapshot.isPaused,
                     volumeOpen = volumeOpen,
@@ -499,36 +610,56 @@ private fun HudExpanded(
 }
 
 /**
- * The class's headline instruction, when it has one — the last hard effort or
- * the cooldown. A full-width band because it is the one thing on the HUD worth
- * reading a whole sentence of.
+ * The class's headline instruction — the last hard effort, or the cooldown.
+ *
+ * The one alert on this HUD worth a whole sentence, so it is the one element
+ * allowed to be loud: a **solid** lozenge in the zone's own colour with black
+ * type on it, springing in rather than fading, and breathing while the final
+ * push is on. Nothing else on the strip is filled with an accent at full
+ * strength, which is exactly why this reads from across the room.
+ *
+ * The previous version was a full-width 16%-alpha wash with accent-coloured
+ * text on it — the least legible combination on the strip, over video, for the
+ * message that matters most.
  */
 @Composable
 private fun CueBand(cue: RideCue, accent: Color, animate: Boolean) {
     AnimatedVisibility(
         visible = cue != RideCue.None,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically()
+        // Springs in from small. A slab could not do this — scaling a
+        // full-width panel peels it off the screen edge — but a lozenge that
+        // is not touching anything can, and it is the difference between a
+        // rider noticing and not.
+        enter = fadeIn() + scaleIn(
+            initialScale = 0.80f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        ),
+        exit = fadeOut() + scaleOut(targetScale = 0.85f)
     ) {
         val pulse = if (animate && cue == RideCue.FinalPush) {
-            rememberPulse(periodMs = 1100, from = 0.55f, to = 1f)
+            rememberPulse(periodMs = 1100, from = 0.82f, to = 1f)
         } else {
             1f
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(accent.copy(alpha = 0.16f * pulse))
-                .padding(vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = cue.message.uppercase(),
-                style = MaterialTheme.typography.labelLarge,
-                color = accent,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp
-            )
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Row(
+                modifier = Modifier
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(accent.copy(alpha = pulse))
+                    .padding(horizontal = MaterialTheme.spacing.large, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = cue.message.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    // Black on the accent, not the accent on a wash of itself.
+                    // Every zone colour in this palette is a bright one, so dark
+                    // type is the readable direction on all seven.
+                    color = Color.Black.copy(alpha = 0.85f),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp
+                )
+            }
         }
     }
 }
@@ -655,7 +786,7 @@ private fun MetricsBlock(
     // rate is what the body makes of it.
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
         MetricReadout(
             label = "CADENCE",
@@ -822,6 +953,8 @@ private fun HudCollapsed(
     snapshot: RideSnapshot,
     reading: SensorReading,
     accent: Color,
+    opacity: Float,
+    flash: Float,
     volumeOpen: Boolean,
     onToggleVolume: () -> Unit,
     onPause: () -> Unit,
@@ -829,50 +962,77 @@ private fun HudCollapsed(
     onStop: () -> Unit
 ) {
     val interval = snapshot.interval
+    val wash = accent.copy(alpha = 0.30f * flash)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.small),
+            .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
-        Text(
-            text = Formatters.duration(snapshot.elapsedSeconds),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        if (interval.hasClass) {
-            ZoneGlyph(zone = interval.targetZone, modifier = Modifier.size(28.dp)) {
+        // One chip, sized to its contents and left where the eye already knows
+        // to look. The rest of the band is film — which is the entire point of
+        // having collapsed it.
+        HudChip(opacity = opacity, wash = wash, shape = MaterialTheme.expressiveShapes.pill) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            ) {
                 Text(
-                    text = "${interval.targetZone.number}",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = Formatters.duration(snapshot.elapsedSeconds),
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
-                    color = Color.Black.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (interval.hasClass) {
+                    ZoneGlyph(zone = interval.targetZone, modifier = Modifier.size(28.dp)) {
+                        Text(
+                            text = "${interval.targetZone.number}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                CompactMetric(reading.cadenceRpm.toInt().toString(), "RPM", MetricCadenceCyan)
+                CompactMetric(
+                    reading.resistancePercent.toInt().toString(),
+                    "%",
+                    MetricResistanceViolet
+                )
+                CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
+                CompactMetric(
+                    reading.heartRateBpm?.toString() ?: "--",
+                    "BPM",
+                    MetricHeartRateGreen
                 )
             }
         }
-
-        CompactMetric(reading.cadenceRpm.toInt().toString(), "RPM", MetricCadenceCyan)
-        CompactMetric(reading.resistancePercent.toInt().toString(), "%", MetricResistanceViolet)
-        CompactMetric(reading.powerWatts.toInt().toString(), "W", MetricPowerCoral)
-        CompactMetric(reading.heartRateBpm?.toString() ?: "--", "BPM", MetricHeartRateGreen)
 
         Spacer(Modifier.weight(1f))
 
         val next = interval.next
         if (interval.isChangeImminent && next != null) {
             // The countdown survives collapsing. It is the one thing on this
-            // HUD that is never optional.
-            Text(
-                text = "Z${next.powerZone.number} in ${interval.remainingInIntervalSec}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                color = next.powerZone.color
-            )
-            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+            // HUD that is never optional — so it comes back solid in the next
+            // zone's own colour rather than as text floating over the film.
+            Row(
+                modifier = Modifier
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(next.powerZone.color)
+                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Z${next.powerZone.number} in ${interval.remainingInIntervalSec}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black.copy(alpha = 0.85f)
+                )
+            }
+            Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
         }
 
         Controls(
@@ -905,7 +1065,8 @@ private fun CompactMetric(value: String, unit: String, accent: Color) {
     }
 }
 
-private val FEATHER_HEIGHT = 10.dp
+/** How far the chips sit in from the screen's own edges. */
+private val HUD_MARGIN = 12.dp
 private const val DRAG_SNAP_PX = 12f
 private val WIDE_BREAKPOINT = 900.dp
 private val ROOMY_BREAKPOINT = 1100.dp

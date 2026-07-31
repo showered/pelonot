@@ -156,6 +156,11 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setHudDock(dock) }
     }
 
+    /** 11.1b.1. The HUD collects this live, so the strip changes as it moves. */
+    fun setHudOpacity(opacity: Float) {
+        viewModelScope.launch { settingsRepository.setHudOpacity(opacity) }
+    }
+
     fun setUnitSystem(units: UnitSystem) {
         viewModelScope.launch { settingsRepository.setUnitSystem(units) }
     }
