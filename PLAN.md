@@ -647,8 +647,19 @@ being read in half a second from two metres away while out of breath.
 ### 11.1 Verify the HUD's own interactions on a device
 - [x] **11.1.1** Docked strip renders over another app without covering the middle of the screen
 - [x] **11.1.2** Sits below the status bar rather than under the clock
-- [ ] **11.1.3** Tap-to-collapse and the slim strip it collapses to
-- [ ] **11.1.4** Drag to re-dock between top and bottom, and that the choice persists
+- [x] **11.1.3** Tap-to-collapse and the slim strip it collapses to. *Observed
+      on the tablet AVD mid-class: the handle takes the strip from 170 dp to
+      115 dp — a third of its height handed back to the film — and what
+      survives is the clock, the zone number, the four live numbers and the
+      controls. On a free ride the saving is much smaller, because the expanded
+      strip has no timeline, zone ring or next-up block to shed in the first
+      place*
+- [x] **11.1.4** Drag to re-dock between top and bottom, and that the choice
+      persists. *Observed in both directions: dragged down, the strip moved to
+      the bottom edge and `hud_dock=Bottom` was in the DataStore; dragged back
+      up, `Top`. A ride started afterwards raised the strip at the edge the
+      last one was left at.* The collapse state deliberately does **not**
+      persist — `hide()` resets it, so every ride opens showing everything
 - [x] **11.1.5** **Pause, resume and stop from the HUD with the app in the
       background** — driven from the strip on the bike with Netflix in the
       foreground, 31 July 2026. Pause froze the ride at 03:00 and it was still
@@ -908,7 +919,7 @@ ever synced, confirmed by count rather than inferred.
 | `syncProfile` | `profiles` had policies for `SELECT` and `UPDATE`, none for `INSERT`. | ✅ policy added in `002` |
 | `syncProfile` | Upsert with no `onConflict` targets the primary key `id`, a UUID the DTO never sends — so every call inserts instead of updating. | ✅ `onConflict = "local_user_id"` |
 | `syncWorkout` | The DTO carries **no `user_id`**, so a synced ride is anonymous and unattributable. | ❌ 14.3 |
-| `fetchClassTemplates` | Cloud `intervals_json` is `JSONB` holding an array; `ClassTemplateDto` reads it as `String`. Decode throws. | ❌ 14.5 |
+| `fetchClassTemplates` | Cloud `intervals_json` is `JSONB` holding an array; `ClassTemplateDto` reads it as `String`. Decode throws — and the seeder reads the resulting `Failed` as "no cloud" and silently serves 5 bundled classes instead of the cloud's 72. | ✅ fixed in 14.2.2a |
 | all policies | Every one is `USING (true)`. **Not currently an exposure** — the grants in `002` are narrow and `workouts` has no `SELECT` grant at all — but they activate the moment anyone widens a grant. | ❌ 15.5 |
 
 > An earlier draft of this section claimed any client could read every rider's
@@ -929,7 +940,21 @@ ever synced, confirmed by count rather than inferred.
 ### 14.2 The rest of the path to full connectivity
 
 - [ ] **14.2.1** Carry the rider through: local `user_id` (Int) → cloud `profiles.id` (UUID). Requires the profile to sync first and its cloud id to be stored locally. Until this lands, every uploaded ride is anonymous
-- [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`
+- [x] **14.2.2a** **The app now reads both shapes**, which is what actually
+      unblocked this. `intervals_json` is an escaped JSON *string* in the
+      bundled assets and a `JSONB` *array* in the cloud; `ClassTemplateDto`
+      typed it `String`, so every cloud read threw
+      `JsonDecodingException: Expected beginning of the string, but got [`.
+      That went into `SyncOutcome.Failed`, which `ClassTemplateSeeder` reads as
+      "cloud unavailable" and answers by falling back to assets — so the
+      failure was silent and its **only symptom was a class library with 5
+      classes in it instead of 72**, which nobody had connected to the cloud at
+      all. `IntervalsJsonSerializer` accepts either shape and yields the string
+      form; it re-encodes an array as an array so a JSONB value cannot be
+      written back as a quoted blob. *Observed: `Seeded 72 class templates from
+      Supabase`, eight categories where there were four, and a cloud-sourced
+      class rendering its seven intervals on the detail screen.* Four JVM tests
+- [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`. Less urgent now that 14.2.2a makes the app correct either way, and correct against whichever way a self-hoster sets theirs up
 - [ ] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history
 - [ ] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable
 - [ ] **14.2.5** Retry the backlog when connectivity returns, not only at ride end

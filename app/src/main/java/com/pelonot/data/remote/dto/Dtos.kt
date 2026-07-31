@@ -44,7 +44,12 @@ data class ClassTemplateDto(
     val title: String,
     val category: String,
     @SerialName("duration_sec") val durationSec: Int,
-    @SerialName("intervals_json") val intervalsJson: String
+    // A JSON string in the assets, a JSONB array in the cloud. See
+    // [IntervalsJsonSerializer] — reading it as a plain String meant the cloud's
+    // 72 class templates had never once been decoded.
+    @SerialName("intervals_json")
+    @Serializable(with = IntervalsJsonSerializer::class)
+    val intervalsJson: String
 ) {
     fun toEntity() = ClassTemplateEntity(
         id = id,
