@@ -1084,6 +1084,16 @@ less of the screen and less of the attention.
       `HudDock` is a two-value enum with an `opposite()` and a `gravityFor()`
       either side of it; both extend to four cleanly, and the drag detector on
       the handle is currently `detectVerticalDragGestures`, which does not
+- [ ] **11.1b.4a** **Corners, once collapsed** — the owner's observation on
+      seeing the compact strip: "in compact mode there are more options, bottom
+      left, bottom middle, right bottom, right top." He is right, and it falls
+      out of the redesign rather than being extra work. Collapsed, the HUD is
+      one pill and a row of buttons, not a band — so it no longer *needs* a
+      whole screen edge, and a corner is the least of anyone's film. The
+      expanded strip still wants a full edge, so the two states may well want
+      different position sets, which is a thing `HudDock` cannot currently
+      express: it is one enum shared by both. Settle that before writing the
+      drag handling for 11.1b.4
 - [ ] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
       rotate: the timeline, the zone badge and the live numbers each need a tall
       arrangement. Extends 11.1.4, which only ever considered top/bottom. The

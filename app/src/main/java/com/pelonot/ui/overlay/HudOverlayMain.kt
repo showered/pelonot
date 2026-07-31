@@ -384,11 +384,14 @@ private fun HudHandle(
     onToggleCollapsed: () -> Unit,
     onDockChange: (HudDock) -> Unit
 ) {
+    // Aligned with the chips rather than centred in the window. Centring it
+    // looks deliberate while the strip spans the width and looks like a stray
+    // object the moment it does not — which, collapsed, it does not.
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = HUD_MARGIN, vertical = 3.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Box(
             modifier = Modifier
