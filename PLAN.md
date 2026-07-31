@@ -17,11 +17,44 @@
 
 ## Where the work stands — read this first
 
-**Latest session: 31 July 2026 (second sitting), on the bike with a rider
-pedalling and wearing a heart-rate strap.** Everything that needed a human on
-the pedals is now done except the endurance ride (10.6).
+**Latest session: 31 July 2026 (third sitting), on the tablet AVD only — no
+bike, by request.** Everything below was driven on a 1920 × 1080 / 240 dpi
+emulator matching `HARDWARE.md`, and each tick says what was observed.
 
-Closed this session: **10.4** (HUD over Netflix), **10.5 / 2.3.5** (real BLE
+Closed this session, none of it needing hardware: **11.1a** (all four doors
+between the HUD and the app), **11.1.3 / 11.1.4** (collapse and re-dock, with
+persistence), **11.5.1–11.5.7** (volume), **2.2a.2–2.2a.7** (per-bike
+auto-calibration), **20.1** (the profile selector), and **14.2.2a** — a new
+item for a defect found in passing.
+
+**That last one is the find of the session.** The class library had been
+showing **5 classes when the cloud held 72**, for the app's whole history.
+`ClassTemplateDto` typed `intervals_json` as `String`; the cloud column is
+`JSONB` holding an array, so every fetch threw a decode error, which became
+`SyncOutcome.Failed`, which the seeder reads as "no cloud" and answers by
+falling back to the five bundled assets. Nothing was wrong on screen and
+nothing was wrong in the log. Same shape as everything in *Corrections*: a
+swallowed failure with a plausible-looking fallback.
+
+### Still needing a rider on the bike
+
+- **10.6** — a full-length ride (battery, thermals, memory, dropped samples).
+- **2.2a.1** — watch a Hardware-mode ride actually land in the calibration
+  grid. Everything downstream of it is written and tested; nothing has seen the
+  accumulation happen. Settings → *This bike's power curve* reports it.
+- **11.5.2** — whether the coach volume slider audibly does anything.
+  `com.onepeloton.tts` is the only engine this ever runs against.
+- **11.5.8** — ten seconds of `getevent -l` to settle whether the tablet has
+  volume keys at all.
+- **14.1.6** — see below; it needs no bike, but it does need one query.
+
+---
+
+**The session before it, same day, was on the bike with a rider pedalling and
+wearing a heart-rate strap.** Everything that needed a human on the pedals is
+done except the endurance ride (10.6).
+
+Closed then: **10.4** (HUD over Netflix), **10.5 / 2.3.5** (real BLE
 strap), **11.1.5** (pause/resume/stop from the strip with the app in the
 background), **11.1.6** (coach audible over a playing film), **2.1a.5**
 (resistance is a true 0–100).
@@ -36,12 +69,6 @@ they sharpen is at the end of it and is worth reading.
 **2.2.5 was attempted and deliberately not shipped.** The sweep is checked in
 under `calibration/`; the fit failed cross-validation, and the reasoning is in
 2.2.5 and `calibration/README.md`.
-
-### Still needing a rider on the bike
-
-Only **10.6** (a full-length ride: battery, thermals, memory, dropped samples
-— longest so far is 8 minutes) and **another PowerModel sweep** for 2.2.5,
-denser at the low and high ends of the resistance range.
 
 ---
 
@@ -76,19 +103,26 @@ Three consequences worth carrying forward:
 
 | Next | Why now |
 |------|---------|
-| **14.1.6** Cloud round trip from the app | Does **not** need the bike; simulated telemetry drives it. It is the last thing standing between Phase 14 and done, and 15/17/18 all sit on it. Note a *guest* ride never syncs by design, so this needs a real profile — and there is still **no profile on the tablet**, every ride so far has been a guest ride |
-| **11.1a** Doors between the HUD and the app | Unchanged in priority and still the journey a rider makes most often. 11.1a.3 confirmed missing on the bike: the app does **not** come forward when a ride ends from the HUD — Netflix simply stayed in front |
-| **11.1.3 / 11.1.4** Tap-to-collapse and re-docking | The last two unverified HUD interactions, and unlike the rest of 11.1 they need *code* before they need a rider |
-| **20.1** The profile selector | Confirmed on the real tablet, not just the emulator: one small card in the top-left corner of a 1920×1080 screen with the rest black |
-| **11.5** Volume sliders | Small, and closer to fundamental than it sounds: the tablet has **no status bar and therefore no system volume UI**, so the app is the only place either level can be changed. Needs no bike |
-| **2.2a** Auto-calibrate `PowerModel` per bike | Supersedes the manual sweep (2.2.5), which does not scale to anyone else's bike. Every hardware ride already records measured watts beside the model's own inputs. Needs no bike to build, only rides to feed it |
+| **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
+| **16.1 / 16.2** Post-ride charts | Now the most valuable thing that needs neither the bike nor a credential. Every ride has recorded a full per-second series since the foreign-key fix and no screen has ever drawn one, which is what makes recording it worth doing |
+| **11.1b** The HUD getting out of the way | Opacity, resizing and side docking. All emulator-checkable, and the strip's fill was just simplified to one flat colour plus a fixed feather, so 11.1b.1 is now one alpha rather than a gradient to re-tune |
+| **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
+| **19.1.5** README and CONTRIBUTING | The README still advertises a root prerequisite the app does not have and does not want (2.1a). That is the difference between a project people try and one they assume they cannot |
+| **12.4** Export, and **19.1.3** local backup | The only safety net that exists before accounts (15) |
 
-Still blocked on things not to hand: **10.6** needs a full-length ride.
+Still blocked on things not to hand: **10.6** needs a full-length ride, and the
+four bike items listed above.
 
-Worth knowing before planning the next bike session: **the dashboard is fine in
-landscape** on the real tablet — it fills the width and does not show the empty
-right-hand side 11.3.1 describes. 11.3.1 may be stale or emulator-specific and
-should be re-checked before anyone spends a session on it.
+Two notes worth carrying into the next bike session:
+
+- **The dashboard is fine in landscape** — re-confirmed on the matching AVD this
+  session. It fills the width and shows none of the empty right-hand side
+  11.3.1 describes. **11.3.1 is stale**; do not spend a session on it without
+  re-checking first.
+- **Every ride is now a guest ride no longer**: the emulator has real profiles
+  and the sync path runs for them. The tablet still has none, and a guest ride
+  never syncs by design, so make a profile on the bike before expecting 14 to
+  do anything there.
 
 ---
 
@@ -97,26 +131,26 @@ should be re-checked before anyone spends a session on it.
 | Phase | Area | State |
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
-| 1 | Local database (Room) + Supabase | 🔶 Room complete — Supabase writes now land, app-driven sync unproven (14.1.6) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Only `PowerModel` calibration remains open (2.2.5) |
+| 1 | Local database (Room) + Supabase | 🔶 Room complete — the app now both reads (72 class templates) and writes to the cloud; the written row has not been *seen* (14.1.6) |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a); it has yet to see a hardware ride (2.2a.1) |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — cloud sync wire path proven, worker unverified (14.1.6) |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Auto-FTP complete — `WorkoutSyncWorker` observed running and reporting success; the row itself unseen (14.1.6) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
-| 11 | **HUD-first experience — the current priority** | 🔶 In progress |
+| 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. 11.1b and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 **In progress** — schema fixed and writes verified against the live project; app-driven round trip still open (14.1.6) |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
 | 16 | Data visualisation | ❌ Not started — half fundamental, half polish |
 | 17 | Companion web application | ❌ Not started — *nice to have* |
 | 18 | Social features in the Android app | ❌ Not started — *nice to have* |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
-| 20 | Who's riding — profile selector & avatars | ❌ Not started — the selector is *fundamental* on a shared bike |
+| 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 
 ---
 
@@ -803,7 +837,7 @@ less of the screen and less of the attention.
 - [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top
 
 ### 11.3 Beyond the strip
-- [ ] **11.3.1** **Landscape layout for the dashboard.** It is a phone-shaped column with two thirds of a 1920×1080 screen empty — the FTP card, the Just Ride button and the three action cards all stretch to full width and the whole right-hand side is black. Confirmed by screenshot on the tablet emulator, 31 July 2026. The profile selector has the same problem and is tracked separately in 20.1, because fixing it properly means redesigning it rather than re-flowing it
+- [x] **11.3.1** ~~**Landscape layout for the dashboard.**~~ **Stale — there is nothing wrong with it.** Re-checked twice on the real tablet and again on the matching AVD (1920×1080 @ 240 dpi): the FTP card, the Just Ride button and the three action cards fill the width, and the empty right-hand side this item describes does not exist. The original screenshot was almost certainly taken on a wrongly-configured AVD, which is exactly the trap `HARDWARE.md` was written to close. The profile selector *did* have the problem and is fixed in 20.1
 - [ ] **11.3.2** Post-ride charts: power with zone bands, heart rate, cadence distribution (8.11.53–8.11.57)
 - [ ] **11.3.3** Time-in-zone summary on the post-ride screen
 - [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
@@ -991,7 +1025,31 @@ ever synced, confirmed by count rather than inferred.
 - [x] **14.1.4** `WorkoutDto` emits ISO-8601 UTC, with JVM tests covering the timezone drift and locale (`th-TH-u-ca-buddhist`) cases that would silently corrupt it
 - [x] **14.1.5** A test asserting the serialised keys are a subset of the real column list — the failure mode that started all of this
 
-- [ ] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works"
+- [ ] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works".
+
+      **Half done, 31 July 2026 (third sitting).** Driven from the app on the
+      tablet AVD: a profile ride against the live project, `WorkoutSyncWorker`
+      enqueued and ran, and it logged
+      `Synced workout 992a6e8c-6dc7-45c3-9463-cf1f26247aa9 (135 samples)`.
+      That is a real HTTP success — postgrest-kt throws a `RestException` on
+      any non-2xx, so `SyncOutcome.Success` cannot be reached without one.
+      **What is missing is the sighting.** `workouts` deliberately has no
+      `SELECT` grant (14.1.1), so neither the app nor the anon key can read the
+      row back, and this box asks to see it. Finish it with one Management API
+      query — the recipe is in `supabase/README.md`:
+
+      ```sql
+      select id, duration_sec, jsonb_array_length(metrics_payload) as samples
+      from workouts order by recorded_at desc limit 5;
+      ```
+
+      Expect that workout id with 135 samples. It is the only thing still
+      standing between Phase 14 and done.
+
+      One thing this half **did** prove, and it is not small: the app's *read*
+      path to the cloud works. `ClassTemplateSeeder` now logs `Seeded 72 class
+      templates from Supabase` — a live PostgREST `SELECT`, decoded and written
+      into Room. See 14.2.2a
 
 ### 14.2 The rest of the path to full connectivity
 
