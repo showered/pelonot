@@ -154,6 +154,7 @@ class WorkoutService : Service() {
             settingsRepository.settings.collect { settings ->
                 _coachStyle.value = settings.coachStyle
                 coach?.style = settings.coachStyle
+                coach?.volume = settings.coachVolume
                 hudEnabled = settings.hudEnabled
                 hudDock = settings.hudDock
                 syncHudVisibility()

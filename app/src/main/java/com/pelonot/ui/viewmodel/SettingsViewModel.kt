@@ -2,6 +2,7 @@ package com.pelonot.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseModule
 import com.pelonot.data.repository.AppSettings
@@ -30,7 +31,10 @@ data class SettingsUiState(
     val profile: UserEntity? = null,
     val heartRateStatus: HeartRateStatus = HeartRateStatus.Idle,
     val heartRateDevices: List<HeartRateDevice> = emptyList(),
-    val cloudConfigured: Boolean = false
+    val cloudConfigured: Boolean = false,
+    /** System media volume as 0..1 — read live, not stored by us (11.5.1). */
+    val mediaVolume: Float = 0f,
+    val volumeError: String? = null
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -49,7 +53,8 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val userRepository: UserRepository,
-    private val sensorRepository: SensorRepository
+    private val sensorRepository: SensorRepository,
+    private val volumeController: VolumeController
 ) : ViewModel() {
 
     private val profile = settingsRepository.settings
@@ -58,18 +63,30 @@ class SettingsViewModel(
             if (id == null) flowOf(null) else userRepository.observeUser(id)
         }
 
+    private val sensors = combine(
+        sensorRepository.heartRateStatus,
+        sensorRepository.discoveredHeartRateDevices
+    ) { status, devices -> status to devices }
+
+    private val volume = combine(
+        volumeController.mediaVolume,
+        volumeController.lastError
+    ) { level, error -> level to error }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
         profile,
-        sensorRepository.heartRateStatus,
-        sensorRepository.discoveredHeartRateDevices
-    ) { settings, user, hrStatus, hrDevices ->
+        sensors,
+        volume
+    ) { settings, user, (hrStatus, hrDevices), (mediaVolume, volumeError) ->
         SettingsUiState(
             settings = settings,
             profile = user,
             heartRateStatus = hrStatus,
             heartRateDevices = hrDevices,
-            cloudConfigured = SupabaseModule.isConfigured
+            cloudConfigured = SupabaseModule.isConfigured,
+            mediaVolume = mediaVolume,
+            volumeError = volumeError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -110,6 +127,19 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setCoachStyle(style) }
     }
 
+    /**
+     * The system's own media volume, so no preference of ours needs writing —
+     * only re-reading, which the controller does after the write lands.
+     */
+    fun setMediaVolume(fraction: Float) = volumeController.setMediaVolume(fraction)
+
+    fun setCoachVolume(fraction: Float) {
+        viewModelScope.launch { settingsRepository.setCoachVolume(fraction) }
+    }
+
+    /** Anything on the device may have moved it since this screen opened. */
+    fun refreshVolume() = volumeController.refresh()
+
     fun setHudEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setHudEnabled(enabled) }
     }
@@ -148,7 +178,8 @@ class SettingsViewModel(
             SettingsViewModel(
                 settingsRepository = ServiceLocator.settingsRepository,
                 userRepository = ServiceLocator.userRepository,
-                sensorRepository = ServiceLocator.sensorRepository
+                sensorRepository = ServiceLocator.sensorRepository,
+                volumeController = ServiceLocator.volumeController
             )
         }
     }

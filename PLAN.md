@@ -737,7 +737,9 @@ less of the screen and less of the attention.
 
 - [ ] **11.1b.1** **Adjustable opacity**, from solid down to nearly invisible,
       with the film readable through it. Set once in Settings rather than
-      fiddled with mid-ride
+      fiddled with mid-ride. Note the strip's fill is now a flat colour plus a
+      fixed-height feather at the inner edge (see 11.5's note), so there is one
+      alpha to make adjustable rather than a gradient to re-tune
 - [ ] **11.1b.2** A floor on how transparent it can go, and a check that the
       text still passes contrast against **moving** video rather than against
       one paused frame. A HUD nobody can read at a glance has failed at the one
@@ -781,34 +783,50 @@ Netflix with the coach speaking over it has no way to change either level
 without leaving what they are doing. The app is the only surface that can
 offer it, which makes this closer to fundamental than to polish.
 
-- [ ] **11.5.1** **Media volume**, controlling `STREAM_MUSIC` — which is what
+- [x] **11.5.1** **Media volume**, controlling `STREAM_MUSIC` — which is what
       Netflix and everything else plays on. Needs `MODIFY_AUDIO_SETTINGS` in
       the manifest (a normal, install-time permission, no prompt). Declare it
       *before* wiring the slider: an undeclared permission fails silently and
-      this project has shipped that bug twice already (8.5, 2.3)
-- [ ] **11.5.2** **Coach volume, independent of the media volume.** Do this
+      this project has shipped that bug twice already (8.5, 2.3). *Observed:
+      dragged to 73% and `dumpsys audio` moved `STREAM_MUSIC` from 5 to 11 of
+      15 — checked against the system's own value rather than the slider's
+      position, which is the whole point of 11.5.7*
+- [x] **11.5.2** **Coach volume, independent of the media volume.** Do this
       with `TextToSpeech.Engine.KEY_PARAM_VOLUME` in the `Bundle` passed to
       `speak()` — a per-utterance 0..1 scalar — rather than by moving a stream
       volume. A stream-level control would fight the ducking in 11.1.6 and
       could not make the coach quieter *than* the film, which is exactly what
-      a rider who finds it shouty will want
-- [ ] **11.5.3** Both in **Settings**, as the place they are set deliberately
-- [ ] **11.5.4** Both reachable from the **HUD**, since mid-ride is when a
+      a rider who finds it shouty will want. A level of 0 returns *before*
+      taking audio focus, so a silenced coach cannot duck the film for the
+      length of an utterance nobody can hear. **Wired and persisted, not yet
+      heard**: the emulator has no TTS engine worth trusting and the tablet's
+      `com.onepeloton.tts` is the only one this ever runs against, so whether
+      50% actually sounds like half needs the bike
+- [x] **11.5.3** Both in **Settings**, as the place they are set deliberately
+- [x] **11.5.4** Both reachable from the **HUD**, since mid-ride is when a
       rider actually discovers the film is too loud, and going to Settings
-      means abandoning the ride screen and the film together
-- [ ] **11.5.5** **This is the deliberate exception to 18.6 / 19.4** — "nothing
+      means abandoning the ride screen and the film together. *Observed: the
+      button opens both sliders inside the strip, already showing the levels
+      set in Settings*
+- [x] **11.5.5** **This is the deliberate exception to 18.6 / 19.4** — "nothing
       on the strip that is not about the next sixty seconds of pedalling". It
       earns its place only because the tablet offers no alternative. Keep it
       out of the resting strip: put it behind the collapse/expand (11.1.3) or
       a single small control that opens the sliders, so the default HUD is
-      still three big numbers and a countdown
-- [ ] **11.5.6** Volume changes persist, and the coach level survives a
+      still three big numbers and a countdown. *One tonal button among the ride
+      controls; the resting strip is unchanged*
+- [x] **11.5.6** Volume changes persist, and the coach level survives a
       restart. A rider who turned the coach down did not mean "until the next
-      ride"
-- [ ] **11.5.7** Setting a stream volume can throw `SecurityException` when a
+      ride". *`coach_volume` in the DataStore; the media level is the system's
+      own and the system already remembers it.* The HUD and Settings write the
+      same preference, so they are one setting rather than two that drift
+- [x] **11.5.7** Setting a stream volume can throw `SecurityException` when a
       Do Not Disturb policy is active on API 23+. Catch it and say so rather
       than letting the slider move and nothing happen — a control that lies
-      about having worked is worse than one that is absent
+      about having worked is worse than one that is absent. `VolumeController`
+      also **reads the level back after every write** instead of trusting it:
+      the system clamps and rounds to its own step count, and the slider must
+      show where the volume actually is
 - [ ] **11.5.8** Volume keys: the owner reports **no physical rocker**, and the
       driver picture in `HARDWARE.md` is consistent with that — the only devices
       declaring `KEY_VOLUMEUP` are the headphone jack (`ACCDET`, inline remote

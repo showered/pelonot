@@ -51,6 +51,18 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!--
+      Media volume (PLAN 11.5). The bike's tablet has no status bar to pull
+      down and therefore no system volume UI at all, so the app is the only
+      surface that can change how loud the rider's film is.
+
+      Declared *before* the slider was wired, because a runtime call behind an
+      undeclared permission fails silently and this project has shipped that
+      exact bug twice (VIBRATE above, ACCESS_FINE_LOCATION below). This one is
+      normal/install-time, so there is no prompt and nothing to grant.
+    -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!--
       Declared for completeness against Peloton's sensor service. It is a
       signature-level permission we can never be granted, and the service's
       <service> tag sets no android:permission, so it is not enforced and the

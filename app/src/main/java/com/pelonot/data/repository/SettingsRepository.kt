@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,6 +41,15 @@ data class AppSettings(
     /** How loudly the ride is allowed to interrupt. */
     val coachStyle: CoachStyle = CoachStyle.DEFAULT,
 
+    /**
+     * How loud the spoken coach is, 0..1, independent of the media volume.
+     *
+     * Persisted because a rider who turned the coach down did not mean "until
+     * the next ride" (11.5.6). The media volume is *not* stored here — that is
+     * a system value, and the system already remembers it.
+     */
+    val coachVolume: Float = DEFAULT_COACH_VOLUME,
+
     /** Whether the floating HUD is raised over other apps during a ride. */
     val hudEnabled: Boolean = true,
 
@@ -54,7 +64,16 @@ data class AppSettings(
      * display is in miles.
      */
     val unitSystem: UnitSystem = UnitSystem.fromLocale()
-)
+) {
+    companion object {
+        /**
+         * Full. The coach already sits under audio focus ducking (11.1.6), so
+         * a rider who has never touched this should hear it clearly over their
+         * film rather than have to go and find the slider first.
+         */
+        const val DEFAULT_COACH_VOLUME = 1f
+    }
+}
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "pelonot_settings")
 
@@ -80,6 +99,8 @@ class SettingsRepository(context: Context) {
                 heartRateDeviceAddress = prefs[Keys.HR_DEVICE_ADDRESS],
                 cloudSyncEnabled = prefs[Keys.CLOUD_SYNC_ENABLED] ?: true,
                 coachStyle = CoachStyle.fromName(prefs[Keys.COACH_STYLE]),
+                coachVolume = (prefs[Keys.COACH_VOLUME] ?: AppSettings.DEFAULT_COACH_VOLUME)
+                    .coerceIn(0f, 1f),
                 hudEnabled = prefs[Keys.HUD_ENABLED] ?: true,
                 hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK]),
                 // Absent means the rider has never chosen, so fall back to the
@@ -108,6 +129,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setCoachStyle(style: CoachStyle) = edit { it[Keys.COACH_STYLE] = style.name }
 
+    suspend fun setCoachVolume(volume: Float) = edit {
+        it[Keys.COACH_VOLUME] = volume.coerceIn(0f, 1f)
+    }
+
     suspend fun setHudEnabled(enabled: Boolean) = edit { it[Keys.HUD_ENABLED] = enabled }
 
     /** Persisted so the HUD returns to the edge the rider last dragged it to. */
@@ -127,6 +152,7 @@ class SettingsRepository(context: Context) {
         val HR_DEVICE_ADDRESS = stringPreferencesKey("hr_device_address")
         val CLOUD_SYNC_ENABLED = booleanPreferencesKey("cloud_sync_enabled")
         val COACH_STYLE = stringPreferencesKey("coach_style")
+        val COACH_VOLUME = floatPreferencesKey("coach_volume")
         val HUD_ENABLED = booleanPreferencesKey("hud_enabled")
         val HUD_DOCK = stringPreferencesKey("hud_dock")
         val UNIT_SYSTEM = stringPreferencesKey("unit_system")

@@ -1,6 +1,7 @@
 package com.pelonot.di
 
 import android.content.Context
+import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
 import com.pelonot.data.remote.SupabaseSyncRepository
@@ -60,6 +61,13 @@ object ServiceLocator {
     val database: AppDatabase by lazy { AppDatabase.getInstance(context) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(context) }
+
+    /**
+     * Shared between Settings and the HUD deliberately: both move the same
+     * system value, and two controllers would each hold their own stale idea
+     * of where it is.
+     */
+    val volumeController: VolumeController by lazy { VolumeController(context) }
 
     val syncRepository: SupabaseSyncRepository by lazy {
         SupabaseSyncRepository(enabled = { cloudSyncEnabled() })

@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
+import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -183,6 +184,17 @@ class RideCoach(context: Context) {
     @Volatile
     var style: CoachStyle = CoachStyle.DEFAULT
 
+    /**
+     * How loud the coach is, 0..1, applied per utterance (11.5.2).
+     *
+     * Deliberately not a stream volume. Moving a stream would fight the audio
+     * focus ducking above — turning the coach down would turn the film down
+     * with it — and it could never make the coach quieter *than* the film,
+     * which is exactly what a rider who finds it shouty is asking for.
+     */
+    @Volatile
+    var volume: Float = 1f
+
     fun deliver(alerts: List<RideAlert>) {
         if (alerts.isEmpty()) return
 
@@ -196,13 +208,23 @@ class RideCoach(context: Context) {
     private fun speak(line: String) {
         if (!ttsReady) return
 
+        val level = volume.coerceIn(0f, 1f)
+        // Silenced by the slider. Returning before taking focus matters: an
+        // inaudible utterance would still duck the rider's film for its whole
+        // length, so they would lose the sound of the film and gain nothing.
+        if (level <= 0f) return
+
         speaking.incrementAndGet()
         acquireAudioFocus()
+
+        val params = Bundle().apply {
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, level)
+        }
 
         val queued = runCatching {
             // QUEUE_ADD: an interval announcement followed by its coaching cue
             // is two utterances that belong in that order.
-            tts?.speak(line, TextToSpeech.QUEUE_ADD, null, "pelonot-${System.nanoTime()}")
+            tts?.speak(line, TextToSpeech.QUEUE_ADD, params, "pelonot-${System.nanoTime()}")
         }.onFailure { Log.w(TAG, "Could not speak \"$line\"", it) }
             .getOrNull()
 

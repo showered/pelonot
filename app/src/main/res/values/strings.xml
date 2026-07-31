@@ -18,6 +18,9 @@
     <string name="cd_end_ride">End ride</string>
     <string name="cd_drag_handle">Drag to reposition the heads-up display</string>
 
+    <string name="cd_show_volume">Show the volume sliders</string>
+    <string name="cd_hide_volume">Hide the volume sliders</string>
+
     <!-- Ride screen -->
     <string name="ride_back_to_hud">Back to the HUD</string>
 </resources>

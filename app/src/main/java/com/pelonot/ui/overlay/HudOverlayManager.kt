@@ -20,16 +20,21 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.theme.PelonotTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * Hosts the floating ride HUD in a `WindowManager` overlay so it can sit on
@@ -52,11 +57,24 @@ class HudOverlayManager(private val context: Context) {
     private var composeView: ComposeView? = null
     private var lifecycleOwner: OverlayLifecycleOwner? = null
 
+    /** Outlives the composition, so a preference write cannot be half-applied. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _dock = MutableStateFlow(HudDock.DEFAULT)
     val dock: StateFlow<HudDock> = _dock.asStateFlow()
 
     private val _collapsed = MutableStateFlow(false)
     val collapsed: StateFlow<Boolean> = _collapsed.asStateFlow()
+
+    /**
+     * Whether the volume sliders are showing (11.5.4).
+     *
+     * Not persisted, and closed again whenever the HUD comes down: the resting
+     * strip is three big numbers and a countdown, and 11.5.5 only lets volume
+     * onto it at all because this tablet offers nowhere else to change it.
+     */
+    private val _volumeOpen = MutableStateFlow(false)
+    val volumeOpen: StateFlow<Boolean> = _volumeOpen.asStateFlow()
 
     /** Notified when the rider drags the HUD to the other edge, so it persists. */
     var onDockChanged: ((HudDock) -> Unit)? = null
@@ -123,6 +141,17 @@ class HudOverlayManager(private val context: Context) {
                 val coachStyle by coachStyleFlow.collectAsStateWithLifecycle()
                 val currentDock by _dock.collectAsStateWithLifecycle()
                 val isCollapsed by _collapsed.collectAsStateWithLifecycle()
+                val isVolumeOpen by _volumeOpen.collectAsStateWithLifecycle()
+
+                // 11.5.4: mid-ride is when a rider discovers the film is too
+                // loud, and going to Settings means abandoning the ride screen
+                // and the film together.
+                val volumeController = ServiceLocator.volumeController
+                val mediaVolume by volumeController.mediaVolume.collectAsStateWithLifecycle()
+                val volumeError by volumeController.lastError.collectAsStateWithLifecycle()
+                val coachVolume by ServiceLocator.settingsRepository.settings
+                    .map { it.coachVolume }
+                    .collectAsStateWithLifecycle(AppSettings.DEFAULT_COACH_VOLUME)
 
                 // Telemetry is collected separately from the ride snapshot: it
                 // changes several times a second and the snapshot does not.
@@ -147,7 +176,19 @@ class HudOverlayManager(private val context: Context) {
                         onOpenApp = onOpenApp,
                         onPause = onPause,
                         onResume = onResume,
-                        onStop = onStop
+                        onStop = onStop,
+                        volumeOpen = isVolumeOpen,
+                        mediaVolume = mediaVolume,
+                        coachVolume = coachVolume,
+                        volumeError = volumeError,
+                        onToggleVolume = {
+                            // Re-read on the way open: the level may have moved
+                            // in Settings, or from another app, since last time.
+                            if (!_volumeOpen.value) volumeController.refresh()
+                            _volumeOpen.value = !_volumeOpen.value
+                        },
+                        onMediaVolumeChange = volumeController::setMediaVolume,
+                        onCoachVolumeChange = ::setCoachVolume
                     )
                 }
             }
@@ -162,6 +203,17 @@ class HudOverlayManager(private val context: Context) {
             Log.e(TAG, "Failed to attach HUD overlay", e)
             owner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         }
+    }
+
+    /**
+     * Writes the coach level straight through to the same preference Settings
+     * uses, so the two sliders are one setting and not two (11.5.6).
+     *
+     * On [scope] rather than a composition-scoped one: a DataStore write must
+     * not be cancelled by the strip being collapsed mid-drag.
+     */
+    private fun setCoachVolume(fraction: Float) {
+        scope.launch { ServiceLocator.settingsRepository.setCoachVolume(fraction) }
     }
 
     /** Snaps the HUD to the given screen edge. */
@@ -189,6 +241,7 @@ class HudOverlayManager(private val context: Context) {
         composeView = null
         lifecycleOwner = null
         _collapsed.value = false
+        _volumeOpen.value = false
     }
 
     private fun gravityFor(dock: HudDock): Int = when (dock) {

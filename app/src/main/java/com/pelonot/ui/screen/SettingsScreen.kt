@@ -58,6 +58,7 @@ import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
+import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.expressiveShapes
@@ -81,6 +82,10 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // The media volume is a system value; anything on the device may have moved
+    // it since this screen was last looked at.
+    LaunchedEffect(Unit) { viewModel.refreshVolume() }
 
     // Scan used to report HeartRateStatus.PermissionRequired and stop there:
     // the screen said what was wrong and offered no way to put it right, so a
@@ -171,6 +176,14 @@ fun SettingsScreen(
                 onRequestPermission = {
                     OverlayPermissionHelper.requestOverlayPermission(context)
                 }
+            )
+
+            VolumeSection(
+                mediaVolume = state.mediaVolume,
+                coachVolume = state.settings.coachVolume,
+                error = state.volumeError,
+                onMediaVolumeChange = viewModel::setMediaVolume,
+                onCoachVolumeChange = viewModel::setCoachVolume
             )
 
             SensorSection(
@@ -555,6 +568,39 @@ private fun RideHudSection(
         Text(
             text = "The countdown into the next interval, and what that interval " +
                 "will be, are always shown whichever you choose.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * The only volume control this tablet has (11.5).
+ *
+ * With Peloton's launcher replaced there is no status bar to pull down, so no
+ * system volume panel exists at all, and the owner reports no physical rocker.
+ * If the app does not offer this, nothing does.
+ */
+@Composable
+private fun VolumeSection(
+    mediaVolume: Float,
+    coachVolume: Float,
+    error: String?,
+    onMediaVolumeChange: (Float) -> Unit,
+    onCoachVolumeChange: (Float) -> Unit
+) {
+    SettingsSection("Volume") {
+        VolumeSliders(
+            mediaVolume = mediaVolume,
+            coachVolume = coachVolume,
+            onMediaVolumeChange = onMediaVolumeChange,
+            onCoachVolumeChange = onCoachVolumeChange,
+            error = error
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        Text(
+            text = "Both are also on the HUD mid-ride, behind the volume button — " +
+                "which is when you actually find out the film is too loud.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

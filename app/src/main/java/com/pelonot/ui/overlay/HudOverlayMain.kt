@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -68,6 +69,7 @@ import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.ProgressArc
+import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.rememberFlash
 import com.pelonot.ui.components.rememberPulse
@@ -110,6 +112,13 @@ fun HudOverlayMain(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
+    volumeOpen: Boolean,
+    mediaVolume: Float,
+    coachVolume: Float,
+    volumeError: String?,
+    onToggleVolume: () -> Unit,
+    onMediaVolumeChange: (Float) -> Unit,
+    onCoachVolumeChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val interval = snapshot.interval
@@ -166,9 +175,9 @@ fun HudOverlayMain(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(hudBackground(dock))
-                // Layered after the gradient so it washes over the panel
-                // rather than being painted under it.
+                .background(hudBodyColor())
+                // Layered after the fill so it washes over the panel rather
+                // than being painted under it.
                 .background(accent.copy(alpha = 0.30f * flash))
                 // 11.1a.1: double tap anywhere on the strip opens the full app.
                 // Double rather than single deliberately — a single tap is what
@@ -187,12 +196,45 @@ fun HudOverlayMain(
         ) {
             if (dock == HudDock.Bottom) edge()
 
+            val body: @Composable () -> Unit = {
+                HudBody(
+                    snapshot = snapshot,
+                    reading = reading,
+                    collapsed = collapsed,
+                    coachStyle = coachStyle,
+                    accent = accent,
+                    volumeOpen = volumeOpen,
+                    onToggleVolume = onToggleVolume,
+                    onPause = onPause,
+                    onResume = onResume,
+                    onStop = onStop
+                )
+            }
+
+            // Between the handle and the numbers, so it opens *into* the screen
+            // rather than pushing the numbers away from the edge they are
+            // docked against.
+            val volumePanel: @Composable () -> Unit = {
+                HudVolumePanel(
+                    visible = volumeOpen,
+                    mediaVolume = mediaVolume,
+                    coachVolume = coachVolume,
+                    error = volumeError,
+                    onMediaVolumeChange = onMediaVolumeChange,
+                    onCoachVolumeChange = onCoachVolumeChange
+                )
+            }
+
             if (dock == HudDock.Top) {
-                HudBody(snapshot, reading, collapsed, coachStyle, accent, onPause, onResume, onStop)
+                body()
+                volumePanel()
                 HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
+                HudFeather(dock)
             } else {
+                HudFeather(dock)
                 HudHandle(dock, collapsed, onToggleCollapsed, onDockChange)
-                HudBody(snapshot, reading, collapsed, coachStyle, accent, onPause, onResume, onStop)
+                volumePanel()
+                body()
             }
 
             if (dock == HudDock.Top) edge()
@@ -201,25 +243,42 @@ fun HudOverlayMain(
 }
 
 /**
- * The strip's fill: a short translucent lead-in at the inner edge so the
- * boundary is not a hard line across the picture, then effectively opaque
- * wherever the numbers actually sit.
+ * Effectively opaque wherever the numbers actually sit.
  *
  * The first version graded the *whole* strip from 0.90 to 0.97, which looks
  * elegant in a screenshot against a black wallpaper and is unreadable over
  * anything bright — which is the only place it will ever really be used.
  */
 @Composable
-private fun hudBackground(dock: HudDock): Brush {
-    val edge = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
-    val body = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.985f)
-    val deep = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.995f)
+private fun hudBodyColor(): Color =
+    MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.99f)
 
-    return if (dock == HudDock.Bottom) {
-        Brush.verticalGradient(0f to edge, 0.14f to body, 1f to deep)
-    } else {
-        Brush.verticalGradient(0f to deep, 0.86f to body, 1f to edge)
-    }
+/**
+ * A short translucent lead-in at the inner edge, so the boundary is not a hard
+ * line across the picture.
+ *
+ * A **fixed height**, not a fraction of the strip. It used to be a gradient
+ * stop at 0.86 of the whole background, which is fine while the strip is one
+ * height and wrong the moment it is another: opening the volume sliders
+ * (11.5.4) more than doubled the strip, so the fade moved into the middle of
+ * it and the launcher's wallpaper showed through between the two sliders.
+ * Anything that makes the strip taller — 11.1b.3's resizing especially — would
+ * have done the same.
+ */
+@Composable
+private fun HudFeather(dock: HudDock) {
+    val body = hudBodyColor()
+    val outer = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(FEATHER_HEIGHT)
+            .background(
+                Brush.verticalGradient(
+                    if (dock == HudDock.Top) listOf(body, outer) else listOf(outer, body)
+                )
+            )
+    )
 }
 
 private fun hudShape(dock: HudDock) = if (dock == HudDock.Bottom) {
@@ -283,6 +342,8 @@ private fun HudBody(
     collapsed: Boolean,
     coachStyle: CoachStyle,
     accent: Color,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit
@@ -295,9 +356,63 @@ private fun HudBody(
         label = "HudDensity"
     ) { isCollapsed ->
         if (isCollapsed) {
-            HudCollapsed(snapshot, reading, accent, onPause, onResume, onStop)
+            HudCollapsed(
+                snapshot, reading, accent,
+                volumeOpen, onToggleVolume, onPause, onResume, onStop
+            )
         } else {
-            HudExpanded(snapshot, reading, coachStyle, accent, onPause, onResume, onStop)
+            HudExpanded(
+                snapshot, reading, coachStyle, accent,
+                volumeOpen, onToggleVolume, onPause, onResume, onStop
+            )
+        }
+    }
+}
+
+/**
+ * The volume sliders, opened from the button among the ride controls (11.5.4).
+ *
+ * This is the deliberate exception to "nothing on the strip that is not about
+ * the next sixty seconds of pedalling" (18.6 / 19.4). It earns its place only
+ * because this tablet has **no status bar and therefore no system volume UI at
+ * all** — the app is not one of the places a rider can change the volume, it is
+ * the only one. Kept behind a tap so the resting strip is unchanged (11.5.5).
+ */
+@Composable
+private fun HudVolumePanel(
+    visible: Boolean,
+    mediaVolume: Float,
+    coachVolume: Float,
+    error: String?,
+    onMediaVolumeChange: (Float) -> Unit,
+    onCoachVolumeChange: (Float) -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = MaterialTheme.spacing.large,
+                    vertical = MaterialTheme.spacing.small
+                ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge)
+        ) {
+            // Two columns, not two stacked rows: this strip is 1280 dp wide and
+            // barely 170 dp tall, and height is the thing it cannot spend.
+            VolumeSliders(
+                mediaVolume = mediaVolume,
+                coachVolume = coachVolume,
+                onMediaVolumeChange = onMediaVolumeChange,
+                onCoachVolumeChange = onCoachVolumeChange,
+                error = error,
+                compact = true,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -312,6 +427,8 @@ private fun HudExpanded(
     reading: SensorReading,
     coachStyle: CoachStyle,
     accent: Color,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit
@@ -370,6 +487,8 @@ private fun HudExpanded(
 
                 Controls(
                     isPaused = snapshot.isPaused,
+                    volumeOpen = volumeOpen,
+                    onToggleVolume = onToggleVolume,
                     onPause = onPause,
                     onResume = onResume,
                     onStop = onStop
@@ -624,11 +743,39 @@ private fun NextSlot(
 @Composable
 private fun Controls(
     isPaused: Boolean,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        // Tonal rather than filled, and first in the row: it is the one control
+        // here that is not about the ride, and it should not compete with pause
+        // and stop for a glance.
+        FilledIconButton(
+            onClick = onToggleVolume,
+            modifier = Modifier.size(52.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = if (volumeOpen) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+                contentColor = if (volumeOpen) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                contentDescription = stringResource(
+                    if (volumeOpen) R.string.cd_hide_volume else R.string.cd_show_volume
+                )
+            )
+        }
         // A single toggle rather than separate Pause and Resume buttons, one of
         // which is always a no-op.
         FilledIconButton(
@@ -675,6 +822,8 @@ private fun HudCollapsed(
     snapshot: RideSnapshot,
     reading: SensorReading,
     accent: Color,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit
@@ -728,6 +877,8 @@ private fun HudCollapsed(
 
         Controls(
             isPaused = snapshot.isPaused,
+            volumeOpen = volumeOpen,
+            onToggleVolume = onToggleVolume,
             onPause = onPause,
             onResume = onResume,
             onStop = onStop
@@ -754,6 +905,7 @@ private fun CompactMetric(value: String, unit: String, accent: Color) {
     }
 }
 
+private val FEATHER_HEIGHT = 10.dp
 private const val DRAG_SNAP_PX = 12f
 private val WIDE_BREAKPOINT = 900.dp
 private val ROOMY_BREAKPOINT = 1100.dp
