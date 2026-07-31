@@ -8,10 +8,10 @@ How data gets into the app, what happens to it, and where it goes.
 
 ## The one-paragraph version
 
-Bytes arrive from the bike's sensor board over a serial character device. They
-are decoded into cadence ticks and resistance readings, turned into a power
-estimate, merged with heart rate from a Bluetooth strap, and published as a
-single `StateFlow<SensorReading>`. A foreground service samples that flow once a
+Cadence, resistance and watts arrive from **Peloton's own sensor service**,
+which the app binds like any other Android service — the bike's tablet is stock
+and nothing here needs root. They are merged with heart rate from a Bluetooth
+strap and published as a single `StateFlow<SensorReading>`. A foreground service samples that flow once a
 second, writes each sample to SQLite, keeps running totals, advances the class
 through its intervals, decides whether to say anything about it, and drives a
 floating HUD docked to the edge of whatever the rider is watching. When the ride
@@ -27,17 +27,38 @@ There are three independent inputs. Nothing else enters the app.
 
 ```mermaid
 flowchart LR
-    A["/dev/ttyS2<br/>raw bytes"] --> B[SerialSensorSource]
+    A["Peloton SensorService<br/>(bound, no root)"] --> B[PelotonSensorServiceSource]
     C["BLE strap<br/>GATT notifications"] --> D[BleHeartRateManager]
     E["Simulated rider<br/>(no hardware)"] --> F[SimulatedSensorSource]
+    X["/dev/ttyO0 UART<br/>(rooted tablet only)"] -.-> Y[SerialSensorSource]
 
     B --> G[SensorRepository]
     F --> G
+    Y -.-> G
     D --> G
     G --> H["StateFlow&lt;SensorReading&gt;"]
 ```
 
-### 1a. The bike — serial
+### 1a. The bike — Peloton's own sensor service
+
+**This is the path that runs, and every earlier assumption about it was wrong.**
+The app spent most of its history preparing to read the sensor board's UART
+directly, on a bike it assumed was jailbroken. It is not: the tablet is stock,
+`/dev/ttyO0` belongs to `system:system`, `/dev/ttyS1` does not exist and
+`/dev/ttyS2` is Bluetooth. No app can open any of them.
+
+What works is binding Peloton's `SensorService`, which is exported with no
+`android:permission`, so the bind simply succeeds. `PelotonSensorServiceSource`
+does that and receives cadence, resistance **and power** — so on real hardware
+the watts are *measured by the board*, not modelled, and `PowerModel` does not
+run at all during a bike ride. `SensorReading.powerIsMeasured` marks which is
+which. See PLAN.md 2.1a.
+
+### 1a-bis. The bike — serial, for a rooted tablet only
+
+`SerialSensorSource` and `SerialProtocolParser` are correct code aimed at a
+target this project does not have. They are kept for a rooted tablet and are
+exercised by nothing on stock hardware. What follows describes them.
 
 The Gen 1/Gen 2 sensor board exposes a UART as a character device. It is read as
 a plain file; baud rate and line discipline are whatever the kernel already has
@@ -406,10 +427,10 @@ and reads as a rendering fault.
 
 ## 6. What is not wired yet
 
-**Stale as written — the app has since been verified on a real Gen 1.** Telemetry
-comes from Peloton's `SensorService` rather than the serial port (PLAN.md 2.1a),
-watts on hardware are measured rather than modelled, and a real BLE strap has
-been ridden. `PowerModel`'s coefficients are wrong but only reach a suggestion
+**Mostly overtaken — the app has since been verified on a real Gen 1.** Telemetry
+comes from Peloton's `SensorService` rather than the serial port (PLAN.md 2.1a,
+and §1a above now says so), watts on hardware are measured rather than modelled,
+and a real BLE strap has been ridden. `PowerModel`'s coefficients are wrong but only reach a suggestion
 and a simulation. PLAN.md's *Where the work stands* is the current picture.
 
 ### The inverse power model

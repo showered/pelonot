@@ -1695,7 +1695,16 @@ has simply never been written down.
 - [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
 - [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
-- [ ] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. The README still advertises a root prerequisite the app does not have and does not want (2.1a). Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot
+- [x] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot.
+      *Written. Note the item's own premise was wrong: there was no README at
+      all to correct — the root prerequisite was being advertised by
+      **`ARCHITECTURE.md`**, which opened "bytes arrive from the bike's sensor
+      board over a serial character device" and drew `/dev/ttyS2` in its first
+      diagram. The correction had been added in §6, 380 lines below the claim,
+      where nobody reading top-down would reach it first — and `CLAUDE.md` sends
+      every newcomer and every new session to that file before any other. §1a
+      now leads with the `SensorService` bind and the serial path is demoted to
+      §1a-bis, for a rooted tablet, which is what it is*
 
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
