@@ -39,7 +39,13 @@ data class RideUiState(
      * Asked at ride start rather than discovered later as "the overlay just
      * never appeared".
      */
-    val overlayPermissionNeeded: Boolean = false
+    val overlayPermissionNeeded: Boolean = false,
+    /**
+     * Whether leaving this screen would actually produce a HUD (11.1a.2).
+     * Offering "back to the HUD" when the overlay is off or ungranted would
+     * drop the rider onto their home screen with nothing.
+     */
+    val hudAvailable: Boolean = false
 ) {
     val elapsedSeconds: Int get() = snapshot.elapsedSeconds
     val isPaused: Boolean get() = workoutState == WorkoutState.Paused
@@ -151,7 +157,12 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val wantsHud = settingsRepository.settings.first().hudEnabled
             val granted = OverlayPermissionHelper.canDrawOverlays(getApplication())
-            _uiState.update { it.copy(overlayPermissionNeeded = wantsHud && !granted) }
+            _uiState.update {
+                it.copy(
+                    overlayPermissionNeeded = wantsHud && !granted,
+                    hudAvailable = wantsHud && granted
+                )
+            }
         }
     }
 
@@ -167,6 +178,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     /** "Don't ask again" — the rider is happy riding on the app's own screen. */
     fun disableHud() {
         viewModelScope.launch { settingsRepository.setHudEnabled(false) }
+        _uiState.update { it.copy(hudAvailable = false) }
         dismissOverlayPrompt()
     }
 
@@ -177,6 +189,10 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     fun setScreenVisible(visible: Boolean) {
         screenVisible = visible
         service?.setRideScreenVisible(visible)
+        // Re-read on the way back in: the rider may have just come from the
+        // system's overlay settings, having granted the very permission the
+        // prompt sent them there for.
+        if (visible) checkOverlayPermission()
     }
 
     fun pause() = service?.pauseWorkout()

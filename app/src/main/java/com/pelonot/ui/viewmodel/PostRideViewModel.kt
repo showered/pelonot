@@ -150,7 +150,15 @@ class PostRideViewModel(
         }
     }
 
-    /** Guest rides are opt-in: discarding removes the row and its metrics. */
+    /**
+     * Throws the ride away: the row and its whole metric series.
+     *
+     * Offered to guests since 8.4 and, since 11.1a.4, to riders with a profile
+     * too — the session that was a warm-up, a mistake, or somebody else
+     * pedalling for thirty seconds. It is local only: an already-uploaded ride
+     * stays in the cloud until tombstones exist (12.3.5 / 15.3.4). A sync
+     * enqueued for it drops itself when it finds the row gone.
+     */
     fun discard(onDiscarded: () -> Unit) {
         val workoutId = _uiState.value.workout?.id
         viewModelScope.launch {

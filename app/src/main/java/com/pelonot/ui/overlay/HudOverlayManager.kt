@@ -91,6 +91,7 @@ class HudOverlayManager(private val context: Context) {
         snapshotFlow: StateFlow<RideSnapshot>,
         coachStyleFlow: StateFlow<CoachStyle>,
         dock: HudDock = HudDock.DEFAULT,
+        onOpenApp: () -> Unit = {},
         onPause: () -> Unit = {},
         onResume: () -> Unit = {},
         onStop: () -> Unit = {}
@@ -143,6 +144,7 @@ class HudOverlayManager(private val context: Context) {
                         coachStyle = coachStyle,
                         onToggleCollapsed = { _collapsed.value = !_collapsed.value },
                         onDockChange = ::moveTo,
+                        onOpenApp = onOpenApp,
                         onPause = onPause,
                         onResume = onResume,
                         onStop = onStop

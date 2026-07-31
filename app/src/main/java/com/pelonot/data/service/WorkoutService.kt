@@ -34,6 +34,7 @@ import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.overlay.HudOverlayManager
 import com.pelonot.ui.overlay.RideCoach
 import kotlinx.coroutines.CoroutineScope
@@ -291,6 +292,15 @@ class WorkoutService : Service() {
         tickerJob?.cancel()
         tickerJob = null
         sensorRepository.stop()
+
+        // 11.1a.3: the class finishing is the one moment the rider definitely
+        // wants the whole screen — the summary, the RPE question and any FTP
+        // proposal are all there, and none of them fit on a strip. Read
+        // *before* hideHud(), because a ride ended from the strip is exactly
+        // the case that needs it. If the ride screen is already on top the app
+        // is forward by definition and starting it again would only churn.
+        val needsBringingForward = !rideScreenVisible
+
         hideHud()
         coach?.silence()
 
@@ -298,6 +308,8 @@ class WorkoutService : Service() {
         _currentSession.value = finalSession
         _workoutState.value = WorkoutState.Completed
         _rideSnapshot.update { it.copy(state = WorkoutState.Completed) }
+
+        if (needsBringingForward) AppForeground.bringForward(this)
 
         serviceScope.launch {
             flushPendingMetrics()
@@ -352,6 +364,7 @@ class WorkoutService : Service() {
                 snapshotFlow = rideSnapshot,
                 coachStyleFlow = _coachStyle,
                 dock = hudDock,
+                onOpenApp = { AppForeground.bringForward(this@WorkoutService) },
                 onPause = ::pauseWorkout,
                 onResume = ::resumeWorkout,
                 onStop = ::stopWorkout

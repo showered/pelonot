@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +106,7 @@ fun HudOverlayMain(
     coachStyle: CoachStyle,
     onToggleCollapsed: () -> Unit,
     onDockChange: (HudDock) -> Unit,
+    onOpenApp: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
@@ -167,6 +170,20 @@ fun HudOverlayMain(
                 // Layered after the gradient so it washes over the panel
                 // rather than being painted under it.
                 .background(accent.copy(alpha = 0.30f * flash))
+                // 11.1a.1: double tap anywhere on the strip opens the full app.
+                // Double rather than single deliberately — a single tap is what
+                // a rider fires by accident reaching past the tablet, and one
+                // that yanked their film off the screen mid-scene would be the
+                // worst possible mis-fire on this surface. The buttons and the
+                // handle sit in front of this and consume their own taps.
+                .pointerInput(Unit) {
+                    detectTapGestures(onDoubleTap = { onOpenApp() })
+                }
+                .semantics {
+                    // The gesture is invisible otherwise: there is nothing to
+                    // see, and a rider who has not been told will never find it.
+                    onClick(label = "Open Pelonot") { onOpenApp(); true }
+                }
         ) {
             if (dock == HudDock.Bottom) edge()
 
@@ -241,9 +258,11 @@ private fun HudHandle(
             }
             .semantics {
                 contentDescription = if (collapsed) {
-                    "Expand the heads-up display. Drag to move it to the other edge."
+                    "Expand the heads-up display. Drag to move it to the other " +
+                        "edge, or double tap it to open Pelonot."
                 } else {
-                    "Collapse the heads-up display. Drag to move it to the other edge."
+                    "Collapse the heads-up display. Drag to move it to the other " +
+                        "edge, or double tap it to open Pelonot."
                 }
             },
         contentAlignment = Alignment.Center

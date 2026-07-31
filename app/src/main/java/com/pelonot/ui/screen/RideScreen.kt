@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -38,6 +39,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -76,6 +79,7 @@ import com.pelonot.ui.components.UpcomingIntervals
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.attentionBounce
 import com.pelonot.ui.components.rememberPulse
+import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
@@ -150,6 +154,11 @@ fun RideScreen(
         )
     }
 
+    // 11.1a.2: the other half of the door. Sending the task to the back returns
+    // the rider to whatever they were watching, and the HUD comes back with it
+    // — the overlay stands down only while this screen is on top.
+    val context = LocalContext.current
+
     RideContent(
         state = state,
         fallbackTitle = plan?.title ?: "Just Ride",
@@ -158,6 +167,7 @@ fun RideScreen(
         onPause = viewModel::pause,
         onResume = viewModel::resume,
         onEnd = viewModel::endRide,
+        onBackToHud = { AppForeground.sendToBack(context) },
         modifier = modifier
     )
 }
@@ -200,6 +210,7 @@ private fun RideContent(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEnd: () -> Unit,
+    onBackToHud: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snapshot = state.snapshot
@@ -277,6 +288,7 @@ private fun RideContent(
                             onPause = onPause,
                             onResume = onResume,
                             onEnd = onEnd,
+                            onBackToHud = onBackToHud,
                             modifier = Modifier
                                 .width(if (availableWidth >= 1000.dp) 320.dp else 260.dp)
                                 .fillMaxHeight()
@@ -291,7 +303,14 @@ private fun RideContent(
                     ) {
                         EffortColumn(state, accent, Modifier.fillMaxWidth())
                         MetricGrid(state, Modifier.fillMaxWidth().weight(1f))
-                        UpNextColumn(state, onPause, onResume, onEnd, Modifier.fillMaxWidth())
+                        UpNextColumn(
+                            state = state,
+                            onPause = onPause,
+                            onResume = onResume,
+                            onEnd = onEnd,
+                            onBackToHud = onBackToHud,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -697,6 +716,7 @@ private fun UpNextColumn(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEnd: () -> Unit,
+    onBackToHud: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val interval = state.snapshot.interval
@@ -739,6 +759,27 @@ private fun UpNextColumn(
         }
 
         Spacer(Modifier.weight(1f))
+
+        // 11.1a.2. Above pause and end because it is by far the most frequent
+        // of the three during a class — the rider is going back to their film,
+        // not stopping. Hidden when there is no HUD to go back to, since it
+        // would then just be a button that hides the app.
+        if (state.hudAvailable) {
+            OutlinedButton(
+                onClick = onBackToHud,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp),
+                shape = MaterialTheme.expressiveShapes.pill
+            ) {
+                Icon(imageVector = Icons.Default.PictureInPictureAlt, contentDescription = null)
+                Spacer(Modifier.width(MaterialTheme.spacing.small))
+                Text(
+                    text = stringResource(R.string.ride_back_to_hud),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        }
 
         Button(
             onClick = if (state.isPaused) onResume else onPause,

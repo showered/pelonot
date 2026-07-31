@@ -17,4 +17,7 @@
     <string name="cd_resume_ride">Resume ride</string>
     <string name="cd_end_ride">End ride</string>
     <string name="cd_drag_handle">Drag to reposition the heads-up display</string>
+
+    <!-- Ride screen -->
+    <string name="ride_back_to_hud">Back to the HUD</string>
 </resources>

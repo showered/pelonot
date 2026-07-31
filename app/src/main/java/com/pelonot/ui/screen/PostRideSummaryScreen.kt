@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -23,6 +24,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.ui.components.RideSummaryCard
 import com.pelonot.ui.theme.expressiveShapes
@@ -59,8 +62,24 @@ fun PostRideSummaryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
+    var confirmingDiscard by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(workoutId) { viewModel.load(workoutId) }
+
+    // 11.1a.4. Guests have had this since 8.4; riders with a profile had to
+    // finish, leave, open history and delete. Same weight as the delete in
+    // 12.3.2, because it destroys the same thing: not just the totals but the
+    // per-second series underneath them, which nothing can rebuild.
+    if (confirmingDiscard) {
+        DiscardRideDialog(
+            durationSec = state.workout?.durationSec ?: 0,
+            onConfirm = {
+                confirmingDiscard = false
+                viewModel.discard(onDone)
+            },
+            onDismiss = { confirmingDiscard = false }
+        )
+    }
 
     if (showProfileDialog) {
         ProfileCreationDialog(
@@ -137,17 +156,61 @@ fun PostRideSummaryScreen(
                 onDiscard = { viewModel.discard(onDone) }
             )
         } else {
-            Button(
-                onClick = onDone,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .sizeIn(minHeight = MIN_TOUCH_TARGET),
-                shape = MaterialTheme.expressiveShapes.pill
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
             ) {
-                Text("Done")
+                // Deliberately the quieter of the two and on the far side of
+                // the row from Done, which is the button a rider reaches for
+                // without looking.
+                OutlinedButton(
+                    onClick = { confirmingDiscard = true },
+                    enabled = workout != null,
+                    modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text("Discard this ride")
+                }
+                Button(
+                    onClick = onDone,
+                    modifier = Modifier
+                        .weight(1f)
+                        .sizeIn(minHeight = MIN_TOUCH_TARGET),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text("Done")
+                }
             }
         }
     }
+}
+
+/**
+ * Named, and as hard to hit by accident as the delete in 12.3.2.
+ *
+ * It says what is going rather than asking "are you sure": a rider who has
+ * just got off the bike is reading this out of breath, and "10:32 of riding"
+ * is the fact that decides it.
+ */
+@Composable
+private fun DiscardRideDialog(
+    durationSec: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Throw this ride away?") },
+        text = {
+            Text(
+                "${Formatters.duration(durationSec)} of riding goes, along with " +
+                    "everything it measured second by second. That cannot be " +
+                    "rebuilt from the totals, and it will not appear in your history."
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Throw it away") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep it") } }
+    )
 }
 
 /**
