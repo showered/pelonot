@@ -1,6 +1,7 @@
 package com.pelonot.data.repository
 
 import com.pelonot.data.local.dao.WorkoutDao
+import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
@@ -38,6 +39,15 @@ class WorkoutRepository(
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
         workoutDao.getWorkoutsByUser(userId)
+
+    /** Ride history, newest first, limited to [limit] rows. See [WorkoutListItem]. */
+    fun observeHistory(userId: Int, limit: Int): Flow<List<WorkoutListItem>> =
+        workoutDao.observeHistory(userId, limit)
+
+    fun observeCompletedCount(userId: Int): Flow<Int> =
+        workoutDao.observeCompletedCount(userId)
+
+    suspend fun getClassTitle(classId: String): String? = workoutDao.getClassTitle(classId)
 
     /**
      * Headline figures for the dashboard.
@@ -89,7 +99,15 @@ class WorkoutRepository(
     suspend fun assignToUser(workoutId: String, userId: Int) =
         workoutDao.assignWorkoutToUser(workoutId, userId)
 
-    /** Removes a ride and, by cascade, its metrics. Used for "discard". */
+    /**
+     * Removes a ride and, by cascade, its metric series.
+     *
+     * There is no undo below this line. `workout_metrics` has
+     * `ON DELETE CASCADE`, so the per-second record goes with the row and
+     * cannot be reconstructed from the aggregates. Anything offering the rider
+     * an undo has to hold the delete back rather than reverse it — see
+     * `HistoryViewModel`.
+     */
     suspend fun discardWorkout(workoutId: String) = workoutDao.deleteWorkout(workoutId)
 
     suspend fun findRecoverableWorkout(): WorkoutEntity? = workoutDao.getIncompleteWorkout()

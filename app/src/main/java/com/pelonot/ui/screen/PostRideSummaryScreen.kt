@@ -39,11 +39,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.ui.components.RideSummaryCard
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
-import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.PostRideViewModel
 
 /**
@@ -114,25 +113,8 @@ fun PostRideSummaryScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.expressiveShapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                )
-            ) {
-                Column(Modifier.padding(MaterialTheme.spacing.large)) {
-                    SummaryRow("Duration", Formatters.duration(workout.durationSec))
-                    SummaryRow("Total output", Formatters.kilojoules(workout.totalOutputKj))
-                    SummaryRow("Average power", Formatters.watts(workout.avgPower ?: 0.0))
-                    SummaryRow("Average cadence", Formatters.rpm(workout.avgCadence ?: 0.0))
-                    SummaryRow("Average heart rate", Formatters.bpm(workout.avgHr?.toInt()))
-                    SummaryRow(
-                        "Distance",
-                        Formatters.distance(workout.totalDistanceKm, MaterialTheme.units)
-                    )
-                }
-            }
+            // Shared with the ride detail screen (12.2.2).
+            RideSummaryCard(workout)
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
@@ -319,30 +301,6 @@ private fun RpeSelector(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = MaterialTheme.spacing.small)
-            // Read as one phrase by a screen reader rather than two
-            // disconnected fragments.
-            .clearAndSetSemantics { contentDescription = "$label: $value" },
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 

@@ -40,6 +40,46 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE user_id = :userId AND is_complete = 1 ORDER BY timestamp DESC")
     fun getWorkoutsByUser(userId: Int): Flow<List<WorkoutEntity>>
 
+    /**
+     * Ride history, newest first, windowed.
+     *
+     * `is_complete = 1` is not decoration: an unfinished row is a crashed or
+     * in-flight ride with zeroed totals, and showing it as history would put a
+     * 0 kJ entry at the top of the list every time the app is killed mid-ride
+     * (12.1.4).
+     *
+     * `LIMIT` rather than paging: the screen asks for one window and raises it
+     * when the rider reaches the bottom. A `Flow` over the whole table would
+     * re-read every ride the rider has ever done on each insert.
+     */
+    @Query(
+        """
+        SELECT w.id AS id,
+               c.title AS class_title,
+               w.duration_sec AS duration_sec,
+               w.total_output_kj AS total_output_kj,
+               w.total_distance_km AS total_distance_km,
+               w.avg_power AS avg_power,
+               w.rpe_rating AS rpe_rating,
+               w.was_recovered AS was_recovered,
+               w.timestamp AS timestamp
+        FROM workouts w
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE w.user_id = :userId AND w.is_complete = 1
+        ORDER BY w.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun observeHistory(userId: Int, limit: Int): Flow<List<WorkoutListItem>>
+
+    /** How many rides exist, so the screen knows whether the window is full. */
+    @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
+    fun observeCompletedCount(userId: Int): Flow<Int>
+
+    /** The class a ride was recorded against, for the detail screen's header. */
+    @Query("SELECT title FROM class_templates WHERE id = :classId")
+    suspend fun getClassTitle(classId: String): String?
+
     @Query(
         """
         SELECT * FROM workouts

@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pelonot.data.local.AppDatabase
+import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
@@ -198,6 +199,74 @@ class WorkoutDaoTest {
         workoutDao.setRpeRating("w1", 7)
 
         assertEquals(7, workoutDao.getWorkoutById("w1")?.rpeRating)
+    }
+
+    @Test
+    fun historyJoinsTheClassTitleAndSkipsInProgressRides() = runBlocking {
+        database.classTemplateDao().insert(
+            ClassTemplateEntity(
+                id = "TB-01",
+                title = "Tabata Sprint 20",
+                category = "Tabata Bursts",
+                durationSec = 1200,
+                intervalsJson = "[]"
+            )
+        )
+        workoutDao.insertWorkout(workout("classRide").copy(classId = "TB-01"))
+        workoutDao.insertWorkout(workout("justRide"))
+        workoutDao.insertWorkout(workout("crashed", isComplete = false))
+
+        val history = workoutDao.observeHistory(USER_ID, limit = 50).first()
+
+        assertEquals(setOf("classRide", "justRide"), history.map { it.id }.toSet())
+        assertEquals(
+            "Tabata Sprint 20",
+            history.first { it.id == "classRide" }.classTitle
+        )
+        // A Just Ride has no class, and the row says so rather than blank.
+        assertNull(history.first { it.id == "justRide" }.classTitle)
+        assertEquals("Just Ride", history.first { it.id == "justRide" }.displayTitle)
+    }
+
+    @Test
+    fun historyWindowTakesTheNewestRidesAndTheCountKnowsTheRest() = runBlocking {
+        val now = System.currentTimeMillis()
+        repeat(5) { index ->
+            workoutDao.insertWorkout(workout("w$index", timestamp = now + index * 1000L))
+        }
+
+        val page = workoutDao.observeHistory(USER_ID, limit = 2).first()
+
+        assertEquals(listOf("w4", "w3"), page.map { it.id })
+        assertEquals(5, workoutDao.observeCompletedCount(USER_ID).first())
+    }
+
+    /**
+     * 12.3.4. The cascade is declared on the entity, but a declaration only
+     * takes effect if SQLite has foreign keys switched on for the connection —
+     * and an orphaned metric series is invisible from every screen and grows
+     * forever. This asserts the pragma directly rather than trusting the
+     * framework default.
+     */
+    @Test
+    fun foreignKeysAreEnforcedOnTheRealConnection() = runBlocking {
+        database.openHelper.readableDatabase
+            .query("PRAGMA foreign_keys")
+            .use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(1, cursor.getInt(0))
+            }
+
+        workoutDao.insertWorkout(workout("w1"))
+        metricDao.insertMetrics(
+            (0 until 20).map {
+                WorkoutMetricEntity(workoutId = "w1", timestampSec = it, power = 200.0)
+            }
+        )
+
+        workoutDao.deleteWorkout("w1")
+
+        assertEquals(0, metricDao.getMetricCountForWorkout("w1"))
     }
 
     @Test

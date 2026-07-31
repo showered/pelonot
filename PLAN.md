@@ -29,7 +29,7 @@
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | ❌ Blocked on bike access |
 | 11 | **HUD-first experience — the current priority** | 🔶 In progress |
-| 12 | Ride history & the rider's own record | 🔶 12.5 migrations done; history screen next — *fundamental* |
+| 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **In progress** — schema fixed and writes verified against the live project; app-driven round trip still open (14.1.6) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
@@ -264,7 +264,7 @@ deletion — **it also has to add somewhere the rider can see that it failed.**
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
 - [x] **8.6a** `RideCoach` wired into the ride, driven by the pure `RideCoachPolicy`. Replaces `ZoneAlertManager`, which had no caller and no decision logic to call it with.
-- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates` — **153 tests**
+- [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates`, `UnitSystem`, `Formatters`, `RideDayGrouping` — **186 tests**
 - [x] **8.8** Instrumented tests for Room DAOs (foreign key ordering, `is_complete` filtering, cascade delete)
 - [x] **8.8a** Instrumented test for `WorkoutService` lifecycle — start/pause/resume/stop, the workout row existing before its first metric, the batched tail being flushed, and a finished ride no longer being offered for recovery
 - [ ] **8.9** Manual testing on Gen 1/Gen 2 Peloton hardware — *blocked*
@@ -399,25 +399,25 @@ has `observeWorkouts(userId)`, `getRecentWorkouts` and `getMetrics`; the data
 layer is done and nothing renders it.
 
 ### 12.1 History screen
-- [ ] **12.1.1** `HistoryScreen` + `HistoryViewModel` over `observeWorkouts(userId)`, as a real `NavHost` destination
-- [ ] **12.1.2** Rides grouped by day, newest first, with date headers — a list of forty undifferentiated rows is not a record
-- [ ] **12.1.3** Row shows class title (or "Just Ride"), duration, output, avg power, and whether the ride was recovered from a crash
-- [ ] **12.1.4** Only complete rides. `is_complete = 0` means a crashed or in-flight ride and must not appear as history
-- [ ] **12.1.5** Empty state that says what to do, not "No data"
-- [ ] **12.1.6** Paging or a windowed query — a year of daily rides is 365 rows and ~1M metric samples; the list query must never touch `workout_metrics`
+- [x] **12.1.1** `HistoryScreen` + `HistoryViewModel`, as a real `NavHost` destination, reached from a History card on the dashboard
+- [x] **12.1.2** Rides grouped by day, newest first, with headers. `RideDayGrouping` is pure with the clock and timezone injected, and tested across midnight, both DST transitions and a non-UTC day boundary — an off-by-one here is only visible around midnight, in a timezone the author does not live in
+- [x] **12.1.3** Row shows class title (or "Just Ride"), time, duration, output, avg power, distance, and says so when a ride was rebuilt after a crash — which is what `was_recovered` (12.5.5) exists for
+- [x] **12.1.4** Only complete rides, asserted in `WorkoutDaoTest`
+- [x] **12.1.5** Empty state that says what to do. Guests get their own, since a guest ride belongs to nobody by design
+- [x] **12.1.6** Windowed query. `observeHistory` is a projection joining only `workouts` and `class_templates` and **never touches `workout_metrics`**; `observeCompletedCount` tells the screen whether to offer "Show older rides"
 
 ### 12.2 Ride detail
-- [ ] **12.2.1** Tapping a ride opens a detail screen — the same content as the post-ride summary, minus the RPE prompt and FTP dialog
-- [ ] **12.2.2** Extract the shared summary content out of `PostRideSummaryScreen` rather than copying it
+- [x] **12.2.1** `RideDetailScreen`, a separate destination from `PostRide`. Not `PostRideViewModel` with a flag: that one runs the FTP analyser over the whole series on load and offers to rewrite the rider's FTP, which is right ninety seconds after a ride and bizarre on a ride from March
+- [x] **12.2.2** `RideSummaryCard` extracted out of `PostRideSummaryScreen` and shared by both
 - [ ] **12.2.3** Charts (phase 16) land here first
-- [ ] **12.2.4** Edit RPE after the fact — riders rate a ride badly in the ninety seconds after finishing it
+- [x] **12.2.4** Edit RPE after the fact, saving on each tap. **Observed**: rated 7 from the detail screen, `rpe_rating = 7` in the row
 
 ### 12.3 Delete
-- [ ] **12.3.1** Delete from the detail screen and via swipe on the row. `WorkoutDao.deleteWorkout` exists and `workout_metrics` cascades; the UI is what is missing
-- [ ] **12.3.2** Confirm before deleting, and name what is going ("Delete Tabata Sprint 20, 14 June?"). A ride is not recoverable and the row is a small target
-- [ ] **12.3.3** Undo snackbar — better than a dialog for the common case of a mis-swipe, and worth having *as well* for the ones that are
-- [ ] **12.3.4** Verify the cascade actually fires with `PRAGMA foreign_keys` on in the shipping database, not just in the DAO test — an orphaned metric series is invisible and grows forever
-- [ ] **12.3.5** **Deleting a synced ride must delete it in the cloud too**, or the next pull resurrects it. Needs a tombstone (`deleted_at`) rather than a hard delete, since the device may be offline when the rider deletes. Blocked on 14; until then a delete is local-only and should say so
+- [x] **12.3.1** Delete from the detail screen and from a button on the row. **Not** a swipe: a swipe is right for a mis-tap you can take back instantly, and this list is scrolled far more often than it is edited
+- [x] **12.3.2** Confirm before deleting, naming the ride and its date, and saying that the per-second record goes with it
+- [x] **12.3.3** Undo snackbar. **The delete is deferred, not reversed** — `workout_metrics` cascades, so an "undo" that re-inserted the aggregates would hand the rider a ride with its time series missing. The row is hidden, the snackbar offers to put it back, and the delete only reaches the database when the snackbar goes away or the screen closes. If the process dies mid-window the ride survives, which is the safe direction. **Observed**: undo, then 49 metric rows and `rpe_rating = 7` still in the database
+- [x] **12.3.4** `PRAGMA foreign_keys` asserted directly on the real connection in `WorkoutDaoTest`, alongside a 20-sample cascade. An orphaned metric series is invisible from every screen and grows forever
+- [ ] **12.3.5** **Deleting a synced ride must delete it in the cloud too**, or the next pull resurrects it. Needs a tombstone (`deleted_at`) rather than a hard delete, since the device may be offline when the rider deletes. Blocked on 14 — the confirm dialog says "this only deletes the ride on this device" in the meantime
 - [ ] **12.3.6** Bulk delete / select mode — after 12.3.5, not before
 
 ### 12.4 Housekeeping the record

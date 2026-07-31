@@ -26,11 +26,13 @@ import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
+import com.pelonot.ui.screen.HistoryScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
 import com.pelonot.ui.screen.PreRideIntentPrompt
 import com.pelonot.ui.screen.ProfileCreationDialog
 import com.pelonot.ui.screen.ProfileSelectorScreen
+import com.pelonot.ui.screen.RideDetailScreen
 import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.ui.viewmodel.AppUiState
@@ -143,7 +145,31 @@ fun PelonotNavGraph(
                     showIntentPrompt = true
                 },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
+                onHistory = { navController.navigate(Destination.History.route) },
                 onSettings = { navController.navigate(Destination.Settings.route) }
+            )
+        }
+
+        composable(Destination.History.route) {
+            HistoryScreen(
+                onBack = navController::popBackStack,
+                onRideSelected = { workoutId ->
+                    navController.navigate(Destination.RideDetail.of(workoutId))
+                }
+            )
+        }
+
+        composable(
+            route = Destination.RideDetail.route,
+            arguments = listOf(
+                navArgument(Destination.ARG_WORKOUT_ID) { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            RideDetailScreen(
+                workoutId = backStackEntry.arguments
+                    ?.getString(Destination.ARG_WORKOUT_ID)
+                    .orEmpty(),
+                onBack = navController::popBackStack
             )
         }
 

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,6 +69,7 @@ fun MainDashboardScreen(
     stats: DashboardStats,
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
+    onHistory: () -> Unit,
     onSettings: () -> Unit
 ) {
     // The whole screen fades in when first composed.
@@ -120,8 +122,15 @@ fun MainDashboardScreen(
                     modifier = Modifier.weight(1f)
                 )
                 SecondaryActionCard(
+                    title = "History",
+                    subtitle = "Every ride you've finished",
+                    icon = Icons.Default.History,
+                    onClick = onHistory,
+                    modifier = Modifier.weight(1f)
+                )
+                SecondaryActionCard(
                     title = "Settings",
-                    subtitle = "FTP, weight, theme",
+                    subtitle = "FTP, weight, units",
                     icon = Icons.Default.Settings,
                     onClick = onSettings,
                     modifier = Modifier.weight(1f)

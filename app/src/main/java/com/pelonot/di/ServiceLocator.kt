@@ -12,6 +12,9 @@ import com.pelonot.data.sensor.BleHeartRateManager
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.data.sensor.SerialSensorSource
 import com.pelonot.data.sensor.SimulatedSensorSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -39,6 +42,18 @@ object ServiceLocator {
         get() = requireNotNull(applicationContext) {
             "ServiceLocator.init() must be called from PelonotApp.onCreate()"
         }
+
+    /**
+     * Work that has to finish even though the thing that asked for it is gone.
+     *
+     * The case that needs it is the held-back delete in `HistoryViewModel`: the
+     * rider deletes a ride, navigates away without undoing, and the delete must
+     * still land. `viewModelScope` is already cancelled by the time `onCleared`
+     * runs, so a `launch` there never executes its body.
+     */
+    val applicationScope: CoroutineScope by lazy {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    }
 
     val database: AppDatabase by lazy { AppDatabase.getInstance(context) }
 

@@ -38,6 +38,17 @@ sealed class Destination(val route: String) {
         fun of(workoutId: String) = "post_ride/${Uri.encode(workoutId)}"
     }
 
+    data object History : Destination("history")
+
+    /**
+     * A finished ride, opened from history — distinct from [PostRide], which is
+     * the same figures wrapped in the RPE prompt, the FTP breakthrough dialog
+     * and the guest-filing flow. None of those belong on a ride from March.
+     */
+    data object RideDetail : Destination("ride_detail/{$ARG_WORKOUT_ID}") {
+        fun of(workoutId: String) = "ride_detail/${Uri.encode(workoutId)}"
+    }
+
     companion object {
         const val ARG_CLASS_ID = "classId"
         const val ARG_INTENT_ID = "intentId"
