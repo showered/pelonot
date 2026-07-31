@@ -1,12 +1,15 @@
 package com.pelonot.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
+import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +24,9 @@ data class PostRideUiState(
     val rpe: Int? = null,
     val currentFtp: Int = 0,
     val proposedFtp: Int? = null,
-    val saved: Boolean = false
+    val saved: Boolean = false,
+    /** Profiles a guest ride could be filed against. */
+    val profiles: List<UserEntity> = emptyList()
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
 }
@@ -74,6 +79,12 @@ class PostRideViewModel(
                 )
             }
         }
+
+        viewModelScope.launch {
+            userRepository.allUsers.collect { users ->
+                _uiState.update { it.copy(profiles = users) }
+            }
+        }
     }
 
     fun setRpe(rpe: Int) {
@@ -95,6 +106,50 @@ class PostRideViewModel(
         _uiState.update { it.copy(proposedFtp = null) }
     }
 
+    /**
+     * Files a guest ride against an existing profile.
+     *
+     * The ride is already on disk with its full metric series; only its owner
+     * changes. Syncing is enqueued here because the service deliberately did
+     * not — at the time it finished, the ride had no owner to sync it for.
+     */
+    fun saveToProfile(context: Context, userId: Int, onSaved: () -> Unit) {
+        val workoutId = _uiState.value.workout?.id ?: return onSaved()
+        viewModelScope.launch {
+            workoutRepository.assignToUser(workoutId, userId)
+            WorkoutSyncWorker.enqueue(context.applicationContext, workoutId)
+            _uiState.update { it.copy(saved = true) }
+            onSaved()
+        }
+    }
+
+    /** Creates a profile for a guest who has decided to keep their rides. */
+    fun saveToNewProfile(
+        context: Context,
+        name: String,
+        weightKg: Double?,
+        ftpWatts: Int,
+        onSaved: () -> Unit
+    ) {
+        val workoutId = _uiState.value.workout?.id ?: return onSaved()
+        viewModelScope.launch {
+            val profile = userRepository.save(
+                UserEntity(
+                    name = name.trim(),
+                    weightKg = weightKg ?: DEFAULT_WEIGHT_KG,
+                    ftpWatts = ftpWatts
+                )
+            )
+            workoutRepository.assignToUser(workoutId, profile.localUserId)
+            // Riding as a guest and then keeping the ride is a strong signal
+            // that this is who the rider now is.
+            settingsRepository.setLastProfileId(profile.localUserId)
+            WorkoutSyncWorker.enqueue(context.applicationContext, workoutId)
+            _uiState.update { it.copy(saved = true) }
+            onSaved()
+        }
+    }
+
     /** Guest rides are opt-in: discarding removes the row and its metrics. */
     fun discard(onDiscarded: () -> Unit) {
         val workoutId = _uiState.value.workout?.id
@@ -105,6 +160,8 @@ class PostRideViewModel(
     }
 
     companion object {
+        private const val DEFAULT_WEIGHT_KG = 70.0
+
         val Factory = viewModelFactory {
             PostRideViewModel(
                 workoutRepository = ServiceLocator.workoutRepository,

@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +22,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
@@ -30,6 +34,8 @@ import com.pelonot.ui.screen.ProfileSelectorScreen
 import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.ui.viewmodel.AppUiState
+import java.text.DateFormat
+import java.util.Date
 
 private const val TRANSITION_MS = 300
 
@@ -47,7 +53,9 @@ fun PelonotNavGraph(
     navController: NavHostController,
     uiState: AppUiState,
     onCreateProfile: (name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) -> Unit,
-    onSelectProfile: (Int?) -> Unit
+    onSelectProfile: (Int?) -> Unit,
+    onRecoverWorkout: (onRecovered: (String) -> Unit) -> Unit = {},
+    onDiscardRecoverableWorkout: () -> Unit = {}
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -56,6 +64,21 @@ fun PelonotNavGraph(
     val contentModifier = Modifier
         .windowInsetsPadding(WindowInsets.statusBars)
         .windowInsetsPadding(WindowInsets.navigationBars)
+
+    // An unfinished ride means the process died mid-workout. Ask before the
+    // rider starts anything else, since starting a new ride would leave the old
+    // row sitting incomplete forever.
+    uiState.recoverableWorkout?.let { interrupted ->
+        InterruptedRideDialog(
+            workout = interrupted,
+            onKeep = {
+                onRecoverWorkout { workoutId ->
+                    navController.navigate(Destination.PostRide.of(workoutId))
+                }
+            },
+            onDiscard = onDiscardRecoverableWorkout
+        )
+    }
 
     if (showProfileDialog) {
         ProfileCreationDialog(
@@ -201,6 +224,7 @@ fun PelonotNavGraph(
             )
         }
 
+        // (Settings and the post-ride summary follow.)
         composable(Destination.Settings.route) {
             SettingsScreen(onBack = navController::popBackStack)
         }
@@ -224,4 +248,39 @@ fun PelonotNavGraph(
             )
         }
     }
+}
+
+/**
+ * Offered when the app finds a ride it never finished.
+ *
+ * It does not offer to *resume*. The rider stopped pedalling when the app went
+ * away, and restarting the clock would splice a gap of unknown length into the
+ * middle of the record. What it offers instead is to keep what was actually
+ * measured — the per-second series survived, because it is written as the ride
+ * happens rather than at the end — with the totals rebuilt from those samples.
+ */
+@Composable
+private fun InterruptedRideDialog(
+    workout: WorkoutEntity,
+    onKeep: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    val started = remember(workout.timestamp) {
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            .format(Date(workout.timestamp))
+    }
+
+    AlertDialog(
+        onDismissRequest = { /* Deliberately not dismissible: it needs an answer. */ },
+        title = { Text("You have an unfinished ride") },
+        text = {
+            Text(
+                "Pelonot was closed part-way through a ride started on $started. " +
+                    "Everything recorded up to that point is still here — keep it as a " +
+                    "completed ride, or throw it away."
+            )
+        },
+        confirmButton = { TextButton(onClick = onKeep) { Text("Keep it") } },
+        dismissButton = { TextButton(onClick = onDiscard) { Text("Discard") } }
+    )
 }

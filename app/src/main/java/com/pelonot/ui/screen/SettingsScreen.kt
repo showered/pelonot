@@ -52,6 +52,8 @@ import com.pelonot.R
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
+import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.model.HudDock
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -123,6 +125,19 @@ fun SettingsScreen(
                 onDynamicColorChange = viewModel::setDynamicColor
             )
 
+            RideHudSection(
+                hudEnabled = state.settings.hudEnabled,
+                dock = state.settings.hudDock,
+                coachStyle = state.settings.coachStyle,
+                overlayGranted = OverlayPermissionHelper.canDrawOverlays(context),
+                onHudEnabledChange = viewModel::setHudEnabled,
+                onDockChange = viewModel::setHudDock,
+                onCoachStyleChange = viewModel::setCoachStyle,
+                onRequestPermission = {
+                    OverlayPermissionHelper.requestOverlayPermission(context)
+                }
+            )
+
             SensorSection(
                 sensorMode = state.settings.sensorMode,
                 onSensorModeChange = viewModel::setSensorMode
@@ -141,8 +156,6 @@ fun SettingsScreen(
                 enabled = state.settings.cloudSyncEnabled,
                 onEnabledChange = viewModel::setCloudSyncEnabled
             )
-
-            OverlaySection(context = context)
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
         }
@@ -350,34 +363,110 @@ private fun CloudSection(
     }
 }
 
+/**
+ * The HUD and how loudly it is allowed to interrupt.
+ *
+ * Placed above the sensor and cloud sections because for most riders this is
+ * the app: the HUD is what they look at for the whole class, and whether it
+ * speaks is the setting they are most likely to change.
+ *
+ * The overlay permission is re-checked on each composition rather than cached —
+ * the rider grants it in system Settings and comes back, so a cached value is
+ * stale exactly when it matters.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OverlaySection(context: Context) {
-    // Re-checked on each composition rather than cached: the user grants this
-    // in system Settings and returns, so a cached value is stale exactly when
-    // it matters.
-    val granted = OverlayPermissionHelper.canDrawOverlays(context)
-
-    SettingsSection("Floating HUD") {
-        Text(
-            text = if (granted) {
-                "Permission granted — the HUD can appear over other apps."
-            } else {
-                "Pelonot needs \"display over other apps\" permission to show the " +
-                    "ride HUD on top of video."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+private fun RideHudSection(
+    hudEnabled: Boolean,
+    dock: HudDock,
+    coachStyle: CoachStyle,
+    overlayGranted: Boolean,
+    onHudEnabledChange: (Boolean) -> Unit,
+    onDockChange: (HudDock) -> Unit,
+    onCoachStyleChange: (CoachStyle) -> Unit,
+    onRequestPermission: () -> Unit
+) {
+    SettingsSection("Ride HUD") {
+        SettingsToggle(
+            title = "Show the HUD over other apps",
+            description = "Docks your metrics, targets and interval countdown to one " +
+                "edge of the screen while you watch something else.",
+            checked = hudEnabled,
+            onCheckedChange = onHudEnabledChange
         )
 
-        if (!granted) {
+        if (hudEnabled && !overlayGranted) {
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            Text(
+                text = "Android still needs \"display over other apps\" permission " +
+                    "before the HUD can appear.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
             OutlinedButton(
-                onClick = { OverlayPermissionHelper.requestOverlayPermission(context) },
+                onClick = onRequestPermission,
                 shape = MaterialTheme.expressiveShapes.pill
             ) {
                 Text("Grant permission")
             }
         }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.large))
+
+        Text(
+            text = "Position",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            HudDock.entries.forEach { option ->
+                FilterChip(
+                    selected = dock == option,
+                    onClick = { onDockChange(option) },
+                    label = { Text(option.displayName) }
+                )
+            }
+        }
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        Text(
+            text = "You can also drag the HUD's handle to move it between edges " +
+                "mid-ride. Top is the default because subtitles live along the bottom.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.size(MaterialTheme.spacing.large))
+
+        Text(
+            text = "Coaching alerts",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            CoachStyle.entries.forEach { option ->
+                FilterChip(
+                    selected = coachStyle == option,
+                    onClick = { onCoachStyleChange(option) },
+                    label = { Text(option.displayName) }
+                )
+            }
+        }
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        Text(
+            text = coachStyle.description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+        Text(
+            text = "The countdown into the next interval, and what that interval " +
+                "will be, are always shown whichever you choose.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

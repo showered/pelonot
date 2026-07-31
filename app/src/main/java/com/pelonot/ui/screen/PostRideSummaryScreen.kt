@@ -26,8 +26,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -36,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.PostRideViewModel
@@ -52,8 +57,20 @@ fun PostRideSummaryScreen(
     viewModel: PostRideViewModel = viewModel(factory = PostRideViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var showProfileDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(workoutId) { viewModel.load(workoutId) }
+
+    if (showProfileDialog) {
+        ProfileCreationDialog(
+            onProfileCreated = { name, weightKg, ftpWatts ->
+                showProfileDialog = false
+                viewModel.saveToNewProfile(context, name, weightKg, ftpWatts, onDone)
+            },
+            onDismiss = { showProfileDialog = false }
+        )
+    }
 
     if (state.isLoading) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -124,22 +141,100 @@ fun PostRideSummaryScreen(
         Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
         if (isGuest) {
+            GuestDestination(
+                profiles = state.profiles,
+                onSaveToProfile = { userId ->
+                    viewModel.saveToProfile(context, userId, onDone)
+                },
+                onCreateProfile = { showProfileDialog = true },
+                onKeepAsGuest = onDone,
+                onDiscard = { viewModel.discard(onDone) }
+            )
+        } else {
+            Button(
+                onClick = onDone,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .sizeIn(minHeight = MIN_TOUCH_TARGET),
+                shape = MaterialTheme.expressiveShapes.pill
+            ) {
+                Text("Done")
+            }
+        }
+    }
+}
+
+/**
+ * What happens to a ride nobody was signed in for.
+ *
+ * Previously this was keep-or-discard, which quietly loses the more useful
+ * outcome: a guest ride is very often the household's other rider, or someone
+ * who has just decided they want their history kept. Filing it against a
+ * profile only rewrites the ride's owner — the metric series it already
+ * recorded stays exactly as it is.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GuestDestination(
+    profiles: List<UserEntity>,
+    onSaveToProfile: (Int) -> Unit,
+    onCreateProfile: () -> Unit,
+    onKeepAsGuest: () -> Unit,
+    onDiscard: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(Modifier.padding(MaterialTheme.spacing.large)) {
             Text(
-                text = "You rode as a guest. Keep this ride in the household history, " +
-                    "or discard it.",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Whose ride was this?",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                text = "You rode as a guest. Filing it against a profile keeps it in " +
+                    "that rider's history and counts towards their FTP.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            if (isGuest) {
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                profiles.forEach { profile ->
+                    FilledTonalButton(
+                        onClick = { onSaveToProfile(profile.localUserId) },
+                        modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                        shape = MaterialTheme.expressiveShapes.pill
+                    ) {
+                        Text(profile.name)
+                    }
+                }
                 OutlinedButton(
-                    onClick = { viewModel.discard(onDone) },
+                    onClick = onCreateProfile,
+                    modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text("New profile…")
+                }
+            }
+
+            Spacer(Modifier.size(MaterialTheme.spacing.large))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+            ) {
+                OutlinedButton(
+                    onClick = onDiscard,
                     modifier = Modifier
                         .weight(1f)
                         .sizeIn(minHeight = MIN_TOUCH_TARGET),
@@ -147,16 +242,15 @@ fun PostRideSummaryScreen(
                 ) {
                     Text("Discard")
                 }
-            }
-
-            Button(
-                onClick = onDone,
-                modifier = Modifier
-                    .weight(1f)
-                    .sizeIn(minHeight = MIN_TOUCH_TARGET),
-                shape = MaterialTheme.expressiveShapes.pill
-            ) {
-                Text(if (isGuest) "Keep ride" else "Done")
+                Button(
+                    onClick = onKeepAsGuest,
+                    modifier = Modifier
+                        .weight(1f)
+                        .sizeIn(minHeight = MIN_TOUCH_TARGET),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text("Keep as a guest ride")
+                }
             }
         }
     }

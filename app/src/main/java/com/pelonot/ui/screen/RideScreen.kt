@@ -450,6 +450,10 @@ private fun EffortColumn(
 
             CueBanner(interval.cue, accent)
         }
+
+        Spacer(Modifier.weight(1f))
+
+        RideTotals(state, Modifier.fillMaxWidth())
     }
 }
 
@@ -486,69 +490,83 @@ private fun CueBanner(cue: RideCue, accent: Color) {
     }
 }
 
-/** The live numbers, each with the band it is being measured against. */
+/**
+ * The three live numbers, each with the band it is being measured against.
+ *
+ * All three get equal weight and the full height of the screen. Totals live in
+ * the left column instead: output and distance are numbers a rider looks at
+ * once at the end, and giving them the same visual weight as cadence would be
+ * a lie about how the screen is used.
+ */
 @Composable
 private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
     val snapshot = state.snapshot
     val hasTargets = snapshot.interval.hasClass
 
-    Column(
+    Row(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            RideMetricTile(
-                label = "POWER",
-                value = state.reading.powerWatts.toInt().toString(),
-                unit = "watts",
-                accent = MetricPowerCoral,
-                band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
-                rawValue = state.reading.powerWatts,
-                modifier = Modifier.weight(1f)
-            )
-            RideMetricTile(
-                label = "CADENCE",
-                value = state.reading.cadenceRpm.toInt().toString(),
-                unit = "rpm",
-                accent = MetricCadenceCyan,
-                band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
-                rawValue = state.reading.cadenceRpm,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        RideMetricTile(
+            label = "POWER",
+            value = state.reading.powerWatts.toInt().toString(),
+            unit = "watts",
+            accent = MetricPowerCoral,
+            band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
+            rawValue = state.reading.powerWatts,
+            modifier = Modifier.weight(1f)
+        )
+        RideMetricTile(
+            label = "CADENCE",
+            value = state.reading.cadenceRpm.toInt().toString(),
+            unit = "rpm",
+            accent = MetricCadenceCyan,
+            band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
+            rawValue = state.reading.cadenceRpm,
+            modifier = Modifier.weight(1f)
+        )
+        RideMetricTile(
+            label = "HEART RATE",
+            // Null means no strap, never a measured zero.
+            value = state.reading.heartRateBpm?.toString() ?: "--",
+            unit = "bpm",
+            accent = MetricHeartRateGreen,
+            band = TargetBand.NONE,
+            rawValue = (state.reading.heartRateBpm ?: 0).toDouble(),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            SmallStat(
-                label = "HEART RATE",
-                // Null means no strap, never a measured zero.
-                value = state.reading.heartRateBpm?.toString() ?: "--",
-                unit = "bpm",
-                accent = MetricHeartRateGreen,
-                modifier = Modifier.weight(1f)
-            )
-            SmallStat(
-                label = "OUTPUT",
-                value = String.format(java.util.Locale.US, "%.1f", snapshot.totalOutputKj),
-                unit = "kJ",
-                accent = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            SmallStat(
-                label = "DISTANCE",
-                value = String.format(java.util.Locale.US, "%.2f", snapshot.distanceKm),
-                unit = "km",
-                accent = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-        }
+/** Ride totals — glanced at once at the end, sized accordingly. */
+@Composable
+private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
+    val snapshot = state.snapshot
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        SmallStat(
+            label = "OUTPUT",
+            value = String.format(java.util.Locale.US, "%.1f", snapshot.totalOutputKj),
+            unit = "kJ",
+            accent = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f)
+        )
+        SmallStat(
+            label = "DISTANCE",
+            value = String.format(java.util.Locale.US, "%.2f", snapshot.distanceKm),
+            unit = "km",
+            accent = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f)
+        )
+        SmallStat(
+            label = "AVG POWER",
+            value = (state.session?.avgPower ?: 0.0).toInt().toString(),
+            unit = "W",
+            accent = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -583,7 +601,7 @@ private fun RideMetricTile(
                 band = band,
                 rawValue = rawValue,
                 // Sized for a 21-inch screen read from a metre away, mid-effort.
-                valueSize = 128.sp,
+                valueSize = 104.sp,
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.core.Formatters
@@ -90,6 +91,25 @@ fun Modifier.attentionBounce(
         scaleX = scale.value
         scaleY = scale.value
     }
+}
+
+/**
+ * A one-shot flash that spikes when [trigger] changes and decays away.
+ *
+ * The full-width HUD strip cannot use [attentionBounce] — scaling it peels it
+ * away from the screen edge it is docked to, which looks like a rendering bug
+ * rather than an announcement. A wash of colour across it does the same job
+ * without moving anything.
+ */
+@Composable
+fun rememberFlash(trigger: Any?, enabled: Boolean = true, durationMs: Int = 700): Float {
+    val flash = remember { Animatable(0f) }
+    LaunchedEffect(trigger, enabled) {
+        if (trigger == null || !enabled) return@LaunchedEffect
+        flash.snapTo(1f)
+        flash.animateTo(0f, animationSpec = tween(durationMs, easing = LinearEasing))
+    }
+    return flash.value
 }
 
 /** A slow pulse for anything that needs to look alive without shouting. */
@@ -378,28 +398,41 @@ fun CountdownBanner(
 
     Row(
         modifier = modifier
-            .clip(MaterialTheme.expressiveShapes.pill)
-            .background(zoneColor.copy(alpha = 0.22f * pulse))
-            .attentionBounce(trigger = secondsRemaining, enabled = animate, magnitude = 0.12f)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            .fillMaxWidth()
+            .clip(MaterialTheme.expressiveShapes.large)
+            .background(zoneColor.copy(alpha = 0.24f * pulse))
+            .attentionBounce(trigger = secondsRemaining, enabled = animate, magnitude = 0.10f)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // The digit leads. It is the only part of this that matters at 2 seconds.
+        Text(
+            text = "$secondsRemaining",
+            fontSize = 44.sp,
+            lineHeight = 46.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-3).sp,
+            color = zoneColor,
+            maxLines = 1
+        )
+
+        Spacer(Modifier.width(10.dp))
+
         ZoneGlyph(
             zone = nextZone,
-            modifier = Modifier.size(34.dp)
+            modifier = Modifier.size(30.dp)
         ) {
             Text(
                 text = "${nextZone.number}",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.Black.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Black.copy(alpha = 0.78f),
                 fontWeight = FontWeight.Black
             )
         }
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(8.dp))
 
-        Column {
+        Column(Modifier.weight(1f)) {
             Text(
                 text = "NEXT UP",
                 style = MaterialTheme.typography.labelSmall,
@@ -407,23 +440,13 @@ fun CountdownBanner(
             )
             Text(
                 text = nextZone.displayName.uppercase(),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = zoneColor,
                 fontWeight = FontWeight.Black,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
-
-        Spacer(Modifier.width(20.dp))
-
-        Text(
-            text = "$secondsRemaining",
-            fontSize = 44.sp,
-            lineHeight = 44.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-2).sp,
-            color = zoneColor
-        )
     }
 }
 

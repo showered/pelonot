@@ -23,6 +23,17 @@ interface WorkoutDao {
     @Query("UPDATE workouts SET rpe_rating = :rpe WHERE id = :id")
     suspend fun setRpeRating(id: String, rpe: Int)
 
+    /**
+     * Assigns a guest ride to a profile after the fact.
+     *
+     * A guest ride is recorded with a null `user_id`, and the rider is asked
+     * afterwards whether to keep it and against whom. Rewriting the owner is
+     * cheaper and safer than re-recording the ride under a new id, which would
+     * orphan every `workout_metrics` row pointing at the old one.
+     */
+    @Query("UPDATE workouts SET user_id = :userId WHERE id = :id")
+    suspend fun assignWorkoutToUser(id: String, userId: Int)
+
     @Query("SELECT * FROM workouts WHERE id = :id")
     suspend fun getWorkoutById(id: String): WorkoutEntity?
 

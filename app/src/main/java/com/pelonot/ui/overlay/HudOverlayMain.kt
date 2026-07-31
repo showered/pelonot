@@ -66,7 +66,7 @@ import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.ProgressArc
 import com.pelonot.ui.components.ZoneGlyph
-import com.pelonot.ui.components.attentionBounce
+import com.pelonot.ui.components.rememberFlash
 import com.pelonot.ui.components.rememberPulse
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
@@ -114,10 +114,15 @@ fun HudOverlayMain(
         label = "HudAccent"
     )
 
-    // The strip itself bounces when the effort changes. With the coach set to
-    // Silent this is the *only* announcement the rider gets, so it has to be
-    // visible from the corner of the eye.
-    val bounceTrigger = if (interval.hasClass) interval.index else null
+    // The strip washes with the new zone's colour when the effort changes.
+    // With the coach set to Silent this is the *only* announcement the rider
+    // gets, so it has to be visible from the corner of the eye — but it cannot
+    // be a scale bounce: scaling a full-width docked strip peels it away from
+    // the screen edge and reads as a rendering fault.
+    val flash = rememberFlash(
+        trigger = if (interval.hasClass) interval.index else null,
+        enabled = coachStyle.animates
+    )
 
     val edgeGlow by animateDpAsState(
         targetValue = if (interval.isChangeImminent) 6.dp else 2.dp,
@@ -149,7 +154,6 @@ fun HudOverlayMain(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .attentionBounce(trigger = bounceTrigger, enabled = coachStyle.animates)
             .clip(hudShape(dock)),
         color = Color.Transparent
     ) {
@@ -177,6 +181,9 @@ fun HudOverlayMain(
                         }
                     )
                 )
+                // Layered after the gradient so it washes over the panel
+                // rather than being painted under it.
+                .background(accent.copy(alpha = 0.30f * flash))
         ) {
             if (dock == HudDock.Bottom) edge()
 

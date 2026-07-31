@@ -56,7 +56,9 @@ class MainActivity : ComponentActivity() {
                             navController = rememberNavController(),
                             uiState = uiState,
                             onCreateProfile = viewModel::createProfile,
-                            onSelectProfile = viewModel::selectProfile
+                            onSelectProfile = viewModel::selectProfile,
+                            onRecoverWorkout = viewModel::recoverWorkout,
+                            onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout
                         )
                     }
                 }

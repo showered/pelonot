@@ -13,6 +13,8 @@ import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.model.HudDock
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -101,6 +103,18 @@ class SettingsViewModel(
 
     fun setCloudSyncEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setCloudSyncEnabled(enabled) }
+    }
+
+    fun setCoachStyle(style: CoachStyle) {
+        viewModelScope.launch { settingsRepository.setCoachStyle(style) }
+    }
+
+    fun setHudEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setHudEnabled(enabled) }
+    }
+
+    fun setHudDock(dock: HudDock) {
+        viewModelScope.launch { settingsRepository.setHudDock(dock) }
     }
 
     fun scanForHeartRateMonitors() = sensorRepository.scanForHeartRateDevices()

@@ -4,6 +4,8 @@ import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.MetricSample
+import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import java.util.Calendar
@@ -83,12 +85,58 @@ class WorkoutRepository(
 
     suspend fun setRpe(workoutId: String, rpe: Int) = workoutDao.setRpeRating(workoutId, rpe)
 
+    /** Moves a guest ride onto a profile once the rider says whose it was. */
+    suspend fun assignToUser(workoutId: String, userId: Int) =
+        workoutDao.assignWorkoutToUser(workoutId, userId)
+
     /** Removes a ride and, by cascade, its metrics. Used for "discard". */
     suspend fun discardWorkout(workoutId: String) = workoutDao.deleteWorkout(workoutId)
 
     suspend fun findRecoverableWorkout(): WorkoutEntity? = workoutDao.getIncompleteWorkout()
 
     suspend fun clearRecoverableWorkouts() = workoutDao.deleteIncompleteWorkouts()
+
+    /**
+     * Finalises a ride the app was killed in the middle of.
+     *
+     * The `workouts` row was written at ride start with zeroed totals — that
+     * ordering is what lets `workout_metrics` reference it at all — so the
+     * aggregates have to be rebuilt from the samples that did land. Returns the
+     * completed row, or null if there was nothing worth keeping.
+     */
+    suspend fun recoverWorkout(workoutId: String): WorkoutEntity? {
+        val workout = workoutDao.getWorkoutById(workoutId) ?: return null
+        val metrics = metricDao.getMetricsForWorkout(workoutId)
+
+        val aggregates = WorkoutAggregates.from(
+            metrics.map {
+                MetricSample(
+                    second = it.timestampSec,
+                    power = it.power,
+                    cadence = it.cadence,
+                    heartRate = it.heartRate
+                )
+            }
+        )
+
+        if (aggregates.isEmpty) {
+            // A ride that recorded nothing is not a ride.
+            workoutDao.deleteWorkout(workoutId)
+            return null
+        }
+
+        val recovered = workout.copy(
+            durationSec = aggregates.durationSec,
+            totalOutputKj = aggregates.totalOutputKj,
+            totalDistanceKm = aggregates.distanceKm,
+            avgPower = aggregates.avgPower,
+            avgCadence = aggregates.avgCadence,
+            avgHr = aggregates.avgHeartRate?.toDouble(),
+            isComplete = true
+        )
+        workoutDao.updateWorkout(recovered)
+        return recovered
+    }
 
     suspend fun getRecentWorkouts(userId: Int, limit: Int): List<WorkoutEntity> =
         workoutDao.getRecentWorkouts(userId, limit)

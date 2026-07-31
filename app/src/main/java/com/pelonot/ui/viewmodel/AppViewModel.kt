@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.repository.ClassRepository
@@ -12,6 +13,7 @@ import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.di.ServiceLocator
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,7 +36,12 @@ data class AppUiState(
     val profiles: List<UserEntity> = emptyList(),
     val classes: List<ClassPlan> = emptyList(),
     val dashboardStats: DashboardStats = DashboardStats(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    /**
+     * A ride the app was killed in the middle of. Non-null means the rider is
+     * about to be asked what to do with it.
+     */
+    val recoverableWorkout: WorkoutEntity? = null
 ) {
     val selectedProfile: UserEntity?
         get() = profiles.firstOrNull { it.localUserId == settings.lastProfileId }
@@ -49,8 +56,23 @@ class AppViewModel(
     private val settingsRepository: SettingsRepository,
     private val userRepository: UserRepository,
     classRepository: ClassRepository,
-    workoutRepository: WorkoutRepository
+    private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
+
+    /**
+     * Checked once at launch rather than through `WorkoutService`.
+     *
+     * The service does expose this, but nothing binds to it on a cold start —
+     * which is exactly the case a crash leaves behind — so the prompt would
+     * never have appeared.
+     */
+    private val _recoverableWorkout = MutableStateFlow<WorkoutEntity?>(null)
+
+    init {
+        viewModelScope.launch {
+            _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
+        }
+    }
 
     private val dashboardStats = settingsRepository.settings
         .map { it.lastProfileId }
@@ -64,14 +86,16 @@ class AppViewModel(
         settingsRepository.settings,
         userRepository.allUsers,
         classRepository.allPlans,
-        dashboardStats
-    ) { settings, profiles, classes, stats ->
+        dashboardStats,
+        _recoverableWorkout
+    ) { settings, profiles, classes, stats, recoverable ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
             dashboardStats = stats,
-            isLoading = false
+            isLoading = false,
+            recoverableWorkout = recoverable
         )
     }.stateIn(
         scope = viewModelScope,
@@ -97,6 +121,26 @@ class AppViewModel(
 
     fun selectProfile(userId: Int?) {
         viewModelScope.launch { settingsRepository.setLastProfileId(userId) }
+    }
+
+    /**
+     * Keeps an interrupted ride, rebuilding its totals from the samples that
+     * were written before the process died.
+     */
+    fun recoverWorkout(onRecovered: (String) -> Unit) {
+        val workoutId = _recoverableWorkout.value?.id ?: return
+        viewModelScope.launch {
+            val recovered = workoutRepository.recoverWorkout(workoutId)
+            _recoverableWorkout.value = null
+            if (recovered != null) onRecovered(recovered.id)
+        }
+    }
+
+    fun discardRecoverableWorkout() {
+        viewModelScope.launch {
+            workoutRepository.clearRecoverableWorkouts()
+            _recoverableWorkout.value = null
+        }
     }
 
     companion object {

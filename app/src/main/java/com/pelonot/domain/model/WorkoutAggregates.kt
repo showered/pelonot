@@ -1,0 +1,75 @@
+package com.pelonot.domain.model
+
+/**
+ * Ride totals recomputed from a stored metric series.
+ *
+ * The live path keeps these running in memory as the ride happens. This is the
+ * cold path: a ride the app was killed in the middle of has a `workouts` row
+ * full of zeros and a complete `workout_metrics` series behind it, and the only
+ * way to recover it is to add the series back up.
+ *
+ * Kept deliberately consistent with
+ * [com.pelonot.data.sensor.WorkoutMetricsCalculator] — same trapezoidal
+ * integration, same 5-second gap clamp, same revolution-to-distance fiction —
+ * so a recovered ride is comparable with one that finished normally rather
+ * than being a differently-shaped number with the same name.
+ */
+data class WorkoutAggregates(
+    val durationSec: Int = 0,
+    val totalOutputKj: Double = 0.0,
+    val distanceKm: Double = 0.0,
+    val avgPower: Double = 0.0,
+    val avgCadence: Double = 0.0,
+    val avgHeartRate: Int? = null,
+    val sampleCount: Int = 0
+) {
+    val isEmpty: Boolean get() = sampleCount == 0
+
+    companion object {
+        private const val SECONDS_PER_MINUTE = 60.0
+        private const val KM_PER_REVOLUTION = 0.0021
+        private const val MAX_SAMPLE_GAP_SEC = 5.0
+
+        /**
+         * @param samples time-ordered `(second, power, cadence, heartRate)`
+         *   tuples. Heart rate is nullable throughout: null means no strap, and
+         *   averaging it in as zero would libel the rider's cardiovascular
+         *   system.
+         */
+        fun from(samples: List<MetricSample>): WorkoutAggregates {
+            if (samples.isEmpty()) return WorkoutAggregates()
+
+            val ordered = samples.sortedBy { it.second }
+            var energyJoules = 0.0
+            var distanceKm = 0.0
+
+            ordered.zipWithNext { previous, current ->
+                val dt = (current.second - previous.second).toDouble()
+                    .coerceIn(0.0, MAX_SAMPLE_GAP_SEC)
+                energyJoules += (previous.power + current.power) / 2.0 * dt
+                distanceKm += ((previous.cadence + current.cadence) / 2.0 / SECONDS_PER_MINUTE) *
+                    KM_PER_REVOLUTION * dt
+            }
+
+            val heartRates = ordered.mapNotNull { it.heartRate }
+
+            return WorkoutAggregates(
+                durationSec = ordered.last().second,
+                totalOutputKj = energyJoules / 1000.0,
+                distanceKm = distanceKm,
+                avgPower = ordered.sumOf { it.power } / ordered.size,
+                avgCadence = ordered.sumOf { it.cadence } / ordered.size,
+                avgHeartRate = if (heartRates.isEmpty()) null else heartRates.average().toInt(),
+                sampleCount = ordered.size
+            )
+        }
+    }
+}
+
+/** One stored per-second sample, independent of the Room entity. */
+data class MetricSample(
+    val second: Int,
+    val power: Double,
+    val cadence: Double,
+    val heartRate: Int?
+)
