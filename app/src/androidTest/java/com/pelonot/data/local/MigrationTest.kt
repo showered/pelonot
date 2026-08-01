@@ -205,6 +205,67 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The retirement column arriving over a tablet that has already ridden one
+     * of the classes about to be retired.
+     *
+     * This is the bike's actual situation: `HC-01` is the class of the first
+     * real ride, and 23.2.6 rebuilt the library under a new set of ids. The
+     * migration itself must leave every class live — retiring is
+     * `ClassTemplateSeeder`'s decision, made against the bundle, not something
+     * a schema change is allowed to do on its own.
+     */
+    @Test
+    fun migrate4To5_leavesEveryExistingClassInTheLibrary() {
+        helper.createDatabase(TEST_DB, 4).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO class_templates (id, title, category, duration_sec, intervals_json, created_at)
+                VALUES ('HC-01', 'Hill Grind 20', 'HIIT & Heavy Climbs', 1200, '[]', 1000)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj,
+                    total_distance_km, avg_cadence, avg_power, avg_hr,
+                    intent_modifier, rpe_rating, is_complete, timestamp, was_recovered
+                ) VALUES ('w1', NULL, 'HC-01', 1200, 150.0, 10.0, 90.0, 200.0, 150.0, 1.0, 7, 1, 2000, 0)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 5, true, AppMigrations.MIGRATION_4_5)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT title, retired_at FROM class_templates WHERE id = 'HC-01'"
+            ).use { cursor ->
+                assertTrue("the class that existed before the migration is gone", cursor.moveToFirst())
+                assertEquals("Hill Grind 20", cursor.getString(0))
+                assertTrue("a migration must not retire anything by itself", cursor.isNull(1))
+            }
+
+            // The link that retiring exists to protect.
+            migrated.openHelper.readableDatabase.query(
+                "SELECT class_id FROM workouts WHERE id = 'w1'"
+            ).use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("HC-01", cursor.getString(0))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

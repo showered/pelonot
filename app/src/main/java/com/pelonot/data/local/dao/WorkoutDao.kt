@@ -190,6 +190,17 @@ interface WorkoutDao {
     )
     fun getWorkoutsByClass(userId: Int, classId: String): Flow<List<WorkoutEntity>>
 
+    /**
+     * Every class id some ride still points at.
+     *
+     * `ClassTemplateSeeder` asks this before it removes a class the bundled
+     * library no longer contains: one nobody has ridden can simply go, and one
+     * somebody has ridden must stay as a retired row, or the foreign key's
+     * `SET NULL` turns their ride into a ride of nothing (23.2.6c).
+     */
+    @Query("SELECT DISTINCT class_id FROM workouts WHERE class_id IS NOT NULL")
+    suspend fun referencedClassIds(): List<String>
+
     /** Total output since [sinceEpochMs], for the dashboard's "today" figure. */
     @Query(
         """

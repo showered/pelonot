@@ -29,7 +29,7 @@ class PelonotApp : Application() {
         createNotificationChannels()
 
         appScope.launch {
-            runCatching { ServiceLocator.classTemplateSeeder.seedIfEmpty() }
+            runCatching { ServiceLocator.classTemplateSeeder.syncWithBundledLibrary() }
         }
 
         applyTelemetrySource()

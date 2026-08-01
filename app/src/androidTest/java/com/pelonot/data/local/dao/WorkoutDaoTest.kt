@@ -59,7 +59,7 @@ class WorkoutDaoTest {
 
         // workouts.class_id is one too, and the household leaderboard is
         // per class.
-        database.classTemplateDao().insertAll(
+        database.classTemplateDao().upsertAll(
             listOf(CLASS_ID, "SS-04").map { id ->
                 ClassTemplateEntity(
                     id = id,

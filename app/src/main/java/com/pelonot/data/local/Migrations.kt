@@ -90,5 +90,25 @@ object AppMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * Adds `class_templates.retired_at`.
+     *
+     * The class library was rebuilt (PLAN 23.2.6) under a new set of ids,
+     * because `workouts.class_id` points at the old ones and the bike already
+     * holds a real twenty-minute ride on `HC-01`. Changing what `HC-01` *is*
+     * would silently rewrite what that ride was — the same trap as 7.8 and
+     * 16.1.6, a derived fact read from a source that has since moved.
+     *
+     * So the old classes are retired rather than replaced or deleted. Nullable
+     * with no default: a class that is still in the library has no retirement
+     * date, and null is that, not a zero standing in for it.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `class_templates` ADD COLUMN `retired_at` INTEGER")
+        }
+    }
+
+    val ALL: Array<Migration> =
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

@@ -9,6 +9,7 @@ re-checks most of the same claims against the emitted JSON — the assets are wh
 ships, and a generator nobody runs cannot vouch for them.
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -19,10 +20,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import catalogue  # noqa: F401  (importing it is what populates the catalogue)
 from builder import CATALOGUE
 
-ASSET_ROOT = os.path.join(
+ASSETS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "app", "src", "main", "assets", "classes",
+    "app", "src", "main", "assets",
 )
+ASSET_ROOT = os.path.join(ASSETS, "classes")
+
+# One small file the seeder can read on every launch to find out whether the
+# 72 have changed, without parsing the 72. PLAN 23.2.6c — and the local half of
+# the diffing that 23.2.4 wants for the cloud channel.
+MANIFEST = os.path.join(ASSETS, "class_library.json")
 
 # R1 — the vocabulary of block lengths under two minutes. An explicit set
 # rather than "a multiple of n": 20 s on / 10 s off is the Tabata protocol and
@@ -266,16 +273,24 @@ def main():
     if os.path.isdir(ASSET_ROOT):
         shutil.rmtree(ASSET_ROOT)
     counts = {}
-    for session in sessions:
+    digest = hashlib.sha256()
+    for session in sorted(sessions, key=lambda s: s.id):
         directory = os.path.join(ASSET_ROOT, session.directory)
         os.makedirs(directory, exist_ok=True)
         path = os.path.join(directory, f"{session.id.lower()}.json")
+        body = json.dumps(to_json(session), indent=2) + "\n"
         with open(path, "w") as handle:
-            json.dump(to_json(session), handle, indent=2)
-            handle.write("\n")
+            handle.write(body)
+        digest.update(body.encode())
         counts[session.category] = counts.get(session.category, 0) + 1
 
+    fingerprint = digest.hexdigest()[:16]
+    with open(MANIFEST, "w") as handle:
+        json.dump({"fingerprint": fingerprint, "count": len(sessions)}, handle, indent=2)
+        handle.write("\n")
+
     total_minutes = sum(s.duration_sec for s in sessions) // 60
+    print(f"fingerprint {fingerprint}")
     print(f"{len(sessions)} classes, {total_minutes} minutes of riding, written to")
     print(f"  {ASSET_ROOT}\n")
     for category in sorted(counts):

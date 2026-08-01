@@ -123,4 +123,260 @@ class ClassLibraryAssetsTest {
             }
         }
     }
+
+    // -----------------------------------------------------------------------
+    // The design rules — PLAN 23.2.6, written out in `classlibrary/README.md`.
+    //
+    // `build.py` checks these before it writes, which is where an author wants
+    // to hear about them. They are repeated here because the *assets* are what
+    // ships: a generator nobody runs cannot vouch for a file somebody edited by
+    // hand, and the first 72 were exactly that — bad data that compiled.
+    // -----------------------------------------------------------------------
+
+    private fun plans() = templates().map { (file, dto) ->
+        Triple(file, dto, IntervalParser.parse(dto.intervalsJson).getOrThrow())
+    }
+
+    /** R1. An explicit vocabulary, so that 20/10 is sayable and 97 s is not. */
+    @Test
+    fun `every block is a length a rider can hold`() {
+        val shortLengths = setOf(10, 15, 20, 30, 40, 45, 60, 75, 90, 105)
+        for ((file, _, intervals) in plans()) {
+            for (interval in intervals) {
+                val seconds = interval.durationSec
+                val allowed =
+                    if (seconds < 120) seconds in shortLengths else seconds % 60 == 0
+                assertTrue(
+                    "$file: a block of $seconds s is a slice of a percentage, not an effort",
+                    allowed
+                )
+            }
+        }
+    }
+
+    /**
+     * R2. A class that never leaves Z2 is exempt: it has no work to be warm
+     * for, which is what makes Recovery exempt rather than special-cased.
+     */
+    @Test
+    fun `the warmup warms up`() {
+        for ((file, _, intervals) in plans()) {
+            if (intervals.maxOf { it.powerZoneNumber } < 3) continue
+
+            val first = intervals.first()
+            assertTrue(
+                "$file: opens at Z${first.powerZoneNumber} for ${first.durationSec} s",
+                first.powerZoneNumber == 1 && first.durationSec >= 120
+            )
+
+            val warmup = intervals.takeWhile { it.powerZoneNumber < 4 }
+            assertTrue(
+                "$file: rides ${warmup.map { it.powerZoneNumber }.distinct().size} zone(s) " +
+                    "before the first hard block; a warmup is progressive",
+                warmup.map { it.powerZoneNumber }.distinct().size >= 3
+            )
+            assertTrue(
+                "$file: gives ${warmup.sumOf { it.durationSec }} s before the first hard " +
+                    "block; five minutes is the floor",
+                warmup.sumOf { it.durationSec } >= 300
+            )
+        }
+    }
+
+    /**
+     * R2, the second half. Primers, stated as arithmetic: if the first thing a
+     * rider does at Z5 is a three-minute effort, that effort is the warmup and
+     * they pay for it in the next one.
+     */
+    @Test
+    fun `nothing opens its hard work with a full effort`() {
+        for ((file, _, intervals) in plans()) {
+            val firstHard = intervals.firstOrNull { it.powerZoneNumber >= 5 } ?: continue
+            assertTrue(
+                "$file: opens its Z5+ work with a ${firstHard.durationSec} s effort; prime it",
+                firstHard.durationSec <= 45
+            )
+        }
+    }
+
+    /** R3. */
+    @Test
+    fun `every class cools down`() {
+        for ((file, _, intervals) in plans()) {
+            assertEquals(
+                "$file: does not end at Z1",
+                1,
+                intervals.last().powerZoneNumber
+            )
+            val tail = intervals.reversed()
+                .takeWhile { it.powerZoneNumber <= 2 }
+                .sumOf { it.durationSec }
+            assertTrue("$file: has $tail s of cooldown; three minutes is the floor", tail >= 180)
+        }
+    }
+
+    /**
+     * R4. Only recovery *between* two efforts — the block after the last
+     * interval is the cooldown, and holding it to this ratio would say nothing
+     * about the session. Efforts under a minute are exempt: 20 s on / 10 s off
+     * is a protocol, and what bounds it is the dose rule below.
+     */
+    @Test
+    fun `recovery is proportionate to the effort it follows`() {
+        for ((file, _, intervals) in plans()) {
+            for (i in 1 until intervals.size - 1) {
+                val rest = intervals[i]
+                val effort = intervals[i - 1]
+                if (rest.powerZoneNumber > 2) continue
+                if (effort.powerZoneNumber < 4 || effort.durationSec < 60) continue
+                if (intervals[i + 1].powerZoneNumber < 3) continue
+
+                val needed =
+                    if (effort.powerZoneNumber >= 5) effort.durationSec else effort.durationSec / 2
+                assertTrue(
+                    "$file: ${rest.durationSec} s of recovery after a ${effort.durationSec} s " +
+                        "Z${effort.powerZoneNumber} effort; needs $needed s",
+                    rest.durationSec >= needed
+                )
+            }
+        }
+    }
+
+    /**
+     * R5. The old library's cadence was a lookup from the zone — Z1 was always
+     * 80-90, Z4 always 90-100 — so it could not express the difference between
+     * a Z5 at 85 rpm and a Z5 at 105 rpm, which are different workouts.
+     */
+    @Test
+    fun `cadence is a separate axis from zone`() {
+        val bands = mutableMapOf<Int, MutableSet<Pair<Int, Int>>>()
+        for ((_, _, intervals) in plans()) {
+            for (interval in intervals) {
+                bands.getOrPut(interval.powerZoneNumber) { mutableSetOf() }
+                    .add(interval.cadenceMin to interval.cadenceMax)
+            }
+        }
+        val varied = bands.count { (_, cadences) -> cadences.size >= 3 }
+        assertTrue(
+            "only $varied zone(s) are ridden at three or more cadences; cadence is " +
+                "behaving like a lookup from the zone",
+            varied >= 4
+        )
+    }
+
+    /** R6, the ceilings. */
+    @Test
+    fun `the dose matches what the zone is for`() {
+        val singleBlockCap = mapOf(4 to 20 * 60, 5 to 8 * 60, 6 to 90, 7 to 30)
+        val totalCap = mapOf(4 to 40 * 60, 5 to 20 * 60, 6 to 10 * 60, 7 to 3 * 60)
+
+        for ((file, _, intervals) in plans()) {
+            for ((zone, cap) in singleBlockCap) {
+                val longest = intervals.filter { it.powerZoneNumber == zone }
+                    .maxOfOrNull { it.durationSec } ?: 0
+                assertTrue("$file: has a $longest s block at Z$zone; the cap is $cap s", longest <= cap)
+            }
+            for ((zone, cap) in totalCap) {
+                val total = intervals.filter { it.powerZoneNumber == zone }.sumOf { it.durationSec }
+                assertTrue("$file: spends $total s at Z$zone; the cap is $cap s", total <= cap)
+            }
+        }
+    }
+
+    /**
+     * R6, the stacking cap. This is the rule the old `TB-01` broke: sixteen
+     * consecutive 20/10 rounds with no break between sets. The sixteenth round
+     * of sixteen is not a Z6 effort, it is a rider soft-pedalling while the
+     * prescription claims otherwise.
+     */
+    @Test
+    fun `no class stacks more than eight bursts without a break`() {
+        for ((file, _, intervals) in plans()) {
+            var run = 0
+            for (interval in intervals) {
+                if (interval.powerZoneNumber >= 6) {
+                    run++
+                } else if (interval.powerZoneNumber <= 2 && interval.durationSec >= 45) {
+                    run = 0
+                }
+                assertTrue("$file: stacks $run bursts at Z6+ without a real break", run <= 8)
+            }
+        }
+    }
+
+    /** R6, the floors: a category has to deliver what its name promises. */
+    @Test
+    fun `every category delivers what its name promises`() {
+        val fractionFloor = mapOf(
+            "Sweet Spot" to (4 to 0.25),
+            "Threshold" to (4 to 0.25),
+            "Climbs" to (4 to 0.25),
+            "VO2 Max" to (5 to 0.15)
+        )
+        for ((file, dto, intervals) in plans()) {
+            val floor = fractionFloor[dto.category] ?: continue
+            val (zone, fraction) = floor
+            val got = intervals.filter { it.powerZoneNumber >= zone }.sumOf { it.durationSec }
+            assertTrue(
+                "$file: is a ${dto.category} class with $got s at Z$zone+; " +
+                    "needs ${(dto.durationSec * fraction).toInt()} s",
+                got >= dto.durationSec * fraction
+            )
+        }
+        for ((file, dto, intervals) in plans()) {
+            if (dto.category != "Sprints") continue
+            val got = intervals.filter { it.powerZoneNumber >= 6 }.sumOf { it.durationSec }
+            assertTrue("$file: has $got s at Z6+; needs 180 s", got >= 180)
+        }
+    }
+
+    /**
+     * R7. A recovery class that spends half its time at Z2 is an endurance
+     * class with a soothing name, which is how a rider ends up never actually
+     * recovering. The old `RC-01` was a twenty-minute recovery ride with a
+     * 6½-minute Z2 block in the middle of it.
+     */
+    @Test
+    fun `a recovery class recovers`() {
+        for ((file, dto, intervals) in plans()) {
+            if (dto.category != "Recovery") continue
+            val top = intervals.maxOf { it.powerZoneNumber }
+            assertTrue("$file: is a Recovery class that reaches Z$top", top <= 2)
+            val atZ2 = intervals.filter { it.powerZoneNumber == 2 }.sumOf { it.durationSec }
+            assertTrue(
+                "$file: spends $atZ2 s of ${dto.durationSec} s at Z2",
+                atZ2 * 2 < dto.durationSec
+            )
+        }
+    }
+
+    /** R9. Seventy-two classes and twelve shapes was the old library. */
+    @Test
+    fun `no two classes are the same class`() {
+        val signatures = mutableMapOf<String, String>()
+        for ((_, dto, intervals) in plans()) {
+            val signature = intervals.joinToString("|") {
+                "${it.durationSec}:${it.powerZoneNumber}:${it.cadenceMin}-${it.cadenceMax}"
+            }
+            val existing = signatures.put(signature, dto.id)
+            assertTrue("${dto.id} is the same class as $existing", existing == null)
+        }
+
+        val slots = plans().groupBy { (_, dto, _) -> dto.category to dto.durationSec }
+        for ((slot, group) in slots) {
+            for (i in group.indices) {
+                for (j in i + 1 until group.size) {
+                    val a = group[i].third
+                    val b = group[j].third
+                    if (a.size != b.size) continue
+                    val differing = a.indices.count { a[it] != b[it] }
+                    assertTrue(
+                        "${group[i].second.id} and ${group[j].second.id} are both $slot " +
+                            "and differ in $differing block(s)",
+                        differing > 1
+                    )
+                }
+            }
+        }
+    }
 }

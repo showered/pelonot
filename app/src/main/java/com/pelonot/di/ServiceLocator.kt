@@ -114,7 +114,7 @@ object ServiceLocator {
     }
 
     val classTemplateSeeder: ClassTemplateSeeder by lazy {
-        ClassTemplateSeeder(context, database.classTemplateDao())
+        ClassTemplateSeeder(context, database.classTemplateDao(), database.workoutDao())
     }
 
     val sensorRepository: SensorRepository by lazy {

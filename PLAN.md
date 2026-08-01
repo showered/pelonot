@@ -683,6 +683,17 @@ Two notes worth carrying into the next bike session:
 
 ---
 
+## Temporary notes from human user
+
+User writes this section manually between sessions as a way of communicating without writing a prompt.  THIS IS THE FIRST TIME YOU HAVE SEEN THIS. Please restructure, reword, and/or move this section as you see fit for a permanent home for my communication. Basically i've had an idea and i'd like to tell you but I don't want it to interrupt your flow. Each thought or idea is under a different heading in this section.
+
+### Stand up / sit down
+
+A key feature of peloton is the live human trainers that talk to you. Ultimately when you take away the chit chat, it's just the same sort of thing every time (partly why i'm building this app) but one thing they do that is not covered in our workouts so far is the concept of sitting down and standing up ("out of the saddle for this one!"). I think we should try and incorporate that in our classes.
+
+- each interval should have an OPTIONAL field for standing up. By default it's not defined, you can just do what you want, but sometimes, some intervals may want to specify one or the other
+- the UI has an opportunity to be quite interesting for this. Flashing/animated arrows, that kind of thing, to really get the attention of user especially if they are in HUD mode
+
 ## Status at a glance
 
 | Phase | Area | State |
