@@ -20,8 +20,15 @@
 ### Latest session — 1 August 2026 (twelfth sitting): the record explains itself, and the numbers hold still
 
 No bike, no rider — the whole sitting ran on the bike tablet's *existing*
-database and on the tablet AVD. Four items closed: **2.7.5**, **11.6.7**,
-**11.6.8** and **13.8**. 374 JVM tests, 0 failures.
+database and on the tablet AVD. Six items closed: **2.7.5**, **11.6.7**,
+**11.6.8**, **13.8**, **11.6.9** and **11.6.10**. 374 JVM tests, 0 failures.
+
+**With 11.6.9 and 11.6.10 the ride screen no longer traps the rider.** Pairing
+a strap, changing the telemetry source and fixing the coach volume are all
+things a rider finds out they need mid-class, and every route to them used to
+cost the ride. They are now a sheet over it, reachable from a gear on the ride
+screen, from the dead-end heart-rate card, and from inside the overlay's volume
+panel. Telemetry was switched to Hardware *mid-ride* on the AVD to prove it.
 
 **2.7 is now closed apart from the serial-port leak underneath it.** 2.7.5 asked
 what to do about the rides recorded before the frame fix, and the answer is
@@ -623,8 +630,8 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 |------|---------|
 | ~~**11.6.7** The numbers change too fast to read~~ | **Done and observed.** `SensorRepository.displayReading`, 2 Hz, both surfaces, recorder untouched |
 | ~~**11.6.8** The zone ladder shifts sideways~~ | **Done and observed.** Not the border — the zone name and the FTP percentage sized themselves to their own text. Both now reserve their widest string |
-| **11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride | **Now first.** Tapping `--` should lead to pairing, and it cannot until there is a way into Settings that does not end the ride. Do them together |
-| **16.1.7 / 16.1.8** Axes on the charts | The heart-rate chart is a line with no numbers on it. Beautiful rather than scientific, and decided once for all four |
+| ~~**11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride~~ | **Done and observed.** A sheet over the ride, a gear beside the telemetry chip, and the overlay's way in inside the volume panel. One snag found and left open — see the end of 11.6.10 |
+| **16.1.7 / 16.1.8** Axes on the charts | **Now first.** The heart-rate chart is a line with no numbers on it. Beautiful rather than scientific, and decided once for all four |
 | ~~**13.8** kg/lb at signup~~ | **Done and observed.** The old dialog stored a 77 kg rider as 34.9 kg |
 
 **Then the substantial ones:**
@@ -2859,18 +2866,51 @@ layer is done and nothing renders it.
       left and right edges were **x=830 and x=1380 in both**, unchanged to the
       pixel across a name two characters longer and a percentage two digits
       wider
-- [ ] **11.6.9** **A blank heart rate is a dead end.** The card shows `--` when
+- [x] **11.6.9** **A blank heart rate is a dead end.** The card shows `--` when
       no strap is paired and does nothing when tapped. It should be the way in
       to pairing — the strap is the one metric measured identically for every
       rider whatever the power model does (Phase 21), and today the only route
       to it is Settings, which means ending the ride. Needs 11.6.10
-- [ ] **11.6.10** **Reach Settings from the ride and from the overlay without
+
+      The tile carries "Tap to pair a heart-rate strap" only while the reading
+      is absent, and opens 11.6.10's sheet. **Observed on the tablet AVD** —
+      note that it takes *Hardware* mode to see at all, because the simulated
+      rider has a fabricated heart rate and so never shows the empty state
+      this item is about
+- [x] **11.6.10** **Reach Settings from the ride and from the overlay without
       ending the ride.** Pairing a strap, changing the telemetry source, fixing
       the coach volume — all of these are things a rider discovers they need
       *while riding*, and all of them currently cost the ride. A sheet over the
       ride screen rather than a navigation away from it, and the overlay needs
       its own route in. Watch 24.1.5's rule from the other direction: this adds
       a control, not a screenful of numbers
+
+      `RideSettingsSheet` holds exactly those three, reached by a gear beside
+      the telemetry chip. It **reuses the section composables Settings draws**
+      rather than restating them, which is the only reason a second surface for
+      the same preferences is safe to have at all.
+
+      **The overlay's own way in is inside the volume panel**, not a fifth
+      button on the resting strip: that panel is already where a rider goes to
+      change something rather than read something, and the strip's job is the
+      next sixty seconds of pedalling. The overlay has no navigation, so it
+      raises `RideSettingsRequest` and brings the app forward — a process-wide
+      one-shot rather than an intent extra, because `bringForward` deliberately
+      sends the launcher's own `ACTION_MAIN` and 11.1a explains what changing
+      that does to a ride in progress.
+
+      **Observed on the tablet AVD**: the sheet over a running ride with the
+      clock still counting; telemetry switched to Hardware *mid-ride* from the
+      sheet, the chip flipping to "No signal from the bike — not recording"
+      with the ride intact; the heart-rate card opening it; and "More settings"
+      on the overlay landing on the ride screen with the sheet already up.
+
+      **One snag found while verifying, not fixed.** The volume panel's
+      five-second idle timeout (11.5.5) closed it under the first attempt to
+      reach the new button — the timeout restarts on slider movement, not on a
+      rider reading the panel. It was harmless when the panel held two sliders
+      and is now a control that can vanish while being aimed at. Either exempt
+      the panel from the timeout once it has been touched, or lengthen it
 
 
 ### 12.1 History screen
