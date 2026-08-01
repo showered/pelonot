@@ -1,7 +1,0 @@
-{
-  "id": "SS-09",
-  "title": "Over/Under Lite 45",
-  "category": "Sweet Spot",
-  "duration_sec": 2700,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":745,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":745,\"time_end_sec\":935,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":935,\"time_end_sec\":1316,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1316,\"time_end_sec\":1506,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1506,\"time_end_sec\":1887,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1887,\"time_end_sec\":2077,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2077,\"time_end_sec\":2400,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
-}

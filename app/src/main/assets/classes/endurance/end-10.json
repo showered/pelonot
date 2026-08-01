@@ -1,0 +1,7 @@
+{
+  "id": "END-10",
+  "title": "Long Base 60",
+  "category": "Endurance",
+  "duration_sec": 3600,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":180,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":180,\"time_end_sec\":360,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":360,\"time_end_sec\":480,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":480,\"time_end_sec\":1380,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":1380,\"time_end_sec\":2280,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2280,\"time_end_sec\":3180,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":3180,\"time_end_sec\":3360,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":3360,\"time_end_sec\":3600,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
+}

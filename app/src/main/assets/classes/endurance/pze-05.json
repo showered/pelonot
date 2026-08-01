@@ -1,7 +1,0 @@
-{
-  "id": "PZE-05",
-  "title": "Endurance Cruise 30",
-  "category": "Endurance",
-  "duration_sec": 1800,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":590,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":590,\"time_end_sec\":880,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":3},{\"time_start_sec\":880,\"time_end_sec\":1170,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1170,\"time_end_sec\":1363,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":3},{\"time_start_sec\":1363,\"time_end_sec\":1560,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1560,\"time_end_sec\":1800,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
-}

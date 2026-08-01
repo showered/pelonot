@@ -1,7 +1,0 @@
-{
-  "id": "HC-03",
-  "title": "Climb Sprint 20",
-  "category": "HIIT & Heavy Climbs",
-  "duration_sec": 1200,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":240,\"time_end_sec\":386,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":386,\"time_end_sec\":483,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":483,\"time_end_sec\":580,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":580,\"time_end_sec\":677,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":677,\"time_end_sec\":823,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":823,\"time_end_sec\":1020,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":1020,\"time_end_sec\":1200,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
-}

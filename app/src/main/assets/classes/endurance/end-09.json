@@ -1,0 +1,7 @@
+{
+  "id": "END-09",
+  "title": "Progression 45",
+  "category": "Endurance",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":180,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":180,\"time_end_sec\":360,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":360,\"time_end_sec\":480,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":480,\"time_end_sec\":1080,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":1080,\"time_end_sec\":1680,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1680,\"time_end_sec\":2160,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":2160,\"time_end_sec\":2400,\"target_cadence_min\":95,\"target_cadence_max\":105,\"target_power_zone\":3},{\"time_start_sec\":2400,\"time_end_sec\":2520,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":2520,\"time_end_sec\":2700,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
+}

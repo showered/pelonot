@@ -1,0 +1,7 @@
+{
+  "id": "REC-10",
+  "title": "Active Recovery 45",
+  "category": "Recovery",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":600,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":600,\"time_end_sec\":780,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":780,\"time_end_sec\":1080,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":1080,\"time_end_sec\":1260,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1260,\"time_end_sec\":1560,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":1560,\"time_end_sec\":1740,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1740,\"time_end_sec\":2040,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":2040,\"time_end_sec\":2220,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2220,\"time_end_sec\":2700,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
+}

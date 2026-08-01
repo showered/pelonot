@@ -1,7 +1,0 @@
-{
-  "id": "HC-02",
-  "title": "Torque Repeats 20",
-  "category": "HIIT & Heavy Climbs",
-  "duration_sec": 1200,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":240,\"time_end_sec\":435,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":435,\"time_end_sec\":532,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":532,\"time_end_sec\":629,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":629,\"time_end_sec\":726,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":726,\"time_end_sec\":823,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":823,\"time_end_sec\":1020,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":1020,\"time_end_sec\":1200,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
-}
