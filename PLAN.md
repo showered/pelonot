@@ -24,8 +24,9 @@ Straight down the *What to do next* list, on the tablet AVD, no bike.
 Closed: **11.1a.6** (the ride notification that was never posted on Android
 13+), **11.6.2a** (the zone ladder, which replaces the `CurrentZoneBar` the
 sixth sitting shipped and closes the overlay gap 11.6.2 left behind), **19.1.2**
-(auto-pause), **19.1.2a** (new, and the reason 19.1.2 could be ticked at all)
-and **19.1.3 / 12.4.4** (backup and restore). 291 JVM tests green.
+(auto-pause), **19.1.2a** (new, and the reason 19.1.2 could be ticked at all),
+**19.1.3 / 12.4.4** (backup and restore) and **11.5.9** (two ways out of the
+overlay's volume panel). 291 JVM tests green.
 
 **With that, the fifth sitting's readiness pass is finished** — every blocker
 it found is built and observed, and a rider now has a way to get their whole
@@ -215,7 +216,7 @@ Where they landed:
 | No icons on the live numbers | **11.6.3** | ✅ |
 | The target gauge never says what the target *is* | **11.6.4** | ✅ |
 | "Back to the HUD" is geeky and factually wrong | **11.6.5** | ✅ — it is "View in Overlay Mode" |
-| No gesture to dismiss the HUD's volume panel | **11.5.9** | ❌ |
+| No gesture to dismiss the HUD's volume panel | **11.5.9** | ✅ |
 | Heart-rate zones — shown, logged and tracked, and the age they need | **Phase 21** | ❌ |
 | Classes built on heart-rate zones — is it advisable? | **21.5** (verdict: yes, with limits) | ❌ |
 | "Your Progress" on the dashboard is meaningless | **22.1** | ❌ |
@@ -1605,7 +1606,7 @@ offer it, which makes this closer to fundamental than to polish.
       whether or not buttons are populated. **Settle it with `adb shell getevent
       -l` and a press of every physical button**; ten seconds with someone at
       the bike. Honour the keys if they arrive, but nothing may depend on them
-- [ ] **11.5.9** **A gesture to dismiss the expanded volume panel.** It opens
+- [x] **11.5.9** **A gesture to dismiss the expanded volume panel.** It opens
       and closes from one small button today (11.5.4), so a rider who opened it
       mid-ride has to find that same control again with the sliders now in the
       way. A swipe on the panel towards the strip's own edge should close it —
@@ -1618,6 +1619,18 @@ offer it, which makes this closer to fundamental than to polish.
       that closes it after a few idle seconds is worth considering alongside,
       since the panel is the one part of the strip that is not about the next
       sixty seconds of pedalling (11.5.5)
+      *Done, and both halves of it: a **vertical** drag towards the dock's own
+      edge closes the panel, and it closes itself after eight idle seconds. The
+      timeout is keyed on the two volumes, so every adjustment restarts the
+      clock and it only fires once the rider has actually stopped fiddling.*
+      *Both traps the item names turned out to be real and both are handled by
+      the same choice — the gesture is vertical-only and lives on the panel
+      rather than on the strip. A `Slider` consumes horizontal drags, so a
+      vertical detector above it never fights the sliders for the same finger;
+      and because the strip's own drag-to-re-dock is a different surface, a
+      swipe that closes the panel cannot also move the strip. **Observed on the
+      tablet AVD** docked top: swiped up, the panel closed and the strip stayed
+      exactly where it was; then left alone, it closed itself*
 
 ### 11.6 The full-screen ride screen — what a rider cannot read on it
 
