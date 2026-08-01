@@ -88,14 +88,26 @@ Two consequences to know before you are surprised by them:
 
 ## Things that will bite you
 
-- **THE OVERLAY CORRUPTS TELEMETRY AND THE CORRUPT VALUES ARE RECORDED.**
-  Found on the first real ride, 1 August 2026. While the overlay is up,
-  cadence, resistance and power start appearing in each other's columns —
-  **41 of 53 samples corrupt, against 0 of 82 on the full-screen ride
-  screen**, turning a real 61 rpm / 47 W into a reported 109 RPM / 137 W. It
-  also stops delivering mid-ride and never recovers without an app restart.
-  **Read PLAN.md 2.7 before touching the sensor path or the overlay**, and do
-  not trust the aggregates of any ride taken with the overlay up.
+- **THE OVERLAY CORRUPTS TELEMETRY. The record is now free of the impossible,
+  not free of the wrong.** Found on the first real ride, 1 August 2026: while
+  the overlay is up, cadence, resistance and power start appearing in each
+  other's columns — **41 of 53 samples corrupt, against 0 of 82 on the
+  full-screen ride screen**. A plausibility fence (`implausibleValues()`) now
+  refuses to publish or record a value that cannot be true, and `failOnSilence`
+  rebuilds a board that has stopped delivering. **But an in-range swap — a
+  power value of 52 landing in the cadence column — passes every bound there
+  is**, so a ride taken with the overlay up is still not trustworthy sample by
+  sample. **Read PLAN.md 2.7 before touching the sensor path or the overlay**;
+  2.7.1's cause is still open and needs one minute of pedalling to settle.
+- **Reject, never clamp.** The fence turns an impossible value into a *gap*,
+  because clamping 603 rpm to 200 writes a plausible lie exactly where a gap
+  belongs and nobody can tell it from a real sprint afterwards. Same argument
+  as nullable `heartRateBpm` and as `isStaleAt`. If you add a new metric,
+  give it bounds in `TelemetryBounds` and let it be absent.
+- **The bike is a perishable resource, so both halves of 2.7 are levers on the
+  emulator** — `com.pelonot.debug.CORRUPT` and `com.pelonot.debug.SILENCE`,
+  beside `COAST`. See PLAN.md 2.7a for the commands and for the run that
+  closed 2.7.3 and 2.7.4.
 - **The database is the witness, not the screenshots.** Two screenshots taken
   seconds apart cannot show two surfaces disagreeing. `workout_metrics` holds
   what the recorder actually saw, once a second, with a timestamp — which is
@@ -237,6 +249,25 @@ stop. Debug builds have a receiver for exactly that (PLAN.md 19.1.2a):
 adb shell am broadcast -a com.pelonot.debug.COAST \
   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
 ```
+
+It also never lies and never goes quiet, which is the other half of the same
+problem — 2.7 was found on a bike with a rider on it. The same receiver takes
+`CORRUPT` (the values rotate between columns, with a ghost near 602 in
+whichever one it lands in) and `SILENCE` (the source stops delivering *without
+failing*, which is what let a dead board survive a whole ride):
+
+```bash
+adb shell am broadcast -a com.pelonot.debug.CORRUPT \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 30
+```
+
+```bash
+adb shell am broadcast -a com.pelonot.debug.SILENCE \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
+```
+
+The result to look for is **gaps in `workout_metrics`, not clamped numbers**,
+and `Telemetry live again at …s` in logcat without an app restart.
 
 ### On the real bike
 

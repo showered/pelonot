@@ -146,6 +146,43 @@ capped exponential backoff. Sources deliberately do not reconnect themselves;
 when they did, `close()` triggered a reconnect and `reconnect()` called
 `close()`, so ending a workout started an endless loop.
 
+### 1f. Three refusals between the board and the record
+
+The first real ride recorded cadence 603 rpm off a rider turning the cranks at
+61 (PLAN.md 2.7). Three things now stand between a bad value and the rider's
+permanent record, and all three answer with an **absence** rather than a
+number — the same doctrine as nullable `heartRateBpm` and `isStaleAt`:
+
+```mermaid
+flowchart LR
+    A["Peloton SensorService<br/>3 separate event streams"] --> B[TelemetryAssembler]
+    B -->|"all three present<br/>and within 2.5 s"| C[failOnSilence]
+    B -.->|impossible value| Z1((gap))
+    B -.->|"triple incomplete<br/>or mixed instants"| Z2((gap))
+    C -->|"a value within 6 s"| D[SensorRepository]
+    C -.->|silence| R[retryWhen → rebuild the source]
+    D -->|plausible| E["StateFlow&lt;SensorReading&gt;"]
+    D -.->|impossible| Z3((gap))
+    E --> F["WorkoutService.recordMetric"]
+    F -.->|"stale, or impossible"| Z4((gap))
+    F --> G[(workout_metrics)]
+```
+
+- **`TelemetryAssembler`** turns the board's three independent streams into one
+  reading, and only when all three are present and mutually fresh. It is pure
+  Kotlin so the seam can be tested; the code it replaced kept three `var`s
+  starting at `0.0` and published all three whenever any one moved.
+- **`failOnSilence`** makes a source that has stopped delivering *fail*, which
+  is the only thing `retryWhen` can see. Without it a dead board stayed dead
+  for the rest of the ride.
+- **`TelemetryBounds`** rejects and never clamps. A clamped 603 is a plausible
+  lie standing where a gap belongs, and no later reader can tell it from a real
+  sprint. Checked at publication *and* at the recording boundary, because only
+  the second one makes a number permanent.
+
+**None of this fixes the rotation** (2.7.1). Values swapping columns *within*
+the plausible range pass every bound there is.
+
 ---
 
 ## 2. Data flowing through a ride

@@ -17,6 +17,45 @@
 
 ## Where the work stands — read this first
 
+### Latest session — 1 August 2026 (tenth sitting): nothing impossible reaches the record, and a dead board comes back
+
+**Read 2.7 and then 2.7a.** The defect the ninth sitting handed over — the
+overlay corrupting telemetry and the corrupt values being *recorded* — is
+**contained but not cured**, and the distinction matters more than the tick
+marks:
+
+- **2.7.3 and 2.7.4 are done and observed.** A plausibility fence with
+  physical bounds, applied where readings are published and again where they
+  are written; and `failOnSilence`, which turns a source that has stopped
+  delivering into a source that failed, so the app's one retry policy rebuilds
+  it. On a 213-second AVD ride carrying 30 seconds of the bike's exact
+  corruption signature and 20 seconds of a dead board: **0 impossible values
+  recorded, four gaps where the lies used to be, and telemetry alive again at
+  122 s without an app restart.**
+- **2.7.1 is half done and the half that is done is not the cause.**
+  `TelemetryAssembler` replaces three `var`s that started at `0.0` and were all
+  emitted whenever any one moved — so every hardware ride's first message
+  published two measured-looking zeroes and every reading after it mixed
+  instants. Real, and now tested. But the rotation itself is still unexplained,
+  and the leading theory has moved: nothing in this app collects `readings()`
+  twice, so a second registration is more likely **not ours**. Peloton's own
+  app binds the same service, and one UART multiplexed between two clients
+  produces exactly this signature. A counter now logs at `E` the moment two
+  registrations are live, and the next ride reads it.
+- **2.7.2 needs one minute of pedalling.** Every unhandled `msg.what` gets its
+  bundle logged. That is the whole instrument.
+
+**The technique worth carrying: the bike is a perishable resource, so the
+defect was brought to the emulator.** Two debug broadcasts — `CORRUPT` and
+`SILENCE` — sit beside the `COAST` lever from 19.1.2a, and the corruption is
+modelled on the measurement rather than invented: 41 samples in 53 carry the
+ghost near 602, as they did on the bike.
+
+**The thing to be honest about, and it is in 2.7a as a test:** the recorded
+ride's peak cadence is 173 rpm — a power value in the cadence column, entirely
+possible as a cadence, invisible to any bound there is. **The record is now
+free of the impossible, not free of the wrong.** 346 JVM tests, 0 failures.
+
 ### The first real ride — 1 August 2026, on the bike, with a rider
 
 **Read this before picking anything up.** The app was ridden for real for the
@@ -407,6 +446,19 @@ swallowed failure with a plausible-looking fallback.
 
 ### Still needing a rider on the bike
 
+- **2.7.1 / 2.7.2** — **first, and it costs one minute of pedalling.** Both
+  instruments are already in the build. Start a Hardware-mode ride, raise the
+  overlay, and watch:
+
+  ```bash
+  adb logcat -s PelotonSensorSource SensorRepository
+  ```
+
+  Two lines settle two questions. `N live sensor registrations` at `E` says
+  whether the rotation is a second registration — and, since nothing in this
+  app can make one any more, a 2 there means it is Peloton's own app sharing
+  the board. `Unhandled sensor event what=…` with its bundle says what the
+  ghost near 602 is. Say when they can stop; nothing else needs the pedals.
 - **10.6** — a full-length ride (battery, thermals, memory, dropped samples).
 - **2.2a.1** — watch a Hardware-mode ride actually land in the calibration
   grid. Everything downstream of it is written and tested; nothing has seen the
@@ -473,14 +525,15 @@ Three consequences worth carrying forward:
 **Everything below is reordered by the first real ride, 1 August 2026.** The
 triage is the owner's snag list plus what the ride measured.
 
-**Stop-everything, in this order — the app is currently recording wrong numbers:**
+**Still first, but no longer stop-everything — the fence and the watchdog
+landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | Next | Why now |
 |------|---------|
-| **2.7.1** The overlay corrupts telemetry | **The worst defect this project has had.** Values rotate between cadence, resistance and power whenever the overlay is up, and they are *recorded*: 41 of 53 samples corrupt against 0 of 82 on the full screen, turning 61 rpm / 47 W into a reported 109 RPM / 137 W. Every ride taken with the overlay up — which is the way this app is meant to be used — has a corrupted record. Read 2.7 whole before touching anything |
-| **2.7.4** Telemetry dies and never recovers | Same session, same ride. The board stops delivering, the flow does not error, so `retryWhen` never fires and nothing rebinds — the rest of the ride records nothing and **pedalling does not bring it back**, only restarting the app. Half a ride silently missing is the second-worst outcome after half a ride wrong |
-| **2.7.3** A plausibility fence | Cheap, and it stops the worst of it reaching the database while 2.7.1 is being worked out. **Reject, never clamp**, and it is a fence rather than the fix — 33 and 52 swapping is invisible to any bound |
-| **2.7.5** What to do about the rides already recorded | The first real ride is on disk with 17 impossible samples in it. Decide before more accumulate, and do not silently rewrite a rider's history |
+| **2.7.1 / 2.7.2** Why the overlay corrupts telemetry at all | **Unfinished, and it needs the bike.** The fence stops 603 rpm being written; it cannot stop a power value landing in the cadence column, and the AVD run recorded a 173 rpm peak that is exactly that. Both instruments are in place and both read in one minute of pedalling: a registration counter that logs at `E` when two are live, and every unhandled `msg.what` dumped with its bundle. **Do this at the start of the next bike session, before anything else is asked of the rider** |
+| **2.7.5** What to do about the rides already recorded | Now the only open item that does not need hardware. The first real ride is on disk with 17 impossible samples in it, and the fence means no ride after it can be. `implausibleValues()` is the same predicate the recorder uses, so counting them per ride is one query — but do not silently rewrite a rider's history |
+| ~~**2.7.3** A plausibility fence~~ | Done and observed: 0 impossible values in 188 recorded samples across a ride carrying 30 s of the bike's own corruption signature |
+| ~~**2.7.4** Telemetry dies and never recovers~~ | Done and observed: silence is an `IOException` now, the one retry policy rebuilds the source, and the ride picked up again at 122 s with no app restart |
 
 **Then the ride-screen snags, which are what the owner actually feels:**
 
@@ -545,9 +598,9 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete at schema version 3. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account that nothing yet grants (23.1) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔴 **Recording wrong numbers.** The first real ride found that raising the overlay rotates cadence, resistance and power between each other's fields, and the corrupt values are recorded (2.7). Telemetry also dies mid-ride and never recovers (2.7.4). Everything else — the board, the resistance scale, a real BLE strap, per-bike calibration — is verified on hardware |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Contained, not cured.** The fence and the watchdog are done and observed (2.7.3, 2.7.4): nothing impossible is recorded any more, and a dead board comes back by itself. But the rotation's cause is still unknown (2.7.1) and **an in-range swap is invisible to any bound**, so the record is free of the impossible rather than free of the wrong. Everything else — the board, the resistance scale, a real BLE strap, per-bike calibration — is verified on hardware |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
-| 4 | Floating HUD overlay | 🔴 Renders correctly and **corrupts the ride's record while it is up** (2.7). 10.4 verified that it draws over video; nobody had checked what it does to the data underneath |
+| 4 | Floating HUD overlay | 🔶 Renders correctly, and the corruption it triggers can no longer reach the record as an impossible value (2.7.3) — but **why raising it corrupts telemetry at all is still open** (2.7.1), so a ride taken with the overlay up is still not to be trusted sample for sample |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete, and **a simulated ride can no longer propose an FTP (7.10.7)**. Still open: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9) |
@@ -1355,13 +1408,48 @@ overlay was up for part of it.
       overlay raise. `SensorRepository.start()` guards on `telemetryJob`, so
       the second one is unlikely to be there; the manifest declares no separate
       process, so it is not two `ServiceLocator`s
+
+      **Half done, 1 August 2026 (tenth sitting), and the half that is done is
+      not the cause.** Two things shipped, neither of which can be confirmed
+      without the bike:
+
+      - **`TelemetryAssembler`** replaces the three locals. It holds each of
+        the board's streams with the instant it arrived and hands back a
+        reading only when all three are present *and* within 2.5 s of each
+        other. This fixes a real defect found while reading the code rather
+        than the ride: the three locals started at `0.0` and *all three* were
+        emitted whenever any one changed, so **the first message of every
+        hardware ride published two measured-looking zeroes**, and every
+        reading after it mixed instants. That is not the rotation, but it is
+        the seam the rotation lives in, and it is now a pure class with tests.
+      - **A single registration is now guaranteed per binding.**
+        `onServiceConnected` runs again when the service dies and the system
+        rebinds us to its replacement, and every extra `REGISTER_COMMANDS` is
+        another repeating poll answering into the same reply Messenger.
+        A process-wide counter logs at `E` the moment a second one is live —
+        which is the count the plan asked for, ready for the next ride.
+
+      **What is still unknown is whether that counter ever reads 2.** Nothing
+      in the app collects `readings()` twice; `SensorRepository.start()` guards
+      on `telemetryJob` and there is exactly one call to it. So the second
+      registration, if it exists, is either a rebind we now block or it is
+      **not ours** — the sensor service is bound by Peloton's own app too, and
+      a service multiplexing one UART's request/response between two clients
+      would produce precisely this signature. The next ride's logcat settles it
 - [ ] **2.7.2** **Identify the ~602/668 value.** It is not any of the three
       metrics and appeared in both sessions. Most likely an event type the
       source does not handle whose `msg.what` collides with `EVENT_RPM` /
       `EVENT_WATT` / `EVENT_RESISTANCE`, or a second registration receiving a
       different event set. Log every `msg.what` seen with its payload for one
       minute of pedalling and the answer falls out
-- [ ] **2.7.3** **A plausibility fence at the recording boundary.** Cadence 603
+
+      **The instrument is built and needs the bike to read it.** Every
+      unhandled `msg.what` now has its first three occurrences logged with the
+      whole bundle — keys, types and values — and the totals are dumped when
+      the source closes. Nothing else is needed; one minute of pedalling with
+      `adb logcat -s PelotonSensorSource` gives the answer or rules the theory
+      out
+- [x] **2.7.3** **A plausibility fence at the recording boundary.** Cadence 603
       is not a measurement, and neither is resistance 602. This is the same
       argument as 2.4.4: a value that cannot be true is an absence, and the
       honest answer is a gap. **Reject, never clamp** — clamping 603 to 140
@@ -1371,7 +1459,14 @@ overlay was up for part of it.
       not the fix**: it must land alongside 2.7.1 rather than instead of it,
       or the rotation continues silently within the plausible range — 33 and 52
       swapping is invisible to any bound
-- [ ] **2.7.4** **The board stops and never comes back.** With the overlay up,
+
+      Built with exactly those bounds and applied twice: where the reading is
+      published, so the overlay and the ride screen never show 603 either, and
+      again in `recordMetric`, because that is the line that makes a number
+      permanent. A rejected reading is not published at all, so the flow ages
+      out on its own timestamp and the recorder leaves the gap that actually
+      happened. **Observed on the tablet AVD** — see the run below
+- [x] **2.7.4** **The board stops and never comes back.** With the overlay up,
       telemetry went stale and stayed stale for the rest of the ride —
       `WorkoutService` logged *Telemetry stale at 86s*, the overlay showed
       `--` on every metric, and **pedalling did not revive it**. Only a restart
@@ -1382,6 +1477,14 @@ overlay was up for part of it.
       ride is running means tear the source down and rebuild it. Note the
       interaction with 2.7.1 — a rebuild must not leave the old registration
       alive, which may be the very thing causing the rotation
+
+      `failOnSilence(6 s)` sits between the source and the existing
+      `retryWhen`, so silence becomes an `IOException` and **the app's one
+      retry policy does the rebuilding** — no second schedule, which is the
+      rule `SensorRepository` exists to hold. Failing the flow cancels the
+      source, which for the Peloton source means `awaitClose` unbinds and drops
+      the registration *before* the new one is made, so the rebuild cannot
+      leave two alive. **Observed on the tablet AVD**
 - [ ] **2.7.5** **Decide what happens to the rides already recorded.** They are
       real rides with real effort in them and a minority of corrupted samples.
       Deleting them is wrong; presenting their aggregates as fact is also wrong.
@@ -1389,17 +1492,79 @@ overlay was up for part of it.
       excluded, or to mark the ride as suspect and say so. **Do not silently
       rewrite a rider's history either way** — whatever is chosen has to be
       visible, and it is the same provenance argument as 23.4.3
-- [ ] **2.7.6** **A test that would have caught this.** Nothing in 308 JVM
+
+      **This is now the open item in 2.7**, and note that the fence has changed
+      what it means: from here on a ride *cannot* accumulate impossible
+      samples, so this is about the two rides on the bike today and nothing
+      that comes after them. `implausibleValues()` is the same predicate the
+      recorder uses, so counting the affected samples per ride is one query
+- [x] **2.7.6** **A test that would have caught this.** Nothing in 308 JVM
       tests could: the simulator is one well-behaved source and the defect
       needs two. A fake source that emits interleaved partial state, and an
       assertion that `SensorRepository` never publishes a reading whose fields
       came from different instants, is the shape of it
+
+      25 of them, and the shape turned out to be slightly different: rather
+      than faking two sources, the seam where three streams become one reading
+      was **lifted out of the Android class into `TelemetryAssembler`**, where
+      interleaved partial state is what every test feeds it. Plus the fence's
+      bounds against the numbers the bike actually produced, and the watchdog
+      on virtual time, so a six-second timeout costs nothing to assert. 346
+      JVM tests, 0 failures
 
 > **Verification note.** All of this was found with `adb` and one rider, in
 > about fifteen minutes, because the **database is the neutral witness**: two
 > screenshots taken 15 seconds apart cannot prove two surfaces disagree, but
 > `workout_metrics` records what the recorder actually saw, once a second, with
 > a timestamp. Reach for the table before the screenshots.
+
+#### 2.7a The repro, and the run that closed 2.7.3 and 2.7.4
+
+The defect was found on a bike with a rider on it, which is not a thing to
+spend on a regression. **Both halves of it are now levers on the emulator**,
+beside the `COAST` receiver that 19.1.2a added for the same reason:
+
+```bash
+# The board reports nonsense — the signature of 2.7, values rotating between
+# columns with a ghost near 602 in whichever one it lands in.
+adb shell am broadcast -a com.pelonot.debug.CORRUPT \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 30
+
+# The board goes quiet *without failing* — the part that survived a whole ride.
+adb shell am broadcast -a com.pelonot.debug.SILENCE \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
+```
+
+The corruption is modelled on the measurement: the three real values rotate,
+and **41 samples in 53 carry the ghost**, exactly as they did on the bike.
+
+**The run, 1 August 2026, on the tablet AVD.** One 213-second free ride: clean
+to 54 s, corrupt to 84 s, clean to 101 s, silent to 121 s, clean to the end.
+
+| | Before | After |
+|---|---|---|
+| Impossible values recorded | 41 of 53 samples | **0 of 188** |
+| Seconds recorded, of 213 | — | 188 (25 s of gaps) |
+| Gaps | none — the lies were recorded instead | 57→61, 69→74, 83→85, **104→122** |
+| Telemetry after a dead source | dead for the rest of the ride | *Telemetry live again at 122s* |
+
+The four gaps are the whole result. Three small ones fall inside the corrupt
+window, where readings were refused and the flow aged out; the seventeen-second
+one is the silence, where `TelemetrySilence` fired at six seconds, the retry
+policy rebuilt the source, and the ride picked up **on its own, without an app
+restart** — which is the single thing 2.7.4 was about.
+
+**Two honesties about that table.** The first is that `max cadence` on the
+recorded ride is 173 rpm: a *power* value that landed in the cadence column
+while pedalling hard, perfectly possible as a cadence, and no bound will ever
+catch it. The plan said so — "33 and 52 swapping is invisible to any bound" —
+and the run is the proof. **The record is now free of the impossible, not free
+of the wrong**, and it stays that way until 2.7.1 is closed on the bike.
+
+The second is that this run exercised the fence, the watchdog and the recording
+boundary, but **not `TelemetryAssembler`**, which only runs in the hardware
+source. The emulator cannot produce a hardware ride, so the assembler is
+covered by tests and by nothing else.
 
 ---
 
