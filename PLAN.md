@@ -20,8 +20,10 @@
 ### Latest session — 1 August 2026 (twelfth sitting): the record explains itself, and the numbers hold still
 
 No bike, no rider — the whole sitting ran on the bike tablet's *existing*
-database and on the tablet AVD. Six items closed: **2.7.5**, **11.6.7**,
-**11.6.8**, **13.8**, **11.6.9** and **11.6.10**. 374 JVM tests, 0 failures.
+database and on the tablet AVD. Eight items closed: **2.7.5**, **11.6.7**,
+**11.6.8**, **13.8**, **11.6.9**, **11.6.10**, **16.1.7** and **16.1.8**.
+380 JVM tests, 0 failures. **That is the whole of the first real ride's snag
+list except 22.2.6 and 23.2.6**, the two substantial ones.
 
 **With 11.6.9 and 11.6.10 the ride screen no longer traps the rider.** Pairing
 a strap, changing the telemetry source and fixing the coach volume are all
@@ -631,7 +633,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**11.6.7** The numbers change too fast to read~~ | **Done and observed.** `SensorRepository.displayReading`, 2 Hz, both surfaces, recorder untouched |
 | ~~**11.6.8** The zone ladder shifts sideways~~ | **Done and observed.** Not the border — the zone name and the FTP percentage sized themselves to their own text. Both now reserve their widest string |
 | ~~**11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride~~ | **Done and observed.** A sheet over the ride, a gear beside the telemetry chip, and the overlay's way in inside the volume panel. One snag found and left open — see the end of 11.6.10 |
-| **16.1.7 / 16.1.8** Axes on the charts | **Now first.** The heart-rate chart is a line with no numbers on it. Beautiful rather than scientific, and decided once for all four |
+| ~~**16.1.7 / 16.1.8** Axes on the charts~~ | **Done and observed.** `ChartScale` picks the round numbers, `ChartFrame` draws them for every trace |
 | ~~**13.8** kg/lb at signup~~ | **Done and observed.** The old dialog stored a 77 kg rider as 34.9 kg |
 
 **Then the substantial ones:**
@@ -701,7 +703,7 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. The payload format should still change before rides accumulate (14.4) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
-| 16 | Data visualisation | 🔶 Post-ride charts done and the power caption says where the watts came from (16.1.6) — but **none of them has an axis**, and the heart-rate chart is a line with no numbers on it (16.1.7). Trends (16.3) remain, blocked on 7.9 |
+| 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). Trends (16.3) remain, blocked on 7.9 |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
@@ -3297,7 +3299,7 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       from before the column says "estimated", which is the safe direction:
       "nobody wrote it down" is not grounds for claiming a measurement
 
-- [ ] **16.1.7** **The charts have no axes, and the heart-rate one is
+- [x] **16.1.7** **The charts have no axes, and the heart-rate one is
       meaningless without them.** Confirmed on the first real ride: a green
       line rising left to right with the caption *Heart rate from 88 to 170
       beats per minute* underneath. The shape is legible, the values are not,
@@ -3308,11 +3310,38 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       generous type, no tick forests, no boxed axes. `RideChartBuilder` already
       downsamples into buckets with min/max per bucket, so the data for a scale
       is there; this is a drawing job, not a data one
-- [ ] **16.1.8** Decide the axis treatment **once, for all four charts**, and
+- [x] **16.1.8** Decide the axis treatment **once, for all four charts**, and
       put it in the shared chart components rather than per card. Power, heart
       rate, cadence distribution and time-in-zone currently each caption
       themselves in their own way, and four different answers is how the ride
       detail screen starts to look assembled rather than designed
+
+      **The answer, and it is one composable.** `ChartScale` (pure, in
+      `domain/chart`) picks the numbers: a 1, 2, 2.5 or 5 times a power of ten,
+      chosen *nearest* rather than rounded up — 88–170 bpm wants labels every
+      25, and rounding up gives it two where four fit — and it drops any that
+      would land within 4% of either end, where a label collides with the trace
+      that reached it and the caption states the peak exactly anyway.
+      `ChartFrame` draws them: hairlines at those values, the number sitting
+      *on* the line at the right-hand edge over a scrim the colour of the card,
+      and the clock underneath in three marks. No boxed axes, no tick forests,
+      no frame.
+
+      Two details that matter more than they look. The gridlines are placed
+      with the **same `fractionOf`** the trace is drawn with, so a line cannot
+      drift away from the value it claims. And the scrim exists because a ride
+      that finishes on a sprint runs its own trace straight through the label —
+      a number that cannot be read is not an axis.
+
+      The other two charts get the same idiom rather than the same component,
+      because their axes are different questions: the cadence histogram's
+      vertical axis is *time*, so it carries its peak duration and a middle rpm
+      mark; time-in-zone already lists every zone with its duration and
+      percentage, which **is** its axis.
+
+      **Observed on the tablet AVD across all four cards**: power at 100 W and
+      200 W over 00:00 / 02:08 / 04:17, heart rate at 100 and 150 on the same
+      clock, cadence peaking at 00:59 across 60–100 rpm
 
 ### 16.2 Building them
 - [x] **16.2.1** Compose `Canvas`, no charting dependency — these are four
