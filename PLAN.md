@@ -1806,6 +1806,17 @@ exists; nothing creates one. The previous value is overwritten and gone.
 - [x] **8.7** Unit tests: `PowerZone`, `PostWorkoutAnalyzer`, `WorkoutMetricsCalculator`, `RideIntent`, `SerialProtocolParser`, `CadenceTracker`, `PowerModel`, BLE parsing, `IntervalParser`, `ClassIntervalEngine`, `TargetBand`, `RideCoachPolicy`, `WorkoutAggregates`, `UnitSystem`, `Formatters`, `RideDayGrouping`, `WorkoutSession` — **192 tests**
 - [x] **8.8** Instrumented tests for Room DAOs (foreign key ordering, `is_complete` filtering, cascade delete)
 - [x] **8.8a** Instrumented test for `WorkoutService` lifecycle — start/pause/resume/stop, the workout row existing before its first metric, the batched tail being flushed, and a finished ride no longer being offered for recovery
+- [ ] **8.8b** **`WorkoutServiceTest` is flaky, roughly one run in three.**
+      `aFinishedRideIsNoLongerOfferedForRecovery` times out on *the ride to be
+      finalised*, and when it does, the next test inherits a service still in
+      `Completed` and fails too — so one flake reads as two. **Measured on both
+      sides of the tenth sitting's changes** (base 1 failure in 4 runs, after
+      2 in 4, always the same test and the same message), so it is not new and
+      the fix is not in the sensor path. `stopWorkout` finalises inside
+      `serviceScope.launch`, and when that does not land within 15 s, nothing
+      says why; `stopSelf()` never runs, which is what leaks the state into the
+      next test. Worth an hour: a flaky test on the one thing that guards the
+      ride's own record is a test nobody will trust when it matters
 - [x] **8.9** Manual testing on Gen 1 Peloton hardware — profile selector → dashboard → settings → Hardware telemetry → Just Ride → live board data → post-ride summary → persisted ride and 246 metric rows, 31 July 2026. Imperial units picked up from the device locale with no prompting (13.2), on the actual tablet this time
 - [x] **8.12** Verified end-to-end on an emulator: profile creation → class library → intervals → simulated ride → post-ride summary → persisted metrics
 - [x] **8.13** Verified on a 1920×1080 landscape tablet emulator, which is the shape of the device this actually runs on
