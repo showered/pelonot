@@ -81,6 +81,7 @@ import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
+import com.pelonot.ui.components.RidePositionCall
 import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
@@ -567,6 +568,10 @@ private fun EffortColumn(
                 }
             )
         }
+
+        // 25.2.2. Only when the class asks for one, and loud only at the moment
+        // it changes. Most intervals prescribe nothing and this draws nothing.
+        RidePositionCall(position = interval.current?.position)
 
         if (interval.hasClass) {
             Card(

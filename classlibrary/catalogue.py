@@ -15,6 +15,7 @@ from builder import (
     BRISK, CLIMB, EASY, FAST, GRIND, SPIN, STAND, STEADY, SURGE,
     WU5, WU6, WU7, WU8, WU10,
     CD3, CD4, CD5, CD6, CD7, CD8, CD9, CD10,
+    SEATED, STANDING,
     alternate, hold, klass, ladder, primers, sets,
 )
 
@@ -50,7 +51,7 @@ klass("END-03", "Endurance Build 30", ENDURANCE,
 klass("END-04", "Rolling Roads 30", ENDURANCE,
       WU8,
       sets(6, on=120, zone=3, cadence=CLIMB, off=60, off_zone=2, off_cadence=BRISK,
-           trailing=True),
+           trailing=True, position=SEATED),
       CD4)
 
 klass("END-05", "The Long Steady 30", ENDURANCE,
@@ -208,9 +209,9 @@ klass("SWT-08", "Over/Under, Two Sets 45", SWEET_SPOT,
 
 klass("SWT-09", "Big Gear / Fast Legs 45", SWEET_SPOT,
       WU8,
-      hold(300, 4, CLIMB), hold(180, 1, EASY),
+      hold(300, 4, CLIMB, SEATED), hold(180, 1, EASY),
       hold(300, 4, FAST), hold(180, 1, EASY),
-      hold(300, 4, CLIMB), hold(180, 1, EASY),
+      hold(300, 4, CLIMB, SEATED), hold(180, 1, EASY),
       hold(300, 4, FAST),
       CD8)
 
@@ -363,7 +364,7 @@ klass("VMX-08", "VO2 4×4 45", VO2,
 
 klass("VMX-09", "VO2 Climbing 45", VO2,
       WU5, primers(2, 5, CLIMB, on=30, off=60),
-      sets(6, on=180, zone=5, cadence=CLIMB, off=180),
+      sets(6, on=180, zone=5, cadence=CLIMB, off=180, position=SEATED),
       CD4)
 
 klass("VMX-10", "VO2 Mixed 45", VO2,
@@ -384,13 +385,13 @@ klass("VMX-10", "VO2 Mixed 45", VO2,
 klass("CLB-01", "Torque Repeats 4×2 20", CLIMBS,
       WU5,
       sets(4, on=120, zone=4, cadence=GRIND, off=60, off_zone=2, off_cadence=STEADY,
-           trailing=True),
+           trailing=True, position=SEATED),
       CD3)
 
 klass("CLB-02", "Standing Attacks 20", CLIMBS,
       WU5,
-      hold(240, 4, CLIMB), hold(120, 1, EASY),
-      sets(4, on=45, zone=6, cadence=STAND, off=45, trailing=True),
+      hold(240, 4, CLIMB, SEATED), hold(120, 1, EASY),
+      sets(4, on=45, zone=6, cadence=STAND, off=45, trailing=True, position=STANDING),
       CD3)
 
 klass("CLB-03", "The Long Climb 30", CLIMBS,
@@ -411,9 +412,9 @@ klass("CLB-05", "Torque Ladder 30", CLIMBS,
 
 klass("CLB-06", "Climb and Attack 30", CLIMBS,
       WU5, primers(2, 6, SURGE, on=30, off=60),
-      hold(240, 4, CLIMB), hold(30, 6, SURGE), hold(90, 1, EASY),
-      hold(240, 4, CLIMB), hold(30, 6, SURGE), hold(90, 1, EASY),
-      hold(240, 4, CLIMB), hold(30, 6, SURGE), hold(90, 1, EASY),
+      hold(240, 4, CLIMB, SEATED), hold(30, 6, STAND, STANDING), hold(90, 1, EASY),
+      hold(240, 4, CLIMB, SEATED), hold(30, 6, STAND, STANDING), hold(90, 1, EASY),
+      hold(240, 4, CLIMB, SEATED), hold(30, 6, STAND, STANDING), hold(90, 1, EASY),
       CD4)
 
 klass("CLB-07", "Climb 4×5 45", CLIMBS,
@@ -424,23 +425,23 @@ klass("CLB-07", "Climb 4×5 45", CLIMBS,
 klass("CLB-08", "Grinding Sets 45", CLIMBS,
       WU8,
       sets(6, on=180, zone=4, cadence=GRIND, off=120, off_zone=2, off_cadence=BRISK,
-           trailing=True),
+           trailing=True, position=SEATED),
       CD7)
 
 klass("CLB-09", "Mountain Stage 45", CLIMBS,
       WU5, primers(2, 5, CLIMB, on=30, off=60),
       hold(420, 4, CLIMB), hold(300, 2, BRISK),
       hold(240, 5, CLIMB), hold(240, 1, EASY),
-      hold(480, 4, GRIND), hold(240, 2, BRISK),
-      hold(120, 5, STAND),
+      hold(480, 4, GRIND, SEATED), hold(240, 2, BRISK),
+      hold(120, 5, STAND, STANDING),
       CD3)
 
 klass("CLB-10", "Big Mountain 60", CLIMBS,
       WU5, primers(2, 5, CLIMB, on=30, off=60),
       hold(720, 4, CLIMB), hold(360, 2, BRISK),
-      hold(600, 4, GRIND), hold(300, 1, EASY),
+      hold(600, 4, GRIND, SEATED), hold(300, 1, EASY),
       hold(480, 4, CLIMB), hold(300, 2, BRISK),
-      hold(120, 5, STAND),
+      hold(120, 5, STAND, STANDING),
       CD4)
 
 
@@ -484,7 +485,7 @@ klass("SPR-05", "Sprints, Three Ways 30", SPRINTS,
       WU5, primers(3, 6, SURGE, on=20, off=60),
       sets(8, on=20, zone=6, cadence=SURGE, off=10),
       hold(180, 1, EASY),
-      sets(3, on=40, zone=6, cadence=CLIMB, off=40),
+      sets(3, on=40, zone=6, cadence=STAND, off=40, position=STANDING),
       hold(240, 1, EASY),
       sets(8, on=20, zone=6, cadence=SPIN, off=10),
       CD3)

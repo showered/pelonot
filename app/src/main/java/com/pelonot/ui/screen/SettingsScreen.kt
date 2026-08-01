@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,6 +86,7 @@ import com.pelonot.ui.theme.DarkSurfaceContainerLowest
 import com.pelonot.ui.theme.DarkTextPrimary
 import com.pelonot.ui.theme.HudMinimumOpacity
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 import kotlinx.coroutines.launch
 import com.pelonot.ui.viewmodel.SettingsViewModel
@@ -174,8 +176,11 @@ fun SettingsScreen(
     ) { padding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(padding)
+                // 22.2.6. A form field 1200 dp wide with a two-word label on it
+                // is not easier to use than the same field at 700.
+                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)

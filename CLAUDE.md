@@ -47,6 +47,16 @@ an AVD at the right resolution but the wrong density hides half of them.
   "HUD" (jargon) and never "strip" (tried, rejected by the owner). The source,
   `PLAN.md` and `ARCHITECTURE.md` still say HUD internally and should: one name
   in the code, one name on screen. PLAN.md 11.6.5.
+- **A column of text or form fields is capped at `MaterialTheme.layout
+  .readableWidth`** via `Modifier.readableColumn()` — one token, not a number
+  per screen. The bike is 1280 dp wide and a line of body text across all of it
+  is harder to read than the same text at 700. **Not** the ride screen or the
+  overlay: those are deliberately full-bleed and read at two metres. PLAN.md
+  22.2.6.
+- **The owner leaves notes in PLAN.md's *owner's inbox*** without opening a
+  session. Read it before picking work; it outranks *What to do next*. Write
+  each entry up as numbered plan items and then **empty it** — an entry still
+  sitting there has not been dealt with.
 - Comments explain *why*, not *what*. Match the density of surrounding code.
 
 ---
@@ -145,6 +155,29 @@ Two consequences to know before you are surprised by them:
 - **`intervals_json` is snake_case with start/end timestamps**, not camelCase
   durations. `Interval` uses `@SerialName` to match the assets exactly. A
   mismatch throws and is easy to swallow into an empty list.
+- **`OnConflictStrategy.REPLACE` on `class_templates` detaches rides from their
+  class.** SQLite implements `REPLACE` as a delete plus an insert, and the
+  delete fires foreign-key actions — so re-inserting a class somebody has
+  ridden runs `workouts.class_id`'s `ON DELETE SET NULL` and turns their ride
+  into a ride of nothing. Measured against `sqlite3`, not reasoned about. The
+  DAO uses `@Upsert`; keep it that way, and check the same thing before adding
+  REPLACE to any table another table points at.
+- **Do not hand-edit `assets/classes/`.** The 72 classes are generated from
+  `classlibrary/catalogue.py` by `classlibrary/build.py`, which refuses to
+  write if a session breaks a design rule. Edit the catalogue, run the build,
+  commit both. `classlibrary/README.md` is the rules and the reasoning; PLAN.md
+  23.2.6. `ClassLibraryAssetsTest` re-checks the rules against the emitted JSON,
+  because the assets are what ships and a generator nobody runs cannot vouch
+  for them.
+- **A class the bundle drops is *retired*, never deleted, if a ride points at
+  it** (`class_templates.retired_at`). `ClassTemplateSeeder` reconciles against
+  the bundle on every launch, gated on the fingerprint in
+  `assets/class_library.json` — which `build.py` writes, so **a catalogue change
+  that is not rebuilt will not reach a tablet that already seeded**.
+- **An interval's `target_position` is optional and absent means the rider
+  chooses.** Never default it. Same family as `heartRateBpm` and
+  `power_is_measured`: absent is a claim, and it is a different claim from
+  either value. Nothing in the UI may draw an "either" state for it.
 - **`heartRateBpm` is nullable and null means *unknown*.** Never default it to
   0 — that writes a fake sample into the rider's record and drags averages down.
 - **`PelonotTheme` may be composed from a Service context** (the HUD overlay),

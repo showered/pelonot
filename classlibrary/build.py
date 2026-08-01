@@ -53,13 +53,18 @@ FLOOR_FRACTION = {
 }
 FLOOR_ABSOLUTE = {"Sprints": (6, 3 * 60)}
 
+# R11 — standing (PLAN 25.1.3). Nobody rides out of the saddle for five
+# minutes, and "stand up" at 120 rpm is an instruction with no way to follow it.
+STANDING_CAP_SEC = 180
+STANDING_CADENCE_CAP = 110
+
 
 def problems(session):
     """Every rule this session breaks, as human sentences."""
     out = []
     blocks = session.blocks
     total = session.duration_sec
-    zones = [z for _, z, _ in blocks]
+    zones = [z for _, z, _, _ in blocks]
     top = max(zones)
 
     def note(rule, message):
@@ -69,7 +74,7 @@ def problems(session):
         note("length", f"is {total} s, not a whole number of minutes")
 
     # R1 — lengths a rider can hold.
-    for seconds, zone, _ in blocks:
+    for seconds, zone, _, _ in blocks:
         if seconds <= 0:
             note("R1", "has a block with no length")
         elif seconds < 120 and seconds not in SHORT_LENGTHS:
@@ -77,7 +82,7 @@ def problems(session):
         elif seconds >= 120 and seconds % 60:
             note("R1", f"has a {seconds} s block; over two minutes, use whole minutes")
 
-    for _, zone, (lo, hi) in blocks:
+    for _, zone, (lo, hi), _ in blocks:
         if zone not in range(1, 8):
             note("zone", f"asks for zone {zone}")
         if not (30 <= lo <= hi <= 140):
@@ -88,9 +93,9 @@ def problems(session):
     if top >= 3:
         if blocks[0][1] != 1 or blocks[0][0] < 120:
             note("R2", "does not open with at least two minutes at Z1")
-        if len({z for _, z, _ in blocks[: _index_of_first(zones, 4)]}) < 3:
+        if len({z for _, z, _, _ in blocks[: _index_of_first(zones, 4)]}) < 3:
             note("R2", "has a warmup that is not progressive")
-        before = sum(s for s, z, _ in blocks[: _index_of_first(zones, 4)])
+        before = sum(s for s, z, _, _ in blocks[: _index_of_first(zones, 4)])
         if before < 300:
             note("R2", f"gives {before} s before the first hard block; five minutes is the floor")
     if top >= 5:
@@ -105,7 +110,7 @@ def problems(session):
     if blocks[-1][1] != 1:
         note("R3", "does not end at Z1")
     tail = 0
-    for seconds, zone, _ in reversed(blocks):
+    for seconds, zone, _, _ in reversed(blocks):
         if zone > 2:
             break
         tail += seconds
@@ -116,8 +121,8 @@ def problems(session):
     # *between* efforts: the block after the last interval is the cooldown, and
     # holding it to this ratio would say nothing about the session.
     for i in range(1, len(blocks) - 1):
-        seconds, zone, _ = blocks[i]
-        prev_sec, prev_zone, _ = blocks[i - 1]
+        seconds, zone, _, _ = blocks[i]
+        prev_sec, prev_zone, _, _ = blocks[i - 1]
         next_zone = blocks[i + 1][1]
         if zone > 2 or prev_zone < 4 or next_zone < 3:
             continue
@@ -133,10 +138,10 @@ def problems(session):
 
     # R6 — the dose.
     by_zone = {}
-    for seconds, zone, _ in blocks:
+    for seconds, zone, _, _ in blocks:
         by_zone[zone] = by_zone.get(zone, 0) + seconds
     for zone, cap in SINGLE_BLOCK_CAP.items():
-        longest = max((s for s, z, _ in blocks if z == zone), default=0)
+        longest = max((s for s, z, _, _ in blocks if z == zone), default=0)
         if longest > cap:
             note("R6", f"has a {longest} s block at Z{zone}; the cap is {cap} s")
     for zone, cap in TOTAL_CAP.items():
@@ -144,7 +149,7 @@ def problems(session):
             note("R6", f"spends {by_zone[zone]} s at Z{zone}; the cap is {cap} s")
 
     run = 0
-    for seconds, zone, _ in blocks:
+    for seconds, zone, _, _ in blocks:
         if zone >= 6:
             run += 1
         elif zone <= 2 and seconds >= BURST_RESET_SEC:
@@ -155,7 +160,7 @@ def problems(session):
 
     if session.category in FLOOR_FRACTION:
         floor_zone, fraction = FLOOR_FRACTION[session.category]
-        got = sum(s for s, z, _ in blocks if z >= floor_zone)
+        got = sum(s for s, z, _, _ in blocks if z >= floor_zone)
         if got < total * fraction:
             note(
                 "R6",
@@ -164,9 +169,28 @@ def problems(session):
             )
     if session.category in FLOOR_ABSOLUTE:
         floor_zone, seconds_needed = FLOOR_ABSOLUTE[session.category]
-        got = sum(s for s, z, _ in blocks if z >= floor_zone)
+        got = sum(s for s, z, _, _ in blocks if z >= floor_zone)
         if got < seconds_needed:
             note("R6", f"has {got} s at Z{floor_zone}+; needs {seconds_needed} s")
+
+    # R11 — standing is an instruction, and it has to be a possible one.
+    positioned = 0
+    for seconds, _, (lo, hi), position in blocks:
+        if position is None:
+            continue
+        positioned += seconds
+        if position != "standing":
+            continue
+        if seconds > STANDING_CAP_SEC:
+            note("R11", f"asks the rider to stand for {seconds} s; the cap is {STANDING_CAP_SEC} s")
+        if hi > STANDING_CADENCE_CAP:
+            note("R11", f"asks the rider to stand at {lo}-{hi} rpm")
+    if positioned * 2 > total:
+        note(
+            "R11",
+            f"prescribes a position for {positioned} s of {total} s; leave most of "
+            "a class to the rider",
+        )
 
     # R7 — a recovery class recovers.
     if session.category == "Recovery":
@@ -192,7 +216,7 @@ def library_problems(sessions):
     # R5 — cadence is a separate axis from zone, and the library has to use it.
     bands = {}
     for session in sessions:
-        for _, zone, cadence in session.blocks:
+        for _, zone, cadence, _ in session.blocks:
             bands.setdefault(zone, set()).add(cadence)
     varied = [z for z, c in bands.items() if len(c) >= 3]
     if len(varied) < 4:
@@ -234,14 +258,20 @@ def library_problems(sessions):
 def to_json(session):
     intervals = []
     at = 0
-    for seconds, zone, (lo, hi) in session.blocks:
-        intervals.append({
+    for seconds, zone, (lo, hi), position in session.blocks:
+        interval = {
             "time_start_sec": at,
             "time_end_sec": at + seconds,
             "target_cadence_min": lo,
             "target_cadence_max": hi,
             "target_power_zone": zone,
-        })
+        }
+        # Omitted, not null: absent means the rider chooses (PLAN 25.1.1), and
+        # a key present with a null in it invites a reader to treat it as a
+        # third value.
+        if position is not None:
+            interval["target_position"] = position
+        intervals.append(interval)
         at += seconds
     return {
         "id": session.id,

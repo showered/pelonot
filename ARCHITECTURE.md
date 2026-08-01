@@ -359,13 +359,20 @@ adding a folder is enough. **All 72 classes ship in the APK** and the seeder
 reads nothing else: the cloud is an update channel for a signed-in rider, never
 the source of the first copy (PLAN 23.2).
 
+**The assets are generated, not authored.** `classlibrary/catalogue.py` holds
+the 72 sessions in blocks of real time; `classlibrary/build.py` checks them
+against the design rules in `classlibrary/README.md` and refuses to write if
+one fails. Do not edit the JSON by hand — it will be overwritten, and it will
+have skipped every check. `ClassLibraryAssetsTest` re-runs most of the same
+rules against the emitted files, because the assets are what ships.
+
 ```json
 {
-  "id": "TB-01",
-  "title": "Tabata Sprint 20",
-  "category": "Tabata Bursts",
+  "id": "CLB-02",
+  "title": "Standing Attacks 20",
+  "category": "Climbs",
   "duration_sec": 1200,
-  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+  "intervals_json": "[{\"time_start_sec\":660,\"time_end_sec\":705,\"target_cadence_min\":70,\"target_cadence_max\":80,\"target_power_zone\":6,\"target_position\":\"standing\"}]"
 }
 ```
 
@@ -373,6 +380,34 @@ the source of the first copy (PLAN 23.2).
 snake_case and segments carry start/end timestamps rather than durations —
 `Interval` matches this exactly with `@SerialName`. When it did not, every
 decode threw and no class ever displayed a single interval.
+
+`target_position` is **optional, and absent means the rider chooses** (PLAN
+25.1). The key is omitted rather than set to null, so absence stays absence and
+nothing downstream is tempted to read it as a third value.
+
+### Class templates kept in step
+
+Seeding is a reconcile, not a one-shot fill. On every launch
+`ClassTemplateSeeder` compares the fingerprint in `assets/class_library.json`
+(written by `build.py`) with the one it stored last time. When they match it
+does nothing, which is nearly always. When they differ it upserts every bundled
+class and then deals with the ones the bundle no longer contains:
+
+| The bundle dropped it and… | What happens |
+|---|---|
+| no ride points at it | the row is deleted |
+| a ride points at it | `retired_at` is set — the row stays |
+
+Retiring is what keeps a rider's history meaning something. `workouts.class_id`
+is a foreign key with `ON DELETE SET NULL`, so deleting a class somebody rode
+does not merely lose its title: it turns their ride into a ride of nothing.
+`getAllTemplates` filters retired classes out of the library browser;
+`getTemplateById` still resolves them, which is the lookup history uses.
+
+The same foreign key is why the DAO uses `@Upsert` and not
+`OnConflictStrategy.REPLACE`. SQLite implements REPLACE as a delete followed by
+an insert, and the delete fires foreign-key actions — so re-inserting a ridden
+class under REPLACE detaches every ride of it.
 
 ---
 

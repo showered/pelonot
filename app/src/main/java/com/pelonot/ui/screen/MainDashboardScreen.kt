@@ -48,6 +48,7 @@ import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -98,8 +99,7 @@ fun MainDashboardScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = DashboardMaxWidth)
-                    .fillMaxWidth()
+                    .readableColumn()
                     .padding(horizontal = MaterialTheme.spacing.large)
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -163,15 +163,11 @@ fun MainDashboardScreen(
     }
 }
 
-/**
- * How wide the dashboard's column is allowed to get (22.2.1).
- *
- * 760 dp on the bike's 1280 dp panel leaves a rail either side. Those rails are
- * deliberately empty for now: what goes in them is a layout decision for the
- * whole screen (22.2.2, 22.2.3), and filling them card by card produces three
- * columns of unrelated things, which is worse than one.
- */
-private val DashboardMaxWidth = 760.dp
+// The cap this screen used to own privately is now `Layout.readableWidth`
+// (22.2.6). It was right, and it was the only surface that had one. The rails
+// it opens up either side stay deliberately empty: what goes in them is a
+// layout decision for the whole screen (22.2.2, 22.2.3), and filling them card
+// by card produces three columns of unrelated things, which is worse than one.
 
 // =========================================================================
 // Greeting Header

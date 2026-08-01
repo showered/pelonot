@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,7 @@ import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -85,8 +87,9 @@ fun ClassLibraryScreen(
     ) { padding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(padding)
+                .readableColumn()
         ) {
             if (categories.size > 1) {
                 FlowRow(

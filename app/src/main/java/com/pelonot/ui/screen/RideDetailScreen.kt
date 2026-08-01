@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -68,6 +69,7 @@ import com.pelonot.ui.components.PowerTraceChart
 import com.pelonot.ui.components.RideSummaryCard
 import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailViewModel
 import kotlinx.coroutines.Dispatchers
@@ -221,8 +223,9 @@ fun RideDetailScreen(
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(padding)
+                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large)
         ) {

@@ -4,6 +4,9 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -14,6 +17,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -52,6 +57,25 @@ data class Elevation(
     val level5: Dp = 12.dp
 )
 
+/**
+ * How wide a column of text or form fields is allowed to get (PLAN 22.2.6).
+ *
+ * The bike's panel is **1280 dp wide**, and a line of body text stretched
+ * across all of it is harder to read than the same text at 700 — the eye loses
+ * the start of the next line. 22.2.1 capped the dashboard at 760 dp and was
+ * right; it was also the only surface that had a cap, so Settings, History,
+ * ride detail and the class library each ran edge to edge.
+ *
+ * A token rather than a number per screen, so the answer is decided once.
+ *
+ * **Not for the ride screen or the overlay.** Those are deliberately full-bleed
+ * and are read at two metres rather than at arm's length; capping them would
+ * shrink the one thing on this tablet that has to be legible from the saddle.
+ */
+data class Layout(
+    val readableWidth: Dp = 760.dp
+)
+
 data class IconSizes(
     val small: Dp = 16.dp,
     val medium: Dp = 24.dp,
@@ -75,6 +99,7 @@ data class MotionTokens(
 )
 
 val LocalSpacing = staticCompositionLocalOf { Spacing() }
+val LocalLayout = staticCompositionLocalOf { Layout() }
 val LocalElevation = staticCompositionLocalOf { Elevation() }
 val LocalIconSizes = staticCompositionLocalOf { IconSizes() }
 val LocalMotion = staticCompositionLocalOf { MotionTokens() }
@@ -92,6 +117,29 @@ val LocalUnitSystem = androidx.compose.runtime.compositionLocalOf { UnitSystem.D
 
 val MaterialTheme.spacing: Spacing
     @Composable @ReadOnlyComposable get() = LocalSpacing.current
+
+val MaterialTheme.layout: Layout
+    @Composable @ReadOnlyComposable get() = LocalLayout.current
+
+/**
+ * Caps a column at [Layout.readableWidth] and centres it (22.2.6).
+ *
+ * A modifier rather than a wrapper composable so it drops onto whatever a
+ * screen already has — a `Column`, a `LazyColumn`, a `Scaffold`'s content —
+ * without restructuring it. The `fillMaxWidth / wrapContentWidth / widthIn /
+ * fillMaxWidth` sequence is what centres it without needing the parent's
+ * alignment scope, which is exactly the cooperation a per-screen fix kept
+ * having to arrange for itself.
+ */
+@Composable
+fun Modifier.readableColumn(): Modifier {
+    val max = MaterialTheme.layout.readableWidth
+    return this
+        .fillMaxWidth()
+        .wrapContentWidth(Alignment.CenterHorizontally)
+        .widthIn(max = max)
+        .fillMaxWidth()
+}
 
 val MaterialTheme.elevationTokens: Elevation
     @Composable @ReadOnlyComposable get() = LocalElevation.current
@@ -227,6 +275,7 @@ fun PelonotTheme(
 
     CompositionLocalProvider(
         LocalSpacing provides Spacing(),
+        LocalLayout provides Layout(),
         LocalElevation provides Elevation(),
         LocalIconSizes provides IconSizes(),
         LocalMotion provides MotionTokens(),

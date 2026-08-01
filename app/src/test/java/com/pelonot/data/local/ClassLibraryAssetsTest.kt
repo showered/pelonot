@@ -2,6 +2,7 @@ package com.pelonot.data.local
 
 import com.pelonot.data.remote.dto.ClassTemplateDto
 import com.pelonot.domain.model.IntervalParser
+import com.pelonot.domain.model.RidePosition
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -348,6 +349,48 @@ class ClassLibraryAssetsTest {
                 atZ2 * 2 < dto.durationSec
             )
         }
+    }
+
+    /**
+     * R11 — standing is an instruction, and it has to be a possible one
+     * (PLAN 25.1.3). Nobody rides out of the saddle for five minutes, and
+     * "stand up" at 120 rpm is an instruction with no way to follow it.
+     */
+    @Test
+    fun `standing is asked for in a way a rider can do`() {
+        for ((file, _, intervals) in plans()) {
+            for (interval in intervals.filter { it.position == RidePosition.Standing }) {
+                assertTrue(
+                    "$file: asks the rider to stand for ${interval.durationSec} s",
+                    interval.durationSec <= 180
+                )
+                assertTrue(
+                    "$file: asks the rider to stand at ${interval.cadenceMin}-${interval.cadenceMax} rpm",
+                    interval.cadenceMax <= 110
+                )
+            }
+        }
+    }
+
+    /**
+     * R11, the other half, and the reason the field is nullable: **absent is
+     * the default and means the rider chooses** (25.1.1). A class that says
+     * what to do with every block is nagging rather than coaching, so most of
+     * a class must say nothing.
+     */
+    @Test
+    fun `most of a class leaves the position to the rider`() {
+        var withAPosition = 0
+        for ((file, dto, intervals) in plans()) {
+            val prescribed = intervals.filter { it.position != null }.sumOf { it.durationSec }
+            assertTrue(
+                "$file: prescribes a position for $prescribed s of ${dto.durationSec} s",
+                prescribed * 2 <= dto.durationSec
+            )
+            if (prescribed > 0) withAPosition++
+        }
+        // And the field has to be used, or it is a column nobody filled in.
+        assertTrue("no class in the library prescribes a position at all", withAPosition > 0)
     }
 
     /** R9. Seventy-two classes and twelve shapes was the old library. */

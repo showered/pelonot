@@ -15,6 +15,25 @@
 
 ---
 
+## The owner's inbox — ideas between sessions
+
+**The owner writes here directly, without opening a session.** It is a way of
+handing over a thought at the moment of having it rather than at the moment of
+being able to act on it: an idea does not have to wait for a prompt, and it does
+not have to interrupt work already in flight. One heading per idea.
+
+**How a session handles it.** Read this section before picking work. What is in
+it is the owner speaking, and it outranks the *What to do next* ordering below.
+Take an entry, decide where in the plan it belongs, write it up as numbered
+items with the reasoning kept rather than summarised — and then **empty the
+entry out of this section**. An idea still sitting here has not been dealt with;
+an idea that has moved has.
+
+*Empty. The one entry it has held so far — standing and seated riding — is now
+**Phase 25**, and the first two sections of it are built.*
+
+---
+
 ## Where the work stands — read this first
 
 ### Latest session — 1 August 2026 (twelfth sitting): the record explains itself, and the numbers hold still
@@ -682,17 +701,6 @@ Two notes worth carrying into the next bike session:
   do anything there.
 
 ---
-
-## Temporary notes from human user
-
-User writes this section manually between sessions as a way of communicating without writing a prompt.  THIS IS THE FIRST TIME YOU HAVE SEEN THIS. Please restructure, reword, and/or move this section as you see fit for a permanent home for my communication. Basically i've had an idea and i'd like to tell you but I don't want it to interrupt your flow. Each thought or idea is under a different heading in this section.
-
-### Stand up / sit down
-
-A key feature of peloton is the live human trainers that talk to you. Ultimately when you take away the chit chat, it's just the same sort of thing every time (partly why i'm building this app) but one thing they do that is not covered in our workouts so far is the concept of sitting down and standing up ("out of the saddle for this one!"). I think we should try and incorporate that in our classes.
-
-- each interval should have an OPTIONAL field for standing up. By default it's not defined, you can just do what you want, but sometimes, some intervals may want to specify one or the other
-- the UI has an opportunity to be quite interesting for this. Flashing/animated arrows, that kind of thing, to really get the attention of user especially if they are in HUD mode
 
 ## Status at a glance
 
@@ -4160,6 +4168,87 @@ differences. This one carries none, because there is nothing to caveat.
       ride with a single non-measured sample — including a `NULL` one, since a
       ride recorded before the column existed cannot be *shown* to be
       measurement. 7.10.7 and 16.1.6 are closed by the same change
+
+---
+
+## Phase 25: Out of the saddle — the instruction the classes cannot give
+
+**From the owner, 1 August 2026.** In his words: a Peloton class is a live
+instructor talking, and once the chat is stripped away it is mostly the same
+handful of instructions every time — which is part of why this app exists. But
+one of them is not in our classes at all: **standing up and sitting down.**
+*"Out of the saddle for this one."*
+
+It is the one prescription a bike class gives that neither zone nor cadence can
+express. A 60 rpm effort at Z4 seated and the same effort standing are
+different workouts in the legs, and the library has had no way to say which.
+`CLB-02` is called "Standing Attacks" and the only thing making it standing is
+its title.
+
+Two halves, and the second is the interesting one.
+
+### 25.1 The field
+
+- [x] **25.1.1** An **optional** `target_position` on an interval — `standing`,
+      `seated`, or absent. **Absent is the default and means the rider chooses**,
+      which is what most intervals should say. A class that prescribes a
+      position for every one of its blocks is nagging, not coaching
+- [x] **25.1.2** Optional in the schema as well as in spirit: `Interval` gains a
+      nullable field with `@SerialName("target_position")`, so every class
+      written before this decodes unchanged. Three of these have gone wrong
+      before by being non-null with a default that stated something false —
+      `heartRateBpm`, `power_is_measured`, `retired_at` — and the rule that came
+      out of them applies here exactly: **absent is a claim, and it is a
+      different claim from either value**
+- [x] **25.1.3** The catalogue can say it (`stand=`/`seat=` on a block) and
+      `build.py` checks the ones that can be checked: a standing block that runs
+      for minutes is a mistake, and standing at 110 rpm is a different mistake
+
+### 25.2 On the ride screen
+
+- [x] **25.2.1** The interval list on class detail says which blocks have a
+      position, so a rider can see what they are choosing before they start
+- [x] **25.2.2** The ride screen shows the current interval's position, and
+      **the change is what matters, not the state** — a rider who has been
+      standing for two minutes does not need telling; a rider who must stand
+      *now* does
+- [ ] **25.2.3** The spoken coach says it. This is the one place where the app
+      genuinely is the instructor, and "out of the saddle" is the line
+
+### 25.3 On the overlay — the part worth designing
+
+The owner's note is specific about this: *"the UI has an opportunity to be quite
+interesting for this. Flashing/animated arrows, that kind of thing, to really
+get the attention of the user especially if they are in HUD mode."*
+
+He is right that it is the overlay that needs it most, and that is also what
+makes it hard. The overlay sits over a film, is read at two metres, and the
+whole design so far has been about *not* competing for attention (11.1b, and
+24.1.5's rule that nothing social may ever go on it). A flashing arrow is
+exactly the thing that design has been avoiding — and exactly the thing this
+particular instruction deserves, because it is an instruction to act *right
+now*, unlike every other number on there.
+
+- [ ] **25.3.1** So the rule to design to: **the overlay may animate for a
+      transition and must go quiet again.** A few seconds of arrow at the moment
+      the position changes, then nothing. Never a persistent indicator, never
+      anything that moves while the prescription is unchanged
+- [ ] **25.3.2** Which means it must be driven by the *edge*, not by the state.
+      Build it off the interval change and not off "the current interval says
+      standing", or it will animate forever on a five-minute block
+- [ ] **25.3.3** Read 11.1b.9 and 11.1b.4a first — the chips are a design the
+      owner has said he will come back to, and this lands in the middle of them
+- [ ] **25.3.4** And check it over video on the bike, which is the only place it
+      can be judged. Note the blind spot from `CLAUDE.md`: `screencap` returns
+      black over DRM playback, so **how it looks over a film has to come from
+      the rider**
+
+### 25.4 Then the library uses it
+
+- [ ] **25.4.1** Go back through the 72 and put a position on the blocks that
+      want one — the standing attacks, the seated grinds, the sprint efforts —
+      and on nothing else. This is a catalogue edit, not a code change, and it
+      wants doing *after* 25.2 and 25.3 so the effect of each one can be seen
 
 ---
 

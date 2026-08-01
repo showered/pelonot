@@ -43,6 +43,7 @@ import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
 import com.pelonot.ui.components.HouseholdLeaderboardCard
+import com.pelonot.ui.components.PositionChip
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -185,7 +186,8 @@ private fun IntervalCard(interval: Interval, ftp: Double) {
             .semantics {
                 contentDescription = "Zone ${zone.number}, ${zone.displayName}, " +
                     "${Formatters.duration(interval.durationSec)}, " +
-                    "cadence ${interval.cadenceMin} to ${interval.cadenceMax} RPM"
+                    "cadence ${interval.cadenceMin} to ${interval.cadenceMax} RPM" +
+                    (interval.position?.let { ", ${it.instruction}" } ?: "")
             },
         shape = MaterialTheme.expressiveShapes.medium,
         colors = CardDefaults.cardColors(
@@ -209,11 +211,20 @@ private fun IntervalCard(interval: Interval, ftp: Double) {
                     .weight(1f)
                     .padding(MaterialTheme.spacing.medium)
             ) {
-                Text(
-                    text = "Z${zone.number} · ${zone.displayName}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Z${zone.number} · ${zone.displayName}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    // Only when the class asks for one: an absent position is
+                    // the rider's choice and drawing "either" for it would turn
+                    // silence into a third instruction (PLAN 25.1.1).
+                    interval.position?.let { position ->
+                        Spacer(Modifier.width(MaterialTheme.spacing.small))
+                        PositionChip(position)
+                    }
+                }
                 Text(
                     text = "${interval.cadenceMin}–${interval.cadenceMax} RPM · " +
                         "${powerRange.start.toInt()}–${powerRange.endInclusive.toInt()} W",

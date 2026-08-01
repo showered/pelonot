@@ -53,6 +53,10 @@ interface ClassTemplateDao {
     @Query("SELECT id FROM class_templates")
     suspend fun allIds(): List<String>
 
+    /** The ones still in the library — i.e. the ones retiring can act on. */
+    @Query("SELECT id FROM class_templates WHERE retired_at IS NULL")
+    suspend fun liveIds(): List<String>
+
     /**
      * `retired_at IS NULL` in the predicate so that reconciling twice does not
      * move the date: when a class left the library is a fact about the library,

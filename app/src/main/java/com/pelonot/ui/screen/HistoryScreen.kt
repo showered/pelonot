@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -53,6 +54,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.domain.model.RideDayGrouping
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.HistoryViewModel
@@ -150,8 +152,9 @@ fun HistoryScreen(
 
             else -> LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                    .fillMaxHeight()
+                    .padding(padding)
+                    .readableColumn(),
                 contentPadding = PaddingValues(
                     horizontal = MaterialTheme.spacing.large,
                     vertical = MaterialTheme.spacing.medium

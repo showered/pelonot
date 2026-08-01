@@ -86,14 +86,17 @@ class ClassTemplateSeeder(
 
         val referenced = workoutDao.referencedClassIds().toSet()
         val orphaned = (departed - referenced).toList()
-        val ridden = departed.intersect(referenced).toList()
+        // Only the ones still live: a class retired by an earlier sync is
+        // already retired, and re-reporting it would say work was done that
+        // was not. `retire` guards the date for the same reason.
+        val ridden = departed.intersect(referenced).intersect(classTemplateDao.liveIds().toSet())
 
         if (orphaned.isNotEmpty()) {
             classTemplateDao.deleteByIds(orphaned)
             Log.i(TAG, "Dropped ${orphaned.size} classes nobody had ridden")
         }
         if (ridden.isNotEmpty()) {
-            classTemplateDao.retire(ridden, System.currentTimeMillis())
+            classTemplateDao.retire(ridden.toList(), System.currentTimeMillis())
             Log.i(TAG, "Retired ${ridden.size} classes that history still points at: $ridden")
         }
     }
