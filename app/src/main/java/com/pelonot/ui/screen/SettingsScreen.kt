@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -114,28 +115,7 @@ fun SettingsScreen(
     // it since this screen was last looked at.
     LaunchedEffect(Unit) { viewModel.refreshVolume() }
 
-    // Scan used to report HeartRateStatus.PermissionRequired and stop there:
-    // the screen said what was wrong and offered no way to put it right, so a
-    // strap could never be paired from inside the app. `heartRatePermissions()`
-    // existed on the ViewModel and nothing called it.
-    val heartRatePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        // Scan only on success. A denial leaves the status where it was, which
-        // is the message explaining what is missing.
-        if (granted.values.all { it }) viewModel.scanForHeartRateMonitors()
-    }
-
-    val scanForHeartRate = {
-        val needed = viewModel.heartRatePermissions().filter {
-            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (needed.isEmpty()) {
-            viewModel.scanForHeartRateMonitors()
-        } else {
-            heartRatePermissionLauncher.launch(needed.toTypedArray())
-        }
-    }
+    val scanForHeartRate = rememberHeartRateScan(viewModel)
 
     // 19.1.3 / 12.4.4. Through the system's own pickers, like the ride export
     // (12.4.3): the rider says where the file goes and where it comes from, and
@@ -285,6 +265,110 @@ fun SettingsScreen(
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
+        }
+    }
+}
+
+/**
+ * Asks for what a BLE scan needs, then scans (11.6.9).
+ *
+ * Scan used to report `HeartRateStatus.PermissionRequired` and stop there: the
+ * screen said what was wrong and offered no way to put it right, so a strap
+ * could never be paired from inside the app. `heartRatePermissions()` existed
+ * on the ViewModel and nothing called it.
+ *
+ * Lifted out of [SettingsScreen] because [RideSettingsSheet] needs exactly the
+ * same thing, and a second copy of a permission dance is a second thing to get
+ * wrong — note that below API 31 the BLE scan permission is
+ * `ACCESS_FINE_LOCATION`, which has already cost this project one defect.
+ */
+@Composable
+private fun rememberHeartRateScan(viewModel: SettingsViewModel): () -> Unit {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        // Scan only on success. A denial leaves the status where it was, which
+        // is the message explaining what is missing.
+        if (granted.values.all { it }) viewModel.scanForHeartRateMonitors()
+    }
+    return {
+        val needed = viewModel.heartRatePermissions().filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (needed.isEmpty()) viewModel.scanForHeartRateMonitors()
+        else launcher.launch(needed.toTypedArray())
+    }
+}
+
+/**
+ * The settings a rider discovers they need **while riding** (11.6.10).
+ *
+ * A sheet over the ride rather than a navigation away from it: pairing a strap,
+ * changing the telemetry source and fixing the coach volume were all things
+ * that cost the rider their ride, because the only route to any of them was
+ * Settings and the only route to Settings was out of the ride screen.
+ *
+ * Deliberately three sections and not the whole of Settings. FTP, units, theme
+ * and backup are not mid-ride questions, and 24.1.5's rule applies from the
+ * other direction: this adds a control, not a screenful of numbers. It reuses
+ * the same section composables Settings draws, so the two cannot disagree.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RideSettingsSheet(
+    onDismiss: () -> Unit,
+    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val scanForHeartRate = rememberHeartRateScan(viewModel)
+
+    // The media volume is a system value; anything on the device may have moved
+    // it since — including the film the rider is watching.
+    LaunchedEffect(Unit) { viewModel.refreshVolume() }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+        ) {
+            Text(
+                text = "During the ride",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                text = "Your ride keeps recording while this is open.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HeartRateSection(
+                status = state.heartRateStatus,
+                deviceCount = state.heartRateDevices.size,
+                selectedAddress = state.settings.heartRateDeviceAddress,
+                onScan = scanForHeartRate,
+                onForget = { viewModel.selectHeartRateDevice(null) }
+            )
+
+            VolumeSection(
+                mediaVolume = state.mediaVolume,
+                coachVolume = state.settings.coachVolume,
+                error = state.volumeError,
+                onMediaVolumeChange = viewModel::setMediaVolume,
+                onCoachVolumeChange = viewModel::setCoachVolume
+            )
+
+            // Changing this mid-ride restarts the telemetry pipeline, which is
+            // exactly what a rider whose board has died is here to do.
+            SensorSection(
+                sensorMode = state.settings.sensorMode,
+                onSensorModeChange = viewModel::setSensorMode
+            )
+
+            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
     }
 }

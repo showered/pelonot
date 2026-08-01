@@ -220,6 +220,13 @@ class HudOverlayManager(private val context: Context) {
                         onToggleCollapsed = { _collapsed.value = !_collapsed.value },
                         onDockChange = ::moveTo,
                         onOpenApp = onOpenApp,
+                        // 11.6.10. Raise the flag, then bring the app forward:
+                        // the ride screen is what comes up, and it opens the
+                        // sheet. The ride is never ended to reach a setting.
+                        onOpenSettings = {
+                            RideSettingsRequest.request()
+                            onOpenApp()
+                        },
                         onPause = onPause,
                         onResume = onResume,
                         onStop = onStop,

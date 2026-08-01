@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -38,6 +40,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -95,6 +98,7 @@ import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.MetricResistanceViolet
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.overlay.RideSettingsRequest
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.RideUiState
@@ -253,6 +257,24 @@ private fun RideContent(
     // service, so a class that runs out of intervals still ends by itself
     // without a dialog nobody is there to answer.
     var confirmingEnd by rememberSaveable { mutableStateOf(false) }
+
+    // 11.6.10. A sheet over the ride, not a navigation away from it: every
+    // route to these three settings used to cost the rider their class.
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    if (settingsOpen) {
+        RideSettingsSheet(onDismiss = { settingsOpen = false })
+    }
+
+    // The overlay's half of the same door. It has no navigation of its own, so
+    // it raises a flag and brings the app forward; this is where that lands.
+    val settingsRequested by RideSettingsRequest.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(settingsRequested) {
+        if (settingsRequested) {
+            settingsOpen = true
+            RideSettingsRequest.consume()
+        }
+    }
+
     if (confirmingEnd) {
         EndRideDialog(
             elapsedSec = snapshot.elapsedSeconds,
@@ -296,7 +318,13 @@ private fun RideContent(
                     .fillMaxSize()
                     .padding(MaterialTheme.spacing.large)
             ) {
-                RideHeader(state, snapshot, fallbackTitle, subtitle)
+                RideHeader(
+                    state = state,
+                    snapshot = snapshot,
+                    fallbackTitle = fallbackTitle,
+                    subtitle = subtitle,
+                    onOpenSettings = { settingsOpen = true }
+                )
 
                 if (interval.hasClass) {
                     Spacer(Modifier.height(MaterialTheme.spacing.medium))
@@ -327,6 +355,7 @@ private fun RideContent(
                         )
                         MetricGrid(
                             state = state,
+                            onPairHeartRate = { settingsOpen = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -350,7 +379,11 @@ private fun RideContent(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                     ) {
                         EffortColumn(state, accent, Modifier.fillMaxWidth())
-                        MetricGrid(state, Modifier.fillMaxWidth().weight(1f))
+                        MetricGrid(
+                            state = state,
+                            onPairHeartRate = { settingsOpen = true },
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
                         UpNextColumn(
                             state = state,
                             onPause = onPause,
@@ -413,7 +446,8 @@ private fun RideHeader(
     state: RideUiState,
     snapshot: RideSnapshot,
     fallbackTitle: String,
-    subtitle: String
+    subtitle: String,
+    onOpenSettings: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -439,6 +473,15 @@ private fun RideHeader(
         }
 
         TelemetryChip(state)
+
+        // 11.6.10. Small and out of the way — this is not a thing a rider
+        // reaches for often, and the numbers are what the screen is for.
+        IconButton(onClick = onOpenSettings) {
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = "Settings, without ending the ride"
+            )
+        }
     }
 }
 
@@ -646,7 +689,11 @@ private fun CueBanner(cue: RideCue, accent: Color) {
  * a lie about how the screen is used.
  */
 @Composable
-private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
+private fun MetricGrid(
+    state: RideUiState,
+    onPairHeartRate: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val snapshot = state.snapshot
     val hasTargets = snapshot.interval.hasClass
 
@@ -721,6 +768,7 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
                 valueSize = 76.sp,
                 modifier = Modifier.weight(1f)
             )
+            val noStrap = state.reading.heartRateBpm == null
             RideMetricTile(
                 label = "HEART RATE",
                 icon = MetricIcons.HeartRate,
@@ -732,6 +780,13 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
                 band = TargetBand.NONE,
                 rawValue = (state.reading.heartRateBpm ?: 0).toDouble(),
                 valueSize = 76.sp,
+                // 11.6.9. The dashes were a dead end: the one metric measured
+                // identically for every rider, whatever the power model does,
+                // and tapping it did nothing. Now it is the way in to pairing —
+                // which only became possible once there was a way into Settings
+                // that does not end the ride (11.6.10).
+                onClick = if (noStrap) onPairHeartRate else null,
+                footnote = if (noStrap) "Tap to pair a heart-rate strap" else null,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -783,10 +838,13 @@ private fun RideMetricTile(
     rawValue: Double,
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    valueSize: androidx.compose.ui.unit.TextUnit = 104.sp
+    valueSize: androidx.compose.ui.unit.TextUnit = 104.sp,
+    /** Non-null makes the whole tile a target — see the heart-rate tile. */
+    onClick: (() -> Unit)? = null,
+    footnote: String? = null
 ) {
     Card(
-        modifier = modifier,
+        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
         shape = MaterialTheme.expressiveShapes.container,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -813,6 +871,15 @@ private fun RideMetricTile(
                 icon = icon,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (footnote != null) {
+                Text(
+                    text = footnote,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.BottomStart)
+                )
+            }
         }
     }
 }

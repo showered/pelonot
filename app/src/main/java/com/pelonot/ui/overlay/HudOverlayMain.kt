@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,6 +129,7 @@ fun HudOverlayMain(
     onToggleCollapsed: () -> Unit,
     onDockChange: (HudDock) -> Unit,
     onOpenApp: () -> Unit,
+    onOpenSettings: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
@@ -257,7 +259,8 @@ fun HudOverlayMain(
                     error = volumeError,
                     onMediaVolumeChange = onMediaVolumeChange,
                     onCoachVolumeChange = onCoachVolumeChange,
-                    onDismiss = onCloseVolume
+                    onDismiss = onCloseVolume,
+                    onOpenSettings = onOpenSettings
                 )
             }
 
@@ -502,7 +505,8 @@ private fun HudVolumePanel(
     error: String?,
     onMediaVolumeChange: (Float) -> Unit,
     onCoachVolumeChange: (Float) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     // 11.5.9. It opened and closed from one small button, so a rider who opened
     // it mid-ride had to find that same control again with the sliders now in
@@ -566,6 +570,18 @@ private fun HudVolumePanel(
                     compact = true
                 )
             }
+            // 11.6.10. The overlay's route into the settings a rider discovers
+            // they need mid-ride — a strap that never paired, a board that has
+            // died. It lives here rather than as a fifth button on the resting
+            // strip, because this panel is already where a rider comes when
+            // they want to change something rather than read something, and the
+            // strip's job is the next sixty seconds of pedalling.
+            HudChip(opacity = opacity, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) {
+                TextButton(onClick = onOpenSettings) {
+                    Text("More settings", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
             Spacer(Modifier.weight(1f))
         }
     }
