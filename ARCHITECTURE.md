@@ -269,7 +269,7 @@ class_templates ──┘
 | `profiles` | Profile created/edited | Name, weight, FTP, `auth_user_id` |
 | `class_templates` | First launch (seeded from assets) | Title, category, duration, `intervals_json` |
 | `workouts` | Ride **start**, updated at end | Aggregates, RPE, `is_complete` |
-| `workout_metrics` | Every second | Cadence, resistance, power, HR |
+| `workout_metrics` | Every second | Cadence, resistance, power, HR, `power_is_measured` |
 
 `is_complete` does double duty: it keeps in-progress rides out of history and
 leaderboards, and it is the crash-recovery marker — an unfinished row means the
@@ -280,6 +280,12 @@ toggle) live in **DataStore**, not Room, since they are not relational.
 
 `profiles.auth_user_id` is **the consent gate**: null means this rider has no
 account, and therefore no cloud. See *Out to the cloud* below.
+
+`workout_metrics.power_is_measured` says where each second's watts came from —
+the board, or `PowerModel`. Null means it was recorded before the app kept
+track, which is **not** the same as modelled. `PowerProvenance` is the per-ride
+verdict, and only a wholly measured ride may propose an FTP change (7.10.7) or
+appear on the household leaderboard (24.4.2).
 
 ### Class templates in
 

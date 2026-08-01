@@ -17,7 +17,7 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (ninth sitting): the model, built
+### Latest session — 1 August 2026 (ninth sitting): the model built, and the column three features were waiting on
 
 The eighth sitting settled what offline and online mean. This one made the
 code agree with it. **Phase 23's first two sections are done and observed** —
@@ -47,10 +47,36 @@ Nothing sets `auth_user_id`, because Phase 15 does not exist. That is rule 1
 working, not a regression — but **14.1.6 is unreachable from the app** until
 sign-in is built, and 23.1.2 had to be observed by setting the column by hand.
 
-The last observation of the sitting is the one that was not designed for: a
-sync queued while the profile had an account, then run after the account was
-taken away, **refused itself**. The worker re-checks the gate rather than
-trusting the enqueue, and that is what sign-out will need (15.4.1).
+One observation was not designed for: a sync queued while the profile had an
+account, then run after the account was taken away, **refused itself**. The
+worker re-checks the gate rather than trusting the enqueue, and that is what
+sign-out will need (15.4.1).
+
+**Then the column.** `workout_metrics.power_is_measured` (migration 3→4)
+records per sample where a watt came from — it had always existed on
+`SensorReading` and was thrown away at the database boundary. **Three separate
+features were blocked on it and all three closed together**: the chart caption
+that could not say what it was drawing (16.1.6), the FTP proposal a simulated
+ride could make (7.10.7), and the household leaderboard that must not rank
+fiction beside fact (24.4.2). It is nullable with no default, because every
+sample already on a tablet was recorded when nothing knew the answer, and
+`Unknown` is treated exactly as `Modelled` by everything that decides anything
+— but they are not the same claim and `PowerProvenance` does not pretend they
+are.
+
+**And 24.1, the household leaderboard**, which is rule 3 made real: a Room
+query, no account, no network. On class detail and the post-ride summary,
+ranked on kJ with kJ/kg beside it. The AVD case is the one the design is for —
+Simon 240.0 kJ / 3.11 kJ/kg, Alex 210.0 kJ / 3.56 kJ/kg — the two numbers
+disagree and both are shown. 321 JVM tests, 21 DAO tests, 4 migration tests.
+
+**The verification technique worth carrying forward**: the emulator can only
+produce simulated rides, and the board excludes those by design, so both this
+and the consent gate were driven by editing one column in the tablet's
+database by hand (pull, `sqlite3`, push back through `run-as`). Note also that
+`connectedDebugAndroidTest` **uninstalls the app**, so it wipes the profiles
+and rides a UI session has just set up — run instrumented tests before driving
+the UI, not between.
 
 ### The session before it — 1 August 2026 (eighth sitting): the connectivity model, settled
 
@@ -425,7 +451,9 @@ below because he is the one riding this:
 
 | Next | Why now |
 |------|---------|
-| **24.1** The household leaderboard | The cheapest fundamental left. Pure Room queries over data already recorded, on a screen that already exists (11.4.1), and it is the *fairest* comparison this app can make — same bike, same board. Watch 24.4.2: it wants the `powerIsMeasured` column that 7.10.7 and 16.1.6 are also waiting on |
+| **24.2** The household, seen | 24.1 built the board; this is who has ridden this week, and streaks. Same tier, same cost, and **24.2.3 (per-profile opt-out) belongs in the first version** — privacy inside a household is still privacy, and it is the kind that gets forgotten because everyone involved knows each other |
+| **24.3.1** Riding against a housemate | One query and no schema: draw a household member's trace behind yours on ride detail. Arguably the most motivating thing in the plan |
+| **7.9** FTP history | Now that a simulated ride cannot propose an FTP (7.10.7), the proposals that *do* arrive are trustworthy — and nothing keeps them. Blocks 16.3 |
 | **23.2.3 / 23.2.4** The class library as an update channel | The other half of 23.2, and it is now the *only* reason the cloud would be read at all. Needs `updated_at` on `class_templates` so an update is a diff, and it is additive-only: `workouts` has a foreign key onto `class_templates`, so deleting a class takes a rider's history link with it |
 | **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire. Free today, a backfill migration once four riders have a year of history up there |
 | **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual. A reminder, not a nag |
@@ -469,7 +497,7 @@ Two notes worth carrying into the next bike session:
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete — `WorkoutSyncWorker` observed running and reporting success; the row itself unseen (14.1.6). **Newly opened: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9)** |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete, and **a simulated ride can no longer propose an FTP (7.10.7)**. Still open: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains — **plus 8.3b, newly opened: the recovery prompt cannot tell a crashed ride from a live one** |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
@@ -478,7 +506,7 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. The payload format should still change before rides accumulate (14.4) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
-| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included — the fundamental half. Trends (16.3) remain, blocked on 7.9 |
+| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included, and the power caption now says where the watts came from (16.1.6). Trends (16.3) remain, blocked on 7.9 |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
@@ -486,7 +514,7 @@ Two notes worth carrying into the next bike session:
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 Barely started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using. The greeting no longer says "Good morning" at midnight (22.3.1)* |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1) and the bundled class library (23.2) are done and observed** — rule 1 is true rather than intended. The cloud as an update channel (23.2.3/23.2.4), the backup reminder (23.3.1) and retention (23.4, deliberately not yet) remain |
-| 24 | Household social — the tier that needs no cloud | ❌ Not started — **fundamental**, and the cheapest fundamental item left. Pure Room queries over data the app already records |
+| 24 | Household social — the tier that needs no cloud | 🔶 **24.1 built and observed** — the per-class board, on class detail and the post-ride summary, with simulated rides excluded (24.4.2). The household seen on the dashboard (24.2) and riding against a housemate (24.3) remain |
 
 ---
 
@@ -1390,15 +1418,12 @@ exists; nothing creates one. The previous value is overwritten and gone.
       mark on the chart which values came from measured rides. Partly blocked on
       16.1.6, since `powerIsMeasured` is still discarded at the database
       boundary
-- [ ] **7.10.7** **A simulated ride must not propose an FTP at all**, and today
-      it can. `PostRideViewModel.load` runs `PostWorkoutAnalyzer` over any
-      workout with no regard for where the watts came from, so a demo ride on
-      the emulator can offer a rider a breakthrough computed from numbers the
-      app invented — and 7.9 would then write that into their permanent history
-      as evidence. This is the actual integrity risk in the FTP path; the
-      calibration one was a phantom. Needs 16.1.6's column to know, which makes
-      that column load-bearing rather than cosmetic. Until it exists, the
-      conservative reading is the ride's telemetry-source setting at the time
+- [x] **7.10.7** `PostRideViewModel.load` runs `PostWorkoutAnalyzer` only for a
+      ride whose provenance is `Measured` all the way through. A simulated ride
+      can no longer offer a breakthrough computed from numbers the app
+      invented, and 7.9 will therefore never keep one as evidence. `Mixed`
+      fails the same test on purpose: half a ride of invented watts still moves
+      a twenty-minute peak, and the rider cannot see which half
 - [ ] **7.10.8** Decide whether `ftp_history` syncs (14, 15). It is small,
       per-profile and the thing a rider would most miss on a new device, but it
       is also a fitness record about a person and 17.7's private-by-default rule
@@ -1831,7 +1856,7 @@ less of the screen and less of the attention.
 - [ ] **11.3.5** Screen-on lock during a ride, so the tablet does not sleep mid-class
 
 ### 11.4 Re-home the leaderboard
-- [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it. **This is now 24.1.2** — the connectivity model made the household leaderboard a fundamental, offline feature, and this is the screen it lands on
+- [x] **11.4.1** Done as **24.1.2**: the household board is on the post-ride summary and on class detail
 - [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
 
 ### 11.5 Volume control — the tablet has nowhere else to change it
@@ -2184,7 +2209,7 @@ layer is done and nothing renders it.
 - [x] **12.5.2** Export the Room schema to `app/schemas/` and check it in. The stale `2.json` left over from an abandoned `theme_preference` column has been deleted; `1.json` and `2.json` are now the real history
 - [x] **12.5.3** `MigrationTestHelper` instrumented test for each migration. 1→2 runs against a real SQLite file created from the exported v1 schema, with rows written beforehand, and asserts they — and the cascade onto `workout_metrics` — survive. **Observed: 18 instrumented tests pass on the tablet emulator**
 - [x] **12.5.5** The first migration is one the app needed anyway rather than a placeholder: `workouts.was_recovered`, so history can distinguish a ride rebuilt from its samples after a crash from one that finished normally (12.1.3)
-- [ ] **12.5.4** Only then, the schema changes the rest of the plan needs — `deleted_at`, `synced_at`, `auth_user_id` for 14–15, `workouts.ftp_watts` (7.8) and the `ftp_history` table (7.9), a `powerIsMeasured` column (16.1.6), and date of birth on `profiles` (21.1.1). Units (13) turned out to need none — the preference is a display concern and lives in DataStore
+- [ ] **12.5.4** Only then, the schema changes the rest of the plan needs. **Two are done**: `profiles.auth_user_id` (migration 2→3, the consent gate — 23.1.1) and `workout_metrics.power_is_measured` (migration 3→4, which unblocked 16.1.6, 7.10.7 and 24.4.2 in one go). Still to come: `deleted_at` and `synced_at` for 14–15, `workouts.ftp_watts` (7.8) and the `ftp_history` table (7.9), and date of birth on `profiles` (21.1.1). Units (13) turned out to need none — the preference is a display concern and lives in DataStore
 
 > Deliberate consequence: a development device still holding a pre-migration
 > database now fails to open rather than silently emptying itself. No shipped
@@ -2473,21 +2498,13 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       *distribution*, not a trace — there is no time axis to lay a target on.
       Either a cadence-over-time chart or nothing; the data is already parsed
       and thrown away by 16.1.5
-- [ ] **16.1.6** Axis label reads from `SensorReading.powerIsMeasured` rather
-      than saying **estimated** unconditionally. On the bike it *is* a meter
-      (2.1a); on a simulated ride it is a model (2.2.4). A ride can in principle
-      contain both, so decide what a mixed series is labelled.
-      **Blocked, and on something smaller than it looks: nothing records it.**
-      `powerIsMeasured` exists on each `SensorReading` and is thrown away at the
-      database boundary — `workout_metrics` has no column for it — so a ride off
-      the real board is indistinguishable on disk from a simulated one. The
-      chart therefore errs towards "estimated", which is the safe direction
-      given the rule that a modelled watt is never presented as measured. It
-      needs one column, a `Migration`, an exported schema and a
-      `MigrationTestHelper` test (12.5). Do that and this becomes a one-line
-      change. **Promoted from cosmetic to load-bearing**: 7.10.7 needs this
-      column to stop a simulated ride proposing a real FTP change, so it is no
-      longer only about what an axis is captioned
+- [x] **16.1.6** The power card reads from `workout_metrics.power_is_measured`:
+      *Measured by the bike* / *Partly measured — the bike's sensor dropped out
+      during this ride* / *Estimated from cadence and resistance*. The mixed
+      case that had to be decided is a real state rather than a defensive
+      branch — a board that drops out and comes back leaves exactly it. A ride
+      from before the column says "estimated", which is the safe direction:
+      "nobody wrote it down" is not grounds for claiming a measurement
 
 ### 16.2 Building them
 - [x] **16.2.1** Compose `Canvas`, no charting dependency — these are four
@@ -3216,27 +3233,26 @@ differences. This one carries none, because there is nothing to caveat.
 
 ### 24.1 The household leaderboard
 
-- [ ] **24.1.1** Per class: everyone on this tablet who has ridden it, ranked.
-      `leaderboardFor(userId, durationSec)` is the *personal* version of this
-      query and the cross-rider one is its sibling, not a rewrite
-- [ ] **24.1.2** Shown on the post-ride summary (this is what 11.4.1 becomes)
-      and on the class detail screen, where a rider is choosing what to ride
-- [ ] **24.1.3** **Rank by total output in kJ, and offer output per kilogram
-      beside it.** Raw output is the honest headline — it is the work actually
-      done — and w/kg is the one a lighter rider will want. Do **not** rank by
-      anything FTP-relative: FTP is self-reported, auto-FTP moves it (Phase 7),
-      and 7.8 has already shown what happens when a comparison is drawn against
-      a number that has since changed
-- [ ] **24.1.4** Guests are excluded. A guest ride has no owner, so there is
-      nobody to put on the board (15.2.3 is the same rule for the cloud)
-- [ ] **24.1.5** **Nothing on the overlay**, ever — 18.6 applies to this tier
-      identically. Half a second of attention belongs to the interval
-- [ ] **24.1.6** A household of one sees nothing, rather than a leaderboard
-      with one row on it. The dashboard already has a "your best" story (22.1)
-      and that is the right one for a single rider
-- [ ] **24.1.7** Deleting a profile (20.1) must not leave its rides on the
-      board attributed to nobody. Decide what happens to their rides first —
-      the foreign key is `SET NULL`, so today they become ownerless rows
+- [x] **24.1.1** `WorkoutDao.householdLeaderboard(classId)` — one row per
+      rider, their best ride of that class, best first. Per rider and not per
+      ride: a board listing somebody's six attempts is a personal history, not
+      a comparison
+- [x] **24.1.2** On the post-ride summary and on the class detail screen, where
+      it sits *above* the interval list — that screen is where a rider is
+      choosing what to ride, and "your housemate did 240 kJ on this one" is the
+      reason to pick it
+- [x] **24.1.3** Ranked on total output in kJ with kJ/kg beside it. The AVD
+      case is the one the design is for: Simon 240.0 kJ / 3.11 kJ/kg first,
+      Alex 210.0 kJ / 3.56 kJ/kg second — the two numbers disagree, and both
+      are shown
+- [x] **24.1.4** Guests excluded by the join onto `profiles`
+- [x] **24.1.5** Nothing was added to the overlay, and nothing may be
+- [x] **24.1.6** A household of one draws no card at all — seen by marking one
+      of the two rides simulated and watching the whole card vanish
+- [x] **24.1.7** Falls out of the join rather than needing a decision: a
+      deleted profile's rides are `SET NULL`, so they leave the board rather
+      than sitting on it attributed to nobody. Their rides survive in history,
+      which is what 20.1's dialog already promises
 
 ### 24.2 The household, seen
 
@@ -3265,17 +3281,13 @@ differences. This one carries none, because there is nothing to caveat.
 
 ### 24.4 Honesty, and the column that is now blocking three things
 
-- [ ] **24.4.1** Two rides on the same bike need **no caveat at all** — say
-      nothing rather than printing a disclaimer nobody reads (18.7's own rule,
-      applied where it does not apply)
-- [ ] **24.4.2** **A simulated ride must never appear on a leaderboard beside a
-      measured one**, and today the database cannot tell them apart:
-      `SensorReading.powerIsMeasured` is thrown away at the database boundary.
-      **This is the third consumer of that missing column**, after 7.10.7 (a
-      simulated ride can propose a real FTP change) and 16.1.6 (the chart axis
-      cannot say what it is drawing). One column, one `Migration`, one exported
-      schema, one `MigrationTestHelper` test — 12.5.4 already lists it, and
-      three separate features are now waiting on it
+- [x] **24.4.1** No caveat, and the card carries none
+- [x] **24.4.2** **Built, and it is the column three features were waiting
+      on.** `workout_metrics.power_is_measured` (migration 3→4) records it per
+      sample; `PowerProvenance` is the per-ride verdict. The board excludes any
+      ride with a single non-measured sample — including a `NULL` one, since a
+      ride recorded before the column existed cannot be *shown* to be
+      measurement. 7.10.7 and 16.1.6 are closed by the same change
 
 ---
 

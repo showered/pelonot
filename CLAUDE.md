@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 308 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 321 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -135,6 +135,14 @@ Two consequences to know before you are surprised by them:
   power directly, so `PowerModel` does not run during a bike ride and
   `SensorReading.powerIsMeasured` is true. The uncalibrated-coefficients
   caveat below applies to simulated rides and to the 11.2.1 resistance band.
+- **`workout_metrics.power_is_measured` is nullable and null means *nobody
+  wrote it down*** — not "modelled". Ask `PowerProvenance`, never the raw
+  column: `Unknown` and `Modelled` are different claims and only `Measured`
+  passes `isTrustworthyAsMeasured`, which is what gates the FTP proposal
+  (7.10.7) and the household leaderboard (24.4.2). `Mixed` fails it too, on
+  purpose. **A consequence for verification: the emulator can only produce
+  simulated rides, so anything gated on measured power shows nothing there
+  until you set the column by hand.**
 - **Sensor sources must not reconnect themselves.** `SensorRepository` owns the
   single retry policy. Adding another creates competing schedules.
 - **`sensorReading` is a `StateFlow`, so it holds its last value when the board
@@ -184,6 +192,18 @@ to stop it recurring.
 `assembleDebug` passing proves very little here — most of the historic defects
 compiled fine. Install on the emulator and drive the real flow, and query the
 database directly when data integrity is the question:
+
+**`connectedDebugAndroidTest` uninstalls the app**, so it wipes every profile
+and ride a UI session has just set up. Run instrumented tests *before* driving
+the UI, not between.
+
+To change a column by hand — the way the consent gate and the leaderboard were
+both driven on the AVD — pull, edit, and push back through `run-as`; the app
+must be force-stopped and the WAL checkpointed first, or the edit is lost:
+
+```bash
+adb shell am force-stop com.pelonot && adb shell "run-as com.pelonot cat databases/pelonot_database" > db.sqlite && adb shell "run-as com.pelonot cat databases/pelonot_database-wal" > db.sqlite-wal && sqlite3 db.sqlite "PRAGMA wal_checkpoint(TRUNCATE); UPDATE profiles SET auth_user_id='test'; PRAGMA journal_mode=delete;" && adb push db.sqlite /data/local/tmp/db && adb shell "run-as com.pelonot sh -c 'cat /data/local/tmp/db > databases/pelonot_database; rm -f databases/pelonot_database-wal databases/pelonot_database-shm'"
+```
 
 ```bash
 adb shell "run-as com.pelonot cat /data/data/com.pelonot/databases/pelonot_database" > db.sqlite
