@@ -1,0 +1,7 @@
+{
+  "id": "RC-05",
+  "title": "Easy Endurance 30",
+  "category": "Recovery",
+  "duration_sec": 1800,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":804,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":804,\"time_end_sec\":1207,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1207,\"time_end_sec\":1307,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":1307,\"time_end_sec\":1560,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1560,\"time_end_sec\":1800,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

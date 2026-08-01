@@ -1,0 +1,7 @@
+{
+  "id": "TH-10",
+  "title": "FTP Builder 45",
+  "category": "Threshold",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":809,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":809,\"time_end_sec\":999,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":999,\"time_end_sec\":1380,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1380,\"time_end_sec\":1570,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1570,\"time_end_sec\":1951,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1951,\"time_end_sec\":2141,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2141,\"time_end_sec\":2400,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

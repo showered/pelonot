@@ -1,0 +1,7 @@
+{
+  "id": "SS-07",
+  "title": "Controlled Burn 30",
+  "category": "Sweet Spot",
+  "duration_sec": 1800,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":510,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":510,\"time_end_sec\":667,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":667,\"time_end_sec\":929,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":929,\"time_end_sec\":1086,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1086,\"time_end_sec\":1348,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1348,\"time_end_sec\":1560,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":1560,\"time_end_sec\":1800,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

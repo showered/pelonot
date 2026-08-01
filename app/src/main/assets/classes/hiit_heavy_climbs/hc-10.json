@@ -1,0 +1,7 @@
+{
+  "id": "HC-10",
+  "title": "Torque Builder 45",
+  "category": "HIIT & Heavy Climbs",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":667,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":667,\"time_end_sec\":929,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":929,\"time_end_sec\":1139,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1139,\"time_end_sec\":1401,\"target_cadence_min\":50,\"target_cadence_max\":60,\"target_power_zone\":6},{\"time_start_sec\":1401,\"time_end_sec\":1611,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1611,\"time_end_sec\":1873,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":1873,\"time_end_sec\":2135,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2135,\"time_end_sec\":2400,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

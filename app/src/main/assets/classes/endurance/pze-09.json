@@ -1,0 +1,7 @@
+{
+  "id": "PZE-09",
+  "title": "Progression Ride 45",
+  "category": "Endurance",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":754,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":754,\"time_end_sec\":1208,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":2},{\"time_start_sec\":1208,\"time_end_sec\":1605,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":3},{\"time_start_sec\":1605,\"time_end_sec\":2002,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":3},{\"time_start_sec\":2002,\"time_end_sec\":2400,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

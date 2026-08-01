@@ -3,21 +3,30 @@ package com.pelonot.data.local
 import android.content.Context
 import android.util.Log
 import com.pelonot.data.local.dao.ClassTemplateDao
-import com.pelonot.data.local.entity.ClassTemplateEntity
-import com.pelonot.data.remote.SupabaseSyncRepository
-import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.data.remote.dto.ClassTemplateDto
 import com.pelonot.domain.model.IntervalParser
 import kotlinx.serialization.json.Json
 
 /**
- * Populates the class library on first launch: from Supabase when it is
- * configured and reachable, otherwise from the bundled assets.
+ * Populates the class library on first launch, **from the bundled assets and
+ * from nothing else**.
+ *
+ * This used to ask Supabase first and fall back to assets, which put a network
+ * call on the very first path a fresh install takes — before there is a rider
+ * on the tablet, let alone an account. Rule 1 of the connectivity model says a
+ * rider with no account makes no request to Supabase at all, and first launch
+ * is the one moment where that is true of everybody.
+ *
+ * The old order is also how the library came to be five classes rather than
+ * seventy-two: the assets were the emergency fallback nobody expected to hit,
+ * so nobody noticed how few of them there were. All 72 now ship in the APK
+ * (~100 KB of JSON, ~9 KB once the package is compressed) and the cloud's
+ * remaining job is to be an *update* channel for a signed-in rider — PLAN
+ * 23.2.3 — never the source of the first copy.
  */
 class ClassTemplateSeeder(
     private val context: Context,
-    private val classTemplateDao: ClassTemplateDao,
-    private val syncRepository: SupabaseSyncRepository
+    private val classTemplateDao: ClassTemplateDao
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -25,22 +34,6 @@ class ClassTemplateSeeder(
     /** No-op when the library is already populated. */
     suspend fun seedIfEmpty() {
         if (classTemplateDao.getTemplateCount() > 0) return
-
-        when (val outcome = syncRepository.fetchClassTemplates()) {
-            is SyncOutcome.Success -> {
-                val templates = outcome.value.map(ClassTemplateDto::toEntity)
-                if (templates.isNotEmpty()) {
-                    classTemplateDao.insertAll(templates)
-                    Log.i(TAG, "Seeded ${templates.size} class templates from Supabase")
-                    return
-                }
-                Log.i(TAG, "Supabase returned no templates; falling back to assets")
-            }
-
-            SyncOutcome.Disabled -> Log.i(TAG, "Cloud sync disabled; seeding from assets")
-            is SyncOutcome.Failed -> Log.w(TAG, "Supabase seed failed; using assets", outcome.cause)
-        }
-
         seedFromAssets()
     }
 

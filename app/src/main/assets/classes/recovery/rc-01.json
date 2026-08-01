@@ -1,0 +1,7 @@
+{
+  "id": "RC-01",
+  "title": "Recovery Ride 20",
+  "category": "Recovery",
+  "duration_sec": 1200,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":240,\"time_end_sec\":532,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":532,\"time_end_sec\":922,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":922,\"time_end_sec\":1020,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":1020,\"time_end_sec\":1200,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

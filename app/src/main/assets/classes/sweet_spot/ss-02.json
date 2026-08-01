@@ -1,0 +1,7 @@
+{
+  "id": "SS-02",
+  "title": "SS Repeats 20",
+  "category": "Sweet Spot",
+  "duration_sec": 1200,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":240,\"time_end_sec\":386,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":386,\"time_end_sec\":532,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":532,\"time_end_sec\":727,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":727,\"time_end_sec\":873,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":873,\"time_end_sec\":1020,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1020,\"time_end_sec\":1200,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

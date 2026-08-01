@@ -1,0 +1,7 @@
+{
+  "id": "HC-05",
+  "title": "Climb Blocks 30",
+  "category": "HIIT & Heavy Climbs",
+  "duration_sec": 1800,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":552,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":552,\"time_end_sec\":720,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":720,\"time_end_sec\":846,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":846,\"time_end_sec\":1014,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":1014,\"time_end_sec\":1140,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1140,\"time_end_sec\":1308,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":1308,\"time_end_sec\":1560,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1560,\"time_end_sec\":1800,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

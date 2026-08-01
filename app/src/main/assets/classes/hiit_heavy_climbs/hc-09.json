@@ -1,0 +1,7 @@
+{
+  "id": "HC-09",
+  "title": "Mountain Stage 45",
+  "category": "HIIT & Heavy Climbs",
+  "duration_sec": 2700,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":720,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":720,\"time_end_sec\":982,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":982,\"time_end_sec\":1192,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1192,\"time_end_sec\":1454,\"target_cadence_min\":55,\"target_cadence_max\":65,\"target_power_zone\":5},{\"time_start_sec\":1454,\"time_end_sec\":1664,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1664,\"time_end_sec\":1926,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":1926,\"time_end_sec\":2136,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2136,\"time_end_sec\":2400,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}

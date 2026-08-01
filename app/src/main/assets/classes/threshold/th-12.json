@@ -1,0 +1,7 @@
+{
+  "id": "TH-12",
+  "title": "Long Threshold 60",
+  "category": "Threshold",
+  "duration_sec": 3600,
+  "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":780,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":780,\"time_end_sec\":1020,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1020,\"time_end_sec\":1740,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":1740,\"time_end_sec\":1980,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1980,\"time_end_sec\":2700,\"target_cadence_min\":90,\"target_cadence_max\":100,\"target_power_zone\":4},{\"time_start_sec\":2700,\"time_end_sec\":2940,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":2940,\"time_end_sec\":3300,\"target_cadence_min\":88,\"target_cadence_max\":98,\"target_power_zone\":3},{\"time_start_sec\":3300,\"time_end_sec\":3600,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1}]"
+}
