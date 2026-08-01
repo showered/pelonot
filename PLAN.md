@@ -17,7 +17,44 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (seventh sitting): the ladder, the bottle stop, and a rider who could not stop
+### Latest session — 1 August 2026 (eighth sitting): the connectivity model, settled
+
+No code. The owner settled **what offline and online mean in this app**, which
+had been drifting: the app was half offline-first by design and half quietly
+online by accident. The answer is written out in full in *The connectivity
+model* below and it is now the section that wins over any older item that
+disagrees with it.
+
+Three things in the shipped code contradict it today, and they are listed in
+that section rather than in *Corrections*, because they are not defects against
+the plan as it stood — the plan asked for exactly this. They are defects
+against the model as of now. The largest is the smallest to describe: **an
+install with no account still talks to Supabase**, both on first launch (the
+class seeder) and after every profile ride (the sync worker).
+
+The consequence with real teeth is **23.2**: the class library lives in the
+cloud, and only five of its seventy-two classes are bundled in the APK. Under
+the old model that was a fallback nobody would hit. Under this one it is what
+the default rider gets.
+
+Two new phases came out of it — **23** (making the ungated tier complete) and
+**24** (household social, which needs no cloud, no account and no network, and
+should be built before anything in 17 or 18).
+
+**The storage question was asked and is answered with measurements, not
+estimates**, in *What a workout costs* below. Short version: a 45-minute ride
+is **292 KB in the local database** and roughly **25–30 KB stored in Supabase**
+after TOAST compression. Four riders at a ride a week is about **6 MB of cloud
+a year**. The 500 MB free tier is not the constraint for a household — it is
+somewhere around 13,000 rides — so **no purging feature is needed for the
+reason it was proposed**. Three other things fall out of the measuring, and
+they are the reason the section is worth reading: the *local* database fills
+seven to ten times faster than the cloud does, a published community endpoint
+(14.10) would fill the free tier inside its first year, and there is a
+float-to-double widening in the sensor path that could triple every payload
+and is one query away from being settled.
+
+### The session before it — 1 August 2026 (seventh sitting): the ladder, the bottle stop, and a rider who could not stop
 
 Straight down the *What to do next* list, on the tablet AVD, no bike.
 
@@ -348,6 +385,17 @@ below because he is the one riding this:
 |------|---------|
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
 
+**Then the connectivity model's own list, which now sits above the old one.**
+It was settled in the eighth sitting and two of its three items are
+fundamental:
+
+| Next | Why now |
+|------|---------|
+| **23.2** Bundle the class library | The largest gap between what the app is and what an offline rider gets: **5 classes instead of 72**, on the default path, forever. Almost certainly an afternoon and a few tens of kilobytes of APK |
+| **23.1** The consent gate | An install with no account currently talks to Supabase twice — once on first launch, once after every profile ride, and the second one uploads a ride with no `user_id` on it (14.2.1). Small, and it is the item that makes rule 1 true rather than intended |
+| **24.1** The household leaderboard | The cheapest fundamental left. Pure Room queries over data already recorded, on a screen that already exists (11.4.1), and it is the *fairest* comparison this app can make — same bike, same board. Watch 24.4.2: it wants the `powerIsMeasured` column that 7.10.7 and 16.1.6 are also waiting on |
+| **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire. Free today, a backfill migration once four riders have a year of history up there |
+
 Then the table below, which was written before the fifth sitting and is kept
 because its reasoning is still good:
 
@@ -394,15 +442,195 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6) |
-| 15 | Accounts, login and multi-device sync | ❌ Not started — *fundamental once 14 works* |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6). **Re-scoped by the connectivity model**: this is the *cloud tier*, gated behind an account (23.1), and the payload format should change before rides accumulate (14.4) |
+| 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*. An account is a feature a rider opts into, never a gate |
 | 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included — the fundamental half. Trends (16.3) remain, blocked on 7.9 |
-| 17 | Companion web application | ❌ Not started — *nice to have* |
-| 18 | Social features in the Android app | ❌ Not started — *nice to have* |
+| 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
+| 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 Barely started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using. The greeting no longer says "Good morning" at midnight (22.3.1)* |
+| 23 | Offline by default — making the ungated tier complete | ❌ Not started — **fundamental**. The consent gate (23.1) and the bundled class library (23.2) are what make rule 1 of the connectivity model true |
+| 24 | Household social — the tier that needs no cloud | ❌ Not started — **fundamental**, and the cheapest fundamental item left. Pure Room queries over data the app already records |
+
+---
+
+## The connectivity model — offline by default, account by choice
+
+**Settled by the owner, 1 August 2026.** This section is the canonical
+statement of how offline and online relate in this app. Where an older item
+below contradicts it, this section wins and the item is wrong.
+
+### The four rules
+
+1. **Every rider is offline by default.** A fresh install makes **no request to
+   Supabase at all** — no cloud backup, no class fetch, no anonymous upload,
+   nothing. Offline is not a degraded mode or a fallback. It is the mode.
+2. **Creating an account unlocks cloud backup.** That is what an account is
+   for, first and mainly. Signing in *is* the consent; there is no second
+   consent to collect and no separate switch to find.
+3. **An offline rider still gets social — with the people on their own bike.**
+   Everyone with a profile on this tablet is a household, and a household
+   leaderboard is a Room query. It needs no network and no account from
+   anybody, including the rider looking at it.
+4. **A signed-in rider gets both.** Household social with everyone on the bike
+   — account or not — *plus* friends signed in on other bikes.
+
+### The identity ladder — three rungs, not two
+
+| Rung | What it is | What it gets |
+|------|-----------|--------------|
+| **Guest** | No profile. No owner, by definition | The ride, kept only if saved to a profile afterwards. Never synced (15.2.3), never on a leaderboard |
+| **Local profile** | A row in `profiles` on this tablet. No account | Everything the app does locally, plus household social. The cloud does not exist for them, and nothing on screen implies it should |
+| **Account** | A local profile with `auth_user_id` attached | The above, plus cloud backup, restore onto a second tablet, and friends elsewhere |
+
+**The middle rung is the one that matters**, and it is the one the plan has
+never had a name for. It is where most riders will live, it is where the
+default lands, and until now every feature was implicitly designed for the
+rung above or below it.
+
+Four consequences that must not be broken:
+
+- **An account attaches to one local profile, not to the device.** Two profiles
+  on one tablet may be two different accounts, or one account and one offline
+  rider. Nothing may assume a single signed-in user per device (15.2.4).
+- **Signing out drops a rider from Account to Local profile and takes nothing
+  away.** Not a ride, not a place on the household leaderboard (15.4.1).
+- **Household social must not consult the network at all.** Not "degrade
+  gracefully offline", not "fail quietly" — if a feature needs a network call
+  to work, it is not in the household tier. This is what makes rule 3 true
+  rather than aspirational.
+- **A comparison between two riders on the same bike is the fairest one this
+  app will ever produce** — same board, same knob, same calibration, often the
+  same week. Cross-bike comparison is subject to per-bike differences (2.2a)
+  and it is *that* one 18.7's honesty caveat is for. The household one needs no
+  caveat, which is a good reason to build it first.
+
+### What the model makes false today
+
+Three things in the shipped code contradict rule 1. None of them is a defect
+against the plan as it stood — the plan asked for exactly this — which is why
+they are here rather than in *Corrections*.
+
+| Today | Under the model | Item |
+|-------|-----------------|------|
+| `ClassTemplateSeeder` fetches the class library from Supabase on first launch whenever the build carries credentials | Ship the library in the APK. The cloud becomes an *update* channel that only a signed-in rider uses | **23.2** |
+| `WorkoutService` enqueues `WorkoutSyncWorker` after every profile ride — no account, nobody's consent, and the ride arrives in a shared pool with no `user_id` on it (14.2.1) | Enqueue only for a profile with an account attached | **23.1.2** |
+| The only gate is build-time: `SupabaseModule.isConfigured`, which asks whether *this build* has a URL and a key | The gate is runtime and per-profile: is **this rider** signed in? A build detail is not a consent | **23.1.1** |
+
+**The one with real teeth is the first.** `assets/classes` holds **5** class
+JSONs; the cloud holds **72**. Under the old model that gap was a fallback
+nobody would hit with a configured build. Under this one, five classes is what
+the default rider gets, forever, and the class library is most of the product.
+
+---
+
+## What a workout costs, and whether 500 MB runs out
+
+Asked by the owner, and answered by measuring rather than by estimating.
+The method and the exact figures are reproducible; where a number is modelled
+rather than measured it says so.
+
+### The measurements
+
+**Local, exact.** The real Room schema was built in SQLite and a 45-minute
+ride's worth of samples inserted:
+
+| | |
+|---|---|
+| One 45-minute ride (2,700 samples) | **292 KB** |
+| Per `workout_metrics` row, on disk | **~111 bytes** |
+
+About a third of that row is the 36-character UUID `workout_id` carried on
+every sample, plus the same UUID again in its index. Worth knowing, not worth
+fixing — an integer foreign key would save ~30% of the local database and
+costs the property that makes crash recovery and export straightforward.
+
+**Cloud, modelled from a measured payload.** The same ride through the current
+`WorkoutDto`:
+
+| Stage | Size |
+|-------|------|
+| JSON on the wire (the `metrics_payload` array) | **228 KB** |
+| As uncompressed `JSONB` in the row | ~372 KB (modelled) |
+| **Stored, after TOAST compression** | **~25–30 KB** (modelled) |
+
+The compression ratio is where the modelling is: `pglz` finds the repeated key
+names in every one of the 2,700 objects easily, and the figure above is a gzip
+measurement adjusted for `pglz` being the weaker algorithm. **One query settles
+it exactly** and should be run the next time anyone is at the Management API —
+it is the same trip 14.1.6 needs:
+
+```sql
+select pg_column_size(metrics_payload), jsonb_array_length(metrics_payload)
+from workouts order by recorded_at desc limit 5;
+```
+
+### The budget
+
+| Scenario | Rides/year | Cloud/year | Local/year |
+|----------|-----------|-----------|-----------|
+| **The question as asked** — 4 riders, one ride a week | 208 | **~6 MB** | ~61 MB |
+| 4 riders, four rides a week each | 832 | ~25 MB | ~243 MB |
+
+**500 MB is not the constraint for a household.** At ~30 KB a ride it is
+somewhere around **13,000 rides**. Four riders at one ride a week would take
+roughly sixty years to fill it, and at four rides a week each, about fifteen.
+**No purging feature is needed for the reason it was proposed**, and building
+one now would be building the wrong thing.
+
+### Where it *does* run out — three findings, all more interesting than the question
+
+1. **The local tablet fills seven to ten times faster than the cloud does**,
+   because SQLite stores the series raw and Postgres compresses it. Five years
+   of household riding is ~300 MB of database on a bike tablet — and the
+   12.4.4 backup file is a full copy of it, so the export gets that big too.
+   **If a trimming feature is ever built, it is a local feature first and a
+   cloud feature second.** That is 23.4.
+2. **A published community endpoint fills the free tier inside its first
+   year.** 14.10 contemplates checking in a default endpoint and key so a
+   fresh clone has a cloud. At ~30 KB a ride, 400 MB of usable budget is about
+   **250 riders riding once a week for one year** — or sixty riders riding
+   properly. This is a second and more concrete reason for 14.10.4's caution
+   than the RLS one, and it belongs in that decision.
+3. **A float-to-double widening could triple every payload, and nobody has
+   checked.** `PelotonSensorServiceSource` does `data.getFloat(KEY_DATA)
+   .toDouble()`. If the board ever reports a fractional value, `176.3f` widens
+   to `176.30000305175781` and is serialised in full: the same ride goes from
+   228 KB to **330 KB** on the wire and its stored size roughly triples,
+   because the digits are noise and noise does not compress. It is a
+   data-quality question before it is a storage one — those digits are also
+   what the charts, the exports and the calibration grid read. **One query on
+   the bike's own database settles it**, and it needs no rider:
+   ```bash
+   sqlite3 db.sqlite "SELECT cadence, resistance, power FROM workout_metrics LIMIT 20;"
+   ```
+
+### What to do about it
+
+- **Change the cloud wire format now, while the cloud holds one row.** An array
+  of 2,700 five-key objects repeats the key names 13,500 times. Columnar arrays
+  — `{"t":[…],"c":[…],"r":[…],"p":[…],"hr":[…]}` — carry exactly the same data:
+  **228 KB → 49 KB** on the wire, ~30 KB → ~19 KB stored. The storage saving is
+  the smaller half; **the request body is the point**, and a 90-minute ride
+  currently posts 457 KB in a single insert, which is precisely what 14.2.7 was
+  worried about. It is free to change today and expensive to change once rides
+  are up there. See **14.4**.
+- **Keep the timestamp array explicit. Do not imply time from the index.** It
+  would save another 12 KB and it is exactly the wrong 12 KB: a stalled board
+  leaves a genuine gap in the series (2.4.4), the charts draw those gaps
+  deliberately (16.1.2, 16.2.2), and an implied index closes them silently.
+  A ride that stopped for two minutes would come back from the cloud looking
+  continuous.
+- **Trim locally, opt-in, and never silently** — 23.4. A trimmed ride keeps its
+  aggregates, its time-in-zone and a downsampled trace, and it is **marked** as
+  trimmed so a chart says "10-second detail" rather than drawing a coarse line
+  as if it were the record. That marking is the whole discipline: it is the
+  same family as 7.8 and 16.1.6, a derived number whose provenance was thrown
+  away.
+- **Offer the export before the first trim ever runs.** 12.4.3 and 12.4.4 both
+  exist already, which is why this can be an honest offer rather than a warning.
 
 ---
 
@@ -418,8 +646,8 @@ ordering below is the one to work in.
 |---|------------------------|
 | 12 Ride history + delete | The app records rides and offers the rider no way to see them or get rid of a bad one. Everything downstream — charts, sync, social — is a view onto a history screen that does not exist. |
 | 13 Units | A UK rider is shown kilometres with no way to change it. It is an afternoon's work and it is currently wrong for a large fraction of the audience. |
-| 14 Working sync | Cloud sync was ticked as complete having **never written a single row** — see 14.0. The schema is fixed and writes now land; the app driving it is still unproven. Every feature in 15, 17 and 18 sits on top of this. |
-| 15 Accounts | Sync without an identity puts every rider's data in one anonymous pool. This is also where the current RLS policies stop being a placeholder and start being a security problem. |
+| 14 Working sync | Cloud sync was ticked as complete having **never written a single row** — see 14.0. The schema is fixed and writes now land; the app driving it is still unproven. Every feature in 15, 17 and 18 sits on top of this. **Re-scoped by the connectivity model: fundamental to the *cloud tier*, not to the app.** A rider who never signs in is not missing anything here, which is a demotion in urgency and a promotion in how carefully it must be gated (23.1). |
+| 15 Accounts | Sync without an identity puts every rider's data in one anonymous pool. This is also where the current RLS policies stop being a placeholder and start being a security problem. **Same re-scoping as 14** — and note that the anonymous pool is not hypothetical: 14.2.1 is open and every ride the app has ever uploaded went up unattributed. |
 | 12.7 Room migrations | `fallbackToDestructiveMigration()` deletes the rider's entire training history on any schema change. Phases 12–19 all change the schema. This has to go first. |
 
 Two more that belong in the fundamental list, added after riding the app on the
@@ -430,6 +658,13 @@ tablet:
 | 11.1a Getting between the HUD and the app | There is no door between the HUD and the full app in either direction, and the app does not come forward when the class ends. This is the journey a rider makes most often during a ride and it currently routes through the launcher. |
 | 20.1 The profile selector | It is the first screen anyone sees and the thing that makes a shared household bike work, and it is a cluster of small cards in the corner of a 1920×1080 screen. |
 
+And two more, added by the connectivity model on 1 August 2026:
+
+| # | Why it is not optional |
+|---|------------------------|
+| 23.1 The consent gate, and 23.2 the bundled class library | Rule 1 says an install with no account makes no request to Supabase. Today it makes two, and the one on the first-launch path is the reason the default rider would see **5 classes instead of 72**. This is the difference between the offline tier being the product and being a stub. |
+| 24 Household social | It is the *only* social tier most riders will ever be in, it needs no account, no network, no RLS and no schema the app does not already have, and the comparison it makes is the fairest one this app can produce. It is also the cheapest thing on this list. |
+
 **Nice to have — real value, none of it load-bearing:**
 
 16 (beyond the post-ride charts), 17, 18, most of 19, and the avatar work in
@@ -437,6 +672,12 @@ tablet:
 and a friends feed are good ideas for an app people already use daily; they
 are not what makes people use it daily. The bike, the HUD and an honest record
 of the ride are.
+
+> Note what the connectivity model did to this list: it **moved social from
+> "nice to have" to "half fundamental"** without moving 17 or 18. The half that
+> is fundamental is the half that needs nothing — Phase 24. The half that needs
+> accounts, RLS, a friends graph and a moderation policy is still nice to have,
+> and now has a reason to wait rather than merely a lack of urgency.
 
 > One caution that applies to all of 16–18, **now much narrower than it was**:
 > a ride on the bike records the board's own measured watts (2.1a), so those
@@ -538,7 +779,13 @@ of them could have been found any other way:
 
 > **Note:** the database uses `fallbackToDestructiveMigration()` while pre-release. **Replace this with explicit migrations before the first real user installs a build** — after that, a schema change silently deletes their entire training history.
 
-### Supabase (Cloud) — ⚠️ wired, never connected
+> **Sizing, measured 1 August 2026.** A 45-minute ride is **292 KB** in this
+> database — ~111 bytes per `workout_metrics` row, about a third of which is the
+> 36-character UUID `workout_id` carried on every sample and again in its index.
+> A year of four riders at a ride a week is ~61 MB. This is the store that
+> fills, not the cloud; see *What a workout costs* and 23.4.
+
+### Supabase (Cloud) — ⚠️ wired, never connected, and now gated
 
 - [x] **1.8** Supabase project created
 - [x] **1.9** SQL migration in `supabase/migration.sql`
@@ -1544,7 +1791,7 @@ less of the screen and less of the attention.
 - [ ] **11.3.5** Screen-on lock during a ride, so the tablet does not sleep mid-class
 
 ### 11.4 Re-home the leaderboard
-- [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it
+- [ ] **11.4.1** Leaderboard on the post-ride summary, where there is room for it. **This is now 24.1.2** — the connectivity model made the household leaderboard a fundamental, offline feature, and this is the screen it lands on
 - [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
 
 ### 11.5 Volume control — the tablet has nowhere else to change it
@@ -1890,6 +2137,7 @@ layer is done and nothing renders it.
       total. Whether Strava is content with that needs an actual upload to find
       out. Same family as 16.1.6: a missing column, not a missing calculation
 - [x] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has. *Done with 19.1.3 — read the detail there*
+- [ ] **12.4.5** Trimming the per-second record of old rides is **23.4**, and it is deliberately not scheduled: the measurement in *What a workout costs* says the cloud is nowhere near its 500 MB limit at household scale, and the local database — which fills seven to ten times faster — is the one to watch. 23.4.1 is the measurement that would start the work
 
 ### 12.5 Room migrations — do this before anything in 12–19 ships
 - [x] **12.5.1** Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects. `AppMigrations.ALL` is the list; a downgrade still falls back destructively, since that only happens when an older APK is installed over a newer one on a development device
@@ -1926,7 +2174,14 @@ is in miles.
 
 ---
 
-## Phase 14: Cloud sync that actually reaches the cloud — fundamental
+## Phase 14: Cloud sync that actually reaches the cloud — fundamental to the cloud tier
+
+**Re-scoped by *The connectivity model*, 1 August 2026.** Everything here is
+now behind an account (23.1): the app is complete without it, and a rider who
+never signs in must never reach a single line of it. That is a demotion in
+urgency and a promotion in how carefully it is gated. Two items in this phase
+run today for riders who have consented to nothing — see the model's *What the
+model makes false today*.
 
 ### 14.0 Are we connected? — findings, 31 July 2026
 
@@ -2019,14 +2274,27 @@ ever synced, confirmed by count rather than inferred.
 - [ ] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable
 - [ ] **14.2.5** Retry the backlog when connectivity returns, not only at ride end
 - [ ] **14.2.6** Upload the rides already sitting in the local database — there is a real history on the tablet that predates sync working
-- [ ] **14.2.7** Decide the metrics payload ceiling. A 45-minute ride is ~2,700 samples in one JSONB column; a 90-minute ride is double that. Find the point where the insert starts failing before a rider does
+- [ ] **14.2.7** Decide the metrics payload ceiling. A 45-minute ride is ~2,700 samples in one JSONB column; a 90-minute ride is double that. Find the point where the insert starts failing before a rider does. **Partly answered, 1 August 2026** — the sizes are measured in *What a workout costs*: 228 KB on the wire for 45 minutes, 457 KB for 90. That is not near any hard PostgREST limit, but it is a large single body from a bike tablet on household wifi, and **14.4** halves it four times over
 - [ ] **14.2.8** `supabase/003_*.sql` for whatever 14.2.1 and 14.2.2 need, keeping migrations incremental and non-destructive — `002` deliberately did not drop or recreate anything, and the 72 class templates are still the originals
 
 ### 14.3 Keeping it working
-
 - [ ] **14.3.1** A round-trip check that can be re-run against a throwaway project, scripted and documented in `supabase/README.md`. Three of the five defects above were invisible to `assembleDebug` and to all 158 JVM tests
 - [ ] **14.3.2** Keep `supabase/*.sql` and the DTOs verifiably in step — the column-name test in `WorkoutDtoTest` is a start, but it hardcodes the column list and nothing forces it to match the live schema
 - [ ] **14.3.3** Fold the schema into CI (19.1.4) once there is a CI to fold it into
+
+### 14.4 The payload format — change it now, while the cloud is empty
+
+The sizes and the reasoning are in *What a workout costs*. The reason this is
+an item rather than an optimisation is timing: `workouts` holds **one row**,
+and the format is free to change today and a migration-with-backfill to change
+once four riders have a year of history up there.
+
+- [ ] **14.4.1** `metrics_payload` becomes **columnar**: `{"t":[…],"c":[…],"r":[…],"p":[…],"hr":[…]}` rather than an array of 2,700 five-key objects. **228 KB → 49 KB** on the wire for a 45-minute ride; ~30 KB → ~19 KB stored. Same data, same nullability, one twentieth of the key strings
+- [ ] **14.4.2** **`t` stays explicit.** Implying the timestamp from the array index saves another 12 KB and silently closes the gaps that 2.4.4 deliberately leaves, that 16.1.2 and 16.2.2 deliberately draw, and that a ride with a two-minute bottle stop in it genuinely has. A cloud copy that looks continuous when the ride was not is a fabricated record, which is the one thing this project does not do
+- [ ] **14.4.3** A `payload_version` on the row, or the shape is undecidable for any future reader — the web app (17.3) is the reader that will care
+- [ ] **14.4.4** A round-trip test: entity list → payload → entity list, asserting a null heart rate survives as null and a gapped series comes back gapped. Both are failures this project has already had in other places
+- [ ] **14.4.5** Confirm the stored size with `pg_column_size()` rather than trusting the model in *What a workout costs*. Same trip as 14.1.6; the query is in that section
+- [ ] **14.4.6** Settle the `getFloat().toDouble()` question first — finding 3 in that section. If the board reports fractional values, the noise digits are in the payload, in the exports, in the charts and in the calibration grid, and they are a bigger problem than the format
 
 ### 14.10 Configuring the endpoint — open-source hygiene
 
@@ -2037,7 +2305,15 @@ a screen.
 - [ ] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
 - [ ] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
 - [ ] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
-- [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it
+- [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it.
+      **A second reason, added 1 August 2026 and less obvious than the first:
+      a published endpoint is a bill.** At the measured ~30 KB a stored ride
+      (*What a workout costs*), Supabase's 500 MB free tier is about 13,000
+      rides — **250 riders riding once a week for a year**, or sixty riding
+      properly. The community endpoint fills up in its first year and then
+      fails for everyone at once, including the riders who trusted it with
+      their only backup. Decide who pays, or decide that the default is
+      **no endpoint** and a self-hoster stands up their own (14.10.5)
 - [ ] **14.10.5** `supabase/README.md`: how to stand up your own project, run the migrations in order, and point a build at it
 
 ### 14.11 Credential hygiene
@@ -2053,24 +2329,42 @@ dangerous than its name suggests.
 
 ---
 
-## Phase 15: Accounts, login and multi-device sync — fundamental once 14 works
+## Phase 15: Accounts — the thing that unlocks the cloud tier
 
 **The rule this phase must not break:** the app works with no account, no
-network, and no cloud, exactly as it does today. Login is something a rider
-opts into to get their history onto a second device and to use anything
-social. A signed-out app is not a degraded app.
+network, and no cloud, exactly as it does today. A signed-out app is not a
+degraded app.
+
+**What an account is *for*, in the order a rider cares about it** — settled by
+the connectivity model, and worth writing down because the phase used to be
+called "login and multi-device sync", which is engineering's order and not the
+rider's:
+
+1. **Backup.** The rider's history stops living on one tablet that can be
+   dropped, wiped or replaced. This is the whole pitch, and until 15 exists the
+   only answer is a manual file (12.4.4).
+2. **Restore onto another bike.** The same thing from the other end.
+3. **Friends on other bikes** (17, 18). Real, and third.
+
+Note what is *not* on that list: household social. Rule 3 of the connectivity
+model gives that to everyone, account or not, and Phase 24 builds it without
+touching any of this. **Signing in must never be the way a rider reaches
+something they could have had offline.**
 
 ### 15.1 Auth
 - [ ] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
 - [ ] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
 - [ ] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
 - [ ] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
+- [ ] **15.1.5** The copy calls it what it does — **"Back up my rides"**, not "Log in". A rider on a bike is not looking for an account; they are deciding whether their history is safe
 
 ### 15.2 Identity model
 - [ ] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
 - [ ] **15.2.2** `profiles.auth_user_id UUID REFERENCES auth.users` in the cloud schema; `cloud_id` on the local `UserEntity`
 - [ ] **15.2.3** Household guests never sync. A guest ride has no owner by definition
 - [ ] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
+- [ ] **15.2.5** **`auth_user_id` on the local `UserEntity` is the flag the whole consent gate reads.** 23.1.1 asks one question — may this profile talk to the cloud? — and this column is the answer. Nullable, and null is the default rung of the ladder rather than a missing value
+- [ ] **15.2.6** A signed-in rider and an offline rider must be able to share a bike with no friction and no nagging. The offline one sees no sign-in prompt on a screen they did not open looking for one
 
 ### 15.3 Sync in both directions
 - [ ] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background
@@ -2081,7 +2375,8 @@ social. A signed-out app is not a degraded app.
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
 
 ### 15.4 Leaving
-- [ ] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history
+- [ ] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history. **They drop from Account to Local profile** — a rung down the ladder, not out of the app: the household leaderboard (24.1) still has them on it, with all the same rides
+- [ ] **15.4.4** Deleting the cloud copy (15.4.2) or the whole account (15.4.3) likewise changes nothing on this tablet. Say so in the confirm dialog, in those words, because the natural fear is exactly the opposite
 - [ ] **15.4.2** "Delete my cloud data" as a separate, explicit action, with the local record untouched
 - [ ] **15.4.3** Account deletion end to end, since GDPR applies to a hobby project too
 
@@ -2185,10 +2480,23 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
 
 ---
 
-## Phase 17: Companion web application — nice to have
+## Phase 17: Companion web application — nice to have, account tier only
 
 Only worth starting once 14 and 15 work; it is a view onto the same Supabase
 project and has nothing to show before rides are reaching it.
+
+**Where it sits on the ladder, and the thing it must not get wrong.** The web
+app can only ever see riders with accounts. A household profile with no account
+**does not exist in the cloud at all** — not as an empty row, not as a
+placeholder — so the web app has to be built knowing that a rider's household
+is mostly invisible to it. The failure to avoid is the obvious one: showing
+"3 of your household have no rides" when the truth is "3 of your household
+chose not to have accounts, and their rides are on the bike where they belong".
+
+The upside is worth naming too. The bike's tablet is a bad place to type, and
+the web app is the natural home for everything social that involves words —
+friend requests, display names, bios, ride titles. **Anything that requires a
+keyboard should be possible on the web and optional on the bike.**
 
 - [ ] **17.1** Stack and repo layout. A separate top-level `web/` directory or a separate repo — **the Android build must never depend on it**
 - [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
@@ -2199,13 +2507,31 @@ project and has nothing to show before rides are reaching it.
 - [ ] **17.7** **Private by default.** Nothing is visible to anyone until the rider opts in, with per-ride visibility (private / friends / public). Defaulting to visible would publish training history people did not know they were publishing
 - [ ] **17.8** Self-hosters get the same deal as 14.10 — the endpoint is configured at build time, not typed in
 - [ ] **17.9** Decide what "public" means before shipping it: a public profile URL is an outward-facing surface with moderation and abuse implications a hobby project has to actually think about
+- [ ] **17.10** The web app never implies a household member is missing data when they have simply never signed in. See the preamble — this is a copy problem with a data-model cause, and it is the one thing about this phase that is peculiar to Pelonot
+- [ ] **17.11** Manage friends, display name and bio here rather than on the bike (see the preamble). The Android side may mirror it read-only and lose nothing
+- [ ] **17.12** The web app reads `metrics_payload`, so it is the consumer that makes 14.4.3's `payload_version` matter. Do not start 17.3 against an unversioned payload
 
 ---
 
-## Phase 18: Social in the Android app — nice to have
+## Phase 18: Social across bikes — the networked tier, nice to have
+
+**Read Phase 24 first.** The connectivity model splits social in two, and this
+is the half that needs the network: friends signed in on *other* bikes.
+Everything a rider can have with the people on their own bike is Phase 24, it
+needs no account from anybody, and it should be built first — both because it
+serves more riders and because it is a fraction of the work.
 
 Everything here is behind a signed-in account and must vanish cleanly when
 signed out — not grey out, not prompt, not appear at all.
+
+Two shapes to keep straight, because they will otherwise be built twice:
+
+- **A household leaderboard is a Room query. A friend leaderboard is a network
+  call.** They render the same and they are not the same feature. Design the
+  row rendering so 24.1 and 18.5 share it and nothing else.
+- **A friend who happens to live in your house is on both lists.** The
+  household one is authoritative — it is the same bike and it is offline —
+  and a rider must never see themselves or a housemate twice.
 
 - [ ] **18.1** Friends list and requests, mirroring 17.5
 - [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
@@ -2215,6 +2541,8 @@ signed out — not grey out, not prompt, not appear at all.
 - [ ] **18.6** **The HUD stays social-free.** Nothing on the strip during a ride. It has half a second of attention and it belongs to the interval
 - [ ] **18.7** A comparison across riders is honest when both sides are measured watts off their own boards (2.1a), and misleading when either side is modelled. Carry the caveat on the modelled ones specifically rather than on all of them — a blanket disclaimer nobody reads is the same as none
 - [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
+- [ ] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
+- [ ] **18.10** A friend's numbers arrive over the network, so this phase inherits every rule in the *Corrections* table about failures that are caught and shown nowhere. An empty friend leaderboard must say whether it is empty or unreachable
 
 ---
 
@@ -2680,6 +3008,209 @@ time.
       morning. Read once per composition rather than from a flow: nobody's
       evening turns into night while they look at this screen. *Observed on the
       tablet AVD at 23:42: "Good evening,"*
+
+---
+
+## Phase 23: Offline by default — making the ungated tier complete
+
+Rule 1 of *The connectivity model* says a rider with no account makes no
+request to Supabase. Today an install with credentials makes two, and one of
+them is on the first-launch path. This phase closes that, and then makes sure
+the tier on the other side of it is a whole app rather than a stub.
+
+### 23.1 The consent gate
+
+- [ ] **23.1.1** **One place that answers "may this profile talk to the
+      cloud?"**, consulted by the class seeder, `WorkoutSyncWorker` and
+      everything in 14, 15, 17 and 18. Today the only gate is
+      `SupabaseModule.isConfigured`, which asks whether *this build* has a URL
+      and a key — a build detail, not a rider's consent. The gate is
+      `UserEntity.auth_user_id != null` (15.2.5), read per profile
+- [ ] **23.1.2** `WorkoutService` enqueues `WorkoutSyncWorker` only for a
+      profile with an account. It currently enqueues on `finalSession.userId
+      != null` — any profile ride at all — and 14.2.1 means those rides arrive
+      with no `user_id`, so the app has been uploading unattributable rides
+      into a shared pool on nobody's behalf
+- [ ] **23.1.3** **A test that fails if any Supabase call is reachable from a
+      state with no account.** This is the rule most likely to be broken by
+      accident, by a future feature that "only needs one little lookup" — the
+      same failure the 2.2a.8 fence exists to prevent around `PowerModel`, and
+      worth building the same way
+- [ ] **23.1.4** Settings says which rung this profile is on, in one line and
+      without jargon: *This bike only* / *Backed up to your account*. Same
+      surface as 14.2.3, and it is where a rider finds out that the thing they
+      assumed was happening is not
+- [ ] **23.1.5** A rider who never signs in sees **no spinner, no retry, no
+      error toast and no greyed-out cloud control**. The offline tier is not a
+      locked door with the cloud visible through it
+- [ ] **23.1.6** A build with no credentials at all still behaves identically
+      (`SyncOutcome.Disabled`, 14.10.3). Two different reasons to be offline,
+      one behaviour
+
+### 23.2 The class library, offline
+
+**The size of this: `assets/classes` holds 5 class JSONs; the cloud holds 72.**
+Under the old model that was a fallback a configured build would never hit.
+Under this one it is the default library, and the class library is most of
+what the app *is*.
+
+- [ ] **23.2.1** Bundle the full library in the APK. Check what 72 interval
+      JSONs cost first — the five that exist are small, so this is very likely
+      tens of kilobytes and a non-decision
+- [ ] **23.2.2** `ClassTemplateSeeder` seeds from assets **always**, and makes
+      no network call on the first-launch path. The current order — cloud
+      first, assets on failure — is exactly backwards under this model, and
+      14.2.2a is the record of how quietly that path fails
+- [ ] **23.2.3** The cloud becomes an **update channel** for a signed-in rider:
+      additive, and never deleting a class anyone has ridden. `workouts` has a
+      foreign key onto `class_templates`, so a class disappearing takes the
+      history's link to it with it
+- [ ] **23.2.4** `updated_at` (or a version) on `class_templates` so an update
+      is a diff rather than a re-seed, and so a rider who has ridden 40 classes
+      does not re-download 72
+- [ ] **23.2.5** Keep 14.2.2a's tolerance of both `intervals_json` shapes. It
+      is the difference between a self-hoster's project working and failing
+      silently, and it now also covers assets-vs-cloud rather than only
+      cloud-vs-cloud
+
+### 23.3 What the offline tier must already contain
+
+Not new work — a checklist of what "offline is not degraded" cashes out to, so
+that a future phase cannot quietly move one of these behind an account.
+
+Local history and detail (12.1, 12.2), delete (12.3), per-ride export (12.4.3),
+whole-database backup and restore (12.4.4 / 19.1.3), the post-ride charts
+(16.1), units (13), profiles (20), heart-rate zones (21), the dashboard (22)
+and household social (24). **Every one of these is either done or planned with
+no cloud dependency**, which is the good news in this phase.
+
+- [ ] **23.3.1** Backup is the offline rider's only durability story and it is
+      manual. A gentle reminder after N rides since the last backup, or a
+      change of tablet, is the offline answer to what the cloud tier gets for
+      free. It must be a reminder and not a nag
+- [ ] **23.3.2** Restoring onto a *replacement* tablet already works if the
+      file moves — that is the offline equivalent of 15.3.2 and nobody would
+      guess it from the copy. Say it where a rider will read it
+
+### 23.4 Retention and trimming — the local database is the one that fills
+
+**Do not build this yet.** The numbers are in *What a workout costs* and they
+say the cloud is not the constraint: four riders at a ride a week is ~6 MB of
+Supabase a year against a 500 MB allowance. What the same measurement *did*
+show is that the local database fills seven to ten times faster, and that the
+12.4.4 backup file is a full copy of it. So this is a local feature with a
+cloud counterpart, and the trigger to build it is a real tablet getting full,
+not a projection.
+
+- [ ] **23.4.1** **Measure the real thing before building any of it.** On the
+      bike: `SELECT COUNT(*) FROM workout_metrics`, the file size of
+      `pelonot_database`, and how many rides are actually on there. A year of
+      household riding is ~61 MB by the model; if the tablet says something
+      else, the model is wrong and everything below is sized off it
+- [ ] **23.4.2** Trim = drop the `workout_metrics` rows for rides older than a
+      chosen age, keeping the workout row, its aggregates, its time-in-zone and
+      a **downsampled trace** (10 s buckets is ~30× smaller and still draws a
+      recognisable ride). Peaks preserved by min/max per bucket, exactly as
+      16.2.2 already does for drawing
+- [ ] **23.4.3** **A trimmed ride is marked as trimmed** — a
+      `metrics_detail_sec` column, or equivalent — and every chart and export
+      says what resolution it is showing. A coarse line drawn as if it were the
+      record is the same defect family as 7.8 and 16.1.6: a derived number
+      whose provenance was thrown away. This column is the whole discipline of
+      the feature; without it, do not ship it
+- [ ] **23.4.4** **Off by default, and never silent.** The rider chooses the
+      age, or chooses never. An app that quietly deletes the second-by-second
+      record of a rider's best ever ride has done the thing this project exists
+      not to do
+- [ ] **23.4.5** Offer the export first — 12.4.3 (one ride) and 12.4.4 (all of
+      it) both already exist, so this can be an honest offer rather than a
+      warning
+- [ ] **23.4.6** Never trim a ride that has not reached the cloud, for a rider
+      who has an account. Needs 14.2.4's `synced_at` to be knowable at all
+- [ ] **23.4.7** The cloud counterpart is the same policy applied server-side
+      and is **not** needed at household scale (see 14.10.4 for the scale at
+      which it is). If it is ever built, it trims the *payload*, never the
+      workout row: the aggregates are what the history, the trends and the
+      leaderboards read
+
+---
+
+## Phase 24: Household social — the social tier that needs no cloud
+
+Rule 3 of *The connectivity model*: everyone with a profile on this tablet is a
+household, and they can compete with each other without an account, without a
+network and without a single line of RLS.
+
+**Why this comes before 17 and 18.** It serves more riders — most riders will
+never sign in. It needs nothing that does not already exist: the profiles are
+in Room, the rides are in Room, `WorkoutDao` already has leaderboard queries.
+And **the comparison it makes is the fairest one this app will ever produce**:
+the same board, the same knob, the same calibration, usually the same week. A
+cross-bike comparison carries 18.7's caveat about modelled watts and per-bike
+differences. This one carries none, because there is nothing to caveat.
+
+### 24.1 The household leaderboard
+
+- [ ] **24.1.1** Per class: everyone on this tablet who has ridden it, ranked.
+      `leaderboardFor(userId, durationSec)` is the *personal* version of this
+      query and the cross-rider one is its sibling, not a rewrite
+- [ ] **24.1.2** Shown on the post-ride summary (this is what 11.4.1 becomes)
+      and on the class detail screen, where a rider is choosing what to ride
+- [ ] **24.1.3** **Rank by total output in kJ, and offer output per kilogram
+      beside it.** Raw output is the honest headline — it is the work actually
+      done — and w/kg is the one a lighter rider will want. Do **not** rank by
+      anything FTP-relative: FTP is self-reported, auto-FTP moves it (Phase 7),
+      and 7.8 has already shown what happens when a comparison is drawn against
+      a number that has since changed
+- [ ] **24.1.4** Guests are excluded. A guest ride has no owner, so there is
+      nobody to put on the board (15.2.3 is the same rule for the cloud)
+- [ ] **24.1.5** **Nothing on the overlay**, ever — 18.6 applies to this tier
+      identically. Half a second of attention belongs to the interval
+- [ ] **24.1.6** A household of one sees nothing, rather than a leaderboard
+      with one row on it. The dashboard already has a "your best" story (22.1)
+      and that is the right one for a single rider
+- [ ] **24.1.7** Deleting a profile (20.1) must not leave its rides on the
+      board attributed to nobody. Decide what happens to their rides first —
+      the foreign key is `SET NULL`, so today they become ownerless rows
+
+### 24.2 The household, seen
+
+- [ ] **24.2.1** Who has ridden this week, on the dashboard, below the rider's
+      own numbers and never above them (18.2's rule, applied here)
+- [ ] **24.2.2** Streaks per profile. Cheap, and the thing that actually gets
+      people onto the bike (16.3.5 is the single-rider version)
+- [ ] **24.2.3** **Per-profile opt-out.** A rider on a shared bike may not want
+      their numbers on a screen the rest of the house sees. Privacy inside a
+      household is still privacy, and it is the kind that gets forgotten
+      because everyone involved knows each other
+- [ ] **24.2.4** No nudging one household member about another. "Sam hasn't
+      ridden this week" is a feature that starts arguments
+
+### 24.3 Riding against a housemate
+
+- [ ] **24.3.1** Pick a household member's ride of the same class and draw
+      their trace behind yours on the ride detail screen. This is 18.4 —
+      arguably the most motivating social feature in the plan — and in this
+      tier it costs one query and no schema
+- [ ] **24.3.2** A live pace target from that ride *during* a ride is the
+      interesting version of it, and it belongs on the full ride screen only,
+      never on the overlay (24.1.5). Read 11.6 first; that screen already has a
+      target gauge and a zone ladder on it and this must not become a third
+      thing competing for the same glance
+
+### 24.4 Honesty, and the column that is now blocking three things
+
+- [ ] **24.4.1** Two rides on the same bike need **no caveat at all** — say
+      nothing rather than printing a disclaimer nobody reads (18.7's own rule,
+      applied where it does not apply)
+- [ ] **24.4.2** **A simulated ride must never appear on a leaderboard beside a
+      measured one**, and today the database cannot tell them apart:
+      `SensorReading.powerIsMeasured` is thrown away at the database boundary.
+      **This is the third consumer of that missing column**, after 7.10.7 (a
+      simulated ride can propose a real FTP change) and 16.1.6 (the chart axis
+      cannot say what it is drawing). One column, one `Migration`, one exported
+      schema, one `MigrationTestHelper` test — 12.5.4 already lists it, and
+      three separate features are now waiting on it
 
 ---
 

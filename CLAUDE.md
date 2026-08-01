@@ -51,6 +51,26 @@ an AVD at the right resolution but the wrong density hides half of them.
 
 ---
 
+## The connectivity model — read before touching anything cloud-shaped
+
+Settled 1 August 2026 and written out in full in PLAN.md, *The connectivity
+model*. Four rules:
+
+1. **Offline by default.** A rider with no account makes **no request to
+   Supabase at all**. Offline is the mode, not a fallback.
+2. **An account unlocks cloud backup.** Signing in *is* the consent.
+3. **An offline rider still gets social with the people on their own bike** —
+   a household leaderboard is a Room query and must never touch the network.
+4. **A signed-in rider gets both**, plus friends on other bikes.
+
+The gate is **`UserEntity.auth_user_id != null`, per profile** — not
+`SupabaseModule.isConfigured`, which asks about the build, not the rider.
+Two places in the shipped code still break rule 1 (`ClassTemplateSeeder` on
+first launch, `WorkoutService`'s sync enqueue after every profile ride); they
+are PLAN.md 23.1 and 23.2. **If you are about to add a third, stop.**
+
+---
+
 ## Things that will bite you
 
 - **`workout_metrics` has a foreign key onto `workouts`.** The workout row must
