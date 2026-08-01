@@ -11,6 +11,7 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,13 @@ data class PostRideUiState(
     val proposedFtp: Int? = null,
     val saved: Boolean = false,
     /** Profiles a guest ride could be filed against. */
-    val profiles: List<UserEntity> = emptyList()
+    val profiles: List<UserEntity> = emptyList(),
+    /**
+     * The household's board for the class just ridden (24.1.2 — this is what
+     * 11.4.1 became). Empty for a free ride, which is not a class anyone else
+     * can have ridden.
+     */
+    val leaderboard: HouseholdLeaderboard? = null
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
 }
@@ -88,11 +95,18 @@ class PostRideViewModel(
                 null
             }
 
+            // 24.1.2. A Room query and nothing else — no network, no account,
+            // and it runs for a rider who has neither.
+            val leaderboard = workout?.classId?.let { classId ->
+                workoutRepository.householdLeaderboard(classId, youId = workout.userId)
+            }
+
             _uiState.update {
                 it.copy(
                     workout = workout,
                     currentFtp = currentFtp,
                     proposedFtp = proposed,
+                    leaderboard = leaderboard,
                     isLoading = false
                 )
             }

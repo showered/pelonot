@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,6 +37,7 @@ import com.pelonot.ui.screen.ProfileSelectorScreen
 import com.pelonot.ui.screen.RideDetailScreen
 import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.SettingsScreen
+import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.ui.viewmodel.AppUiState
 import java.text.DateFormat
 import java.util.Date
@@ -60,7 +62,10 @@ fun PelonotNavGraph(
     onRecoverWorkout: (onRecovered: (String) -> Unit) -> Unit = {},
     onDiscardRecoverableWorkout: () -> Unit = {},
     onRenameProfile: (com.pelonot.data.local.entity.UserEntity, String) -> Unit = { _, _ -> },
-    onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {}
+    onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
+    /** The household's board for one class (24.1.2). A Room read, never a network one. */
+    onLoadLeaderboard: suspend (classId: String, youId: Int?) -> HouseholdLeaderboard =
+        { classId, _ -> HouseholdLeaderboard(classId) }
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -223,6 +228,13 @@ fun PelonotNavGraph(
                 uiState.classes.firstOrNull { it.id == classId }
             }
 
+            // 24.1.2. Read once per class rather than held in AppUiState:
+            // it belongs to the class on screen, not to the app.
+            val youId = uiState.selectedProfile?.localUserId
+            val leaderboard by produceState<HouseholdLeaderboard?>(null, classId, youId) {
+                value = classId?.let { onLoadLeaderboard(it, youId) }
+            }
+
             ClassDetailScreen(
                 plan = plan,
                 ftp = (uiState.selectedProfile?.ftpWatts
@@ -231,7 +243,8 @@ fun PelonotNavGraph(
                 onStart = {
                     pendingClassId = plan?.id
                     showIntentPrompt = true
-                }
+                },
+                leaderboard = leaderboard
             )
         }
 

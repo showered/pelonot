@@ -56,6 +56,20 @@ class WorkoutDaoTest {
         // workouts.user_id is a foreign key, so profiles must exist first.
         userDao.insertUser(UserEntity(localUserId = USER_ID, name = "Test Rider"))
         userDao.insertUser(UserEntity(localUserId = OTHER_USER_ID, name = "Housemate"))
+
+        // workouts.class_id is one too, and the household leaderboard is
+        // per class.
+        database.classTemplateDao().insertAll(
+            listOf(CLASS_ID, "SS-04").map { id ->
+                ClassTemplateEntity(
+                    id = id,
+                    title = id,
+                    category = "Threshold",
+                    durationSec = 1800,
+                    intervalsJson = "[]"
+                )
+            }
+        )
     }
 
     @After
@@ -63,15 +77,16 @@ class WorkoutDaoTest {
 
     private fun workout(
         id: String,
-        userId: Int = USER_ID,
+        userId: Int? = USER_ID,
         durationSec: Int = 1800,
         outputKj: Double = 150.0,
         isComplete: Boolean = true,
-        timestamp: Long = System.currentTimeMillis()
+        timestamp: Long = System.currentTimeMillis(),
+        classId: String? = null
     ) = WorkoutEntity(
         id = id,
         userId = userId,
-        classId = null,
+        classId = classId,
         durationSec = durationSec,
         totalOutputKj = outputKj,
         totalDistanceKm = 10.0,
@@ -315,8 +330,144 @@ class WorkoutDaoTest {
         assertEquals(listOf(100.0, 200.0, 300.0), metricDao.getPowerTimeSeries("w1"))
     }
 
+    // ── The household leaderboard (24.1) ────────────────────────────
+
+    /**
+     * Samples for a ride, all of one provenance.
+     *
+     * `null` is what a ride recorded before `power_is_measured` existed holds,
+     * and it is not the same claim as `false` — but the leaderboard treats
+     * both the same way, which is what these tests are checking.
+     */
+    private suspend fun samplesFor(workoutId: String, measured: Boolean?, count: Int = 5) {
+        metricDao.insertMetrics(
+            (0 until count).map { second ->
+                WorkoutMetricEntity(
+                    workoutId = workoutId,
+                    timestampSec = second,
+                    power = 200.0,
+                    powerIsMeasured = measured
+                )
+            }
+        )
+    }
+
+    @Test
+    fun theHouseholdBoardRanksEachRidersBestRideOfOneClass() = runBlocking {
+        workoutDao.insertWorkout(workout("mine-1", outputKj = 150.0, classId = CLASS_ID))
+        samplesFor("mine-1", measured = true)
+        workoutDao.insertWorkout(workout("mine-2", outputKj = 190.0, classId = CLASS_ID))
+        samplesFor("mine-2", measured = true)
+        workoutDao.insertWorkout(
+            workout("theirs", userId = OTHER_USER_ID, outputKj = 240.0, classId = CLASS_ID)
+        )
+        samplesFor("theirs", measured = true)
+
+        val board = workoutDao.householdLeaderboard(CLASS_ID)
+
+        // One row per rider, not per ride, and my *best* is the one that counts.
+        assertEquals(2, board.size)
+        assertEquals(OTHER_USER_ID, board.first().localUserId)
+        assertEquals(240.0, board.first().bestOutputKj, 0.001)
+        assertEquals(190.0, board.first { it.localUserId == USER_ID }.bestOutputKj, 0.001)
+    }
+
+    /** 24.1.4: a guest ride has no owner, so there is nobody to place. */
+    @Test
+    fun theHouseholdBoardExcludesGuestRides() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(workout("guest", userId = null, outputKj = 999.0, classId = CLASS_ID))
+        samplesFor("guest", measured = true)
+
+        val board = workoutDao.householdLeaderboard(CLASS_ID)
+
+        assertEquals(listOf(USER_ID), board.map { it.localUserId })
+    }
+
+    /**
+     * 24.4.2, and the reason the `power_is_measured` column exists. A
+     * simulated ride's watts are `PowerModel`'s output; ranking one beside a
+     * measured ride would put a rider up against a number the app invented.
+     */
+    @Test
+    fun theHouseholdBoardExcludesRidesWhosePowerWasNotMeasured() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(
+            workout("simulated", userId = OTHER_USER_ID, outputKj = 999.0, classId = CLASS_ID)
+        )
+        samplesFor("simulated", measured = false)
+
+        val board = workoutDao.householdLeaderboard(CLASS_ID)
+
+        assertEquals(listOf(USER_ID), board.map { it.localUserId })
+    }
+
+    @Test
+    fun theHouseholdBoardExcludesARideRecordedBeforeProvenanceWasKept() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(
+            workout("historic", userId = OTHER_USER_ID, outputKj = 999.0, classId = CLASS_ID)
+        )
+        samplesFor("historic", measured = null)
+
+        assertEquals(
+            listOf(USER_ID),
+            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+        )
+    }
+
+    /**
+     * One unmeasured second is enough. A ride the board would otherwise rank
+     * cannot be shown to be measurement all the way through, and half a ride
+     * of invented watts still moves a total.
+     */
+    @Test
+    fun oneUnmeasuredSampleDisqualifiesTheWholeRide() = runBlocking {
+        workoutDao.insertWorkout(workout("mostly-measured", classId = CLASS_ID))
+        samplesFor("mostly-measured", measured = true, count = 100)
+        metricDao.insertMetric(
+            WorkoutMetricEntity(
+                workoutId = "mostly-measured",
+                timestampSec = 100,
+                power = 200.0,
+                powerIsMeasured = false
+            )
+        )
+
+        assertEquals(emptyList<Int>(), workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId })
+    }
+
+    @Test
+    fun theHouseholdBoardIgnoresOtherClassesAndUnfinishedRides() = runBlocking {
+        workoutDao.insertWorkout(workout("this-class", classId = CLASS_ID))
+        samplesFor("this-class", measured = true)
+        workoutDao.insertWorkout(
+            workout("other-class", userId = OTHER_USER_ID, outputKj = 999.0, classId = "SS-04")
+        )
+        samplesFor("other-class", measured = true)
+        workoutDao.insertWorkout(
+            workout(
+                "in-progress",
+                userId = OTHER_USER_ID,
+                outputKj = 999.0,
+                classId = CLASS_ID,
+                isComplete = false
+            )
+        )
+        samplesFor("in-progress", measured = true)
+
+        assertEquals(
+            listOf(USER_ID),
+            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+        )
+    }
+
     private companion object {
         const val USER_ID = 1
         const val OTHER_USER_ID = 2
+        const val CLASS_ID = "TH-01"
     }
 }

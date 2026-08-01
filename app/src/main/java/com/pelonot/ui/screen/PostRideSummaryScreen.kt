@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.ui.components.HouseholdLeaderboardCard
 import com.pelonot.ui.components.RideSummaryCard
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -141,6 +142,14 @@ fun PostRideSummaryScreen(
                 selected = state.rpe,
                 onSelect = viewModel::setRpe
             )
+
+            // 24.1.2, which is what 11.4.1 became: the household board for the
+            // class just ridden. Draws nothing for a free ride, a household of
+            // one, or a household whose rides were all simulated.
+            state.leaderboard?.let { leaderboard ->
+                Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+                HouseholdLeaderboardCard(leaderboard)
+            }
         }
 
         Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))

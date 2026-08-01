@@ -15,6 +15,7 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.model.HouseholdLeaderboard
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -127,6 +128,16 @@ class AppViewModel(
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
         initialValue = AppUiState()
     )
+
+    /**
+     * The household's board for one class (24.1.2).
+     *
+     * Fetched on demand rather than carried in [AppUiState]: it belongs to
+     * whichever class is on screen, not to the app, and the state combine is
+     * already at the width of its typed overload.
+     */
+    suspend fun householdLeaderboard(classId: String, youId: Int?): HouseholdLeaderboard =
+        workoutRepository.householdLeaderboard(classId, youId)
 
     fun createProfile(name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) {
         viewModelScope.launch {

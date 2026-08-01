@@ -6,6 +6,7 @@ import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.service.RideInProgress
+import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
@@ -186,6 +187,28 @@ class WorkoutRepository(
             householdBestKj = workoutDao.getHouseholdBestOutput(min, max)
         )
     }
+
+    /**
+     * The household's board for one class (24.1).
+     *
+     * Room does the exclusions — guests, rides with no samples, rides whose
+     * watts were not measured — and the ranking rule lives on
+     * [HouseholdLeaderboard] rather than in the `ORDER BY`, so it can be
+     * tested without a database.
+     */
+    suspend fun householdLeaderboard(classId: String, youId: Int?): HouseholdLeaderboard =
+        HouseholdLeaderboard.of(
+            classId = classId,
+            standings = workoutDao.householdLeaderboard(classId).map { row ->
+                HouseholdLeaderboard.Standing(
+                    localUserId = row.localUserId,
+                    name = row.name,
+                    outputKj = row.bestOutputKj,
+                    weightKg = row.weightKg
+                )
+            },
+            youId = youId
+        )
 
     private companion object {
         const val DURATION_TOLERANCE = 0.10

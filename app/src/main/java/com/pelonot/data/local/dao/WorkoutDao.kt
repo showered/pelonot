@@ -8,6 +8,14 @@ import androidx.room.Update
 import com.pelonot.data.local.entity.WorkoutEntity
 import kotlinx.coroutines.flow.Flow
 
+/** One rider's place on a class's household board — see [WorkoutDao.householdLeaderboard]. */
+data class HouseholdLeaderboardRow(
+    val localUserId: Int,
+    val name: String,
+    val weightKg: Double,
+    val bestOutputKj: Double
+)
+
 @Dao
 interface WorkoutDao {
 
@@ -117,6 +125,52 @@ interface WorkoutDao {
 
     @Query("SELECT MAX(total_output_kj) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     suspend fun getAllTimeBestOutput(userId: Int): Double?
+
+    // ── Household leaderboard (24.1) ────────────────────────────────
+    // Everyone with a profile on this tablet, ranked on one class. No network,
+    // no account, no RLS — and the fairest comparison this app can make, since
+    // both sides came off the same board and the same knob.
+
+    /**
+     * Each rider's **best** ride of one class, best first.
+     *
+     * Three exclusions, each of which is a rule rather than a filter:
+     *
+     * - `user_id IS NOT NULL` via the join — a guest ride has no owner, so
+     *   there is nobody to put on the board (24.1.4).
+     * - a ride with no samples at all cannot be ranked on work it has no
+     *   evidence of.
+     * - **any sample that is not a measurement disqualifies the ride**
+     *   (24.4.2). A simulated ride's watts are `PowerModel`'s output, which
+     *   scores RMSE 137 W against the real board; putting one beside a
+     *   measured ride would be ranking a rider against a number the app made
+     *   up. `NULL` counts as not-a-measurement for the same reason it does
+     *   everywhere else: nobody wrote it down, so it cannot be shown to be one.
+     *
+     * One row per rider rather than per ride: a leaderboard listing somebody's
+     * six attempts is a personal history, not a comparison.
+     */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId,
+               p.name AS name,
+               p.weight_kg AS weightKg,
+               MAX(w.total_output_kj) AS bestOutputKj
+        FROM workouts w
+        JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.class_id = :classId
+          AND w.is_complete = 1
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        GROUP BY p.local_user_id
+        ORDER BY bestOutputKj DESC
+        """
+    )
+    suspend fun householdLeaderboard(classId: String): List<HouseholdLeaderboardRow>
 
     @Query(
         """

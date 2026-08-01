@@ -38,9 +38,11 @@ import androidx.compose.ui.unit.dp
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
+import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
+import com.pelonot.ui.components.HouseholdLeaderboardCard
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -62,7 +64,12 @@ fun ClassDetailScreen(
     ftp: Double,
     onBack: () -> Unit,
     onStart: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * Who on this bike has ridden this class (24.1.2). Null while it is being
+     * read, and drawn as nothing when there is nothing worth drawing.
+     */
+    leaderboard: HouseholdLeaderboard? = null
 ) {
     Scaffold(
         modifier = modifier,
@@ -110,6 +117,20 @@ fun ClassDetailScreen(
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+            // Above the interval list rather than below it: this is the screen
+            // where a rider is choosing what to ride, and "your housemate did
+            // 214 kJ on this one" is the reason to pick it. The interval
+            // breakdown is what they read once they already have.
+            leaderboard?.let {
+                HouseholdLeaderboardCard(
+                    leaderboard = it,
+                    modifier = Modifier.padding(
+                        horizontal = MaterialTheme.spacing.large,
+                        vertical = MaterialTheme.spacing.small
+                    )
+                )
+            }
 
             if (plan.intervals.isEmpty()) {
                 Box(

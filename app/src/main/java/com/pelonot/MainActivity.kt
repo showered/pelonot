@@ -63,7 +63,8 @@ class MainActivity : ComponentActivity() {
                             onRenameProfile = { user, name ->
                                 viewModel.renameProfile(user.localUserId, name)
                             },
-                            onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) }
+                            onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) },
+                            onLoadLeaderboard = viewModel::householdLeaderboard
                         )
                     }
                 }
