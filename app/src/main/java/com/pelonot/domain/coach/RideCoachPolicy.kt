@@ -3,6 +3,7 @@ package com.pelonot.domain.coach
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideCue
+import com.pelonot.domain.model.RidePosition
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetStatus
 
@@ -19,10 +20,24 @@ sealed interface RideAlert {
     data class IntervalChange(
         val zone: PowerZone,
         val cadenceMin: Int,
-        val cadenceMax: Int
+        val cadenceMax: Int,
+        /**
+         * Set only when the position the class asks for has *changed* (25.2.3).
+         *
+         * Null covers both "this interval prescribes nothing" and "it
+         * prescribes what the last one did" — in neither case is there anything
+         * to say, and `CLB-06` alternates climb and attack six times, so
+         * announcing the state rather than the change would double the length
+         * of every interval call in the class.
+         */
+        val positionChange: RidePosition? = null
     ) : RideAlert {
+        // First in the sentence: it is the only part of this that has to be
+        // acted on the instant it is heard. The zone and the cadence are
+        // something to settle into.
         override val speech: String
-            get() = "Zone ${zone.number}, ${zone.displayName}. " +
+            get() = (positionChange?.let { "${it.instruction}. " } ?: "") +
+                "Zone ${zone.number}, ${zone.displayName}. " +
                 "$cadenceMin to $cadenceMax R P M."
         override val haptic get() = HapticStrength.Firm
     }
@@ -94,6 +109,7 @@ class RideCoachPolicy(
 ) {
 
     private var announcedIndex = UNSET
+    private var announcedPosition: RidePosition? = null
     private var cuedIndex = UNSET
     private var warnedAtSecond = UNSET
     private var offTargetSince = UNSET
@@ -102,6 +118,7 @@ class RideCoachPolicy(
 
     fun reset() {
         announcedIndex = UNSET
+        announcedPosition = null
         cuedIndex = UNSET
         warnedAtSecond = UNSET
         offTargetSince = UNSET
@@ -133,10 +150,16 @@ class RideCoachPolicy(
             announcedIndex = interval.index
             warnedAtSecond = UNSET
             offTargetSince = UNSET
+            // Compared against the interval just left, not against the last
+            // position announced: a rider sits down during the recovery between
+            // two standing efforts, so the second one has to be called again.
+            val positionChange = current.position?.takeIf { it != announcedPosition }
+            announcedPosition = current.position
             alerts += RideAlert.IntervalChange(
                 zone = current.powerZone,
                 cadenceMin = current.cadenceMin,
-                cadenceMax = current.cadenceMax
+                cadenceMax = current.cadenceMax,
+                positionChange = positionChange
             )
         }
 

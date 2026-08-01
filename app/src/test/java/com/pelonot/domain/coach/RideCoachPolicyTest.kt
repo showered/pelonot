@@ -5,6 +5,7 @@ import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideCue
+import com.pelonot.domain.model.RidePosition
 import com.pelonot.domain.model.TargetBand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -277,5 +278,72 @@ class RideCoachPolicyTest {
         val alerts = policy.onTick(input(0))
 
         assertEquals(1, alerts.filterIsInstance<RideAlert.IntervalChange>().size)
+    }
+
+    // ── Standing and seated (PLAN 25.2.3) ───────────────────────────────
+
+    /**
+     * The shape of `CLB-02`: a seated climb, then standing attacks separated by
+     * recovery. The rider sits down during each recovery, so **every** attack
+     * has to be called — comparing against the last position *announced* rather
+     * than against the interval just left would call only the first.
+     */
+    private val standingClass = listOf(
+        Interval(0, 60, cadenceMin = 80, cadenceMax = 90, powerZoneNumber = 1),
+        Interval(60, 120, cadenceMin = 60, cadenceMax = 70, powerZoneNumber = 4,
+            position = RidePosition.Seated),
+        Interval(120, 150, cadenceMin = 60, cadenceMax = 70, powerZoneNumber = 4,
+            position = RidePosition.Seated),
+        Interval(150, 180, cadenceMin = 75, cadenceMax = 85, powerZoneNumber = 1),
+        Interval(180, 210, cadenceMin = 70, cadenceMax = 80, powerZoneNumber = 6,
+            position = RidePosition.Standing),
+        Interval(210, 240, cadenceMin = 75, cadenceMax = 85, powerZoneNumber = 1),
+        Interval(240, 270, cadenceMin = 70, cadenceMax = 80, powerZoneNumber = 6,
+            position = RidePosition.Standing)
+    )
+
+    private fun positionCallsAcross(intervals: List<Interval>): List<RidePosition?> {
+        val engine = ClassIntervalEngine(intervals)
+        val policy = RideCoachPolicy()
+        return intervals.map { interval ->
+            val state = engine.stateAt(interval.startSec)
+            policy.onTick(input(interval.startSec, interval = state))
+                .filterIsInstance<RideAlert.IntervalChange>()
+                .firstOrNull()
+                ?.positionChange
+        }
+    }
+
+    @Test
+    fun `the coach calls a position only when it changes`() {
+        assertEquals(
+            listOf(
+                null,                    // no position asked for
+                RidePosition.Seated,     // called
+                null,                    // still seated, nothing to say
+                null,                    // recovery asks for nothing
+                RidePosition.Standing,   // called
+                null,                    // recovery again
+                RidePosition.Standing    // called again — they sat down in between
+            ),
+            positionCallsAcross(standingClass)
+        )
+    }
+
+    @Test
+    fun `the instruction comes before the zone, because it is the urgent half`() {
+        val alert = RideAlert.IntervalChange(
+            zone = PowerZone.Z6,
+            cadenceMin = 70,
+            cadenceMax = 80,
+            positionChange = RidePosition.Standing
+        )
+        assertTrue(alert.speech.startsWith("Out of the saddle."))
+    }
+
+    @Test
+    fun `an interval that prescribes nothing says nothing about position`() {
+        val alert = RideAlert.IntervalChange(zone = PowerZone.Z2, cadenceMin = 80, cadenceMax = 90)
+        assertEquals("Zone 2, Endurance. 80 to 90 R P M.", alert.speech)
     }
 }

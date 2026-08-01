@@ -221,6 +221,12 @@ class RideCoach(context: Context) {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, level)
         }
 
+        // What the coach actually said, which was otherwise unanswerable from
+        // logcat: a cue lasts a second or two and nothing recorded it. On the
+        // bike this needs `setprop log.tag.RideCoach VERBOSE` first — that
+        // tablet drops `Log.i` device-wide (CLAUDE.md).
+        Log.i(TAG, "Coach: \"$line\"")
+
         val queued = runCatching {
             // QUEUE_ADD: an interval announcement followed by its coaching cue
             // is two utterances that belong in that order.
