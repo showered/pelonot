@@ -1,0 +1,154 @@
+> Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
+
+## Phase 14: Cloud sync that actually reaches the cloud — fundamental to the cloud tier
+
+**Re-scoped by *The connectivity model*, 1 August 2026.** Everything here is
+now behind an account (23.1): the app is complete without it, and a rider who
+never signs in must never reach a single line of it. That is a demotion in
+urgency and a promotion in how carefully it is gated. Two items in this phase
+run today for riders who have consented to nothing — see the model's *What the
+model makes false today*.
+
+### 14.0 Are we connected? — findings, 31 July 2026
+
+Short answer at the time of asking: **no, and not for the reason the code
+suggested.** Established against the live project (`podsmtujqarlqhvorpdh`,
+eu-west-1) rather than by reading, which changed the answer twice.
+
+**The first failure was missing `GRANT`s, not the payload.** `migration.sql`
+creates three tables, enables RLS and writes six policies, and never grants a
+single table privilege to `anon`. RLS *narrows* access a role already has; it
+cannot confer any. So every request — read and write — died with `42501
+permission denied for table` before a policy was ever evaluated, and PostgREST
+returned 401. The `anon` role held only `REFERENCES`, `TRIGGER` and `TRUNCATE`:
+no `SELECT`, no `INSERT`.
+
+Proof the tables themselves were fine: a genuinely missing table returns
+`PGRST205`, an absent key returns a different 401, and `class_templates` held
+all 72 seeded rows. `profiles` and `workouts` held **0 rows each** — nothing had
+ever synced, confirmed by count rather than inferred.
+
+| Path | What was wrong | State |
+|------|---------------|-------|
+| everything | `anon` had no DML grants at all. First and total blocker. | ✅ fixed in `002` |
+| `syncWorkout` | `WorkoutDto` sends `recorded_at`; the table's column was `timestamp`. | ✅ column renamed in `002` |
+| `syncWorkout` | `recordedAtEpochMs: Long` serialises as `1753900000000` into a `TIMESTAMPTZ` → `22008 date/time field value out of range`. **Found only by attempting a real insert** — invisible to every code reading. | ✅ DTO now emits ISO-8601 UTC |
+| `syncProfile` | `profiles` had policies for `SELECT` and `UPDATE`, none for `INSERT`. | ✅ policy added in `002` |
+| `syncProfile` | Upsert with no `onConflict` targets the primary key `id`, a UUID the DTO never sends — so every call inserts instead of updating. | ✅ `onConflict = "local_user_id"` |
+| `syncWorkout` | The DTO carries **no `user_id`**, so a synced ride is anonymous and unattributable. | ❌ 14.3 |
+| `fetchClassTemplates` | Cloud `intervals_json` is `JSONB` holding an array; `ClassTemplateDto` reads it as `String`. Decode throws — and the seeder reads the resulting `Failed` as "no cloud" and silently serves 5 bundled classes instead of the cloud's 72. | ✅ fixed in 14.2.2a |
+| all policies | Every one is `USING (true)`. **Not currently an exposure** — the grants in `002` are narrow and `workouts` has no `SELECT` grant at all — but they activate the moment anyone widens a grant. | ❌ 15.5 |
+
+> An earlier draft of this section claimed any client could read every rider's
+> data. That was wrong: with no grants, nothing was readable by anyone. The
+> `USING (true)` policies are a loaded gun rather than a fired one, and 15.5 is
+> still where they get fixed.
+
+### 14.1 Verified working
+
+- [x] **14.1.1** `002_grants_and_sync_fix.sql` applied to the live project. Narrow grants by design: `class_templates` SELECT, `profiles` SELECT/INSERT/UPDATE, `workouts` **INSERT only** — a leaked publishable key cannot enumerate ride history
+- [x] **14.1.2** A `workouts` row inserted with the anon key using the app's exact `WorkoutDto` shape — **HTTP 201**, `metrics_payload` intact as JSONB. The first row this project has ever accepted. Test row deleted afterwards
+- [x] **14.1.3** Profile upsert round trip: `201` then `200` on repeat, one row, FTP updated in place rather than duplicated. Test row deleted afterwards
+- [x] **14.1.4** `WorkoutDto` emits ISO-8601 UTC, with JVM tests covering the timezone drift and locale (`th-TH-u-ca-buddhist`) cases that would silently corrupt it
+- [x] **14.1.5** A test asserting the serialised keys are a subset of the real column list — the failure mode that started all of this
+
+- [ ] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works".
+
+      **Half done, 31 July 2026 (third sitting).** Driven from the app on the
+      tablet AVD: a profile ride against the live project, `WorkoutSyncWorker`
+      enqueued and ran, and it logged
+      `Synced workout 992a6e8c-6dc7-45c3-9463-cf1f26247aa9 (135 samples)`.
+      That is a real HTTP success — postgrest-kt throws a `RestException` on
+      any non-2xx, so `SyncOutcome.Success` cannot be reached without one.
+      **What is missing is the sighting.** `workouts` deliberately has no
+      `SELECT` grant (14.1.1), so neither the app nor the anon key can read the
+      row back, and this box asks to see it. Finish it with one Management API
+      query — the recipe is in `supabase/README.md`:
+
+      ```sql
+      select id, duration_sec, jsonb_array_length(metrics_payload) as samples
+      from workouts order by recorded_at desc limit 5;
+      ```
+
+      Expect that workout id with 135 samples. It is the only thing still
+      standing between Phase 14 and done.
+
+      One thing this half **did** prove, and it is not small: the app's *read*
+      path to the cloud works. `ClassTemplateSeeder` now logs `Seeded 72 class
+      templates from Supabase` — a live PostgREST `SELECT`, decoded and written
+      into Room. See 14.2.2a
+
+### 14.2 The rest of the path to full connectivity
+
+- [ ] **14.2.1** Carry the rider through: local `user_id` (Int) → cloud `profiles.id` (UUID). Requires the profile to sync first and its cloud id to be stored locally. Until this lands, every uploaded ride is anonymous
+- [x] **14.2.2a** **The app now reads both shapes**, which is what actually
+      unblocked this. `intervals_json` is an escaped JSON *string* in the
+      bundled assets and a `JSONB` *array* in the cloud; `ClassTemplateDto`
+      typed it `String`, so every cloud read threw
+      `JsonDecodingException: Expected beginning of the string, but got [`.
+      That went into `SyncOutcome.Failed`, which `ClassTemplateSeeder` reads as
+      "cloud unavailable" and answers by falling back to assets — so the
+      failure was silent and its **only symptom was a class library with 5
+      classes in it instead of 72**, which nobody had connected to the cloud at
+      all. `IntervalsJsonSerializer` accepts either shape and yields the string
+      form; it re-encodes an array as an array so a JSONB value cannot be
+      written back as a quoted blob. *Observed: `Seeded 72 class templates from
+      Supabase`, eight categories where there were four, and a cloud-sourced
+      class rendering its seven intervals on the detail screen.* Four JVM tests
+- [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`. Less urgent now that 14.2.2a makes the app correct either way, and correct against whichever way a self-hoster sets theirs up
+- [ ] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history
+- [ ] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable
+- [ ] **14.2.5** Retry the backlog when connectivity returns, not only at ride end
+- [ ] **14.2.6** Upload the rides already sitting in the local database — there is a real history on the tablet that predates sync working
+- [ ] **14.2.7** Decide the metrics payload ceiling. A 45-minute ride is ~2,700 samples in one JSONB column; a 90-minute ride is double that. Find the point where the insert starts failing before a rider does. **Partly answered, 1 August 2026** — the sizes are measured in *What a workout costs*: 228 KB on the wire for 45 minutes, 457 KB for 90. That is not near any hard PostgREST limit, but it is a large single body from a bike tablet on household wifi, and **14.4** halves it four times over
+- [ ] **14.2.8** `supabase/003_*.sql` for whatever 14.2.1 and 14.2.2 need, keeping migrations incremental and non-destructive — `002` deliberately did not drop or recreate anything, and the 72 class templates are still the originals
+
+### 14.3 Keeping it working
+- [ ] **14.3.1** A round-trip check that can be re-run against a throwaway project, scripted and documented in `supabase/README.md`. Three of the five defects above were invisible to `assembleDebug` and to all 158 JVM tests
+- [ ] **14.3.2** Keep `supabase/*.sql` and the DTOs verifiably in step — the column-name test in `WorkoutDtoTest` is a start, but it hardcodes the column list and nothing forces it to match the live schema
+- [ ] **14.3.3** Fold the schema into CI (19.1.4) once there is a CI to fold it into
+
+### 14.4 The payload format — change it now, while the cloud is empty
+
+The sizes and the reasoning are in *What a workout costs*. The reason this is
+an item rather than an optimisation is timing: `workouts` holds **one row**,
+and the format is free to change today and a migration-with-backfill to change
+once four riders have a year of history up there.
+
+- [ ] **14.4.1** `metrics_payload` becomes **columnar**: `{"t":[…],"c":[…],"r":[…],"p":[…],"hr":[…]}` rather than an array of 2,700 five-key objects. **228 KB → 49 KB** on the wire for a 45-minute ride; ~30 KB → ~19 KB stored. Same data, same nullability, one twentieth of the key strings
+- [ ] **14.4.2** **`t` stays explicit.** Implying the timestamp from the array index saves another 12 KB and silently closes the gaps that 2.4.4 deliberately leaves, that 16.1.2 and 16.2.2 deliberately draw, and that a ride with a two-minute bottle stop in it genuinely has. A cloud copy that looks continuous when the ride was not is a fabricated record, which is the one thing this project does not do
+- [ ] **14.4.3** A `payload_version` on the row, or the shape is undecidable for any future reader — the web app (17.3) is the reader that will care
+- [ ] **14.4.4** A round-trip test: entity list → payload → entity list, asserting a null heart rate survives as null and a gapped series comes back gapped. Both are failures this project has already had in other places
+- [ ] **14.4.5** Confirm the stored size with `pg_column_size()` rather than trusting the model in *What a workout costs*. Same trip as 14.1.6; the query is in that section
+- [ ] **14.4.6** Settle the `getFloat().toDouble()` question first — finding 3 in that section. If the board reports fractional values, the noise digits are in the payload, in the exports, in the charts and in the calibration grid, and they are a bigger problem than the format
+
+### 14.10 Configuring the endpoint — open-source hygiene
+
+The endpoint must be configurable **in code, not in the app's UI**: a rider
+should never be asked to type a URL, and a self-hoster should not need to fork
+a screen.
+
+- [ ] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
+- [ ] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
+- [ ] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
+- [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it.
+      **A second reason, added 1 August 2026 and less obvious than the first:
+      a published endpoint is a bill.** At the measured ~30 KB a stored ride
+      (*What a workout costs*), Supabase's 500 MB free tier is about 13,000
+      rides — **250 riders riding once a week for a year**, or sixty riding
+      properly. The community endpoint fills up in its first year and then
+      fails for everyone at once, including the riders who trusted it with
+      their only backup. Decide who pays, or decide that the default is
+      **no endpoint** and a self-hoster stands up their own (14.10.5)
+- [ ] **14.10.5** `supabase/README.md`: how to stand up your own project, run the migrations in order, and point a build at it
+
+### 14.11 Credential hygiene
+
+`local.properties` currently holds three values, and one of them is far more
+dangerous than its name suggests.
+
+- [x] **14.11.1** `local.properties`' third Supabase value (was `supabase.serviceKey`) is **not** a service-role key — it is an `sbp_` **personal access token**, which is account-wide and can create, modify and delete *every project on the account*, not just this one. It is correctly gitignored and, verified, is read by nothing in `app/build.gradle.kts` and referenced nowhere in the source, so it cannot reach `BuildConfig` or an APK
+- [x] **14.11.2** Renamed to `supabase.accessToken` so nobody wires it into `BuildConfig` on the assumption that it belongs there. A service-role key in a client app would be bad; **this one is worse**
+- [ ] **14.11.3** Never add a `secret()` call for it. The two that exist (`supabase.url`, `supabase.anonKey`) are the only two that may ever become `buildConfigField`s
+- [ ] **14.11.4** Rotate it when the schema work is done — it has been used from a shell and lives in a plaintext file
+- [x] **14.11.5** Said in `supabase/README.md`, since a contributor following the setup will otherwise put whatever key they find into the same file

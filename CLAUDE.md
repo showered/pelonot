@@ -11,6 +11,14 @@ section naming the current priority — read that before picking work.
 **`HARDWARE.md` has the bike tablet's measured display, system and input facts**
 — read it before any UI work, so it is checked at the size it will actually run.
 
+**`PLAN.md` is an index, not the whole plan.** It carries the owner's inbox,
+the latest sitting, *What to do next* and the status table; each phase lives in
+its own file under `plan/`, and PLAN.md's *Where the rest of this plan lives*
+table says which. **Item numbers are unchanged** — a reference below to
+"PLAN.md 2.7c" or "PLAN.md 24.4.2" means the same item it always did; open the
+phase file for it rather than grepping the index. When you add to the plan, add
+to the phase file; only those four sections of PLAN.md move each session.
+
 ---
 
 ## Commands

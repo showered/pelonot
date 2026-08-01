@@ -1,0 +1,561 @@
+> Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
+
+## Phase 11: The HUD-first experience — the current priority
+
+**Premise:** this app is used almost entirely from the corner of the rider's
+eye. They start a class, switch to Netflix, and look at Pelonot in glances for
+the next forty minutes. The HUD is not an accessory to the ride screen; it *is*
+the product, and everything in this phase is judged by whether it survives
+being read in half a second from two metres away while out of breath.
+
+### 11.1 Verify the HUD's own interactions on a device
+- [x] **11.1.1** Docked strip renders over another app without covering the middle of the screen
+- [x] **11.1.2** Sits below the status bar rather than under the clock
+- [x] **11.1.3** Tap-to-collapse and the slim strip it collapses to. *Observed
+      on the tablet AVD mid-class: the handle takes the strip from 170 dp to
+      115 dp — a third of its height handed back to the film — and what
+      survives is the clock, the zone number, the four live numbers and the
+      controls. On a free ride the saving is much smaller, because the expanded
+      strip has no timeline, zone ring or next-up block to shed in the first
+      place*
+- [x] **11.1.4** Drag to re-dock between top and bottom, and that the choice
+      persists. *Observed in both directions: dragged down, the strip moved to
+      the bottom edge and `hud_dock=Bottom` was in the DataStore; dragged back
+      up, `Top`. A ride started afterwards raised the strip at the edge the
+      last one was left at.* The collapse state deliberately does **not**
+      persist — `hide()` resets it, so every ride opens showing everything
+- [x] **11.1.5** **Pause, resume and stop from the HUD with the app in the
+      background** — driven from the strip on the bike with Netflix in the
+      foreground, 31 July 2026. Pause froze the ride at 03:00 and it was still
+      03:00 twelve seconds later, so the pause genuinely leaves elapsed alone
+      (3.7); resume advanced it again; stop tore down the notification and the
+      overlay window and left Netflix undisturbed. The overlay never took focus
+      from the video app at any point
+- [x] **11.1.6** **Spoken coach audible over a playing video** — but only
+      after two defects, and neither was in the coaching logic. `RideCoach`
+      configured the engine straight after the `TextToSpeech` constructor,
+      before the service had bound, so both the language *and the audio
+      attributes* were discarded ("setLanguage failed: not bound to TTS
+      engine", in logcat on the bike). And attributes alone ask the system for
+      nothing: ducking requires an explicit
+      `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` request, and nothing ever made one.
+      `dumpsys audio` showed Netflix holding `GAIN` with `loss: none` and an
+      empty ducked-players list throughout, and the rider reported the cue
+      inaudible under the film. With focus requested per cue and released when
+      the last utterance finishes: **observed ducking, and the coach clearly
+      audible over Netflix**
+
+### 11.1a Getting between the HUD and the app
+
+Today the HUD and the ride screen are two places with no door between them. The
+rider raises the HUD when the ride starts, switches to Netflix, and there is no
+way back into the app except through the launcher — and no way back out to the
+HUD except by leaving the app again. That is a gap in the product, not a
+polish item: it is the single journey a rider makes most often during a class.
+
+- [x] **11.1a.1** **Double-tap the HUD brings the full app forward.** Double
+      rather than single, because single tap already collapses and expands the
+      strip (11.1.3) and that is the gesture a rider fires by accident while
+      reaching past the tablet. A single tap that yanked Netflix off the screen
+      mid-scene would be the worst possible mis-fire on this surface.
+      *Observed on the tablet AVD: double-tapped the strip with the launcher in
+      front, Pelonot came forward on the ride screen with the ride still
+      running and the overlay stood down.* One trap for anyone verifying this
+      by `adb`: Compose ignores a second tap that lands inside
+      `doubleTapMinTimeMillis` (**40 ms**), and two back-to-back
+      `input tap`s are about 26 ms apart, so the gesture reads as a single tap
+      and nothing happens. Put a `sleep 0.12` between them
+- [x] **11.1a.2** A **"back to the HUD" control on the ride screen**, so the
+      journey is symmetric and does not route through the launcher or the
+      recents switcher. `moveTaskToBack` rather than `finish()` — the ride
+      screen has to survive, because the rider is coming back to it. Hidden
+      when the HUD is off or ungranted, since it would then only hide the app.
+      *Observed: tapped it, the launcher returned and the strip came up with
+      live telemetry on it*
+- [x] **11.1a.3** **The full app comes forward when the ride ends.** The class
+      finishing is the one moment the rider definitely wants the whole screen —
+      the summary, the RPE question and any FTP proposal are all there and none
+      of them fit on a strip. **A foreground service is *not* exempt from
+      Android 10's background-activity-start rules** — the note here previously
+      assumed it was. `SYSTEM_ALERT_WINDOW` is on the exemption list, which is
+      the same grant the HUD is already drawn under, so the app that can show a
+      strip can always open itself from one. *Observed: stopped the ride from
+      the strip with the app in the background and the summary came up by
+      itself, showing the ride's real figures*
+- [x] **11.1a.4** **Discard the ride from the post-ride summary**, for the
+      session that was a warm-up, a mistake, or somebody else pedalling for
+      thirty seconds. Guests get this today (8.4) and riders with a profile do
+      not — they have to finish, leave, open history and delete. It has to name
+      what is going and be as hard to hit by accident as the delete in 12.3.2.
+      *Observed: the dialog names the duration, and confirming took the ride
+      and all 135 of its `workout_metrics` rows with it — checked by count
+      against the database, not by the screen returning.* Local only: an
+      already-uploaded ride stays in the cloud until tombstones exist (15.3.4)
+- [x] **11.1a.5** **The cold-start door — there is no way back into a ride that
+      is already running.** 11.1a.1–11.1a.3 all assume the app's task still
+      exists: `AppForeground.bringForward` sends `ACTION_MAIN` +
+      `CATEGORY_LAUNCHER` precisely so an existing task resumes where it was
+      left, which is the right behaviour and covers the common case. When the
+      Activity is gone it resumes nothing — the graph's start destination is the
+      profile selector, and **nothing outside `WorkoutService` knows a ride
+      exists**. So the strip's double-tap, the ride notification and the
+      launcher icon all land the rider on "who's riding?" with a class still
+      recording behind it and no route to it. The notification is the worse of
+      the three, because a ride notification that does not open the ride is the
+      one thing a notification is for. Needs the running ride to be knowable
+      from outside the service — the incomplete workout row already says so, and
+      8.3b has to be fixed first or asking the question raises the recovery
+      dialog instead.
+      *Done with the same `RideInProgress` 8.3b introduced, and only from the
+      start destination — that is what makes it a cold-start door rather than a
+      trap, since a ride begun the ordinary way sets it too and the rider is
+      already on the ride screen by then. Dashboard is pushed underneath on the
+      way in, because otherwise the summary's own `popUpTo(Dashboard)` has
+      nothing to pop to and the rider finishes the ride into a dead end.
+      **Observed on the tablet AVD**: ride started, task swiped away (0 activity
+      records, service still `isForeground=true`), reopened from the launcher →
+      the ride screen at 00:26 and counting; ended it there and Done on the
+      summary returned to the dashboard*
+- [x] **11.1a.6** **The ride notification is missing entirely on Android 13+.**
+      `POST_NOTIFICATIONS` is declared in the manifest and **requested by
+      nothing** — the only runtime request the app makes is for Bluetooth. On
+      API 33+ that means the ongoing ride notification is never posted, so the
+      route 11.1a.5 just built has no doorbell: `HARDWARE.md` calls that
+      notification "the most reliable read on an in-flight ride" and on a
+      modern device it does not exist. The bike's own tablet is Android 11 and
+      unaffected, which is exactly why this could sit here unnoticed —
+      `targetSdk 34` means any other device the app is installed on is not.
+      Same family as the `VIBRATE` and `ACCESS_FINE_LOCATION` corrections, one
+      step earlier: not a permission absent from the manifest, but one present
+      in it that nobody ever asks for. *Seen on the API 36 tablet AVD:
+      `importance=NONE` for `com.pelonot` and no notification during a ride,
+      until it was granted by hand with `pm grant`*
+      *Done. `NotificationPermission` + `RequestRideNotificationPermission`
+      (`ui/permission/`), called from the ride screen. Asked at the first ride
+      rather than at launch — the only notification this app posts is the
+      ongoing ride, so a rider who has never started one has nothing to say yes
+      to — and held back by a `deferred` flag while the overlay prompt is up,
+      because two system dialogs on the first ten seconds of a class is how
+      both get dismissed unread. A denial is not retried and not surfaced: the
+      ride is unaffected either way, and the platform stops offering after two
+      refusals. **Observed on the API 36 tablet AVD** with the permission
+      revoked: free ride started → the dialog appeared over the ride screen →
+      Allow → `POST_NOTIFICATIONS: granted=true` and notification id=101 on
+      `workout_channel` in `dumpsys notification`, where before there was
+      none*
+
+### 11.1b The HUD getting out of the way
+
+The premise of this whole phase is that the rider is watching something else.
+The strip currently sits on top of that film as a solid block, in a fixed size,
+pinned to the top or bottom edge. Every item here is about the HUD taking up
+less of the screen and less of the attention.
+
+- [x] **11.1b.1** **Adjustable opacity**, from solid down to nearly invisible,
+      with the film readable through it. Set once in Settings rather than
+      fiddled with mid-ride.
+      *Done, and it turned into a redesign rather than a slider. A single alpha
+      over a full-width panel is the wrong instrument: a rider asking for more
+      of their picture back only ever got a lighter wash over all of it — the
+      numbers got harder to read and the picture never came back. **The panel is
+      gone.** The strip is a transparent band with a handful of chips floating
+      in it, and backing is painted only where a number or a control sits;
+      everything between them is untouched film at any setting. The slider now
+      moves the chips, defaulting to 0.82. Observed on the tablet AVD over a
+      full-white page: expanded, collapsed, and the class timeline*
+- [x] **11.1b.2** A floor on how transparent it can go, and a check that the
+      text still passes contrast against **moving** video rather than against
+      one paused frame.
+      *The floor is **calculated, not chosen** — `HudOpacity` composites the
+      chip over a backdrop and finds the least opaque it can be while every
+      colour the strip draws text in still passes WCAG. Two things fell out of
+      building it, both of which had been quietly wrong. A floor derived from
+      the brightest colour on the strip says nothing about the rest of it: at
+      0.59 the white clock passed at 4.5 and the coral power figure sat at 1.55.
+      And **the worst backdrop is not white** — the backdrop is a film, so it is
+      every colour there is, and a partly-transparent panel can land the
+      composited background right on the text's own luminance, where contrast is
+      1.0 and the number is invisible. Bisecting on the over-white contrast
+      made coral look fine at zero opacity. The floor is about 0.76 with all
+      seven colours counted, and the grey labels are lifted towards the primary
+      text colour rather than dragging it to 0.81 for everybody. 9 JVM tests.*
+      **The moving-video half of this item is still open and always was**: a
+      still frame is kinder than a film, screenshots over DRM video come back
+      black (10.4), so this needs the rider's eyes on the bike
+- [ ] **11.1b.3** **Resizable**, so a rider who wants three big numbers and a
+      rider who wants the whole timeline can both have it. Persisted like the
+      dock
+- [ ] **11.1b.4** **Dock to the left and right edges too**, not only top and
+      bottom — **asked for directly by the owner, 31 July 2026**: "I would like
+      a version of the HUD on the right and left too, should be able to drag it
+      where you want." So this is four edges and one gesture, not two edges and
+      a preference. A vertical strip down one side leaves subtitles *and* faces
+      clear and is probably the better default on a 16:9 tablet in landscape —
+      which is the shape of the device this actually runs on (8.13).
+      `HudDock` is a two-value enum with an `opposite()` and a `gravityFor()`
+      either side of it; both extend to four cleanly, and the drag detector on
+      the handle is currently `detectVerticalDragGestures`, which does not
+- [ ] **11.1b.4a** **Corners, once collapsed** — the owner's observation on
+      seeing the compact strip: "in compact mode there are more options, bottom
+      left, bottom middle, right bottom, right top." He is right, and it falls
+      out of the redesign rather than being extra work. Collapsed, the HUD is
+      one pill and a row of buttons, not a band — so it no longer *needs* a
+      whole screen edge, and a corner is the least of anyone's film. The
+      expanded strip still wants a full edge, so the two states may well want
+      different position sets, which is a thing `HudDock` cannot currently
+      express: it is one enum shared by both. Settle that before writing the
+      drag handling for 11.1b.4
+- [ ] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
+      rotate: the timeline, the zone badge and the live numbers each need a tall
+      arrangement. Extends 11.1.4, which only ever considered top/bottom. The
+      chip redesign in 11.1b.1 makes this materially easier than it was — a
+      column of chips is the same components in a `Column` — but the metrics
+      chip holds four readouts in a `Row` and a 200 dp-wide dock will not take
+      them side by side
+- [ ] **11.1b.6** Every one of these choices persists, and the HUD comes back
+      where and how the rider left it. *Opacity and dock do; the rest of this
+      waits on 11.1b.3 and 11.1b.4 existing*
+- [x] **11.1b.7** **The class timeline moved to the opposite screen edge**, in
+      an overlay window of its own. Splits the furniture into two thin bands
+      instead of one tall block, and because nothing on it is interactive that
+      window is `FLAG_NOT_TOUCHABLE` — every tap in that band goes straight
+      through to the film. The strip itself can never make that promise; it has
+      a stop button on it. *Observed on the tablet AVD: timeline top, numbers
+      bottom, re-docking swaps both.* **The owner is not sold on the split** and
+      left it to judgement — so treat it as provisional. If it turns out to read
+      as two unrelated things rather than one instrument, the fix is small: the
+      bar is a standalone composable in a window of its own, and putting it back
+      above the chips is a layout change, not a rewrite. Worth settling on the
+      bike rather than by argument, and worth considering alongside 11.1b.4 —
+      the answer may well differ for a vertical dock, where the opposite edge
+      is a *column* and the timeline would have to run down it
+- [ ] **11.1b.8** **The strip still eats touches between the chips.** The window
+      is full-width and the gaps are now invisible, so a rider tapping their
+      film in the space between two chips gets nothing and cannot see why. It
+      was the same before the redesign — the difference is that the slab at
+      least *looked* like something. A window cannot have holes punched in it,
+      so this is either a row of narrow windows or nothing; 11.1b.7 shows the
+      shape of the fix for anything non-interactive
+- [ ] **11.1b.9** **Revisit the chips as a piece of visual design.** They are
+      correct and they are not yet beautiful. Open questions: whether the metric
+      accents should hold their colour at low opacity or take a treatment that
+      survives any backdrop; whether the chip hairline is doing enough over
+      bright scenes; whether the timeline deserves the same silhouette as the
+      chips or a deliberately different one; and whether the zone-change flash
+      still reads now that it washes chips rather than a whole band
+- [ ] **11.1b.10** **The grey line across the overlay.** Reported by the owner
+      as "a weird grey line on the HUD", and reproduced on the tablet AVD: a
+      full-width hairline running edge to edge just below the chips, reading as
+      a stray divider rather than as part of anything.
+      *It is not a divider — it is the `edge` glow in `HudOverlayMain`, the
+      hairline of the current zone's colour that thickens and pulses as an
+      interval change approaches. Two things make it read as chrome instead of
+      as an alert. **Zone 1's colour is grey**, so during every warm-up and
+      recovery block the "accent" is indistinguishable from a rule someone
+      drew by accident; and at rest it is `alpha = 0.45` of that, which is
+      exactly the weight of a divider. Its comment also says it sits "along the
+      very screen edge", which is true only when the overlay is docked Bottom —
+      docked Top it is drawn **last**, so it lands on the inside edge, between
+      the chips and the film. Candidates, in order: drop the resting alpha to
+      nothing so the line exists only when it is saying something (it still
+      thickens and pulses on approach, which is the part that earns its place);
+      or give a grey zone a non-grey alert colour; or move it to the true screen
+      edge for both docks. **This is a design call about an alert, so it is the
+      owner's** — it is diagnosed, not decided*
+
+### 11.2 What the strip is still missing
+- [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
+- [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind **2.2a** (see 2.2a.10) — until this bike is on its own curve it is as likely to be a modelling artefact as a real contradiction, and 2.2.4 has now answered that the shipped curve is 66% out at the median, which makes the artefact reading the likelier of the two.
+- [ ] **11.2.2** Time in zone: a thin stacked bar of how the ride has been spent, for the collapsed strip where the timeline does not fit
+- [ ] **11.2.3** A "you are ahead of / behind your usual" line against `leaderboardFor`, which is the one comparison a rider actually acts on mid-ride
+- [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top
+
+### 11.3 Beyond the strip
+- [x] **11.3.1** ~~**Landscape layout for the dashboard.**~~ **Stale — there is nothing wrong with it.** Re-checked twice on the real tablet and again on the matching AVD (1920×1080 @ 240 dpi): the FTP card, the Just Ride button and the three action cards fill the width, and the empty right-hand side this item describes does not exist. The original screenshot was almost certainly taken on a wrongly-configured AVD, which is exactly the trap `HARDWARE.md` was written to close. The profile selector *did* have the problem and is fixed in 20.1
+- [ ] **11.3.2** Post-ride charts: power with zone bands, heart rate, cadence distribution (8.11.53–8.11.57)
+- [ ] **11.3.3** Time-in-zone summary on the post-ride screen
+- [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
+- [ ] **11.3.5** Screen-on lock during a ride, so the tablet does not sleep mid-class
+
+### 11.4 Re-home the leaderboard
+- [x] **11.4.1** Done as **24.1.2**: the household board is on the post-ride summary and on class detail
+- [ ] **11.4.2** A single-line "vs your best" on the ride screen (not the HUD)
+
+### 11.5 Volume control — the tablet has nowhere else to change it
+
+**The reason this is not a nicety.** On the bike's tablet there is no status
+bar to pull down, so there is **no system volume UI at all**. A rider watching
+Netflix with the coach speaking over it has no way to change either level
+without leaving what they are doing. The app is the only surface that can
+offer it, which makes this closer to fundamental than to polish.
+
+- [x] **11.5.1** **Media volume**, controlling `STREAM_MUSIC` — which is what
+      Netflix and everything else plays on. Needs `MODIFY_AUDIO_SETTINGS` in
+      the manifest (a normal, install-time permission, no prompt). Declare it
+      *before* wiring the slider: an undeclared permission fails silently and
+      this project has shipped that bug twice already (8.5, 2.3). *Observed:
+      dragged to 73% and `dumpsys audio` moved `STREAM_MUSIC` from 5 to 11 of
+      15 — checked against the system's own value rather than the slider's
+      position, which is the whole point of 11.5.7*
+- [x] **11.5.2** **Coach volume, independent of the media volume.** Do this
+      with `TextToSpeech.Engine.KEY_PARAM_VOLUME` in the `Bundle` passed to
+      `speak()` — a per-utterance 0..1 scalar — rather than by moving a stream
+      volume. A stream-level control would fight the ducking in 11.1.6 and
+      could not make the coach quieter *than* the film, which is exactly what
+      a rider who finds it shouty will want. A level of 0 returns *before*
+      taking audio focus, so a silenced coach cannot duck the film for the
+      length of an utterance nobody can hear. **Wired and persisted, not yet
+      heard**: the emulator has no TTS engine worth trusting and the tablet's
+      `com.onepeloton.tts` is the only one this ever runs against, so whether
+      50% actually sounds like half needs the bike
+- [x] **11.5.3** Both in **Settings**, as the place they are set deliberately
+- [x] **11.5.4** Both reachable from the **HUD**, since mid-ride is when a
+      rider actually discovers the film is too loud, and going to Settings
+      means abandoning the ride screen and the film together. *Observed: the
+      button opens both sliders inside the strip, already showing the levels
+      set in Settings*
+- [x] **11.5.5** **This is the deliberate exception to 18.6 / 19.4** — "nothing
+      on the strip that is not about the next sixty seconds of pedalling". It
+      earns its place only because the tablet offers no alternative. Keep it
+      out of the resting strip: put it behind the collapse/expand (11.1.3) or
+      a single small control that opens the sliders, so the default HUD is
+      still three big numbers and a countdown. *One tonal button among the ride
+      controls; the resting strip is unchanged*
+- [x] **11.5.6** Volume changes persist, and the coach level survives a
+      restart. A rider who turned the coach down did not mean "until the next
+      ride". *`coach_volume` in the DataStore; the media level is the system's
+      own and the system already remembers it.* The HUD and Settings write the
+      same preference, so they are one setting rather than two that drift
+- [x] **11.5.7** Setting a stream volume can throw `SecurityException` when a
+      Do Not Disturb policy is active on API 23+. Catch it and say so rather
+      than letting the slider move and nothing happen — a control that lies
+      about having worked is worse than one that is absent. `VolumeController`
+      also **reads the level back after every write** instead of trusting it:
+      the system clamps and rounds to its own step count, and the slider must
+      show where the volume actually is
+- [ ] **11.5.8** Volume keys: the owner reports **no physical rocker**, and the
+      driver picture in `HARDWARE.md` is consistent with that — the only devices
+      declaring `KEY_VOLUMEUP` are the headphone jack (`ACCDET`, inline remote
+      only) and the MediaTek keypad driver, which declares the capability
+      whether or not buttons are populated. **Settle it with `adb shell getevent
+      -l` and a press of every physical button**; ten seconds with someone at
+      the bike. Honour the keys if they arrive, but nothing may depend on them
+- [x] **11.5.9** **A gesture to dismiss the expanded volume panel.** It opens
+      and closes from one small button today (11.5.4), so a rider who opened it
+      mid-ride has to find that same control again with the sliders now in the
+      way. A swipe on the panel towards the strip's own edge should close it —
+      *towards the edge*, so the direction follows the dock rather than being
+      hardcoded down (11.1.4). Two traps: the strip already carries drag-to-move
+      and drag-to-re-dock on the same surface (4.4, 11.1.4), so an ambiguous
+      swipe must not both close the panel and move the strip; and a slider is a
+      horizontal drag consumer sitting inside whatever gesture this adds, so the
+      dismiss has to be on the panel's own chrome or clearly vertical. A timeout
+      that closes it after a few idle seconds is worth considering alongside,
+      since the panel is the one part of the strip that is not about the next
+      sixty seconds of pedalling (11.5.5)
+      *Done, and both halves of it: a **vertical** drag towards the dock's own
+      edge closes the panel, and it closes itself after eight idle seconds. The
+      timeout is keyed on the two volumes, so every adjustment restarts the
+      clock and it only fires once the rider has actually stopped fiddling.*
+      *Both traps the item names turned out to be real and both are handled by
+      the same choice — the gesture is vertical-only and lives on the panel
+      rather than on the strip. A `Slider` consumes horizontal drags, so a
+      vertical detector above it never fights the sliders for the same finger;
+      and because the strip's own drag-to-re-dock is a different surface, a
+      swipe that closes the panel cannot also move the strip. **Observed on the
+      tablet AVD** docked top: swiped up, the panel closed and the strip stayed
+      exactly where it was; then left alone, it closed itself*
+
+### 11.6 The full-screen ride screen — what a rider cannot read on it
+
+The strip gets the attention in this phase because that is where the ride is
+watched from. But the ride screen is where a rider looks when they want to
+actually *read* something — before the class starts, on a recovery block, when
+the film is paused — and everything below came from riding with it in front of
+them. All of it is emulator-checkable at 1920 × 1080 / 240 dpi.
+
+*(Note 5.4 says the removed leaderboard panel is "tracked as 11.6"; that work
+is **11.4**, and the cross-reference in 5.4 is stale.)*
+
+- [x] **11.6.1** **"Up next" belongs directly under the current interval, not
+      across the screen from it.** In landscape the ride screen is three
+      columns: `EffortColumn` on the left holds the current interval, and
+      `UpNextColumn` on the right holds what is coming, with the whole metric
+      grid between them. The two things a rider reads *together* — what I am
+      doing, and what I have to be ready for — are at opposite ends of a
+      1280 dp-wide screen, and nothing on screen says they are related. Put the
+      next interval immediately beneath the current one. This is a re-layout of
+      both columns rather than a move of one composable: the right column also
+      carries pause, end and back-to-HUD, and those stay where a thumb expects
+      them. `UpcomingIntervals` (the rest of the class beyond the next block)
+      is a separate question — it can stay on the right, or fold into the
+      timeline at the top, which already draws the same information.
+      *Done as written. `NextUpBlock` — the preview and the five-second
+      countdown it swaps to — hangs off the bottom of `EffortColumn`, directly
+      under the current interval card. `UpcomingIntervals` ("THEN") stayed on
+      the right with pause, end and the overlay button, which stay put because
+      a thumb has learned where End ride is. **Observed on the tablet AVD**:
+      "NEXT in 03:53 · ENDURANCE · 85–95 rpm" sitting under "INTERVAL 1 OF 7"*
+- [x] **11.6.2** **Which power zone is the rider in *right now*.** The screen
+      shows the *prescribed* zone large and unmissable — that is what the
+      `ProgressArc` and `ZoneGlyph` in the interval card are — and never says
+      which zone the current power actually falls in. The rider learns they are
+      off target from an amber number and an arrow, which says "wrong" without
+      saying "you are in 3 and you were asked for 4". `PowerZone.forPower`
+      already computes it. Three things to decide rather than assume: a free
+      ride has no target but a current zone is still meaningful and should
+      probably show; the current and target zone must be tellable apart at a
+      glance and not two identical badges side by side; and the HUD has exactly
+      the same gap, so whatever is designed here should be shrinkable to the
+      strip.
+      *`CurrentZoneBar` — "NOW  Z2  ENDURANCE … ASKED FOR Z1", amber when the
+      two disagree, "ON TARGET" when they do not. Three decisions worth
+      recording. It sits **over the metric grid**, not beside the prescribed
+      glyph: the zone a rider is in is a reading of their live power, and the
+      "asked for" clause travels with it, so the comparison does not need the
+      two badges to be adjacent. It is a strip of words against a glyph with a
+      shape per zone, so they cannot be confused. And it renders on a free
+      ride, where nothing is prescribed.*
+      *The find while building it: `RideUiState.currentZone` had to become
+      **nullable**. `PowerZone.forPower` answers Z1 for zero watts and for an
+      unknown FTP — true, and useless — so a bike nobody is pedalling, or a
+      board that has gone quiet, was about to be labelled "Active Recovery".
+      Same family as 2.4.4: the absence is the answer. **Observed on the
+      tablet AVD** mid-class, both agreeing and disagreeing.*
+      *Superseded by **11.6.2a**: the bar has been replaced by the ladder, on
+      both surfaces, and the overlay gap this item left is closed with it.*
+- [x] **11.6.2a** **Draw the zones as a scale, not as a sentence.** Raised by
+      the owner against the 11.6.2 bar above, with a photo of Peloton's own
+      indicator: **seven segments in a row, one per zone**, the rider's current
+      zone lit, the boundaries labelled in watts underneath (`0 · 123 · 167 ·
+      200 · 233 · 266 · 333`), the zone number set large beside it and FTP %
+      at the other end. Not a request to copy it — a request for what it does
+      better, which is worth naming precisely:
+      - **The whole range is on screen at once.** "Z2" tells a rider where they
+        are only if they already hold the ladder in their head. A scale shows
+        it, and shows how far along the zone they are — Z3-and-just-in is a
+        different ride from Z3-nearly-out, and the current bar cannot tell them
+        apart.
+      - **The boundaries are in watts.** That turns "you are in 2" into "215 W
+        gets you into 3", which is an instruction rather than a label. The app
+        already has these numbers: `PowerZone.powerRange(ftp)`.
+      - **It absorbs the prescribed zone too.** The band the class is asking
+        for can be marked on the same scale, which is exactly the comparison
+        11.6.2 exists to make — and would let the prescribed glyph go back to
+        being decoration rather than the only statement of the target.
+      Things to settle rather than assume: what the scale does on a free ride
+      (probably the same, minus the prescribed band); whether the watt labels
+      survive being shrunk to the overlay (11.6.2 asked the same question and
+      the honest answer may be "numbers on the ride screen, segments only on
+      the overlay"); and that every watt figure here is FTP-derived, so it
+      moves under the rider when auto-FTP accepts a breakthrough (7.8). It
+      replaces `CurrentZoneBar` rather than sitting beside it
+      *Done, and `CurrentZoneBar` is gone rather than kept beside it.
+      `ZoneScale` (`domain/model/`) is pure and tested — boundaries, the
+      fraction through the current zone, FTP %, and the watts that reach the
+      next rung — and `PowerZoneScale` (`ui/components/`) draws it: zone digit
+      large on the left, seven segments, the watts under each one, FTP % on the
+      right. The prescribed zone is an outline on its own segment, so "where I
+      am" and "where I was asked to be" are one comparison across one object.*
+      *The three questions it said to settle, answered by building it. **A free
+      ride draws the same ladder** with nothing outlined — the boundaries do not
+      depend on a class. **The watt labels do not survive the overlay**, as
+      suspected: `compact` drops them and the FTP %, leaving segments and the
+      digit, which is what a rider glancing past a film is asking for anyway.
+      And **the segments are equal widths, not proportional to watts** — Z7 is
+      unbounded and Z1 spans 56% of FTP alone, so a true scale would draw six
+      zones as slivers beside two slabs; the watts underneath carry the real
+      proportions.*
+      *The one structural gain beyond the drawing: `ZoneScale.currentZone` is
+      now the app's **single** rule for "is there a zone at all" — no FTP, no
+      power, or a stalled board means none — where 11.6.2 had left that rule
+      living on `RideUiState` alone, with the overlay free to answer
+      differently. 274 JVM tests. **Observed on the tablet AVD**: mid-class in
+      Z2 against a prescribed Z1, both marked on the ladder at once, and the
+      compact form on the overlay over another app*
+- [x] **11.6.3** **Iconography on the live numbers** — a heart for bpm, and the
+      same for cadence, resistance and power. The label is `labelSmall` under a
+      104 sp number, which makes the only thing identifying the number the
+      smallest text on the tile, read from a metre away mid-effort. An icon is
+      recognised faster than a word is read. Keep the text label *beside* it
+      rather than replacing it — a bare glyph for "resistance" is not something
+      anyone recognises unaided — and give the icon `contentDescription = null`,
+      because `MetricReadout` already sets a `clearAndSetSemantics` description
+      for the whole tile and a labelled icon inside it would be announced twice.
+      Same treatment for `SmallStat` (output, distance, avg power) and for the
+      HUD's compact readouts.
+      *Done, and defined once in `MetricIcons` so the ride screen and the
+      overlay cannot drift apart: revolutions for cadence, the knob for
+      resistance, a bolt for power, a heart for bpm, a flame for output and a
+      rule for distance. `contentDescription = null` on every one, as the item
+      asks. **Observed on the tablet AVD** on all four tiles and all three
+      totals*
+- [x] **11.6.4** **The target gauge does not say what the target is.** This is
+      the biggest of these. `TargetGauge` draws a track, a highlighted band and
+      the rider's position on it, with **no numbers anywhere** — a rider can see
+      they are below the band without ever learning that the interval asks for
+      85–95 rpm. `TargetBand` already carries `min` and `max`; show them.
+      Prominently on the ride screen, where there is room for "85–95" set large
+      next to or under the live value. The HUD strip is a different problem with
+      a different amount of space and should be decided separately rather than
+      by shrinking one design until it fits both. Two details that will bite:
+      the band needs its unit stated once or "85–95" beside a resistance tile is
+      ambiguous, and a *missing* band (11.2.1 deliberately reports none when the
+      target is out of the knob's reach) must not render as "0–0".
+      *`TargetBand.label` rounds to whole units and returns **null**, never
+      "0–0", when nothing is prescribed — and null is also what an unreachable
+      resistance target gives, so the app never invents an instruction it has
+      just decided it cannot give. The ride screen prints "TARGET 80–90 rpm"
+      under the gauge with the unit repeated; the overlay does not, and that is
+      the item's own instruction not to shrink one design until it fits both.
+      The screen reader gets the band on **both**, since the reason for hiding
+      it is width and a reader has none. **Observed on the tablet AVD**:
+      "TARGET 80–90 rpm" under cadence, "TARGET 0–80 watts" under power, and
+      the resistance tile correctly showing no target line at all*
+- [x] **11.6.5** **"Back to the HUD" is the wrong label, twice over.** It is
+      jargon — "HUD" is a word this project's authors use and a rider does not
+      — and it is factually wrong: "back" implies the rider has been there, and
+      most of the time they have not been anywhere yet. What the button actually
+      does is `moveTaskToBack`: it puts the app away and leaves the strip on top
+      of whatever they were watching. Candidates, best first: **"Minimise to the
+      strip"**, "Hide the app, keep riding", "Back to my film". The string is
+      `R.string.ride_back_to_hud`. Note the same jargon is in the ride screen's
+      HUD prompt ("Don't use the HUD") and in Settings, so pick the rider-facing
+      word for this thing **once** and change it everywhere, or the app will
+      have two names for one feature. This revises copy that 11.1a.2 ticked; the
+      behaviour it describes is right and only the label is wrong.
+      *Done, and the name is the owner's: **"overlay"**, not "strip", which was
+      this session's first answer and was rejected. The button reads **"View in
+      Overlay Mode"**. The word was in six rider-facing places and all six
+      moved together — the button, the permission prompt's "Don't use the
+      overlay", the Settings section, the opacity slider's spoken label, the
+      drag handle's, and the Silent coach style's description. **"Overlay" is
+      now the rider-facing name for this thing and nothing user-visible may say
+      "HUD" or "strip".** The code, this plan and `ARCHITECTURE.md` still say
+      HUD internally, which is fine — it is one name in the source and one name
+      on screen. **Observed on the tablet AVD***
+- [x] **11.6.6** **Ending a ride takes one tap and cannot be undone.** The end
+      button is a 72 dp pill at the bottom of the right-hand column, directly
+      under pause, pressed with sweaty hands while moving; the HUD's stop is the
+      same. There is no resume — `stopWorkout` finalises the row, tears down the
+      overlay and stops the service — so a mis-tap at minute 20 of a 45-minute
+      class ends the class. The ride itself survives, which is why this is not
+      a data-loss item; what it destroys is the remaining twenty-five minutes.
+      Confirm it, in the same weight as 12.3.2 and 11.1a.4. Two things to get
+      right: the confirmation must be **dismissible by a tap anywhere**, because
+      it is raised mid-effort and the common case is "I did not mean that", and
+      it must not appear when the class timer ends the ride by itself.
+      *Both surfaces, and they had to be answered differently. The ride screen
+      gets a dialog naming the elapsed time and what is left of the class —
+      that second number is the one the rider does not have in their head
+      mid-effort — dismissible by tapping anywhere. **The strip cannot raise a
+      dialog at all**: it is `FLAG_NOT_FOCUSABLE` by design, which is the whole
+      reason the film keeps focus, so the button asks for itself — first tap
+      turns it into "END?", second answers it, four seconds of silence is also
+      an answer. Asked in the UI and not the service, so a class that runs out
+      of intervals still ends by itself with nobody there to answer. One thing
+      found only by looking: an `IconButton` sizes to a 52 dp circle whatever
+      is inside it, so the word wrapped to "EN / D?" — it swaps to a pill
+      button rather than restyling the icon one. **Observed on the tablet AVD**:
+      Keep riding returns to a still-running ride; on the strip, one tap leaves
+      the service up, the button reverts on its own, and two taps end it*

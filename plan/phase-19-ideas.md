@@ -1,0 +1,138 @@
+> Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
+
+## Phase 19: Ideas worth having, ranked
+
+Sorted by value per unit of work. The first group is arguably fundamental and
+has simply never been written down.
+
+### 19.1 High value, small
+- [x] **19.1.1** **Screen-on lock during a ride** (also 11.3.5) — the tablet sleeping mid-class is a bug the rider experiences as the app being broken.
+      *Nothing held the screen awake: no window flag, no wake lock, not even the
+      permission. Invisible on the bike because Netflix holds its own, so it
+      only bites a rider on Pelonot's own ride screen — or on a podcast, or on
+      anything else that does not. Asserted in the two places that are up for
+      exactly as long as a ride is: the ride screen's window and the strip's
+      overlay window, of which exactly one exists at a time, because the overlay
+      stands down while the ride screen is on top. Held through a pause too — a
+      rider refilling a bottle has not left. **Observed on the tablet AVD**:
+      `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager'` with
+      `ws=WorkSource{com.pelonot}` on the ride screen, and still held after
+      minimising to the strip with another app in the foreground*
+- [x] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
+      *Done. `AutoPausePolicy` (`domain/model/`, pure, 9 tests) decides; the
+      service's ticker asks it every second — while paused as well as while
+      riding, because the tick that lifts an auto-pause is a tick the clock is
+      not moving on. Pausing stops the clock, the class and the recording,
+      which are the three things that were wrong about standing still.*
+      *Two rules the policy holds, both of them the same trap in different
+      costumes. **A stalled board is not a stopped rider**: with telemetry not
+      live there is no reading to call zero, so the stillness clock is held —
+      and a frozen 90 rpm from a dead board does not lift an auto-pause either
+      (2.4.4, read in the other direction). **Only a pause the policy caused is
+      resumed automatically**: a rider who pressed pause and then turned the
+      pedals reaching for a towel has not asked to be racing again.*
+      *Both surfaces say why they stopped — "PAUSED — START PEDALLING TO
+      RESUME" on the ride screen, "PAUSED · PEDAL" on the overlay. A ride that
+      pauses itself silently is indistinguishable from one that has frozen.*
+      *The find, and it is 19.1.2a below: **the simulated rider never stops**,
+      so none of this could be seen without a bike. **Observed on the tablet
+      AVD** once it could be: paused at 20 s of stillness, resumed the second
+      the coast ended, held through a manual pause while the simulated rider
+      pedalled, and the ride recorded 86 rows over an 85 s ride containing a
+      45 s stop — no clock, no class and no rows through the pause*
+- [x] **19.1.2a** **The simulated rider never stops pedalling**, so nothing
+      about a rider standing still could be exercised without someone on the
+      bike — auto-pause, the gap a stop leaves in `workout_metrics`, what the
+      averages do across one. `CLAUDE.md` calls a pedalling rider a perishable
+      resource, and this was a whole family of behaviour that could only be
+      spent on. *Fixed with the smallest lever that stays out of a release
+      build: `SimulatedSensorSource.coastFor(seconds)` — cadence and power to
+      zero, resistance left where the knob is — driven by a receiver in the
+      **debug source set**, so a release build has no way to reach it:*
+      ```bash
+      adb shell am broadcast -a com.pelonot.debug.COAST \
+        -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
+      ```
+- [ ] **19.1.2b** **The twenty seconds before an auto-pause are still averaged
+      in.** They are recorded honestly — the rider really was at zero — but
+      `avg_power` and `avg_cadence` are computed live over every row, so a stop
+      still costs 20 s of zeros. On a 30-minute ride that is 1%; on the 85 s
+      test ride above it was 20 of 86 rows and pulled `avg_cadence` to 61. The
+      fix is *not* to delete the rows: they are true, the charts should draw
+      them, and deriving a summary by throwing away samples is the shape of
+      trouble this plan keeps cataloguing. It is to decide whether the `avg_*`
+      columns mean "over the whole recording" or "over the pedalling", say
+      which in one place, and apply it in `WorkoutMetricsCalculator`. Worth
+      settling alongside 7.8, which is the same question about a different
+      column
+- [x] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
+      *Done, and 12.4.4 with it — they were always one piece of work. Settings
+      → **Backup** writes the database through the system's own file picker as
+      `pelonot-backup-YYYY-MM-DD.db`, and restores it back through the same
+      picker.*
+      *Three things worth carrying forward. **The checkpoint is the whole
+      trick**: Room runs in WAL mode, so the ride just finished lives in
+      `pelonot_database-wal` and *not* in the file being copied —
+      `PRAGMA wal_checkpoint(TRUNCATE)` first, or the backup is silently
+      missing the newest rides and only says so on the day it is restored.
+      **The file is the database itself**, not a format of our own: it restores
+      by being copied back, anything that reads SQLite can open it, and there
+      is no serialiser to fall behind the schema — the `intervals_json` failure
+      in another costume. **A restore is refused rather than attempted** when
+      the file is not ours, when it comes from a newer schema (Room's answer to
+      a database from the future is to empty it, 12.5.1) or when a ride is in
+      progress (8.3b's family), and everything is judged against a staged copy
+      in the cache, because the moment the live file is touched there is no way
+      back. Afterwards the app restarts itself: every DAO and `StateFlow` in
+      the process is holding a database that has been swapped underneath it.*
+      *The bug found while verifying, and it is a good one: the SQLite magic
+      is `SQLite format 3` followed by a **NUL**, and it had been written with
+      a trailing space — so every genuine backup was refused with "that file is
+      not a Pelonot backup". **No test built out of that same constant could
+      have caught it**; there is now one written from the spec instead.*
+      ***Observed on the tablet AVD**: 241 kB written to Downloads containing
+      the ride recorded two minutes earlier; a `.tcx` offered to the restore
+      and refused by name; the real backup restored — process 20063 → 20270,
+      the profile created after the backup was taken gone, and 5 workouts /
+      491 samples back exactly as the file had them*
+- [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
+- [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped
+      straight onto the profile picker; profile creation asks for an FTP with
+      **200 prefilled** and no way to find a real one (19.2.3 is the guided test
+      and is unbuilt); the overlay permission — the thing the entire product is
+      built on — is first mentioned at ride start; and a heart-rate strap is
+      discoverable only by opening Settings. None of it is broken, and all of it
+      assumes the rider already knows what this app is. The smallest honest
+      version: say what FTP is and that a guess is fine and the app will correct
+      it (7.1 already does), offer the overlay permission before the first ride
+      rather than during it, and mention the strap once
+- [x] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot.
+      *Written. Note the item's own premise was wrong: there was no README at
+      all to correct — the root prerequisite was being advertised by
+      **`ARCHITECTURE.md`**, which opened "bytes arrive from the bike's sensor
+      board over a serial character device" and drew `/dev/ttyS2` in its first
+      diagram. The correction had been added in §6, 380 lines below the claim,
+      where nobody reading top-down would reach it first — and `CLAUDE.md` sends
+      every newcomer and every new session to that file before any other. §1a
+      now leads with the `SensorService` bind and the serial path is demoted to
+      §1a-bis, for a rooted tablet, which is what it is*
+
+### 19.2 High value, medium
+- [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
+- [ ] **19.2.2** **Community class library** — share and import classes. `class_templates` is already a cloud table and already world-readable
+- [ ] **19.2.3** **Guided FTP test** — a proper 20-minute protocol with pacing cues, rather than inferring FTP from whatever the rider happened to ride. `PostWorkoutAnalyzer` already does the maths
+- [ ] **19.2.4** **Strava upload**, following the `.tcx` export in 12.4.3
+- [ ] **19.2.5** **Training load and freshness** over weeks. Flag it hard: built on estimated watts, this is a *relative* trend for one rider and nothing more
+
+### 19.3 Worth doing eventually
+- [ ] **19.3.1** Multi-week training programmes
+- [ ] **19.3.2** Achievements and streaks (pairs with 16.3.5)
+- [ ] **19.3.3** ~~Heart-rate zones and HR-based targets~~ — **moved to Phase 21**, which is what this one line actually is: a profile schema change, a zone model, live display, per-ride tracking and HR-targeted classes
+- [ ] **19.3.4** Localisation, once the string catalogue is stable
+- [ ] **19.3.5** Wear OS or a phone companion as a second HR source
+- [ ] **19.3.6** Opt-in, off-by-default crash reporting. For this audience the default matters more than the feature
+
+### 19.4 Explicitly not doing
+- Calorie estimates (13.6) — a nutrition claim the power model cannot support
+- Anything that requires a network to start a ride
+- Anything on the HUD that is not about the next sixty seconds of pedalling

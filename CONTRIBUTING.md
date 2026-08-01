@@ -8,6 +8,10 @@ advice would not help.
 
 - **`PLAN.md`** is the backlog *and* the history. Its *Where the work stands*
   section names the current priority; read that before picking something up.
+  It is an **index**: the phases themselves are one file each under `plan/`,
+  and PLAN.md's *Where the rest of this plan lives* table says which. Item
+  numbers (2.7c, 11.6.5, 24.3.1) are unchanged and work as references
+  throughout the repo.
 - **`ARCHITECTURE.md`** is how data moves through the app.
 - **`HARDWARE.md`** is the bike's tablet as measured — read it before any UI
   work, so a layout is checked at the size it will really run at.
@@ -28,7 +32,7 @@ a recipe.
 ### 1. A box is only ticked when the behaviour has been observed working
 
 Not when the code was written, not when it compiled, not when a unit test
-passed. `PLAN.md` has a *Corrections* table listing features that were marked
+passed. `plan/corrections.md` lists features that were marked
 complete while entirely non-functional — cloud sync that had never written a
 row, a heart-rate stack behind a permission the manifest did not declare, an
 energy calculation off by a factor of a thousand. Every one of them looked fine
