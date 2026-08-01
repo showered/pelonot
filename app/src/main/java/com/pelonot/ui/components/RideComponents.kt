@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -471,25 +472,31 @@ fun PowerZoneScale(
     ) {
         // The zone number set large, the way it is on the bike's own console:
         // the one thing a rider reads from a metre away without focusing.
+        //
+        // 11.6.8: both of these reserve the width of the widest thing they
+        // could ever say, so crossing a boundary changes the colours and not
+        // the geometry. "TEMPO" and "NEUROMUSCULAR POWER" are the same element
+        // one zone apart, and letting the column size itself to the text meant
+        // the whole ladder slid sideways at the exact moment the rider was
+        // looking at it to see that something had changed.
         Column(horizontalAlignment = Alignment.Start) {
-            Text(
+            StableWidthText(
                 text = zone?.let { "Z${it.number}" } ?: "--",
+                widest = "Z0",
                 style = if (compact) {
                     MaterialTheme.typography.labelLarge
                 } else {
                     MaterialTheme.typography.headlineSmall
                 },
                 color = zoneColor,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
+                fontWeight = FontWeight.Black
             )
             if (!compact) {
-                Text(
+                StableWidthText(
                     text = zone?.displayName?.uppercase() ?: "NO POWER",
+                    widest = WIDEST_ZONE_NAME,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -514,12 +521,15 @@ fun PowerZoneScale(
         if (!compact) {
             Spacer(Modifier.width(MaterialTheme.spacing.medium))
             Column(horizontalAlignment = Alignment.End) {
-                Text(
+                StableWidthText(
+                    // Three digits: a rider at 99% and a rider at 100% must not
+                    // move the ladder between them, and a sprint reaches 150%.
                     text = scale.ftpPercent?.let { "$it%" } ?: "--",
+                    widest = "000%",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    alignment = Alignment.CenterEnd
                 )
                 Text(
                     text = "OF FTP",
@@ -529,6 +539,55 @@ fun PowerZoneScale(
                 )
             }
         }
+    }
+}
+
+/**
+ * The longest thing the zone name can ever say, including the no-power case.
+ *
+ * Derived from the enum rather than written out, so a renamed zone cannot
+ * quietly reintroduce the shift.
+ */
+private val WIDEST_ZONE_NAME: String =
+    (PowerZone.entries.map { it.displayName.uppercase() } + "NO POWER")
+        .maxByOrNull { it.length }!!
+
+/**
+ * A line of text that always occupies the width of [widest] (11.6.8).
+ *
+ * The reserving copy is laid out and drawn transparent rather than measured,
+ * because the width that matters is the one this font at this scale actually
+ * produces — a dp constant guessed from a screenshot is wrong the moment a
+ * rider turns the system font size up. Semantics are cleared by the caller, so
+ * the invisible copy is never spoken.
+ */
+@Composable
+private fun StableWidthText(
+    text: String,
+    widest: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    fontWeight: FontWeight? = null,
+    alignment: Alignment = Alignment.CenterStart
+) {
+    Box {
+        Text(
+            text = widest,
+            style = style,
+            fontWeight = fontWeight,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.alpha(0f)
+        )
+        Text(
+            text = text,
+            style = style,
+            color = color,
+            fontWeight = fontWeight,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(alignment)
+        )
     }
 }
 

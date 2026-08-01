@@ -201,7 +201,7 @@ class HudOverlayManager(private val context: Context) {
 
                 // Telemetry is collected separately from the ride snapshot: it
                 // changes several times a second and the snapshot does not.
-                val reading by ServiceLocator.sensorRepository.sensorReading
+                val reading by ServiceLocator.sensorRepository.displayReading
                     .collectAsStateWithLifecycle()
 
                 // 13.5: the strip shows distance, so it reads the same

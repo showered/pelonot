@@ -150,7 +150,9 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            sensorRepository.sensorReading.collect { reading ->
+            // 11.6.7: the paced flow, not the raw one. What the recorder
+            // writes is unaffected — `WorkoutService` reads `sensorReading`.
+            sensorRepository.displayReading.collect { reading ->
                 _uiState.update { it.copy(reading = reading) }
             }
         }

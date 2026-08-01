@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -49,7 +51,25 @@ class SensorRepository(
 ) {
 
     private val _sensorReading = MutableStateFlow(SensorReading.EMPTY)
+
+    /**
+     * Every reading, at whatever rate the board produces them.
+     *
+     * What the **recorder** reads. Anything writing a number into a rider's
+     * record wants this one and reads `.value` at its own tick.
+     */
     val sensorReading: StateFlow<SensorReading> = _sensorReading.asStateFlow()
+
+    /**
+     * The same readings, paced to something a rider can read (11.6.7).
+     *
+     * What every **screen** reads — the ride screen and the overlay both, from
+     * here, so the two surfaces cannot drift into different answers or solve
+     * this twice. Nothing recorded goes through it.
+     */
+    val displayReading: StateFlow<SensorReading> = _sensorReading
+        .atDisplayRate()
+        .stateIn(scope, SharingStarted.Eagerly, SensorReading.EMPTY)
 
     private val _status = MutableStateFlow<SensorStatus>(SensorStatus.Stopped)
     val status: StateFlow<SensorStatus> = _status.asStateFlow()
