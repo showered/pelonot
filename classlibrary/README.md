@@ -192,6 +192,41 @@ Name the shape and the demand — "Threshold 3×8", "Descending Climbs", "Sweet
 Spot Over/Under". Not the category and the length, which the rider can already
 see. *Not tested.*
 
+### R11 — A position is an instruction, so it has to be a possible one
+
+PLAN.md **25.1**. A block may name `STANDING`, `SEATED` or nothing, and
+**nothing is the default and means the rider chooses**. Three bounds, all
+checked by `build.py` and by `ClassLibraryAssetsTest`:
+
+| | |
+|---|---|
+| Standing block length | at most **3 minutes** |
+| Standing cadence | top of the band at most **110 rpm** |
+| Positioned share of a class | **less than half** of its running time |
+
+The first two are about whether the instruction can be followed at all: nobody
+rides out of the saddle for five minutes, and "stand up" at 120 rpm is a
+sentence with no action behind it.
+
+The third is the one worth arguing about, and it is the same argument as the
+default. **A class that prescribes a position for every block is nagging, not
+coaching** — the point of the field is that a handful of moments in a session
+are genuinely standing moments and the rest are the rider's own business. Ten
+of the 72 classes name a position at all, and that is the intended proportion
+rather than a stage on the way to all of them.
+
+**A fourth bound is not arithmetic and cannot be tested, so it lives here: do
+not put a position on a tight repeat.** A positioned effort with an
+*unpositioned* recovery after it is a fresh instruction next time round — that
+is deliberate, and it is right for `CLB-02`, where the rider sits down for 45
+seconds between standing attacks and has to be told to get up again. It is
+wrong at Tabata spacing: `sets(8, on=20, off=10, position=…)` calls the same
+instruction eight times in four minutes, out loud and on the overlay, which is
+precisely the nagging the half-a-class cap exists to prevent and which no
+percentage would catch. **Rough guide: 30 seconds of recovery between
+positioned reps.** Below that, position the block or the set, not every rep of
+it.
+
 ---
 
 ## The seven categories

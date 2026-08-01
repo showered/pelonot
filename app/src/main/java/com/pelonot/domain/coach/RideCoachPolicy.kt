@@ -109,7 +109,12 @@ class RideCoachPolicy(
 ) {
 
     private var announcedIndex = UNSET
-    private var announcedPosition: RidePosition? = null
+
+    /**
+     * Shared with the overlay's cue (25.3.2), so the voice and the arrow can
+     * never disagree about what counts as a change of position.
+     */
+    private val positions = PositionCallTracker()
     private var cuedIndex = UNSET
     private var warnedAtSecond = UNSET
     private var offTargetSince = UNSET
@@ -118,7 +123,7 @@ class RideCoachPolicy(
 
     fun reset() {
         announcedIndex = UNSET
-        announcedPosition = null
+        positions.reset()
         cuedIndex = UNSET
         warnedAtSecond = UNSET
         offTargetSince = UNSET
@@ -150,11 +155,7 @@ class RideCoachPolicy(
             announcedIndex = interval.index
             warnedAtSecond = UNSET
             offTargetSince = UNSET
-            // Compared against the interval just left, not against the last
-            // position announced: a rider sits down during the recovery between
-            // two standing efforts, so the second one has to be called again.
-            val positionChange = current.position?.takeIf { it != announcedPosition }
-            announcedPosition = current.position
+            val positionChange = positions.onInterval(interval.index, current.position)
             alerts += RideAlert.IntervalChange(
                 zone = current.powerZone,
                 cadenceMin = current.cadenceMin,

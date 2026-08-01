@@ -72,13 +72,16 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.coach.PositionCallTracker
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
+import com.pelonot.domain.model.RidePosition
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.components.CountdownBanner
+import com.pelonot.ui.components.HudPositionCall
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
@@ -147,6 +150,23 @@ fun HudOverlayMain(
 ) {
     val interval = snapshot.interval
     val zone = interval.targetZone
+
+    // 25.3.2. Stand or sit is the only instruction on this surface that has to
+    // be acted on the instant it arrives, and it is therefore the only thing
+    // allowed to move for its own sake — so it is driven by the **edge** and
+    // never by the state. The tracker (the same one the spoken coach asks)
+    // answers "is this boundary a call?"; the answer is held for a few seconds
+    // and then dropped, and while it is null nothing on the strip moves.
+    val positions = remember { PositionCallTracker() }
+    var positionCall by remember { mutableStateOf<RidePosition?>(null) }
+    LaunchedEffect(interval.index) {
+        positionCall = positions.onInterval(interval.index, interval.current?.position)
+        if (positionCall != null) {
+            delay(POSITION_CALL_MS)
+            positionCall = null
+        }
+    }
+
     val accent by animateColorAsState(
         targetValue = if (interval.hasClass) zone.color else MaterialTheme.colorScheme.primary,
         animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
@@ -264,8 +284,19 @@ fun HudOverlayMain(
                 )
             }
 
+            // Always on the *inner* side of the numbers, whichever edge the
+            // strip is docked against, so the window grows into the screen and
+            // the figures the rider is reading do not move underneath them.
+            // It survives collapsing for the same reason the countdown does: a
+            // rider who has given the film back the rest of the band still has
+            // to be told to stand up.
+            val positionCue: @Composable () -> Unit = {
+                HudPositionCall(call = positionCall, animate = coachStyle.animates)
+            }
+
             if (dock == HudDock.Top) {
                 body()
+                positionCue()
                 volumePanel()
                 HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
                 edge()
@@ -273,6 +304,7 @@ fun HudOverlayMain(
                 edge()
                 HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
                 volumePanel()
+                positionCue()
                 body()
             }
         }
@@ -1283,6 +1315,18 @@ private const val STOP_CONFIRM_TIMEOUT_MS = 4_000L
  */
 private const val VOLUME_DISMISS_DP = 40
 private const val VOLUME_IDLE_MS = 8_000L
+
+/**
+ * How long the stand/sit cue stays up before the strip goes quiet again
+ * (25.3.1).
+ *
+ * The whole design of this overlay is about not competing with the film, and
+ * this is the one thing on it that deliberately does — so the interesting
+ * number is not how long it takes to notice but how soon it stops. Six seconds
+ * covers the spoken announcement plus the second or two it takes to get out of
+ * the saddle, and is well short of the shortest block in the library.
+ */
+private const val POSITION_CALL_MS = 6_000L
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp

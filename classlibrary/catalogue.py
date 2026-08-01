@@ -407,7 +407,13 @@ klass("CLB-04", "Rolling Climbs 30", CLIMBS,
 
 klass("CLB-05", "Torque Ladder 30", CLIMBS,
       WU8,
-      ladder([120, 180, 240, 120], zone=4, cadence=GRIND, rests=[120, 180, 120]),
+      # Seated, like every other GRIND block in the library (25.4.1). At 50-60
+      # rpm the position is not a flourish: standing at that cadence is a
+      # different exercise, and torque work done out of the saddle is not
+      # torque work. The rests are two and three minutes, so the call at the
+      # top of each rung is an instruction rather than a nag.
+      ladder([120, 180, 240, 120], zone=4, cadence=GRIND, rests=[120, 180, 120],
+             position=SEATED),
       CD4)
 
 klass("CLB-06", "Climb and Attack 30", CLIMBS,
