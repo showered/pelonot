@@ -404,10 +404,22 @@ does not merely lose its title: it turns their ride into a ride of nothing.
 `getAllTemplates` filters retired classes out of the library browser;
 `getTemplateById` still resolves them, which is the lookup history uses.
 
-The same foreign key is why the DAO uses `@Upsert` and not
-`OnConflictStrategy.REPLACE`. SQLite implements REPLACE as a delete followed by
-an insert, and the delete fires foreign-key actions — so re-inserting a ridden
-class under REPLACE detaches every ride of it.
+### One rule about writing to a parent table
+
+`class_templates`, `profiles` and `workouts` are all pointed at by something
+else, and **none of them may be written with `OnConflictStrategy.REPLACE`**.
+SQLite implements REPLACE as a delete followed by an insert, and the delete
+fires foreign-key actions:
+
+| Re-inserting a row of | Would fire | Costing |
+|---|---|---|
+| `class_templates` | `workouts.class_id` → SET NULL | every ride of that class its link |
+| `profiles` | `workouts.user_id` → SET NULL | that rider their entire history |
+| `workouts` | `workout_metrics.workout_id` → CASCADE | the whole time series |
+
+The middle one was live: `UserRepository.save` is what every FTP change, weight
+change and rename goes through, so editing an FTP quietly unattributed that
+rider's rides. All three DAOs use `@Upsert` now, and `UserDaoTest` holds it.
 
 ---
 

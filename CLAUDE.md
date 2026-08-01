@@ -155,13 +155,19 @@ Two consequences to know before you are surprised by them:
 - **`intervals_json` is snake_case with start/end timestamps**, not camelCase
   durations. `Interval` uses `@SerialName` to match the assets exactly. A
   mismatch throws and is easy to swallow into an empty list.
-- **`OnConflictStrategy.REPLACE` on `class_templates` detaches rides from their
-  class.** SQLite implements `REPLACE` as a delete plus an insert, and the
-  delete fires foreign-key actions — so re-inserting a class somebody has
-  ridden runs `workouts.class_id`'s `ON DELETE SET NULL` and turns their ride
-  into a ride of nothing. Measured against `sqlite3`, not reasoned about. The
-  DAO uses `@Upsert`; keep it that way, and check the same thing before adding
-  REPLACE to any table another table points at.
+- **NEVER `OnConflictStrategy.REPLACE` on a table something else points at.**
+  SQLite implements REPLACE as a delete plus an insert, **and the delete fires
+  foreign-key actions**. This project had it three times and one of them was
+  live: `UserDao.insertUser` was REPLACE, `UserRepository.save` is what every
+  FTP change, weight change and rename goes through, and `workouts.user_id` is
+  `ON DELETE SET NULL` — so **editing your FTP silently unattributed your whole
+  ride history**, for the life of the project, with nothing looking broken
+  because the rides were still there. `class_templates` had the same shape
+  (23.2.6c) and `workouts` still does not, only because a ride is inserted once
+  and finalised through `@Update` — `workout_metrics` is `ON DELETE CASCADE`.
+  All three are `@Upsert` now. `UserDaoTest` holds the line and was checked
+  against the bug as well as against the fix. Measured with `sqlite3`, not
+  reasoned about — it is four lines to check and expensive to be wrong about.
 - **Do not hand-edit `assets/classes/`.** The 72 classes are generated from
   `classlibrary/catalogue.py` by `classlibrary/build.py`, which refuses to
   write if a session breaks a design rule. Edit the catalogue, run the build,
@@ -174,6 +180,10 @@ Two consequences to know before you are surprised by them:
   the bundle on every launch, gated on the fingerprint in
   `assets/class_library.json` — which `build.py` writes, so **a catalogue change
   that is not rebuilt will not reach a tablet that already seeded**.
+- **A Room `Flow` only re-emits when a table its query *mentions* is written.**
+  The dashboard's household panel is driven off a count over `workouts` joined
+  to `profiles` for exactly this reason: without the join, turning
+  `household_visible` off left the rider on the panel until somebody rode.
 - **An interval's `target_position` is optional and absent means the rider
   chooses.** Never default it. Same family as `heartRateBpm` and
   `power_is_measured`: absent is a claim, and it is a different claim from
