@@ -465,6 +465,114 @@ class WorkoutDaoTest {
         )
     }
 
+    // ── Riding against a housemate (24.3.1) ─────────────────────────
+
+    @Test
+    fun theRivalQueryReturnsEachHousematesBestRideOfTheClass() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(
+            workout("theirs-worse", userId = OTHER_USER_ID, outputKj = 120.0, classId = CLASS_ID)
+        )
+        samplesFor("theirs-worse", measured = true)
+        workoutDao.insertWorkout(
+            workout("theirs-best", userId = OTHER_USER_ID, outputKj = 240.0, classId = CLASS_ID)
+        )
+        samplesFor("theirs-best", measured = true)
+
+        val rivals = workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+
+        // One row per rider, and it carries the *ride* — a trace needs a
+        // workout id, which is the whole reason this is not the board query.
+        assertEquals(1, rivals.size)
+        assertEquals("theirs-best", rivals.first().workoutId)
+        assertEquals(240.0, rivals.first().outputKj, 0.001)
+    }
+
+    /**
+     * The bare-column form this query relies on: with `MAX()` over a
+     * `GROUP BY`, SQLite takes the other columns from the row the maximum came
+     * from. Worth a test of its own — it is a documented SQLite guarantee
+     * rather than standard SQL, and if it ever stopped holding the screen would
+     * draw the *wrong ride* with the right number beside it, which is the kind
+     * of defect nobody would spot.
+     */
+    @Test
+    fun theRivalRowsWorkoutIdBelongsToTheRideItsOutputCameFrom() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        // Inserted worst-last, so a query taking "any row of the group" would
+        // pick this one and be caught.
+        workoutDao.insertWorkout(
+            workout("their-big", userId = OTHER_USER_ID, outputKj = 300.0,
+                durationSec = 1800, classId = CLASS_ID)
+        )
+        samplesFor("their-big", measured = true)
+        workoutDao.insertWorkout(
+            workout("their-small", userId = OTHER_USER_ID, outputKj = 90.0,
+                durationSec = 900, classId = CLASS_ID)
+        )
+        samplesFor("their-small", measured = true)
+
+        val rival = workoutDao.householdRivals(CLASS_ID, "mine", USER_ID).single()
+
+        assertEquals("their-big", rival.workoutId)
+        assertEquals(1800, rival.durationSec)
+    }
+
+    @Test
+    fun theRivalQueryExcludesYourOwnOtherRidesOfTheSameClass() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(workout("mine-earlier", outputKj = 999.0, classId = CLASS_ID))
+        samplesFor("mine-earlier", measured = true)
+
+        // Beating yourself is a personal history, not a household comparison —
+        // and it is 12.2's screen, not this one.
+        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+            .map { it.workoutId })
+    }
+
+    @Test
+    fun theRivalQueryExcludesGuestsAndUnmeasuredRides() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(
+            workout("guest", userId = null, outputKj = 999.0, classId = CLASS_ID)
+        )
+        samplesFor("guest", measured = true)
+        workoutDao.insertWorkout(
+            workout("simulated", userId = OTHER_USER_ID, outputKj = 999.0, classId = CLASS_ID)
+        )
+        samplesFor("simulated", measured = false)
+
+        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+            .map { it.workoutId })
+    }
+
+    /** 24.2.3's opt-out gates this too, through the same column. */
+    @Test
+    fun theRivalQueryRespectsTheHouseholdOptOut() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(
+            workout("theirs", userId = OTHER_USER_ID, outputKj = 240.0, classId = CLASS_ID)
+        )
+        samplesFor("theirs", measured = true)
+        assertEquals(1, workoutDao.householdRivals(CLASS_ID, "mine", USER_ID).size)
+
+        userDao.insertUser(
+            UserEntity(
+                localUserId = OTHER_USER_ID,
+                name = "Housemate",
+                householdVisible = false
+            )
+        )
+
+        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+            .map { it.workoutId })
+    }
+
     private companion object {
         const val USER_ID = 1
         const val OTHER_USER_ID = 2

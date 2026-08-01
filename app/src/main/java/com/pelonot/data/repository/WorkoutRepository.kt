@@ -1,5 +1,6 @@
 package com.pelonot.data.repository
 
+import com.pelonot.data.local.dao.HouseholdRivalRow
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
@@ -212,6 +213,22 @@ class WorkoutRepository(
             },
             youId = youId
         )
+
+    /**
+     * The housemates whose ride of this class can be drawn behind yours
+     * (24.3.1).
+     *
+     * Best ride per rider, best first, and **empty is the common answer** — a
+     * household of one, a class nobody else has ridden, or a household where
+     * the other rides were simulated. Nothing on the screen may imply otherwise
+     * (24.1.6's rule: a household of one draws no card at all).
+     */
+    suspend fun householdRivals(
+        classId: String,
+        excludingWorkoutId: String,
+        excludingUserId: Int
+    ): List<HouseholdRivalRow> =
+        workoutDao.householdRivals(classId, excludingWorkoutId, excludingUserId)
 
     /**
      * Who on this bike has ridden in the last week, with their streaks

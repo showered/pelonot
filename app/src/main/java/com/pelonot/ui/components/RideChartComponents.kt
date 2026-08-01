@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -216,6 +217,15 @@ private val LABEL_LIFT = 7.dp
  * Drawn as a **min/max envelope with the mean through it**, not a single line:
  * each bucket is several seconds, and the envelope is what keeps a one-second
  * sprint visible after downsampling.
+ *
+ * [ghost] is a housemate's ride of the same class, drawn behind (24.3.1). It is
+ * a bare mean line and nothing else — no envelope, no bands, no prescription —
+ * because the chart already carries one rider's zones and a second full record
+ * on the same axes is a graph rather than a comparison. **It is aligned by
+ * absolute elapsed seconds against [trace]'s duration**, not stretched to fit:
+ * the comparison a rider wants is "at twelve minutes they were at 250 W and I
+ * was at 210", and rescaling a ride that ran forty seconds longer would move
+ * every one of their efforts off the block it was ridden in.
  */
 @Composable
 fun PowerTraceChart(
@@ -223,6 +233,8 @@ fun PowerTraceChart(
     ftpWatts: Int,
     modifier: Modifier = Modifier,
     prescribed: PrescribedPlan = PrescribedPlan(),
+    ghost: RideTrace? = null,
+    ghostColor: Color = GhostTraceColor,
     height: androidx.compose.ui.unit.Dp = CHART_HEIGHT
 ) {
     if (trace.isEmpty) {
@@ -234,8 +246,14 @@ fun PowerTraceChart(
     // sprint is prescribed up to twice FTP, and scaling a whole ride to fit the
     // top of that block flattens the trace into a line along the axis. Blocks
     // taller than the chart are clipped instead.
-    val ceiling = maxOf(trace.maxValue, ftpWatts * 1.2, prescribed.highestTargetFloor * 1.15)
-        .coerceAtLeast(1.0)
+    // The ghost is inside the ceiling too, or a stronger housemate's trace is
+    // drawn along the top of the box and the comparison reads as a tie.
+    val ceiling = maxOf(
+        trace.maxValue,
+        ftpWatts * 1.2,
+        prescribed.highestTargetFloor * 1.15,
+        ghost?.maxValue ?: 0.0
+    ).coerceAtLeast(1.0)
     val zoneBands = if (ftpWatts > 0) {
         PowerZone.entries.map { zone ->
             val range = zone.powerRange(ftpWatts.toDouble())
@@ -301,6 +319,41 @@ fun PowerTraceChart(
                     topLeft = Offset(left, top),
                     size = block,
                     style = Stroke(width = 1.dp.toPx())
+                )
+            }
+        }
+
+        // The housemate, under the rider's own trace and over the prescription
+        // (24.3.1). Buckets past the right-hand edge are dropped rather than
+        // squeezed in: their ride ran longer than this one, and the honest
+        // picture is that the chart runs out, not that their last effort
+        // happened earlier than it did.
+        if (ghost != null && !ghost.isEmpty) {
+            val ghostPath = Path()
+            var started = false
+            ghost.buckets.forEach { bucket ->
+                if (bucket.startSec > trace.durationSec) return@forEach
+                val px = x(bucket.startSec)
+                val py = y(bucket.mean)
+                if (!started) {
+                    ghostPath.moveTo(px, py); started = true
+                } else {
+                    ghostPath.lineTo(px, py)
+                }
+            }
+            if (started) {
+                drawPath(
+                    ghostPath,
+                    ghostColor,
+                    style = Stroke(
+                        width = 2.dp.toPx(),
+                        // Dashed, so it is legible as *somebody else's* ride
+                        // even where the two lines run together — which on the
+                        // same class they will, for minutes at a time.
+                        pathEffect = PathEffect.dashPathEffect(
+                            floatArrayOf(8.dp.toPx(), 5.dp.toPx())
+                        )
+                    )
                 )
             }
         }
@@ -559,5 +612,15 @@ private fun EmptyChart(
         )
     }
 }
+
+/**
+ * A housemate's trace (24.3.1).
+ *
+ * Deliberately neither a metric accent nor a zone colour — it is not a
+ * *quantity* on this chart, it is a second rider. A cool grey-blue sits behind
+ * the coral power line at every zone colour without ever being mistaken for
+ * one of them.
+ */
+private val GhostTraceColor = Color(0xFF9FB4C7)
 
 private val CHART_HEIGHT = 140.dp

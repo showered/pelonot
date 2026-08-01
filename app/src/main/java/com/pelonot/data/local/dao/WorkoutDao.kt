@@ -26,6 +26,15 @@ data class HouseholdLeaderboardRow(
     val bestOutputKj: Double
 )
 
+/** A housemate's ride of the same class, ready to draw behind yours (24.3.1). */
+data class HouseholdRivalRow(
+    val localUserId: Int,
+    val name: String,
+    val workoutId: String,
+    val outputKj: Double,
+    val durationSec: Int
+)
+
 @Dao
 interface WorkoutDao {
 
@@ -194,6 +203,52 @@ interface WorkoutDao {
         """
     )
     suspend fun householdLeaderboard(classId: String): List<HouseholdLeaderboardRow>
+
+    /**
+     * The same riders and the same rules, but carrying the **ride** rather than
+     * the number — because 24.3.1 draws their trace, and a trace needs a
+     * workout id to fetch samples for.
+     *
+     * Deliberately the same `WHERE` clause as [householdLeaderboard], down to
+     * the measured-power exclusion. Drawing a modelled trace over a measured
+     * one is the same lie as ranking them against each other, and a worse one
+     * for being drawn to scale: `PowerModel` scores RMSE 137 W against the real
+     * board, which on a chart is most of the height of a zone.
+     *
+     * `MAX(w.total_output_kj)` with the other columns is SQLite's bare-column
+     * form: with an aggregate over a `GROUP BY`, the non-aggregated columns are
+     * taken from **the row the max came from**, which is precisely the ride
+     * wanted. That is a documented SQLite guarantee and not a portable one.
+     */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId,
+               p.name AS name,
+               w.id AS workoutId,
+               MAX(w.total_output_kj) AS outputKj,
+               w.duration_sec AS durationSec
+        FROM workouts w
+        JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.class_id = :classId
+          AND w.id != :excludingWorkoutId
+          AND w.user_id != :excludingUserId
+          AND w.is_complete = 1
+          AND p.household_visible = 1
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        GROUP BY p.local_user_id
+        ORDER BY outputKj DESC
+        """
+    )
+    suspend fun householdRivals(
+        classId: String,
+        excludingWorkoutId: String,
+        excludingUserId: Int
+    ): List<HouseholdRivalRow>
 
     /**
      * Who has ridden since [sinceMs], one row per rider (PLAN 24.2.1).

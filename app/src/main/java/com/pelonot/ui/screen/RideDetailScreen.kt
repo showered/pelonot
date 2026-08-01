@@ -26,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
+import com.pelonot.core.Formatters
 import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideIntegrity
@@ -71,6 +73,7 @@ import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
+import com.pelonot.ui.viewmodel.RideDetailUiState
 import com.pelonot.ui.viewmodel.RideDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -277,7 +280,12 @@ fun RideDetailScreen(
             // 16.1. Every ride since the foreign-key fix has written a full
             // per-second series and no screen had ever drawn one, which is what
             // makes recording it worth doing in the first place.
-            RideChartsSection(state.charts)
+            RideChartsSection(
+                charts = state.charts,
+                rivals = state.rivals,
+                ghost = state.ghost,
+                onPickRival = viewModel::showGhost
+            )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
@@ -378,7 +386,12 @@ private fun correctedAverage(
  * 140 dp chart at a time — and a single column anywhere narrower.
  */
 @Composable
-private fun RideChartsSection(charts: RideCharts?) {
+private fun RideChartsSection(
+    charts: RideCharts?,
+    rivals: List<RideDetailUiState.Rival>,
+    ghost: RideDetailUiState.GhostRide?,
+    onPickRival: (String?) -> Unit
+) {
     if (charts == null) {
         // Distinguished from "this ride recorded nothing", which is a
         // different sentence and a permanent one.
@@ -412,7 +425,7 @@ private fun RideChartsSection(charts: RideCharts?) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
-                    PowerCard(charts, Modifier.weight(1f))
+                    PowerCard(charts, ghost, rivals, onPickRival, Modifier.weight(1f))
                     HeartCard(charts, Modifier.weight(1f))
                 }
                 Row(
@@ -422,7 +435,7 @@ private fun RideChartsSection(charts: RideCharts?) {
                     ZoneCard(charts, Modifier.weight(1f))
                 }
             } else {
-                PowerCard(charts, Modifier.fillMaxWidth())
+                PowerCard(charts, ghost, rivals, onPickRival, Modifier.fillMaxWidth())
                 HeartCard(charts, Modifier.fillMaxWidth())
                 CadenceCard(charts, Modifier.fillMaxWidth())
                 ZoneCard(charts, Modifier.fillMaxWidth())
@@ -432,7 +445,13 @@ private fun RideChartsSection(charts: RideCharts?) {
 }
 
 @Composable
-private fun PowerCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+private fun PowerCard(
+    charts: RideCharts,
+    ghost: RideDetailUiState.GhostRide?,
+    rivals: List<RideDetailUiState.Rival>,
+    onPickRival: (String?) -> Unit,
+    modifier: Modifier
+) = ChartCard(
     title = "Power",
     // 16.1.6, and it now reads from where the watts actually came from:
     // `workout_metrics.power_is_measured` records it per sample. A ride from
@@ -453,15 +472,75 @@ private fun PowerCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     ).joinToString(" · "),
     summary = listOf(
         RideChartSummaries.power(charts.power, charts.powerProvenance),
-        RideChartSummaries.prescribed(charts.prescribed)
+        RideChartSummaries.prescribed(charts.prescribed),
+        // 16.2.4: the canvas is inert to a screen reader, so a second trace
+        // that is not in this sentence does not exist for the rider using one.
+        ghost?.let {
+            "${it.name}'s ride of this class is drawn behind it, dashed, " +
+                "at ${Formatters.kilojoules(it.outputKj)} total."
+        }.orEmpty()
     ).filter { it.isNotEmpty() }.joinToString(" "),
     modifier = modifier
 ) {
-    PowerTraceChart(
-        trace = charts.power,
-        ftpWatts = charts.ftpWatts,
-        prescribed = charts.prescribed
-    )
+    Column {
+        PowerTraceChart(
+            trace = charts.power,
+            ftpWatts = charts.ftpWatts,
+            prescribed = charts.prescribed,
+            ghost = ghost?.trace
+        )
+        RivalPicker(rivals, ghost, onPickRival)
+    }
+}
+
+/**
+ * "Ride against" — the housemates who have ridden this class (24.3.1).
+ *
+ * **Draws nothing at all when there is nobody**, which is the common case and
+ * the same rule 24.1.6 settled for the leaderboard card: a household of one
+ * must never see an empty comparison, because an empty comparison is a message
+ * about the people who are not on it.
+ *
+ * Opt-in per tap rather than drawn by default. The rider opened this screen to
+ * look at their own ride, and a second line arriving unasked over the top of it
+ * is somebody else's ride being made the point of the chart.
+ */
+@Composable
+private fun RivalPicker(
+    rivals: List<RideDetailUiState.Rival>,
+    ghost: RideDetailUiState.GhostRide?,
+    onPick: (String?) -> Unit
+) {
+    if (rivals.isEmpty()) return
+
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        Text(
+            text = "Ride against",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        rivals.forEach { rival ->
+            val on = ghost?.workoutId == rival.workoutId
+            FilterChip(
+                selected = on,
+                onClick = { onPick(rival.workoutId) },
+                label = {
+                    Text("${rival.name} · ${Formatters.kilojoules(rival.outputKj)}")
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = if (on) {
+                        "Hide ${rival.name}'s ride"
+                    } else {
+                        "Draw ${rival.name}'s ride behind yours"
+                    }
+                }
+            )
+        }
+    }
 }
 
 @Composable

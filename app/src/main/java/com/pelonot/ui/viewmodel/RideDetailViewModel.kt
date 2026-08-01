@@ -37,9 +37,27 @@ data class RideDetailUiState(
      * ride with nothing in it — a screen that cannot tell those apart flashes
      * "no data" at every rider on the way in.
      */
-    val charts: RideCharts? = null
+    val charts: RideCharts? = null,
+    /**
+     * Housemates who have ridden this same class and can be drawn behind it
+     * (24.3.1). Empty is the ordinary answer and draws nothing.
+     */
+    val rivals: List<Rival> = emptyList(),
+    /** The one currently drawn, or null. Only ever one: two ghosts is a graph. */
+    val ghost: GhostRide? = null
 ) {
     val displayTitle: String get() = classTitle ?: "Just Ride"
+
+    /** A housemate's ride of this class, offered as a comparison. */
+    data class Rival(val workoutId: String, val name: String, val outputKj: Double)
+
+    /** That ride, fetched and reduced, ready to draw. */
+    data class GhostRide(
+        val workoutId: String,
+        val name: String,
+        val outputKj: Double,
+        val trace: com.pelonot.domain.chart.RideTrace
+    )
 }
 
 /**
@@ -136,6 +154,77 @@ class RideDetailViewModel(
             )
         }
         _uiState.update { it.copy(charts = charts) }
+        loadRivals(workout, charts)
+    }
+
+    /**
+     * Who else on this bike has ridden this class (24.3.1).
+     *
+     * **Gated on *this* ride's provenance as well as theirs.** The query
+     * already refuses a rival whose watts were not measured, for 24.4.2's
+     * reason; the symmetric half has to be checked here, because a modelled
+     * trace of *mine* drawn against a measured one of theirs is the same lie
+     * facing the other way. `PowerModel` is 137 W out at RMSE, which on a
+     * power chart is most of the height of a zone — the comparison would look
+     * exact and be fiction.
+     *
+     * A guest ride has no rider, so it has no housemates and asks nothing.
+     */
+    private suspend fun loadRivals(workout: WorkoutEntity, charts: RideCharts) {
+        val classId = workout.classId ?: return
+        val userId = workout.userId ?: return
+        if (!charts.powerProvenance.isTrustworthyAsMeasured) return
+
+        val rivals = workoutRepository
+            .householdRivals(classId, excludingWorkoutId = workout.id, excludingUserId = userId)
+            .map { RideDetailUiState.Rival(it.workoutId, it.name, it.outputKj) }
+        _uiState.update { it.copy(rivals = rivals) }
+    }
+
+    /**
+     * Draw a housemate's ride behind this one, or clear it.
+     *
+     * Fetched on demand rather than with the screen: most riders never tap it,
+     * and it is a second few-thousand-row series through the same reduction.
+     */
+    fun showGhost(workoutId: String?) {
+        if (workoutId == null || workoutId == _uiState.value.ghost?.workoutId) {
+            _uiState.update { it.copy(ghost = null) }
+            return
+        }
+        val rival = _uiState.value.rivals.firstOrNull { it.workoutId == workoutId } ?: return
+
+        viewModelScope.launch {
+            val trace = withContext(Dispatchers.Default) {
+                RideChartBuilder.build(
+                    samples = workoutRepository.getMetrics(workoutId).map { metric ->
+                        ChartSample(
+                            timestampSec = metric.timestampSec,
+                            powerWatts = metric.power,
+                            cadenceRpm = metric.cadence,
+                            heartRateBpm = metric.heartRate,
+                            resistancePercent = metric.resistance
+                        )
+                    },
+                    // Their zones are not drawn and their plan is not drawn —
+                    // only the line. This chart already carries one rider's FTP
+                    // bands and a second set would make it unreadable, so the
+                    // ghost is deliberately a shape rather than a full record.
+                    ftpWatts = 0
+                ).power
+            }
+            if (trace.isEmpty) return@launch
+            _uiState.update {
+                it.copy(
+                    ghost = RideDetailUiState.GhostRide(
+                        workoutId = rival.workoutId,
+                        name = rival.name,
+                        outputKj = rival.outputKj,
+                        trace = trace
+                    )
+                )
+            }
+        }
     }
 
     /**
