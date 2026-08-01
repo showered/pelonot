@@ -17,7 +17,33 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (sixth sitting): the ride screen, read
+### Latest session — 1 August 2026 (seventh sitting): the ladder, and a permission nobody asked for
+
+Straight down the *What to do next* list, on the tablet AVD, no bike.
+
+Closed: **11.1a.6** (the ride notification that was never posted on Android
+13+) and **11.6.2a** (the zone ladder, which replaces the `CurrentZoneBar` the
+sixth sitting shipped and closes the overlay gap 11.6.2 left behind). 274 JVM
+tests green.
+
+**11.6.2a is the substantial one, and building it answered its own three open
+questions.** A free ride draws the same ladder with nothing outlined; the watt
+labels genuinely do not survive being shrunk to the overlay, so `compact` keeps
+the segments and the digit and drops the rest; and the segments are equal
+widths rather than proportional to watts, because Z7 is unbounded and Z1 spans
+56% of FTP alone — a true scale would draw six zones as slivers beside two
+slabs.
+
+It also took a rule off a screen and put it somewhere both screens read.
+`ZoneScale.currentZone` is now the app's single answer to "is there a zone at
+all" — no FTP, no power, or a stalled board means none. 11.6.2 had left that
+rule on `RideUiState` alone, which is the shape of defect this plan keeps
+finding: one surface with the check and another free to disagree.
+
+**11.1b.10 is still the owner's call** and untouched — it is a design decision
+about an alert, and the item lists the three candidate fixes.
+
+### The session before it — 1 August 2026 (sixth sitting): the ride screen, read
 
 A UI and UX pass, driven end to end on the tablet AVD. **Everything the owner
 raised in the "snags from using the app" table below about the ride screen is
@@ -60,6 +86,7 @@ Two things raised by the owner and **written down rather than actioned**:
   and the prescribed band can be marked on the same scale. It **replaces**
   `CurrentZoneBar`; do not build both. The overlay never got 11.6.2's compact
   form, so that gap and this item are the same piece of work.
+  *Built in the seventh sitting; the bar is gone.*
 
 ### The session before it — 31 July 2026 (fifth sitting): an MVP readiness pass
 
@@ -85,7 +112,7 @@ and every screen goes on looking correct.
 | Crash recovery cannot tell a crashed ride from a live one, and *Discard* deletes the live one | **8.3b** | Data loss, mid-ride, from a dialog the rider did not ask for | ✅ |
 | No route back into a ride already running once the Activity is gone | **11.1a.5** | The ride notification does not open the ride | ✅ |
 | *End ride* is one tap with no confirmation and no resume | **11.6.6** | A mis-tap ends the class | ✅ |
-| The ride notification is never posted on Android 13+ | **11.1a.6** *(found while verifying 11.1a.5)* | `POST_NOTIFICATIONS` is declared and requested by nothing. The bike is Android 11, so it does not bite there — yet | ❌ |
+| The ride notification is never posted on Android 13+ | **11.1a.6** *(found while verifying 11.1a.5)* | `POST_NOTIFICATIONS` is declared and requested by nothing. The bike is Android 11, so it does not bite there — yet | ✅ |
 
 **All six were then built and observed on the tablet AVD in the same sitting,
 along with one more that the verifying turned up.** Closed: **19.1.1**,
@@ -160,7 +187,7 @@ Where they landed:
 | Snag | Item | State |
 |------|------|-------|
 | "Up next" is on the far side of the screen from the current interval | **11.6.1** | ✅ |
-| No sign of which power zone the rider is in *right now* | **11.6.2** | ✅ — and see **11.6.2a**, which supersedes how it is drawn |
+| No sign of which power zone the rider is in *right now* | **11.6.2** | ✅ — drawn as the ladder **11.6.2a** asked for, on both surfaces |
 | No icons on the live numbers | **11.6.3** | ✅ |
 | The target gauge never says what the target *is* | **11.6.4** | ✅ |
 | "Back to the HUD" is geeky and factually wrong | **11.6.5** | ✅ — it is "View in Overlay Mode" |
@@ -278,19 +305,17 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
-**The six MVP blockers above are done.** What is left of the readiness pass is
-**11.1a.6** (the ride notification never posted on Android 13+ — small, and it
-undercuts the door 11.1a.5 just built), then **19.1.2** auto-pause and
-**19.1.3 / 12.4.4** local backup, which were on the plan already and belong in
-the same conversation: one is the other half of "the rider is not pedalling",
-and the other is the only safety net that exists before accounts.
+**The six MVP blockers above are done, and so are 11.1a.6 and 11.6.2a.** What
+is left of the readiness pass is **19.1.2** auto-pause and **19.1.3 / 12.4.4**
+local backup, which were on the plan already and belong in the same
+conversation: one is the other half of "the rider is not pedalling", and the
+other is the only safety net that exists before accounts.
 
-Two of the owner's own, raised in the sixth sitting and carrying more weight
-than anything below because he is the one riding this:
+One of the owner's own is still open, and it carries more weight than anything
+below because he is the one riding this:
 
 | Next | Why now |
 |------|---------|
-| **11.6.2a** The zones as a scale | Supersedes the `CurrentZoneBar` the sixth sitting shipped. **Do not build both.** It also closes the overlay half of 11.6.2, which was designed for and never wired in |
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
 
 Then the table below, which was written before the fifth sitting and is kept
@@ -1622,10 +1647,9 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       board that has gone quiet, was about to be labelled "Active Recovery".
       Same family as 2.4.4: the absence is the answer. **Observed on the
       tablet AVD** mid-class, both agreeing and disagreeing.*
-      *The overlay still has this gap; the compact form is designed for and not
-      wired in. **Read 11.6.2a before doing it** — the owner has since said the
-      whole thing is better drawn as a scale.*
-- [ ] **11.6.2a** **Draw the zones as a scale, not as a sentence.** Raised by
+      *Superseded by **11.6.2a**: the bar has been replaced by the ladder, on
+      both surfaces, and the overlay gap this item left is closed with it.*
+- [x] **11.6.2a** **Draw the zones as a scale, not as a sentence.** Raised by
       the owner against the 11.6.2 bar above, with a photo of Peloton's own
       indicator: **seven segments in a row, one per zone**, the rider's current
       zone lit, the boundaries labelled in watts underneath (`0 · 123 · 167 ·
@@ -1651,6 +1675,29 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       the overlay"); and that every watt figure here is FTP-derived, so it
       moves under the rider when auto-FTP accepts a breakthrough (7.8). It
       replaces `CurrentZoneBar` rather than sitting beside it
+      *Done, and `CurrentZoneBar` is gone rather than kept beside it.
+      `ZoneScale` (`domain/model/`) is pure and tested — boundaries, the
+      fraction through the current zone, FTP %, and the watts that reach the
+      next rung — and `PowerZoneScale` (`ui/components/`) draws it: zone digit
+      large on the left, seven segments, the watts under each one, FTP % on the
+      right. The prescribed zone is an outline on its own segment, so "where I
+      am" and "where I was asked to be" are one comparison across one object.*
+      *The three questions it said to settle, answered by building it. **A free
+      ride draws the same ladder** with nothing outlined — the boundaries do not
+      depend on a class. **The watt labels do not survive the overlay**, as
+      suspected: `compact` drops them and the FTP %, leaving segments and the
+      digit, which is what a rider glancing past a film is asking for anyway.
+      And **the segments are equal widths, not proportional to watts** — Z7 is
+      unbounded and Z1 spans 56% of FTP alone, so a true scale would draw six
+      zones as slivers beside two slabs; the watts underneath carry the real
+      proportions.*
+      *The one structural gain beyond the drawing: `ZoneScale.currentZone` is
+      now the app's **single** rule for "is there a zone at all" — no FTP, no
+      power, or a stalled board means none — where 11.6.2 had left that rule
+      living on `RideUiState` alone, with the overlay free to answer
+      differently. 274 JVM tests. **Observed on the tablet AVD**: mid-class in
+      Z2 against a prescribed Z1, both marked on the ladder at once, and the
+      compact form on the overlay over another app*
 - [x] **11.6.3** **Iconography on the live numbers** — a heart for bpm, and the
       same for cadence, resistance and power. The label is `labelSmall` under a
       104 sp number, which makes the only thing identifying the number the
