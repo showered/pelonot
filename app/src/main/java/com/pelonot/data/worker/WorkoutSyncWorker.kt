@@ -50,8 +50,14 @@ class WorkoutSyncWorker(
             }
 
             SyncOutcome.Disabled -> {
-                // No credentials, or the rider turned sync off. Retrying will
-                // never help, so fail terminally rather than burning battery.
+                // No account on this ride's profile, no credentials in the
+                // build, or backup turned off. Retrying will never help, so
+                // stop rather than burning battery.
+                //
+                // Reached even though `enqueueIfAllowed` asked the same
+                // question: the job can be queued for a signed-in rider and run
+                // after they sign out, and the answer that matters is the one
+                // at the moment the ride would actually leave the tablet.
                 Log.i(TAG, "Cloud sync disabled; not syncing $workoutId")
                 Result.success()
             }
@@ -73,7 +79,28 @@ class WorkoutSyncWorker(
         private const val KEY_WORKOUT_ID = "workout_id"
         private const val MAX_ATTEMPTS = 3
 
-        fun enqueue(context: Context, workoutId: String) {
+        /**
+         * Schedules an upload **only if the ride's owner has an account**
+         * (23.1.2).
+         *
+         * The old rule was `finalSession.userId != null` — any profile ride at
+         * all — so the app has been uploading rides on behalf of riders who
+         * never signed in, into a shared pool, with no `user_id` on the row
+         * (14.2.1). The worker checks the same gate again when it runs, but
+         * enqueuing work that can only decline is still the wrong thing to do:
+         * it schedules a network-constrained job on a tablet whose rider has
+         * asked for nothing of the sort.
+         */
+        suspend fun enqueueIfAllowed(context: Context, workoutId: String, userId: Int?) {
+            if (!ServiceLocator.cloudAccess.isAllowedFor(userId)) {
+                Log.i(TAG, "No account on profile $userId; not scheduling a sync for $workoutId")
+                return
+            }
+            Log.i(TAG, "Profile $userId has an account; scheduling a sync for $workoutId")
+            enqueue(context, workoutId)
+        }
+
+        private fun enqueue(context: Context, workoutId: String) {
             val request = OneTimeWorkRequestBuilder<WorkoutSyncWorker>()
                 .setInputData(Data.Builder().putString(KEY_WORKOUT_ID, workoutId).build())
                 .setConstraints(

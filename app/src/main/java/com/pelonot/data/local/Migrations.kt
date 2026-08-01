@@ -49,5 +49,24 @@ object AppMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2)
+    /**
+     * Adds `profiles.auth_user_id`.
+     *
+     * The consent gate (PLAN 23.1.1). Every profile that already exists was
+     * created by a rider who was never asked and never signed in, so `NULL` is
+     * not a default chosen for convenience — it is the true answer for all of
+     * them, and it is what makes rule 1 of the connectivity model retroactive
+     * as well as prospective.
+     *
+     * Nullable rather than `NOT NULL DEFAULT ''`: the absence of an account is
+     * the state the app reasons about, and an empty string is a value that
+     * every future `!= null` check would get wrong.
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `profiles` ADD COLUMN `auth_user_id` TEXT")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }

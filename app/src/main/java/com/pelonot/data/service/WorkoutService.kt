@@ -383,13 +383,17 @@ class WorkoutService : Service() {
                     .onFailure { Log.w(TAG, "Could not update this bike's calibration", it) }
             }
 
-            // A ride against a profile is worth mirroring to the cloud. A guest
-            // ride is not: it has no owner yet, and the rider is about to be
-            // asked whether to keep it at all. PostRideViewModel enqueues it
-            // if they save it to a profile.
-            if (finalSession.userId != null) {
-                WorkoutSyncWorker.enqueue(applicationContext, finalSession.workoutId)
-            }
+            // A ride belonging to a rider with an account is worth mirroring to
+            // the cloud. Nothing else is: a guest ride has no owner yet, and a
+            // ride by a profile with no account belongs to somebody who never
+            // asked for a cloud and must not get one (23.1.2). The gate says
+            // which; PostRideViewModel asks it again if a guest ride is later
+            // saved to a profile.
+            WorkoutSyncWorker.enqueueIfAllowed(
+                applicationContext,
+                finalSession.workoutId,
+                finalSession.userId
+            )
 
             ServiceCompat.stopForeground(this@WorkoutService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()

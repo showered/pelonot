@@ -96,6 +96,54 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The consent gate arriving over a tablet that already has riders on it.
+     *
+     * `auth_user_id IS NULL` for every one of them is not a convenient default:
+     * none of them was ever asked, none of them ever signed in, and the column
+     * has to say so. If this ever came out non-null, the migration itself would
+     * have granted an account nobody created — and the first thing that would
+     * happen is a ride upload on their behalf.
+     */
+    @Test
+    fun migrate2To3_leavesEveryExistingProfileWithoutAnAccount() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000), (2, 'Housemate', 64.0, 180, 1100)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 3, true, AppMigrations.MIGRATION_2_3)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT name, ftp_watts, auth_user_id FROM profiles ORDER BY local_user_id"
+            ).use { cursor ->
+                assertTrue("the profiles that existed before the migration are gone", cursor.moveToFirst())
+                assertEquals("Test Rider", cursor.getString(0))
+                assertEquals(210, cursor.getInt(1))
+                assertTrue("an existing profile must not arrive with an account", cursor.isNull(2))
+
+                assertTrue(cursor.moveToNext())
+                assertEquals("Housemate", cursor.getString(0))
+                assertTrue("an existing profile must not arrive with an account", cursor.isNull(2))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

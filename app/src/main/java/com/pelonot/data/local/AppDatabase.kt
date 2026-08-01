@@ -20,7 +20,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
         WorkoutEntity::class,
         WorkoutMetricEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,7 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
          * restore has to refuse a backup from a newer schema (12.4.4), and
          * that comparison needs the number at runtime.
          */
-        const val SCHEMA_VERSION = 2
+        const val SCHEMA_VERSION = 3
 
         private const val DATABASE_NAME = "pelonot_database"
 

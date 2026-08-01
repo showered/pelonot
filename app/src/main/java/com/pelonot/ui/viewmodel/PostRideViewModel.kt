@@ -117,7 +117,7 @@ class PostRideViewModel(
         val workoutId = _uiState.value.workout?.id ?: return onSaved()
         viewModelScope.launch {
             workoutRepository.assignToUser(workoutId, userId)
-            WorkoutSyncWorker.enqueue(context.applicationContext, workoutId)
+            WorkoutSyncWorker.enqueueIfAllowed(context.applicationContext, workoutId, userId)
             _uiState.update { it.copy(saved = true) }
             onSaved()
         }
@@ -144,7 +144,11 @@ class PostRideViewModel(
             // Riding as a guest and then keeping the ride is a strong signal
             // that this is who the rider now is.
             settingsRepository.setLastProfileId(profile.localUserId)
-            WorkoutSyncWorker.enqueue(context.applicationContext, workoutId)
+            WorkoutSyncWorker.enqueueIfAllowed(
+                context.applicationContext,
+                workoutId,
+                profile.localUserId
+            )
             _uiState.update { it.copy(saved = true) }
             onSaved()
         }

@@ -5,6 +5,7 @@ import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
+import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
@@ -85,8 +86,19 @@ object ServiceLocator {
      */
     val calibrationRepository: CalibrationRepository by lazy { CalibrationRepository(context) }
 
+    /**
+     * The consent gate (23.1.1). Everything cloud-shaped goes through it, and
+     * it answers per profile rather than per build.
+     */
+    val cloudAccess: CloudAccess by lazy {
+        CloudAccess(
+            userDao = database.userDao(),
+            backupPreference = { cloudSyncEnabled() }
+        )
+    }
+
     val syncRepository: SupabaseSyncRepository by lazy {
-        SupabaseSyncRepository(enabled = { cloudSyncEnabled() })
+        SupabaseSyncRepository(cloudAccess)
     }
 
     val userRepository: UserRepository by lazy {

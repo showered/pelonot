@@ -28,6 +28,10 @@ interface UserDao {
     @Query("SELECT COUNT(*) FROM profiles")
     suspend fun getUserCount(): Int
 
+    /** How many riders on this tablet are signed in — see `CloudAccess`. */
+    @Query("SELECT COUNT(*) FROM profiles WHERE auth_user_id IS NOT NULL")
+    suspend fun getAccountProfileCount(): Int
+
     @Query("DELETE FROM profiles WHERE local_user_id = :userId")
     suspend fun deleteUser(userId: Int)
 }

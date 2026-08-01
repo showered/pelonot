@@ -7,7 +7,6 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.entity.UserEntity
-import com.pelonot.data.remote.SupabaseModule
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.CalibrationState
@@ -37,7 +36,6 @@ data class SettingsUiState(
     val profile: UserEntity? = null,
     val heartRateStatus: HeartRateStatus = HeartRateStatus.Idle,
     val heartRateDevices: List<HeartRateDevice> = emptyList(),
-    val cloudConfigured: Boolean = false,
     /** System media volume as 0..1 — read live, not stored by us (11.5.1). */
     val mediaVolume: Float = 0f,
     val volumeError: String? = null,
@@ -95,7 +93,6 @@ class SettingsViewModel(
             profile = user,
             heartRateStatus = hrStatus,
             heartRateDevices = hrDevices,
-            cloudConfigured = SupabaseModule.isConfigured,
             mediaVolume = mediaVolume,
             volumeError = volumeError,
             calibration = calibration

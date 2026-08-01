@@ -273,12 +273,13 @@ fun SettingsScreen(
             )
 
             CloudSection(
-                configured = state.cloudConfigured,
-                enabled = state.settings.cloudSyncEnabled,
-                onEnabledChange = viewModel::setCloudSyncEnabled
+                hasAccount = state.profile?.hasAccount == true,
+                backupEnabled = state.settings.cloudSyncEnabled,
+                onBackupEnabledChange = viewModel::setCloudSyncEnabled
             )
 
             BackupSection(
+                ridesAreLocalOnly = state.profile?.hasAccount != true,
                 onBackup = { backupLauncher.launch(viewModel.backupFileName()) },
                 onRestore = { restoreLauncher.launch(arrayOf("*/*")) }
             )
@@ -519,27 +520,42 @@ private fun HeartRateSection(
     }
 }
 
+/**
+ * Which rung of the identity ladder this rider is on, in one line (23.1.4).
+ *
+ * A rider with no account gets a statement of fact and nothing else — no
+ * toggle, no greyed-out control, no spinner, no mention of Supabase or of
+ * credentials that are a fact about the build rather than about them (23.1.5).
+ * The offline tier is not a locked door with the cloud visible through it, and
+ * this is the surface where a rider finds out that the thing they might have
+ * assumed was happening is not.
+ */
 @Composable
 private fun CloudSection(
-    configured: Boolean,
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit
+    hasAccount: Boolean,
+    backupEnabled: Boolean,
+    onBackupEnabledChange: (Boolean) -> Unit
 ) {
-    SettingsSection("Cloud sync") {
-        if (!configured) {
+    SettingsSection("Your rides") {
+        if (!hasAccount) {
             Text(
-                text = "No Supabase credentials are configured in this build, so " +
-                    "Pelonot is running fully offline. Everything works; rides just " +
-                    "stay on this device.",
+                text = "This bike only. Your rides are recorded here and stay here — " +
+                    "nothing about them leaves this tablet.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
+            Text(
+                text = "Backed up to your account.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
             SettingsToggle(
                 title = "Back up rides",
                 description = "Uploads completed rides when a network is available.",
-                checked = enabled,
-                onCheckedChange = onEnabledChange
+                checked = backupEnabled,
+                onCheckedChange = onBackupEnabledChange
             )
         }
     }
@@ -875,14 +891,25 @@ private fun VolumeSection(
  */
 @Composable
 private fun BackupSection(
+    ridesAreLocalOnly: Boolean,
     onBackup: () -> Unit,
     onRestore: () -> Unit
 ) {
     SettingsSection("Backup") {
         Text(
-            text = "Your rides live on this tablet and nowhere else. A backup is " +
-                "one file — copy it somewhere safe and it can be restored onto " +
-                "any tablet running Pelonot.",
+            text = if (ridesAreLocalOnly) {
+                // Backup is the offline rider's only durability story, so the
+                // copy has to say what it is for — including the part nobody
+                // would guess, that a backup restores onto a replacement
+                // tablet (23.3.2).
+                "Your rides live on this tablet and nowhere else. A backup is " +
+                    "one file — copy it somewhere safe and it can be restored onto " +
+                    "any tablet running Pelonot."
+            } else {
+                "A backup is one file holding every ride on this tablet, including " +
+                    "riders without an account. Copy it somewhere safe and it can be " +
+                    "restored onto any tablet running Pelonot."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
