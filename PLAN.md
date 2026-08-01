@@ -17,6 +17,48 @@
 
 ## Where the work stands — read this first
 
+### The first real ride — 1 August 2026, on the bike, with a rider
+
+**Read this before picking anything up.** The app was ridden for real for the
+first time: a 20-minute class, `HC-01`, 1196 samples, every one of them
+`power_is_measured = 1`, and `avg_hr` exact against its own samples. The
+recording path works on real hardware.
+
+**And it found a defect that outranks everything else in this plan.** Raising
+the overlay corrupts telemetry: cadence, resistance and power start appearing
+in each other's columns, and the corrupted values are **recorded**, not merely
+displayed. Measured on the bike with the rider pedalling steadily — 82 seconds
+full-screen, then the overlay raised and nothing else changed:
+
+| Phase | Samples | Impossible values |
+|-------|---------|-------------------|
+| Full screen | 82 | **0** |
+| Overlay up | 53 | **41 (77%)** |
+
+The rider was averaging 61 rpm and 47 W. **The ride summary reported 109 RPM
+and 137 W.** The whole diagnosis, the evidence and the fix direction are in
+**2.7**, which is where the next session should start.
+
+Two things about it worth carrying separately from the item:
+
+- **The overlay is the product's headline feature and it is the thing breaking
+  the record.** 10.4 verified the overlay *renders* over video, which it does.
+  Nobody had checked what it does to the data underneath.
+- **The database was the witness, not the screenshots.** Two screenshots 15
+  seconds apart cannot show two surfaces disagreeing; `workout_metrics` records
+  what the recorder actually saw, once a second, with a timestamp. That is what
+  turned "the overlay looks erratic" into a 0-vs-41 measurement in a quarter of
+  an hour.
+
+**Eight more snags came off the same ride** and are filed as 11.6.7 (numbers
+update too fast to read), 11.6.8 (the zone ladder shifts sideways at every zone
+change), 11.6.9 (a blank heart rate is a dead end), 11.6.10 (no way to reach
+Settings without ending the ride), 13.8 (profile creation asks for pounds and
+never asks which), 16.1.7 / 16.1.8 (the charts have no axes — the heart-rate
+one is a line with no numbers on it), 22.2.6 (the width cap is one screen's fix
+rather than a rule) and 23.2.6 (**the classes are not good enough; rebuild the
+library**).
+
 ### Latest session — 1 August 2026 (ninth sitting): the model built, and the column three features were waiting on
 
 The eighth sitting settled what offline and online mean. This one made the
@@ -428,35 +470,46 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
-**The six MVP blockers above are done, and so are 11.1a.6, 11.6.2a, 19.1.2 and
-19.1.3 / 12.4.4.** The readiness pass is finished: everything it found is built
-and seen working, and a rider now has a way to get their whole history off the
-tablet and back onto one.
+**Everything below is reordered by the first real ride, 1 August 2026.** The
+triage is the owner's snag list plus what the ride measured.
 
-Two candidates that came out of this sitting rather than off the old list:
-**19.1.2b** (the twenty seconds before an auto-pause are still averaged in —
-and it is the same question as 7.8, asked of a different column) and **19.1.6**
-(the first run explains nothing, which is now the largest gap between "works"
-and "shippable").
+**Stop-everything, in this order — the app is currently recording wrong numbers:**
 
-One of the owner's own is still open, and it carries more weight than anything
-below because he is the one riding this:
+| Next | Why now |
+|------|---------|
+| **2.7.1** The overlay corrupts telemetry | **The worst defect this project has had.** Values rotate between cadence, resistance and power whenever the overlay is up, and they are *recorded*: 41 of 53 samples corrupt against 0 of 82 on the full screen, turning 61 rpm / 47 W into a reported 109 RPM / 137 W. Every ride taken with the overlay up — which is the way this app is meant to be used — has a corrupted record. Read 2.7 whole before touching anything |
+| **2.7.4** Telemetry dies and never recovers | Same session, same ride. The board stops delivering, the flow does not error, so `retryWhen` never fires and nothing rebinds — the rest of the ride records nothing and **pedalling does not bring it back**, only restarting the app. Half a ride silently missing is the second-worst outcome after half a ride wrong |
+| **2.7.3** A plausibility fence | Cheap, and it stops the worst of it reaching the database while 2.7.1 is being worked out. **Reject, never clamp**, and it is a fence rather than the fix — 33 and 52 swapping is invisible to any bound |
+| **2.7.5** What to do about the rides already recorded | The first real ride is on disk with 17 impossible samples in it. Decide before more accumulate, and do not silently rewrite a rider's history |
+
+**Then the ride-screen snags, which are what the owner actually feels:**
+
+| Next | Why now |
+|------|---------|
+| **11.6.7** The numbers change too fast to read | Both surfaces. A rider glancing down gets a blur. Display-rate only — **it must not change what is recorded** |
+| **11.6.8** The zone ladder shifts sideways | Every zone change nudges the whole ladder along, on the one element the rider is watching to see that it changed. A border that adds to layout width; draw it inset |
+| **11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride | Tapping `--` should lead to pairing, and it cannot until there is a way into Settings that does not end the ride. Do them together |
+| **16.1.7 / 16.1.8** Axes on the charts | The heart-rate chart is a line with no numbers on it. Beautiful rather than scientific, and decided once for all four |
+| **13.8** kg/lb at signup | The first screen a new rider touches asks for pounds and never asks. Small |
+
+**Then the substantial ones:**
+
+| Next | Why now |
+|------|---------|
+| **23.2.6** Rebuild the class library | The owner's verdict after riding one: not good enough. Bundling all 72 fixed how many, not whether they are worth riding. Write down what makes a good class first; mind the `class_id` foreign key |
+| **22.2.6** Width cap as a rule | Yes, it is in the plan — as **22.2.1**, and it was built, but only for the dashboard. Every other screen still runs edge to edge on a 1280 dp tablet. Wanted: one theme token, applied everywhere text lives |
+| **24.2** The household, seen | 24.1 built the board; this is who has ridden this week, and streaks. **24.2.3 (per-profile opt-out) belongs in the first version** |
+| **24.3.1** Riding against a housemate | One query and no schema, and arguably the most motivating thing in the plan |
+| **7.9** FTP history | Now that a simulated ride cannot propose an FTP (7.10.7), the proposals that arrive are trustworthy — and nothing keeps them. Blocks 16.3 |
+| **23.2.3 / 23.2.4** The class library as an update channel | The only remaining reason to read the cloud at all. Additive only — deleting a class takes a rider's history link with it |
+| **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire |
+| **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual |
+
+One of the owner's own is still open and unchanged:
 
 | Next | Why now |
 |------|---------|
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
-
-**Then the connectivity model's own list, which now sits above the old one.**
-23.1 and 23.2 are done; what is left of it is below:
-
-| Next | Why now |
-|------|---------|
-| **24.2** The household, seen | 24.1 built the board; this is who has ridden this week, and streaks. Same tier, same cost, and **24.2.3 (per-profile opt-out) belongs in the first version** — privacy inside a household is still privacy, and it is the kind that gets forgotten because everyone involved knows each other |
-| **24.3.1** Riding against a housemate | One query and no schema: draw a household member's trace behind yours on ride detail. Arguably the most motivating thing in the plan |
-| **7.9** FTP history | Now that a simulated ride cannot propose an FTP (7.10.7), the proposals that *do* arrive are trustworthy — and nothing keeps them. Blocks 16.3 |
-| **23.2.3 / 23.2.4** The class library as an update channel | The other half of 23.2, and it is now the *only* reason the cloud would be read at all. Needs `updated_at` on `class_templates` so an update is a diff, and it is additive-only: `workouts` has a foreign key onto `class_templates`, so deleting a class takes a rider's history link with it |
-| **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire. Free today, a backfill migration once four riders have a year of history up there |
-| **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual. A reminder, not a nag |
 
 Then the table below, which was written before the fifth sitting and is kept
 because its reasoning is still good:
@@ -492,21 +545,21 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete at schema version 3. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account that nothing yet grants (23.1) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a), and **the question of whether to calibrate at all is now settled in writing at the head of 2.2a — yes**; it has yet to see a hardware ride (2.2a.1). **Newly opened: a stalled board's last reading is recorded as a fresh measured sample (2.4.4), and the rider is never told the sensor stopped (2.4.5)** |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔴 **Recording wrong numbers.** The first real ride found that raising the overlay rotates cadence, resistance and power between each other's fields, and the corrupt values are recorded (2.7). Telemetry also dies mid-ride and never recovers (2.7.4). Everything else — the board, the resistance scale, a real BLE strap, per-bike calibration — is verified on hardware |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
-| 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
+| 4 | Floating HUD overlay | 🔴 Renders correctly and **corrupts the ride's record while it is up** (2.7). 10.4 verified that it draws over video; nobody had checked what it does to the data underneath |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete, and **a simulated ride can no longer propose an FTP (7.10.7)**. Still open: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains — **plus 8.3b, newly opened: the recovery prompt cannot tell a crashed ride from a live one** |
 | 9 | Ride integration | ✅ Complete — a class runs |
-| 10 | Hardware validation | 🔶 Sensor path, protocol, a real ride, HUD-over-video and the BLE strap all done — only the full-length ride (10.6) remains |
+| 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. The payload format should still change before rides accumulate (14.4) |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
-| 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included, and the power caption now says where the watts came from (16.1.6). Trends (16.3) remain, blocked on 7.9 |
+| 16 | Data visualisation | 🔶 Post-ride charts done and the power caption says where the watts came from (16.1.6) — but **none of them has an axis**, and the heart-rate chart is a line with no numbers on it (16.1.7). Trends (16.3) remain, blocked on 7.9 |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
@@ -1250,6 +1303,103 @@ Settings section. The gates are exercised against the real 31 July sweep in
 - [x] `SimulatedSensorSource` producing a plausible effort profile with lagging heart rate
 - [x] Settings toggle: Auto / Hardware / Simulated
 - [x] Ride screen states plainly when telemetry is simulated
+
+---
+
+### 2.7 What the first real ride found — the overlay corrupts telemetry
+
+**Found 1 August 2026, on the bike, with the owner pedalling. This is the most
+serious defect this project has had**, because it is the one that writes wrong
+numbers into a rider's permanent record while every surface looks plausible.
+
+**The measurement.** One free ride, Hardware mode, rider pedalling steadily
+throughout. The first 82 seconds were on the full-screen ride screen; at second
+83 the overlay was raised and nothing else changed.
+
+| Phase | Samples | Impossible values |
+|-------|---------|-------------------|
+| Full screen, 1–82 s | 82 | **0** |
+| Overlay up, 83 s+ | 53 | **41 (77%)** |
+
+Clean phase: cadence climbing 35→67 rpm, resistance rock-steady at 33%, power
+tracking 18→53 W, heart rate 96→104. From second 83 **the same three real
+values start appearing in each other's columns**:
+
+```
+82 |  67 |  33 |  53      ← true: cadence 67, resistance 33, power 53
+83 |  67 |  53 |  53
+84 |  33 |  68 | 603
+86 |  67 | 602 |  33
+91 | 603 |  66 |  52
+95 | 602 |  33 |  51
+```
+
+**What it costs the rider, in one line:** over the clean phase they averaged
+**61 rpm and 47 W**. The ride summary for that ride reported **109 RPM and
+137 W** — cadence inflated 79%, power 191%. The aggregates are computed
+correctly; they are computed over corrupted samples.
+
+**The already-recorded ride is affected.** The first real ride (`HC-01`, 1196
+samples) carries 11 impossible cadence values, 6 impossible resistance values
+and 1 power value over 600 W — the 636 W spike visible on its power chart. The
+overlay was up for part of it.
+
+- [ ] **2.7.1** **Fix the field rotation.** `PelotonSensorServiceSource` keeps
+      `powerWatts` / `cadenceRpm` / `resistance` as locals in one `callbackFlow`
+      and dispatches on `msg.what` from a single `HandlerThread`, so *one*
+      instance cannot rotate values. Rotation means **more than one live
+      registration**, each holding its own partial state and all emitting into
+      `_sensorReading`. The prime suspect is that raising the overlay causes a
+      second bind or a second send of `REGISTER_COMMANDS` — start by logging
+      every bind and every register, then by counting them across an
+      overlay raise. `SensorRepository.start()` guards on `telemetryJob`, so
+      the second one is unlikely to be there; the manifest declares no separate
+      process, so it is not two `ServiceLocator`s
+- [ ] **2.7.2** **Identify the ~602/668 value.** It is not any of the three
+      metrics and appeared in both sessions. Most likely an event type the
+      source does not handle whose `msg.what` collides with `EVENT_RPM` /
+      `EVENT_WATT` / `EVENT_RESISTANCE`, or a second registration receiving a
+      different event set. Log every `msg.what` seen with its payload for one
+      minute of pedalling and the answer falls out
+- [ ] **2.7.3** **A plausibility fence at the recording boundary.** Cadence 603
+      is not a measurement, and neither is resistance 602. This is the same
+      argument as 2.4.4: a value that cannot be true is an absence, and the
+      honest answer is a gap. **Reject, never clamp** — clamping 603 to 140
+      would write a plausible lie where a gap belongs. Bounds should be
+      physical (cadence 0–200 rpm, resistance 0–100%, power 0–2500 W) and
+      generous enough that a real sprint is never dropped. **This is a fence,
+      not the fix**: it must land alongside 2.7.1 rather than instead of it,
+      or the rotation continues silently within the plausible range — 33 and 52
+      swapping is invisible to any bound
+- [ ] **2.7.4** **The board stops and never comes back.** With the overlay up,
+      telemetry went stale and stayed stale for the rest of the ride —
+      `WorkoutService` logged *Telemetry stale at 86s*, the overlay showed
+      `--` on every metric, and **pedalling did not revive it**. Only a restart
+      of the app did. The cause is that the flow does not *error*: it simply
+      stops delivering, so `retryWhen` never fires and nothing ever rebinds.
+      `MAX_CONSECUTIVE_TIMEOUTS` only counts explicit `TIME_OUT` responses, and
+      silence is not one. Needs a **watchdog**: no reading for N seconds while a
+      ride is running means tear the source down and rebuild it. Note the
+      interaction with 2.7.1 — a rebuild must not leave the old registration
+      alive, which may be the very thing causing the rotation
+- [ ] **2.7.5** **Decide what happens to the rides already recorded.** They are
+      real rides with real effort in them and a minority of corrupted samples.
+      Deleting them is wrong; presenting their aggregates as fact is also wrong.
+      The options are to recompute the aggregates with impossible samples
+      excluded, or to mark the ride as suspect and say so. **Do not silently
+      rewrite a rider's history either way** — whatever is chosen has to be
+      visible, and it is the same provenance argument as 23.4.3
+- [ ] **2.7.6** **A test that would have caught this.** Nothing in 308 JVM
+      tests could: the simulator is one well-behaved source and the defect
+      needs two. A fake source that emits interleaved partial state, and an
+      assertion that `SensorRepository` never publishes a reading whose fields
+      came from different instants, is the shape of it
+
+> **Verification note.** All of this was found with `adb` and one rider, in
+> about fifteen minutes, because the **database is the neutral witness**: two
+> screenshots taken 15 seconds apart cannot prove two surfaces disagree, but
+> `workout_metrics` records what the recorder actually saw, once a second, with
+> a timestamp. Reach for the table before the screenshots.
 
 ---
 
@@ -2147,6 +2297,35 @@ per-second time series to `workout_metrics`, and there is no screen in the app
 that shows a rider a ride they finished yesterday. `WorkoutRepository` already
 has `observeWorkouts(userId)`, `getRecentWorkouts` and `getMetrics`; the data
 layer is done and nothing renders it.
+- [ ] **11.6.7** **The numbers change too fast to read, on both surfaces.**
+      The board reports several times a second and every emission is rendered,
+      so a rider glancing down sees a blur rather than a number. Needs a
+      **display cadence** — around 2 Hz, or a short rolling mean — applied
+      where the value is drawn. **It must not touch what is recorded**: the
+      1 Hz sample written to `workout_metrics` is the rider's record and stays
+      raw. This is a display concern and belongs in one place both surfaces
+      read, not solved twice
+- [ ] **11.6.8** **The zone ladder shifts sideways when the zone changes.** The
+      current-zone outline is drawn as a border that adds to the segment's
+      layout width, so every neighbour moves along when the rider crosses a
+      boundary — on the one element they are watching to see that they have.
+      The outline needs to be drawn *inside* the segment bounds (inset stroke,
+      or a background/elevation change) so the ladder is geometrically static
+      and only its colouring moves. Affects the ride screen and the overlay's
+      compact ladder both
+- [ ] **11.6.9** **A blank heart rate is a dead end.** The card shows `--` when
+      no strap is paired and does nothing when tapped. It should be the way in
+      to pairing — the strap is the one metric measured identically for every
+      rider whatever the power model does (Phase 21), and today the only route
+      to it is Settings, which means ending the ride. Needs 11.6.10
+- [ ] **11.6.10** **Reach Settings from the ride and from the overlay without
+      ending the ride.** Pairing a strap, changing the telemetry source, fixing
+      the coach volume — all of these are things a rider discovers they need
+      *while riding*, and all of them currently cost the ride. A sheet over the
+      ride screen rather than a navigation away from it, and the overlay needs
+      its own route in. Watch 24.1.5's rule from the other direction: this adds
+      a control, not a screenful of numbers
+
 
 ### 12.1 History screen
 - [x] **12.1.1** `HistoryScreen` + `HistoryViewModel`, as a real `NavHost` destination, reached from a History card on the dashboard
@@ -2236,6 +2415,15 @@ is in miles.
 - [x] **13.5** Every surface reads the same setting, delivered through `LocalUnitSystem` from `PelonotTheme` — which is what lets the HUD read it, since the overlay is composed from the service and has no ViewModel to thread it through. Ride screen, post-ride summary, HUD strip, settings and profile creation all consume it
 - [x] **13.6** Watts, RPM, BPM and kJ are unit-agnostic and stay as they are. No calories, and the Settings copy says why
 - [x] **13.7** JVM tests for the conversions, the settings-field round trip, and locale-derived defaults — **plus** `FormattersTest`, which pins every number under `fr-FR` and `hi-IN-u-nu-deva`. A missing `Locale.US` is the same defect class that put epoch millis into a `TIMESTAMPTZ` (14.0)
+- [ ] **13.8** **Profile creation asks for weight in pounds and never asks
+      which.** The field is labelled `Weight (lb)` regardless of the rider's
+      unit preference, and it is the *first* screen a new rider touches —
+      before they have seen Settings, and before anything has told them the
+      number is being converted. 13.4 is right that SI is stored and the edge
+      converts; the defect is that the edge has no unit picker on it. Either
+      seed the label from `UnitSystem.fromLocale()` like everything else does,
+      or put a kg/lb toggle beside the field. Same question applies to the
+      guest-ride "save to a new profile" dialog, which is the same component
 
 ---
 
@@ -2505,6 +2693,23 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       branch — a board that drops out and comes back leaves exactly it. A ride
       from before the column says "estimated", which is the safe direction:
       "nobody wrote it down" is not grounds for claiming a measurement
+
+- [ ] **16.1.7** **The charts have no axes, and the heart-rate one is
+      meaningless without them.** Confirmed on the first real ride: a green
+      line rising left to right with the caption *Heart rate from 88 to 170
+      beats per minute* underneath. The shape is legible, the values are not,
+      and a rider cannot answer "what was I at during the second climb". Every
+      trace needs a value scale at minimum and a time reference where it fits.
+      **The brief is beautiful, not scientific** — this is a rider's own ride
+      on a bike, not a lab plot. A few labelled gridlines at round numbers,
+      generous type, no tick forests, no boxed axes. `RideChartBuilder` already
+      downsamples into buckets with min/max per bucket, so the data for a scale
+      is there; this is a drawing job, not a data one
+- [ ] **16.1.8** Decide the axis treatment **once, for all four charts**, and
+      put it in the shared chart components rather than per card. Power, heart
+      rate, cadence distribution and time-in-zone currently each caption
+      themselves in their own way, and four different answers is how the ride
+      detail screen starts to look assembled rather than designed
 
 ### 16.2 Building them
 - [x] **16.2.1** Compose `Canvas`, no charting dependency — these are four
@@ -3055,6 +3260,15 @@ time.
 - [ ] **22.2.5** Verify against the real system furniture — a 48 dp bottom
       navigation bar and no top status bar (`HARDWARE.md`) — and on the tablet
       itself before ticking anything here
+- [ ] **22.2.6** **Make the width cap a rule rather than one screen's fix.**
+      22.2.1 capped the dashboard's main column at 760 dp and it is right, but
+      it is the only surface that has one — Settings, History, ride detail and
+      the class library all still run edge to edge on a 1280 dp-wide tablet,
+      where a line of body text crosses the whole bike. Wanted: one token (a
+      `readableWidth` in the theme, beside `spacing`), applied wherever a
+      column of text or form fields lives, so the answer is not re-decided per
+      screen. **Not** for the ride screen or the overlay, which are deliberately
+      full-bleed and are read at two metres rather than at arm's length
 
 ### 22.3 Small things on the dashboard
 
@@ -3153,6 +3367,21 @@ what the app *is*.
       `ClassTemplateDtoTest` covers the pair and `ClassLibraryAssetsTest` now
       decodes all 72 shipped files through the same DTO, so the assets are
       exercised rather than assumed
+- [ ] **23.2.6** **The classes themselves are not good enough — rebuild the
+      library.** The owner's verdict after riding one. Bundling all 72 (23.2.1)
+      fixed *how many* a rider gets and says nothing about whether they are
+      worth riding, and they were generated rather than designed. Before
+      regenerating, write down what makes one good: a real warmup and cooldown,
+      progression that goes somewhere, interval lengths a rider can hold,
+      cadence targets that match the zone asked for (a Z5 effort at 85 rpm and
+      one at 105 rpm are different workouts), and enough variety across the
+      library that two classes of the same length are not the same class.
+      **Three constraints that are not negotiable**: `workouts.class_id` is a
+      foreign key, so an id that has been ridden must keep existing or the
+      rider's history loses its link (23.2.3); `ClassLibraryAssetsTest` already
+      enforces contiguity and `duration_sec` agreement, so a bad generator
+      fails the build rather than the ride; and the cloud copy has to move with
+      the assets or the update channel (23.2.3) will hand back the old ones
 
 ### 23.3 What the offline tier must already contain
 

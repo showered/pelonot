@@ -88,6 +88,20 @@ Two consequences to know before you are surprised by them:
 
 ## Things that will bite you
 
+- **THE OVERLAY CORRUPTS TELEMETRY AND THE CORRUPT VALUES ARE RECORDED.**
+  Found on the first real ride, 1 August 2026. While the overlay is up,
+  cadence, resistance and power start appearing in each other's columns —
+  **41 of 53 samples corrupt, against 0 of 82 on the full-screen ride
+  screen**, turning a real 61 rpm / 47 W into a reported 109 RPM / 137 W. It
+  also stops delivering mid-ride and never recovers without an app restart.
+  **Read PLAN.md 2.7 before touching the sensor path or the overlay**, and do
+  not trust the aggregates of any ride taken with the overlay up.
+- **The database is the witness, not the screenshots.** Two screenshots taken
+  seconds apart cannot show two surfaces disagreeing. `workout_metrics` holds
+  what the recorder actually saw, once a second, with a timestamp — which is
+  what turned "the overlay looks erratic" into a 0-vs-41 measurement in
+  fifteen minutes. Reach for the table first.
+
 - **`workout_metrics` has a foreign key onto `workouts`.** The workout row must
   be inserted (with `is_complete = 0`) *before* any metric is written. This
   ordering is why metric recording was silently broken for the whole project
