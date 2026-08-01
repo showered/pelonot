@@ -61,6 +61,18 @@ class SensorRepository(
     private var telemetryJob: Job? = null
     private var heartRateJob: Job? = null
 
+    /**
+     * How many readings the plausibility fence has turned away since the last
+     * [start] (2.7.3).
+     *
+     * Kept because the number is the evidence: on the corrupted ride it would
+     * have been 41 of 53, and a fence nobody can count is a fence nobody can
+     * tell is working.
+     */
+    @Volatile
+    var rejectedReadings: Int = 0
+        private set
+
     @Volatile
     private var mode: SensorMode = SensorMode.Auto
 
@@ -91,10 +103,16 @@ class SensorRepository(
 
         val source = activeSource()
         val simulated = source === simulatedSource
+        rejectedReadings = 0
         Log.i(TAG, "Starting telemetry from ${source.id} (mode=$mode)")
 
         telemetryJob = scope.launch {
             source.readings()
+                // 2.7.4. A source that stops delivering never errors, so
+                // without this the retry policy below it never runs. On the
+                // bike that meant the board went quiet 86 seconds in and
+                // nothing rebound it for the rest of the ride.
+                .failOnSilence(SILENCE_TIMEOUT_MS)
                 .retryWhen { cause, attempt ->
                     // Deliberately does not fall back to simulated data on a
                     // hardware failure: silently substituting fake telemetry
@@ -113,6 +131,20 @@ class SensorRepository(
                 }
                 .collect { reading ->
                     _status.value = SensorStatus.Streaming(source.id, simulated)
+
+                    // 2.7.3. A value that cannot be true is not published at
+                    // all — not clamped into range, which would put a
+                    // plausible lie where a gap belongs. Holding the previous
+                    // reading rather than replacing it means the flow ages
+                    // out on its own timestamp and the recorder writes the
+                    // gap that actually happened.
+                    val impossible = reading.implausibleValues()
+                    if (impossible.isNotEmpty()) {
+                        rejectedReadings++
+                        Log.w(TAG, "Rejected impossible reading: ${impossible.joinToString()}")
+                        return@collect
+                    }
+
                     _sensorReading.value = reading.copy(
                         // A live strap always wins over a simulated value.
                         heartRateBpm = bleHeartRateManager.heartRate.value ?: reading.heartRateBpm
@@ -169,5 +201,17 @@ class SensorRepository(
         const val BASE_RETRY_DELAY_MS = 1_000L
         const val MAX_RETRY_DELAY_MS = 30_000L
         const val MAX_BACKOFF_SHIFT = 5L
+
+        /**
+         * How long a source may deliver nothing before it is torn down and
+         * rebuilt (2.7.4).
+         *
+         * Comfortably longer than [SensorReading.MAX_AGE_MS], so the rider is
+         * told the telemetry is stale — and the recorder starts leaving a gap
+         * — a couple of seconds before the source is thrown away and rebound.
+         * Short enough that a dropout costs one interval cue, not the rest of
+         * the ride.
+         */
+        const val SILENCE_TIMEOUT_MS = 6_000L
     }
 }

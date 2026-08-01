@@ -28,6 +28,7 @@ import com.pelonot.data.sensor.PowerModel
 import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorRepository
 import com.pelonot.data.sensor.WorkoutMetricsCalculator
+import com.pelonot.data.sensor.implausibleValues
 import com.pelonot.domain.calibration.CalibrationSample
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
@@ -595,6 +596,18 @@ class WorkoutService : Service() {
         if (telemetryStalled) {
             telemetryStalled = false
             Log.i(TAG, "Telemetry live again at ${elapsedSec}s")
+        }
+
+        // 2.7.3, and the reason it is checked here as well as at the point of
+        // publication: this is the boundary that matters. Everything upstream
+        // can be got wrong again by a future change, and only the line below
+        // makes a number permanent. A sample that cannot be true is not
+        // written and not clamped — the second is left empty, exactly as a
+        // dropout leaves it.
+        val impossible = reading.implausibleValues()
+        if (impossible.isNotEmpty()) {
+            Log.w(TAG, "Refusing to record ${impossible.joinToString()} at ${elapsedSec}s")
+            return
         }
 
         val derived = metricsCalculator.processReading(reading, session.ftpWatts)

@@ -14,6 +14,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Reads telemetry from the bike's own sensor board by binding Peloton's
@@ -55,10 +56,18 @@ class PelotonSensorServiceSource(
         // must keep flowing while the UI thread is busy compositing the HUD.
         val replyThread = HandlerThread("peloton-sensor").apply { start() }
 
-        var powerWatts = 0.0
-        var cadenceRpm = 0.0
-        var resistance = 0.0
+        // 2.7.1. The three streams arrive on separate messages and are only
+        // one observation when they are close enough together in time to be
+        // one. Nothing here keeps a `var` per metric any more; the assembler
+        // holds each field with the instant it arrived and refuses to hand
+        // back a triple that mixes moments or is missing a leg.
+        val assembler = TelemetryAssembler()
         var consecutiveTimeouts = 0
+
+        // 2.7.2. The corrupted ride carried a value near 602 that is not
+        // cadence, resistance or power. If it arrives on a message type this
+        // source does not handle, this is what will say so.
+        val unknownEvents = HashMap<Int, Int>()
 
         val replyHandler = object : Handler(replyThread.looper) {
             override fun handleMessage(msg: Message) {
@@ -77,29 +86,41 @@ class PelotonSensorServiceSource(
                 }
                 consecutiveTimeouts = 0
 
-                val value = data.getFloat(KEY_DATA).toDouble()
-                when (msg.what) {
-                    EVENT_RPM -> cadenceRpm = value
-                    EVENT_WATT -> powerWatts = value
-                    EVENT_RESISTANCE -> resistance = value
-                    else -> return
+                val field = fieldFor(msg.what) ?: run {
+                    recordUnknownEvent(unknownEvents, msg)
+                    return
                 }
 
-                trySend(
-                    SensorReading(
-                        powerWatts = powerWatts,
-                        cadenceRpm = cadenceRpm,
-                        resistancePercent = resistance,
-                        powerIsMeasured = true,
-                        timestampMs = System.currentTimeMillis()
-                    )
-                )
+                val value = data.getFloat(KEY_DATA).toDouble()
+                when (val intake = assembler.onValue(field, value, System.currentTimeMillis())) {
+                    is Intake.Emit -> trySend(intake.reading)
+                    is Intake.Held -> Unit
+                    is Intake.Rejected ->
+                        // Logged rather than swallowed: this is the shape the
+                        // corruption took on the bike, and if it happens again
+                        // the log says which stream carried it.
+                        Log.w(TAG, "Rejected impossible ${intake.value} (event ${msg.what})")
+                }
             }
         }
         val replyMessenger = Messenger(replyHandler)
 
         val connection = object : ServiceConnection {
+            /**
+             * Guards against registering twice on one binding.
+             *
+             * `onServiceConnected` runs again if the service dies and the
+             * system rebinds us to its replacement, and every extra
+             * registration is another repeating poll answering into the same
+             * reply Messenger — the leading suspect for 2.7.1's rotation.
+             */
+            private var registered = false
+
             override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                if (registered) {
+                    Log.w(TAG, "Sensor service reconnected while already registered; not registering again")
+                    return
+                }
                 val outgoing = Messenger(binder)
                 runCatching {
                     // Each of these registers a *repeating* request, so the
@@ -109,11 +130,30 @@ class PelotonSensorServiceSource(
                             Message.obtain(null, command).apply { replyTo = replyMessenger }
                         )
                     }
+                }.onSuccess {
+                    registered = true
+                    val live = liveRegistrations.incrementAndGet()
+                    // The count is the whole diagnostic for 2.7.1: one live
+                    // registration cannot rotate values between fields, and
+                    // more than one is expected to.
+                    if (live > 1) {
+                        Log.e(TAG, "$live live sensor registrations — telemetry will interleave")
+                    } else {
+                        Log.i(TAG, "Registered for sensor events (1 live registration)")
+                    }
                 }.onFailure { close(IOException("Could not register for sensor events", it)) }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 close(IOException("Peloton sensor service disconnected"))
+            }
+
+            /** Called once, from [awaitClose], so the count cannot drift. */
+            fun released() {
+                if (registered) {
+                    registered = false
+                    Log.i(TAG, "Released registration (${liveRegistrations.decrementAndGet()} live)")
+                }
             }
         }
 
@@ -127,9 +167,45 @@ class PelotonSensorServiceSource(
         }
 
         awaitClose {
+            connection.released()
             runCatching { context.unbindService(connection) }
             replyThread.quitSafely()
-            Log.d(TAG, "Peloton sensor service source closed")
+            if (unknownEvents.isNotEmpty()) {
+                Log.w(TAG, "Unhandled sensor events this session: $unknownEvents")
+            }
+            Log.d(
+                TAG,
+                "Peloton sensor service source closed " +
+                    "(${assembler.rejectedCount} impossible values rejected)"
+            )
+        }
+    }
+
+    private fun fieldFor(what: Int): TelemetryField? = when (what) {
+        EVENT_RPM -> TelemetryField.Cadence
+        EVENT_WATT -> TelemetryField.Power
+        EVENT_RESISTANCE -> TelemetryField.Resistance
+        else -> null
+    }
+
+    /**
+     * Logs the first few of each unhandled message type with its payload, then
+     * only counts them (2.7.2).
+     *
+     * Unbounded logging on a message arriving several times a second would
+     * push the evidence out of logcat's buffer before anyone read it.
+     */
+    // Bundle.get() is deprecated in favour of the typed getters, and typed is
+    // exactly what this cannot be: the point is to find out what an unhandled
+    // event carries, which means not assuming it is a float.
+    @Suppress("DEPRECATION")
+    private fun recordUnknownEvent(counts: HashMap<Int, Int>, msg: Message) {
+        val seen = (counts[msg.what] ?: 0) + 1
+        counts[msg.what] = seen
+        if (seen <= UNKNOWN_EVENT_LOG_LIMIT) {
+            val data = msg.data
+            val payload = data?.keySet()?.joinToString { key -> "$key=${data.get(key)}" }
+            Log.w(TAG, "Unhandled sensor event what=${msg.what} arg1=${msg.arg1} [$payload]")
         }
     }
 
@@ -162,5 +238,17 @@ class PelotonSensorServiceSource(
 
         /** Roughly a second of silence before we let the repository back off. */
         private const val MAX_CONSECUTIVE_TIMEOUTS = 5
+
+        /** How many of each unhandled event type get their payload logged. */
+        private const val UNKNOWN_EVENT_LOG_LIMIT = 3
+
+        /**
+         * Live registrations across the whole process (2.7.1).
+         *
+         * There should never be more than one. It is a companion counter
+         * rather than an instance field precisely because the failure being
+         * hunted is a *second* source outliving the first.
+         */
+        private val liveRegistrations = AtomicInteger(0)
     }
 }

@@ -39,6 +39,15 @@ class SimulatedSensorSource(
             val nowMs = System.currentTimeMillis()
             val elapsedSec = (nowMs - startMs) / 1000.0
 
+            // 2.7.4's failure, on demand: a source that has stopped
+            // delivering without failing. Deliberately `continue` rather than
+            // throw — throwing is what the real board never did, and the
+            // whole point is that silence has to be noticed by something else.
+            if (nowMs < silentUntilMs) {
+                delay(SAMPLE_INTERVAL_MS)
+                continue
+            }
+
             val effort = effortAt(elapsedSec)
             val coasting = nowMs < coastUntilMs
 
@@ -63,15 +72,15 @@ class SimulatedSensorSource(
             heartRate += (targetHr - heartRate) * HR_RESPONSIVENESS
             val hrWithNoise = heartRate + random.nextDouble(-1.5, 1.5)
 
-            emit(
-                SensorReading(
-                    powerWatts = power,
-                    cadenceRpm = cadence,
-                    resistancePercent = resistance,
-                    heartRateBpm = hrWithNoise.roundToInt().coerceIn(RESTING_HR, MAX_HR),
-                    timestampMs = nowMs
-                )
+            val reading = SensorReading(
+                powerWatts = power,
+                cadenceRpm = cadence,
+                resistancePercent = resistance,
+                heartRateBpm = hrWithNoise.roundToInt().coerceIn(RESTING_HR, MAX_HR),
+                timestampMs = nowMs
             )
+
+            emit(if (nowMs < corruptUntilMs) corrupt(reading, random) else reading)
 
             delay(SAMPLE_INTERVAL_MS)
         }
@@ -87,6 +96,44 @@ class SimulatedSensorSource(
         val surge = sin(2 * PI * elapsedSec / SURGE_PERIOD_SEC)
         val combined = 0.5 + 0.3 * slowWave + 0.2 * surge
         return (warmup * combined).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * Reproduces what the bike did on 1 August 2026 with the overlay up (2.7).
+     *
+     * The signature to match is in the plan: the three real values appearing
+     * in each other's columns, and a ghost near 602 that is none of them
+     * turning up in whichever column it likes. Roughly three samples in four
+     * carry the ghost, as 41 of 53 did on the bike — the rest are a plain
+     * rotation, which matters because **the plausibility fence cannot see
+     * those**. A cadence of 33 and a resistance of 53 are both perfectly
+     * possible numbers; they are simply the wrong way round. That half of the
+     * defect is what [TelemetryAssembler] and the single-registration rule
+     * address, and no bound will ever catch it.
+     */
+    private fun corrupt(reading: SensorReading, random: Random): SensorReading {
+        val ghost = if (random.nextDouble() < GHOST_SHARE) {
+            GHOST_VALUE + random.nextDouble(0.0, 3.0)
+        } else {
+            null
+        }
+        return when (random.nextInt(3)) {
+            0 -> reading.copy(
+                cadenceRpm = ghost ?: reading.powerWatts,
+                resistancePercent = reading.cadenceRpm,
+                powerWatts = reading.resistancePercent
+            )
+            1 -> reading.copy(
+                cadenceRpm = reading.resistancePercent,
+                resistancePercent = ghost ?: reading.cadenceRpm,
+                powerWatts = reading.cadenceRpm
+            )
+            else -> reading.copy(
+                cadenceRpm = reading.resistancePercent,
+                resistancePercent = reading.powerWatts,
+                powerWatts = ghost ?: reading.cadenceRpm
+            )
+        }
     }
 
     companion object {
@@ -109,6 +156,41 @@ class SimulatedSensorSource(
         fun coastFor(seconds: Int) {
             coastUntilMs = System.currentTimeMillis() + seconds * 1000L
         }
+
+        /**
+         * Wall-clock instant the fabricated corruption stops (2.7).
+         *
+         * The defect was found on a bike with a rider on it, which is not a
+         * thing to spend on a regression. These two levers put both halves of
+         * it on the emulator: values that cannot be true, and a source that
+         * goes quiet without failing.
+         */
+        @Volatile
+        private var corruptUntilMs: Long = 0L
+
+        /** The board reports nonsense for [seconds]. Debug builds only. */
+        fun corruptFor(seconds: Int) {
+            corruptUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
+
+        /** Wall-clock instant the source starts reporting again. */
+        @Volatile
+        private var silentUntilMs: Long = 0L
+
+        /**
+         * The source stops delivering for [seconds] — without erroring, which
+         * is the part that made this survivable for a whole ride. Debug builds
+         * only.
+         */
+        fun silenceFor(seconds: Int) {
+            silentUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
+
+        /** The value near 602 the bike produced that is none of the three metrics. */
+        private const val GHOST_VALUE = 602.0
+
+        /** 41 of the bike's 53 corrupted samples carried an impossible value. */
+        private const val GHOST_SHARE = 41.0 / 53.0
 
         private const val DEFAULT_SEED = 0x50E10
         private const val SAMPLE_INTERVAL_MS = 250L
