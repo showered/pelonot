@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug-only additions. Nothing declared here exists in a release build.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Exported so `adb shell am broadcast` (shell uid) can reach it. That
+            would be a hole in a shipped app; this manifest is merged into debug
+            builds only, and the class it names lives in the debug source set.
+        -->
+        <receiver
+            android:name="com.pelonot.debug.DebugTelemetryReceiver"
+            android:exported="true" />
+    </application>
+
+</manifest>

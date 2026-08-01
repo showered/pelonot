@@ -34,6 +34,7 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachInput
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.coach.RideCoachPolicy
+import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
@@ -102,6 +103,7 @@ class WorkoutService : Service() {
     private val coachPolicy = RideCoachPolicy()
 
     private var tickerJob: Job? = null
+    private val autoPause = AutoPausePolicy()
     private var intervalEngine: ClassIntervalEngine? = null
 
     private val _workoutState = MutableStateFlow(WorkoutState.Idle)
@@ -306,22 +308,31 @@ class WorkoutService : Service() {
         }
     }
 
-    fun pauseWorkout() {
+    /**
+     * @param manual false only when [autoPause] asked for this (19.1.2). A
+     *   pause the rider worked themselves is theirs to lift, so the policy is
+     *   told to let go of it.
+     */
+    fun pauseWorkout(manual: Boolean = true) {
         if (_workoutState.value != WorkoutState.Active) return
+        if (manual) autoPause.onManualControl()
         pausedAtRealtimeMs = SystemClock.elapsedRealtime()
         _workoutState.value = WorkoutState.Paused
-        _rideSnapshot.update { it.copy(state = WorkoutState.Paused) }
+        _rideSnapshot.update {
+            it.copy(state = WorkoutState.Paused, autoPaused = autoPause.isAutoPaused)
+        }
         updateNotification()
     }
 
-    fun resumeWorkout() {
+    fun resumeWorkout(manual: Boolean = true) {
         if (_workoutState.value != WorkoutState.Paused) return
+        if (manual) autoPause.onManualControl()
         if (pausedAtRealtimeMs > 0) {
             accumulatedPausedMs += SystemClock.elapsedRealtime() - pausedAtRealtimeMs
             pausedAtRealtimeMs = 0L
         }
         _workoutState.value = WorkoutState.Active
-        _rideSnapshot.update { it.copy(state = WorkoutState.Active) }
+        _rideSnapshot.update { it.copy(state = WorkoutState.Active, autoPaused = false) }
         updateNotification()
     }
 
@@ -458,6 +469,12 @@ class WorkoutService : Service() {
                     }
                     if (elapsed % NOTIFICATION_REFRESH_SEC == 0) updateNotification()
                 }
+                // 19.1.2. Runs while paused as well as while riding: the tick
+                // that lifts an auto-pause is a tick the clock is not moving
+                // on. `recordMetric` has already settled whether this second's
+                // telemetry is live, so the policy reads the same answer the
+                // rider is being shown.
+                applyAutoPause()
                 delay(TICK_INTERVAL_MS)
             }
 
@@ -465,6 +482,39 @@ class WorkoutService : Service() {
                 Log.i(TAG, "Class timer finished; completing the ride")
                 stopWorkout()
             }
+        }
+    }
+
+    /**
+     * Pauses the ride when the rider has stopped, and picks it up again when
+     * they start (19.1.2).
+     *
+     * The bottle stop is the case: the clock kept running through it, so the
+     * minute at the tap was averaged into `avg_power` and `avg_cadence` as a
+     * minute of very easy riding. Pausing stops the clock, stops the class
+     * advancing and stops [recordMetric] writing, which are the three things
+     * that were wrong about standing still.
+     */
+    private fun applyAutoPause() {
+        val paused = _workoutState.value == WorkoutState.Paused
+        if (!paused && _workoutState.value != WorkoutState.Active) return
+
+        val decision = autoPause.onTick(
+            elapsedSec = elapsedSeconds(),
+            cadenceRpm = sensorRepository.sensorReading.value.cadenceRpm,
+            telemetryLive = !telemetryStalled,
+            isPaused = paused
+        )
+        when (decision) {
+            AutoPausePolicy.Decision.Pause -> {
+                Log.i(TAG, "Auto-pausing: no cadence for ${AutoPausePolicy.DEFAULT_STILLNESS_SEC}s")
+                pauseWorkout(manual = false)
+            }
+            AutoPausePolicy.Decision.Resume -> {
+                Log.i(TAG, "Auto-resuming: the rider is pedalling again")
+                resumeWorkout(manual = false)
+            }
+            AutoPausePolicy.Decision.None -> Unit
         }
     }
 

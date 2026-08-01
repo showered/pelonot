@@ -706,6 +706,11 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
             // themselves — and because it says the record has a hole in it
             // (2.4.4), which they will want to know afterwards.
             text = when {
+                // 19.1.2. A ride that stopped on its own has to say so, or it
+                // is indistinguishable from one that has frozen — and the way
+                // out has to be on the same line, because this chip is the only
+                // thing the rider can see over their film.
+                snapshot.isPaused && snapshot.autoPaused -> "PAUSED · PEDAL"
                 snapshot.isPaused -> "PAUSED"
                 // Two words, because this chip is only as wide as the clock
                 // above it: "NO SIGNAL · NOT RECORDING" was clipped mid-word to

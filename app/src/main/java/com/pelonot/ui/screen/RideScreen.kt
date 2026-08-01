@@ -507,6 +507,10 @@ private fun EffortColumn(
             )
             Text(
                 text = when {
+                    // 19.1.2. Why it stopped, and what lifts it. A ride that
+                    // pauses itself without saying so reads as a bug.
+                    state.isPaused && snapshot.autoPaused ->
+                        "PAUSED — START PEDALLING TO RESUME"
                     state.isPaused -> "PAUSED"
                     interval.hasClass ->
                         "${Formatters.duration(interval.classRemainingSec)} REMAINING"

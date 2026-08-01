@@ -40,16 +40,24 @@ class SimulatedSensorSource(
             val elapsedSec = (nowMs - startMs) / 1000.0
 
             val effort = effortAt(elapsedSec)
+            val coasting = nowMs < coastUntilMs
 
-            val cadence = (BASE_CADENCE + effort * CADENCE_SWING)
-                .plus(random.nextDouble(-CADENCE_JITTER, CADENCE_JITTER))
-                .coerceIn(0.0, 130.0)
+            // The knob does not move when a rider gets off; only the cranks
+            // stop. Resistance therefore stays where it was, which is also what
+            // the board reports on the real bike.
+            val cadence = if (coasting) {
+                0.0
+            } else {
+                (BASE_CADENCE + effort * CADENCE_SWING)
+                    .plus(random.nextDouble(-CADENCE_JITTER, CADENCE_JITTER))
+                    .coerceIn(0.0, 130.0)
+            }
 
             val resistance = (BASE_RESISTANCE + effort * RESISTANCE_SWING)
                 .plus(random.nextDouble(-RESISTANCE_JITTER, RESISTANCE_JITTER))
                 .coerceIn(0.0, 100.0)
 
-            val power = PowerModel.estimateWatts(cadence, resistance)
+            val power = if (coasting) 0.0 else PowerModel.estimateWatts(cadence, resistance)
 
             val targetHr = RESTING_HR + (power / HR_WATTS_PER_BPM)
             heartRate += (targetHr - heartRate) * HR_RESPONSIVENESS
@@ -81,25 +89,45 @@ class SimulatedSensorSource(
         return (warmup * combined).coerceIn(0.0, 1.0)
     }
 
-    private companion object {
-        const val DEFAULT_SEED = 0x50E10
-        const val SAMPLE_INTERVAL_MS = 250L
+    companion object {
+        /**
+         * Wall-clock instant the simulated rider starts pedalling again.
+         *
+         * The simulated rider never stops, which means **nothing about a rider
+         * standing still can be exercised without a bike** — auto-pause
+         * (19.1.2), the gap a stop leaves in the series, what the averages do
+         * across one. This is the lever that makes those observable: the debug
+         * build has a receiver that sets it, and a release build has no way to
+         * reach it at all.
+         *
+         * Volatile because the flow reads it on its own coroutine.
+         */
+        @Volatile
+        private var coastUntilMs: Long = 0L
 
-        const val BASE_CADENCE = 62.0
-        const val CADENCE_SWING = 38.0
-        const val CADENCE_JITTER = 2.5
+        /** The simulated rider stops pedalling for [seconds]. Debug builds only. */
+        fun coastFor(seconds: Int) {
+            coastUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
 
-        const val BASE_RESISTANCE = 28.0
-        const val RESISTANCE_SWING = 34.0
-        const val RESISTANCE_JITTER = 1.5
+        private const val DEFAULT_SEED = 0x50E10
+        private const val SAMPLE_INTERVAL_MS = 250L
 
-        const val RESTING_HR = 62
-        const val MAX_HR = 190
-        const val HR_WATTS_PER_BPM = 2.1
-        const val HR_RESPONSIVENESS = 0.04
+        private const val BASE_CADENCE = 62.0
+        private const val CADENCE_SWING = 38.0
+        private const val CADENCE_JITTER = 2.5
 
-        const val WARMUP_SEC = 45.0
-        const val SLOW_PERIOD_SEC = 210.0
-        const val SURGE_PERIOD_SEC = 47.0
+        private const val BASE_RESISTANCE = 28.0
+        private const val RESISTANCE_SWING = 34.0
+        private const val RESISTANCE_JITTER = 1.5
+
+        private const val RESTING_HR = 62
+        private const val MAX_HR = 190
+        private const val HR_WATTS_PER_BPM = 2.1
+        private const val HR_RESPONSIVENESS = 0.04
+
+        private const val WARMUP_SEC = 45.0
+        private const val SLOW_PERIOD_SEC = 210.0
+        private const val SURGE_PERIOD_SEC = 47.0
     }
 }

@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 263 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 274 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```

@@ -46,7 +46,14 @@ data class RideSnapshot(
      * ride screen and the strip render from here, so they cannot disagree about
      * whether the numbers beside this are live.
      */
-    val telemetryLive: Boolean = true
+    val telemetryLive: Boolean = true,
+    /**
+     * Whether this pause is one the app called rather than the rider (19.1.2).
+     *
+     * Both surfaces say so: a ride that stops on its own and does not explain
+     * itself is indistinguishable from one that has frozen.
+     */
+    val autoPaused: Boolean = false
 ) {
     val isPaused: Boolean get() = state == WorkoutState.Paused
     val isRunning: Boolean get() = state == WorkoutState.Active || state == WorkoutState.Paused
