@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pelonot.core.Formatters
 import com.pelonot.domain.chart.CadenceDistribution
+import com.pelonot.domain.chart.ChartScale
 import com.pelonot.domain.chart.PrescribedPlan
 import com.pelonot.domain.chart.RideTrace
 import com.pelonot.domain.chart.TimeInZone
@@ -109,6 +111,99 @@ fun ChartCard(
 }
 
 /**
+ * The axis treatment, decided once and shared by every trace (16.1.8).
+ *
+ * Before this the charts had no scale at all — the heart-rate one was a green
+ * line with no numbers on it, and a rider could not answer "what was I at
+ * during the second climb" (16.1.7).
+ *
+ * **Beautiful, not scientific.** No boxed axes, no tick forests, no frame. Two
+ * or three hairlines at round values with the number sitting on the line at the
+ * right-hand edge, and the clock underneath. Right-hand edge because a ride
+ * starts at zero and climbs: the left of the plot is where the trace is.
+ *
+ * The labels are placed from [ChartScale.fractionOf], the same function the
+ * drawing uses for the trace itself, so a gridline cannot drift away from the
+ * value it claims.
+ */
+@Composable
+fun ChartFrame(
+    scale: ChartScale,
+    unit: String,
+    durationSec: Int,
+    height: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+    plot: @Composable () -> Unit
+) {
+    val ticks = scale.ticks()
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+
+    Column(modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().height(height)) {
+            Canvas(Modifier.fillMaxSize()) {
+                ticks.forEach { value ->
+                    val y = size.height * (1f - scale.fractionOf(value))
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+            }
+
+            plot()
+
+            ticks.forEach { value ->
+                // Half a line of type above the rule it belongs to, so the
+                // number sits *on* the line rather than hanging under it.
+                val fromTop = height * (1f - scale.fractionOf(value)) - LABEL_LIFT
+                Text(
+                    text = "${value.roundToInt()}$unit",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = fromTop.coerceAtLeast(0.dp), end = 4.dp)
+                        // A scrim the colour of the card behind it. A ride that
+                        // finishes on a sprint runs its trace straight through
+                        // this label, and a number that cannot be read is not
+                        // an axis.
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.75f),
+                            MaterialTheme.expressiveShapes.small
+                        )
+                        .padding(horizontal = 3.dp)
+                )
+            }
+        }
+
+        if (durationSec > 0) {
+            Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+            Row(Modifier.fillMaxWidth()) {
+                AxisLabel(Formatters.duration(0))
+                Spacer(Modifier.weight(1f))
+                AxisLabel(Formatters.duration(durationSec / 2))
+                Spacer(Modifier.weight(1f))
+                AxisLabel(Formatters.duration(durationSec))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AxisLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+/** Half a line of `labelSmall`, near enough, and it does not need to be exact. */
+private val LABEL_LIFT = 7.dp
+
+/**
  * Power over time with the rider's own zone bands behind it (16.1.1) and the
  * class's prescribed intervals drawn under the trace (16.1.5).
  *
@@ -151,10 +246,16 @@ fun PowerTraceChart(
     }
     val envelope = MetricPowerCoral.copy(alpha = 0.35f)
 
-    Canvas(
+    ChartFrame(
+        scale = ChartScale(0.0, ceiling),
+        unit = " W",
+        durationSec = trace.durationSec,
+        height = height,
         modifier = modifier
-            .fillMaxWidth()
-            .height(height)
+    ) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
             .clip(MaterialTheme.expressiveShapes.small)
     ) {
         zoneBands.forEach { (color, low, high) ->
@@ -230,6 +331,7 @@ fun PowerTraceChart(
             drawFtpLine(y(ftpWatts.toDouble()))
         }
     }
+    }
 }
 
 /** A dashed rule at FTP, because it is the number every zone is derived from. */
@@ -270,10 +372,16 @@ fun HeartRateTraceChart(
     val low = (trace.minValue - 10).coerceAtLeast(0.0)
     val high = (trace.maxValue + 10).coerceAtLeast(low + 1)
 
-    Canvas(
+    ChartFrame(
+        scale = ChartScale(low, high),
+        unit = "",
+        durationSec = trace.durationSec,
+        height = height,
         modifier = modifier
-            .fillMaxWidth()
-            .height(height)
+    ) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
             .clip(MaterialTheme.expressiveShapes.small)
     ) {
         val x = { sec: Int -> size.width * (sec.toFloat() / trace.durationSec.coerceAtLeast(1)) }
@@ -304,6 +412,7 @@ fun HeartRateTraceChart(
             drawPath(path, MetricHeartRateGreen, style = Stroke(width = 2.dp.toPx()))
         }
     }
+    }
 }
 
 /** How the ride's cadence was spread (16.1.3). */
@@ -322,6 +431,17 @@ fun CadenceDistributionChart(
     val peak = distribution.maxSeconds.coerceAtLeast(1)
 
     Column(modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().height(height)) {
+        // 16.1.8, the same treatment as the traces: this chart's vertical axis
+        // is *time*, and without a number on it the tallest bar could be twenty
+        // seconds or ten minutes. One label at the peak is enough — the bars
+        // are read against each other, not against an absolute scale.
+        Text(
+            text = Formatters.duration(peak),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp)
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -343,19 +463,14 @@ fun CadenceDistributionChart(
                 )
             }
         }
+        }
         Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
         Row(Modifier.fillMaxWidth()) {
-            Text(
-                text = "${bands.first().first} rpm",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            AxisLabel("${bands.first().first} rpm")
             Spacer(Modifier.weight(1f))
-            Text(
-                text = "${bands.last().second} rpm",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            AxisLabel("${(bands.first().first + bands.last().second) / 2} rpm")
+            Spacer(Modifier.weight(1f))
+            AxisLabel("${bands.last().second} rpm")
         }
     }
 }
