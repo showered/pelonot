@@ -17,7 +17,42 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (eighth sitting): the connectivity model, settled
+### Latest session — 1 August 2026 (ninth sitting): the model, built
+
+The eighth sitting settled what offline and online mean. This one made the
+code agree with it. **Phase 23's first two sections are done and observed** —
+23.1.1 through 23.1.6, 23.2.1, 23.2.2, 23.2.5 and 23.3.2 — on the tablet AVD.
+308 JVM tests green, both migration tests green.
+
+**The class library ships in the APK.** All 72, 104 KB of JSON, 9 KB
+compressed — the non-decision 23.2.1 predicted. `ClassTemplateSeeder` no
+longer knows Supabase exists, so the first path a fresh install takes makes no
+network call at all.
+
+**The gate is `auth_user_id`, per profile, in one place.** `CloudAccess`
+replaces `SupabaseModule.isConfigured` as the answer to "may we?", and
+`SupabaseSyncRepository` asks it before it even resolves the client. The part
+worth keeping is structural rather than clever: **no cloud method can be
+called without naming the rider it acts for**. `fetchClassTemplates()` used to
+take nobody.
+
+**A fourth violation of rule 1 turned up that the plan had not listed.**
+`UserRepository.save` upserted a profile's name, weight and FTP to the cloud on
+every create, rename and edit — so a rider who never signed in had their name
+in Supabase from the moment they typed it. Found by grepping for the *client*
+rather than for the features known to use it, which is the technique to reuse.
+
+**The consequence to be clear about: no build can reach the cloud now.**
+Nothing sets `auth_user_id`, because Phase 15 does not exist. That is rule 1
+working, not a regression — but **14.1.6 is unreachable from the app** until
+sign-in is built, and 23.1.2 had to be observed by setting the column by hand.
+
+The last observation of the sitting is the one that was not designed for: a
+sync queued while the profile had an account, then run after the account was
+taken away, **refused itself**. The worker re-checks the gate rather than
+trusting the enqueue, and that is what sign-out will need (15.4.1).
+
+### The session before it — 1 August 2026 (eighth sitting): the connectivity model, settled
 
 No code. The owner settled **what offline and online mean in this app**, which
 had been drifting: the app was half offline-first by design and half quietly
@@ -386,22 +421,21 @@ below because he is the one riding this:
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
 
 **Then the connectivity model's own list, which now sits above the old one.**
-It was settled in the eighth sitting and two of its three items are
-fundamental:
+23.1 and 23.2 are done; what is left of it is below:
 
 | Next | Why now |
 |------|---------|
-| **23.2** Bundle the class library | The largest gap between what the app is and what an offline rider gets: **5 classes instead of 72**, on the default path, forever. Almost certainly an afternoon and a few tens of kilobytes of APK |
-| **23.1** The consent gate | An install with no account currently talks to Supabase twice — once on first launch, once after every profile ride, and the second one uploads a ride with no `user_id` on it (14.2.1). Small, and it is the item that makes rule 1 true rather than intended |
 | **24.1** The household leaderboard | The cheapest fundamental left. Pure Room queries over data already recorded, on a screen that already exists (11.4.1), and it is the *fairest* comparison this app can make — same bike, same board. Watch 24.4.2: it wants the `powerIsMeasured` column that 7.10.7 and 16.1.6 are also waiting on |
+| **23.2.3 / 23.2.4** The class library as an update channel | The other half of 23.2, and it is now the *only* reason the cloud would be read at all. Needs `updated_at` on `class_templates` so an update is a diff, and it is additive-only: `workouts` has a foreign key onto `class_templates`, so deleting a class takes a rider's history link with it |
 | **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire. Free today, a backfill migration once four riders have a year of history up there |
+| **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual. A reminder, not a nag |
 
 Then the table below, which was written before the fifth sitting and is kept
 because its reasoning is still good:
 
 | Next | Why now |
 |------|---------|
-| **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
+| **14.1.6** Finish the cloud round trip | **Blocked as of the ninth sitting, and deliberately.** The app can no longer make the call: nothing sets `auth_user_id`, so every profile is offline and every cloud method returns `Disabled`. The row that was posted in the seventh sitting is still up there unseen; seeing it needs one `select count(*) from workouts` through the Management API, and *re-driving* it needs Phase 15 or the column set by hand |
 | **11.1b.3 / 11.1b.4** Resizing and side docking | The half of 11.1b still outstanding. Opacity and the two-band layout landed; a vertical dock down one side is probably the better default on a 16:9 tablet and needs a genuine re-flow, not a rotation |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
 | **11.1b.9** The chips as a piece of design | The HUD redesign is correct and not yet beautiful, and the owner has said he will come back to it. Read 11.1b.8 and 11.1b.4a first — they are the same conversation |
@@ -429,7 +463,7 @@ Two notes worth carrying into the next bike session:
 | Phase | Area | State |
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
-| 1 | Local database (Room) + Supabase | 🔶 Room complete — the app now both reads (72 class templates) and writes to the cloud; the written row has not been *seen* (14.1.6) |
+| 1 | Local database (Room) + Supabase | 🔶 Room complete at schema version 3. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account that nothing yet grants (23.1) |
 | 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Verified end to end on real hardware** — bike board (2.1a), resistance scale (2.1a.5) and a real BLE strap (2.3.5). Per-bike auto-calibration built and gated (2.2a), and **the question of whether to calibrate at all is now settled in writing at the head of 2.2a — yes**; it has yet to see a hardware ride (2.2a.1). **Newly opened: a stalled board's last reading is recorded as a fresh measured sample (2.4.4), and the rider is never told the sensor stopped (2.4.5)** |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ Complete — raised and driven by the ride |
@@ -442,8 +476,8 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 **One query from done** — schema fixed, the seeder reads 72 templates live, the worker posts and reports success. Only the sighting is missing (14.1.6). **Re-scoped by the connectivity model**: this is the *cloud tier*, gated behind an account (23.1), and the payload format should change before rides accumulate (14.4) |
-| 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*. An account is a feature a rider opts into, never a gate |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. The payload format should still change before rides accumulate (14.4) |
+| 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
 | 16 | Data visualisation | 🔶 Post-ride charts done (16.1.1–16.1.5, 16.2), prescribed-vs-actual included — the fundamental half. Trends (16.3) remain, blocked on 7.9 |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
@@ -451,7 +485,7 @@ Two notes worth carrying into the next bike session:
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 Barely started — *"Your Progress" shows no progress, and the layout is stretched across a screen it should be using. The greeting no longer says "Good morning" at midnight (22.3.1)* |
-| 23 | Offline by default — making the ungated tier complete | ❌ Not started — **fundamental**. The consent gate (23.1) and the bundled class library (23.2) are what make rule 1 of the connectivity model true |
+| 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1) and the bundled class library (23.2) are done and observed** — rule 1 is true rather than intended. The cloud as an update channel (23.2.3/23.2.4), the backup reminder (23.3.1) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | ❌ Not started — **fundamental**, and the cheapest fundamental item left. Pure Room queries over data the app already records |
 
 ---
@@ -513,16 +547,22 @@ Three things in the shipped code contradict rule 1. None of them is a defect
 against the plan as it stood — the plan asked for exactly this — which is why
 they are here rather than in *Corrections*.
 
-| Today | Under the model | Item |
-|-------|-----------------|------|
-| `ClassTemplateSeeder` fetches the class library from Supabase on first launch whenever the build carries credentials | Ship the library in the APK. The cloud becomes an *update* channel that only a signed-in rider uses | **23.2** |
-| `WorkoutService` enqueues `WorkoutSyncWorker` after every profile ride — no account, nobody's consent, and the ride arrives in a shared pool with no `user_id` on it (14.2.1) | Enqueue only for a profile with an account attached | **23.1.2** |
-| The only gate is build-time: `SupabaseModule.isConfigured`, which asks whether *this build* has a URL and a key | The gate is runtime and per-profile: is **this rider** signed in? A build detail is not a consent | **23.1.1** |
+**All four are now fixed — 1 August 2026, ninth sitting.** The table is kept
+because the fourth row is the interesting one: it was not on the list, and it
+had been true for longer than any of the others.
 
-**The one with real teeth is the first.** `assets/classes` holds **5** class
+| Was | Under the model | Item |
+|-----|-----------------|------|
+| `ClassTemplateSeeder` fetched the class library from Supabase on first launch whenever the build carried credentials | Ship the library in the APK. The cloud becomes an *update* channel that only a signed-in rider uses | **23.2** ✅ |
+| `WorkoutService` enqueued `WorkoutSyncWorker` after every profile ride — no account, nobody's consent, and the ride arrived in a shared pool with no `user_id` on it (14.2.1) | Enqueue only for a profile with an account attached | **23.1.2** ✅ |
+| The only gate was build-time: `SupabaseModule.isConfigured`, which asks whether *this build* has a URL and a key | The gate is runtime and per-profile: is **this rider** signed in? A build detail is not a consent | **23.1.1** ✅ |
+| `UserRepository.save` upserted a profile's **name, weight and FTP** to the cloud on every create, rename and edit — so a rider who never signed in was in Supabase from the moment they typed their name | Same gate. It was never listed here because the search had been for the features known to sync, not for the client itself | **23.1.1** ✅ |
+
+**The one with real teeth was the first.** `assets/classes` held **5** class
 JSONs; the cloud holds **72**. Under the old model that gap was a fallback
 nobody would hit with a configured build. Under this one, five classes is what
-the default rider gets, forever, and the class library is most of the product.
+the default rider would have got, forever, and the class library is most of the
+product.
 
 ---
 
@@ -3020,32 +3060,52 @@ the tier on the other side of it is a whole app rather than a stub.
 
 ### 23.1 The consent gate
 
-- [ ] **23.1.1** **One place that answers "may this profile talk to the
-      cloud?"**, consulted by the class seeder, `WorkoutSyncWorker` and
-      everything in 14, 15, 17 and 18. Today the only gate is
-      `SupabaseModule.isConfigured`, which asks whether *this build* has a URL
-      and a key — a build detail, not a rider's consent. The gate is
-      `UserEntity.auth_user_id != null` (15.2.5), read per profile
-- [ ] **23.1.2** `WorkoutService` enqueues `WorkoutSyncWorker` only for a
-      profile with an account. It currently enqueues on `finalSession.userId
-      != null` — any profile ride at all — and 14.2.1 means those rides arrive
-      with no `user_id`, so the app has been uploading unattributable rides
-      into a shared pool on nobody's behalf
-- [ ] **23.1.3** **A test that fails if any Supabase call is reachable from a
-      state with no account.** This is the rule most likely to be broken by
-      accident, by a future feature that "only needs one little lookup" — the
-      same failure the 2.2a.8 fence exists to prevent around `PowerModel`, and
-      worth building the same way
-- [ ] **23.1.4** Settings says which rung this profile is on, in one line and
-      without jargon: *This bike only* / *Backed up to your account*. Same
-      surface as 14.2.3, and it is where a rider finds out that the thing they
-      assumed was happening is not
-- [ ] **23.1.5** A rider who never signs in sees **no spinner, no retry, no
-      error toast and no greyed-out cloud control**. The offline tier is not a
-      locked door with the cloud visible through it
-- [ ] **23.1.6** A build with no credentials at all still behaves identically
-      (`SyncOutcome.Disabled`, 14.10.3). Two different reasons to be offline,
-      one behaviour
+- [x] **23.1.1** **One place that answers "may this profile talk to the
+      cloud?"** — `CloudAccess`, gating on `UserEntity.auth_user_id != null`
+      (new column, migration 2→3) read per profile. `SupabaseSyncRepository`
+      asks it at its single choke point, before the client is even resolved,
+      and **no method can be called without naming the rider it acts for**:
+      `fetchClassTemplates()` used to take nobody, which is how the class
+      library came to be fetched before there was a rider on the tablet at all
+- [x] **23.1.2** `WorkoutService` asks the gate rather than `finalSession.userId
+      != null`, and the worker asks again when it runs — a job queued for a
+      signed-in rider can execute after they sign out, and the answer that
+      matters is the one at the moment the ride would leave the tablet.
+      Observed both ways round on the AVD, including the queued job refusing
+      itself once the account was taken away
+- [x] **23.1.3** **A fence, not a behavioural test**, and deliberately opening
+      no socket — a behavioural one would have to be trusted not to reach the
+      real project at exactly the moment it failed. Four structural claims: the
+      SDK is reachable from one package, the client is dereferenced once and
+      behind the gate, the build-time flag cannot come back as consent, and
+      every entry point names a rider. Same reasoning as the 2.2a.8 fence: the
+      danger is the third caller nobody has written yet
+- [x] **23.1.4** Settings says which rung, in one line: *This bike only. Your
+      rides are recorded here and stay here* / *Backed up to your account*.
+      Both seen on the AVD
+- [x] **23.1.5** No toggle, no greyed-out control and no mention of Supabase
+      for a rider with no account. The old copy explained that *this build* had
+      no credentials configured, which is a fact about a developer's machine
+      offered to a rider as if it were about them
+- [x] **23.1.6** One behaviour for all three reasons to be offline — no
+      account, no credentials, backup switched off. `CloudAccess` collapses
+      them deliberately, and `CloudAccessTest` holds it to that
+
+> **A fourth violation of rule 1 turned up that this plan had not listed.**
+> `UserRepository.save` upserted a profile's name, weight and FTP to the cloud
+> on every create, rename, FTP change and weight change — so a rider who never
+> signed in had their name in Supabase from the moment they typed it. It goes
+> through the same door as everything else, so the gate closed it too, but the
+> plan's list of three was wrong and the way it was found is worth keeping:
+> grepping for the *client*, not for the features known to use it.
+
+> **The consequence to state plainly: no build can reach the cloud now.**
+> Nothing sets `auth_user_id` because Phase 15 does not exist, so every profile
+> is offline and every cloud call returns `Disabled`. That is rule 1 working
+> rather than a regression — but it makes **14.1.6 unreachable from the app**
+> until sign-in is built, and any verification of the cloud path before then
+> needs the column set by hand (one `UPDATE profiles SET auth_user_id=…`
+> against the tablet's database, which is how 23.1.2 was observed).
 
 ### 23.2 The class library, offline
 
@@ -3054,13 +3114,17 @@ Under the old model that was a fallback a configured build would never hit.
 Under this one it is the default library, and the class library is most of
 what the app *is*.
 
-- [ ] **23.2.1** Bundle the full library in the APK. Check what 72 interval
-      JSONs cost first — the five that exist are small, so this is very likely
-      tens of kilobytes and a non-decision
-- [ ] **23.2.2** `ClassTemplateSeeder` seeds from assets **always**, and makes
-      no network call on the first-launch path. The current order — cloud
-      first, assets on failure — is exactly backwards under this model, and
-      14.2.2a is the record of how quietly that path fails
+- [x] **23.2.1** All 72 bundled: **104 KB of JSON, 9 KB once the package is
+      compressed**, which is the non-decision it was predicted to be. Named by
+      class id and grouped by category, and checked at build time by
+      `ClassLibraryAssetsTest` — every class decodes, ids are unique, intervals
+      parse, and (the one worth having) intervals are contiguous and end
+      exactly on `duration_sec`. A gap leaves the rider with no prescription
+      for the seconds it spans and nothing on screen would say so
+- [x] **23.2.2** `ClassTemplateSeeder` no longer knows Supabase exists.
+      Observed on a cleared install: *Seeded 72 class templates from assets*,
+      no `SupabaseSync` line at all, seven categories in the Class Library and
+      a newly bundled VO2 Max class drawing its 12 intervals
 - [ ] **23.2.3** The cloud becomes an **update channel** for a signed-in rider:
       additive, and never deleting a class anyone has ridden. `workouts` has a
       foreign key onto `class_templates`, so a class disappearing takes the
@@ -3068,10 +3132,10 @@ what the app *is*.
 - [ ] **23.2.4** `updated_at` (or a version) on `class_templates` so an update
       is a diff rather than a re-seed, and so a rider who has ridden 40 classes
       does not re-download 72
-- [ ] **23.2.5** Keep 14.2.2a's tolerance of both `intervals_json` shapes. It
-      is the difference between a self-hoster's project working and failing
-      silently, and it now also covers assets-vs-cloud rather than only
-      cloud-vs-cloud
+- [x] **23.2.5** Both `intervals_json` shapes still decode —
+      `ClassTemplateDtoTest` covers the pair and `ClassLibraryAssetsTest` now
+      decodes all 72 shipped files through the same DTO, so the assets are
+      exercised rather than assumed
 
 ### 23.3 What the offline tier must already contain
 
@@ -3088,9 +3152,10 @@ no cloud dependency**, which is the good news in this phase.
       manual. A gentle reminder after N rides since the last backup, or a
       change of tablet, is the offline answer to what the cloud tier gets for
       free. It must be a reminder and not a nag
-- [ ] **23.3.2** Restoring onto a *replacement* tablet already works if the
-      file moves — that is the offline equivalent of 15.3.2 and nobody would
-      guess it from the copy. Say it where a rider will read it
+- [x] **23.3.2** The Backup section says it: *copy it somewhere safe and it can
+      be restored onto any tablet running Pelonot*. Reworded for a signed-in
+      rider too, where "your rides live on this tablet and nowhere else" had
+      become false
 
 ### 23.4 Retention and trimming — the local database is the one that fills
 

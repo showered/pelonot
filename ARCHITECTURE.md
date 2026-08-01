@@ -266,8 +266,8 @@ class_templates ──┘
 
 | Table | Written when | Contains |
 |-------|-------------|----------|
-| `profiles` | Profile created/edited | Name, weight, FTP |
-| `class_templates` | First launch (seeded) | Title, category, duration, `intervals_json` |
+| `profiles` | Profile created/edited | Name, weight, FTP, `auth_user_id` |
+| `class_templates` | First launch (seeded from assets) | Title, category, duration, `intervals_json` |
 | `workouts` | Ride **start**, updated at end | Aggregates, RPE, `is_complete` |
 | `workout_metrics` | Every second | Cadence, resistance, power, HR |
 
@@ -278,13 +278,15 @@ process died mid-ride.
 App preferences (theme, sensor mode, selected profile, strap address, sync
 toggle) live in **DataStore**, not Room, since they are not relational.
 
-> **Pre-release:** the database uses `fallbackToDestructiveMigration()`. Replace
-> it with explicit migrations before the first real user installs a build.
+`profiles.auth_user_id` is **the consent gate**: null means this rider has no
+account, and therefore no cloud. See *Out to the cloud* below.
 
 ### Class templates in
 
 `assets/classes/<category>/<id>.json` — the seeder lists the directory, so
-adding a folder is enough.
+adding a folder is enough. **All 72 classes ship in the APK** and the seeder
+reads nothing else: the cloud is an update channel for a signed-in rider, never
+the source of the first copy (PLAN 23.2).
 
 ```json
 {
@@ -343,6 +345,13 @@ Omit them and `SupabaseModule.client` is null, every call returns
 `SyncOutcome.Disabled`, and the app is fully functional offline. `Disabled` is
 deliberately distinct from `Failed` so the worker can tell "there is no cloud,
 stop asking" from "the network is down, try again".
+
+**Credentials are not consent.** Every call also passes through `CloudAccess`,
+which asks whether *this profile* has an account (`auth_user_id != null`) —
+per rider, checked at `SupabaseSyncRepository`'s single choke point before the
+client is resolved. No method can be called without naming the rider it acts
+for. Nothing sets `auth_user_id` until Phase 15, so today every call is
+`Disabled` and no build reaches the network at all.
 
 Payloads are typed `@Serializable` DTOs. They were previously
 `Map<String, Any?>` — kotlinx.serialization has no serializer for `Any`, so

@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 291 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 308 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -65,9 +65,24 @@ model*. Four rules:
 
 The gate is **`UserEntity.auth_user_id != null`, per profile** — not
 `SupabaseModule.isConfigured`, which asks about the build, not the rider.
-Two places in the shipped code still break rule 1 (`ClassTemplateSeeder` on
-first launch, `WorkoutService`'s sync enqueue after every profile ride); they
-are PLAN.md 23.1 and 23.2. **If you are about to add a third, stop.**
+
+**This is built** (PLAN.md 23.1, 23.2). One class, `CloudAccess`, answers it;
+`SupabaseSyncRepository` asks at its single choke point before it resolves the
+client; and **no cloud method can be called without naming the rider it acts
+for**. `CloudAccessFenceTest` holds the shape in place: the Supabase SDK is
+importable from `data/remote` only, the client is dereferenced once, and a new
+entry point with no rider on it fails the build. If you need the cloud from
+somewhere new, route it through `SupabaseSyncRepository` — do not import the
+SDK, and do not reach for `isConfigured`.
+
+Two consequences to know before you are surprised by them:
+
+- **Nothing sets `auth_user_id` yet**, because Phase 15 (accounts) does not
+  exist. So every profile is offline, every cloud call returns
+  `SyncOutcome.Disabled`, and no build can reach Supabase. That is rule 1
+  working. To exercise the cloud path, set the column by hand on the device.
+- **The class library is bundled** — all 72 in `assets/classes`, seeded from
+  assets always. The cloud is an update channel and nothing reads it today.
 
 ---
 
