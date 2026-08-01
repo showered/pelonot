@@ -233,6 +233,9 @@ class HudOverlayManager(private val context: Context) {
                             if (!_volumeOpen.value) volumeController.refresh()
                             _volumeOpen.value = !_volumeOpen.value
                         },
+                        // 11.5.9. Closed by a swipe towards the dock edge or by
+                        // being left alone, neither of which is a toggle.
+                        onCloseVolume = { _volumeOpen.value = false },
                         onMediaVolumeChange = volumeController::setMediaVolume,
                         onCoachVolumeChange = ::setCoachVolume,
                         opacity = opacity

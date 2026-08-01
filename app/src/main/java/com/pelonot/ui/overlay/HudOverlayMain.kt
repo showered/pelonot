@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,6 +63,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.R
@@ -134,6 +136,7 @@ fun HudOverlayMain(
     coachVolume: Float,
     volumeError: String?,
     onToggleVolume: () -> Unit,
+    onCloseVolume: () -> Unit,
     onMediaVolumeChange: (Float) -> Unit,
     onCoachVolumeChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -247,12 +250,14 @@ fun HudOverlayMain(
             val volumePanel: @Composable () -> Unit = {
                 HudVolumePanel(
                     visible = volumeOpen,
+                    dock = dock,
                     opacity = panelOpacity,
                     mediaVolume = mediaVolume,
                     coachVolume = coachVolume,
                     error = volumeError,
                     onMediaVolumeChange = onMediaVolumeChange,
-                    onCoachVolumeChange = onCoachVolumeChange
+                    onCoachVolumeChange = onCoachVolumeChange,
+                    onDismiss = onCloseVolume
                 )
             }
 
@@ -490,18 +495,43 @@ private fun HudBody(
 @Composable
 private fun HudVolumePanel(
     visible: Boolean,
+    dock: HudDock,
     opacity: Float,
     mediaVolume: Float,
     coachVolume: Float,
     error: String?,
     onMediaVolumeChange: (Float) -> Unit,
-    onCoachVolumeChange: (Float) -> Unit
+    onCoachVolumeChange: (Float) -> Unit,
+    onDismiss: () -> Unit
 ) {
+    // 11.5.9. It opened and closed from one small button, so a rider who opened
+    // it mid-ride had to find that same control again with the sliders now in
+    // the way. Two ways out instead.
+    //
+    // The swipe goes *towards the strip's own edge* — up when docked top, down
+    // when docked bottom — so the direction follows the dock rather than being
+    // hardcoded, and the panel folds back into the strip it came out of.
+    // Vertical only: a slider is a horizontal drag consumer sitting inside this
+    // gesture, and the two must not fight over the same finger.
+    val threshold = with(LocalDensity.current) { VOLUME_DISMISS_DP.dp.toPx() }
+
+    // And a timeout, because this panel is the one part of the strip that is
+    // not about the next sixty seconds of pedalling (11.5.5): left open it is
+    // just film the rider has lost. Keyed on the volumes, so every adjustment
+    // restarts the clock and it fires only once they have actually stopped.
+    LaunchedEffect(visible, mediaVolume, coachVolume) {
+        if (!visible) return@LaunchedEffect
+        delay(VOLUME_IDLE_MS)
+        onDismiss()
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically()
     ) {
+        var dragged by remember { mutableFloatStateOf(0f) }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -509,6 +539,19 @@ private fun HudVolumePanel(
                     horizontal = HUD_MARGIN,
                     vertical = MaterialTheme.spacing.extraSmall
                 )
+                .pointerInput(dock) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragged = 0f },
+                        onDragEnd = {
+                            val towardsEdge = when (dock) {
+                                HudDock.Top -> dragged <= -threshold
+                                HudDock.Bottom -> dragged >= threshold
+                            }
+                            if (towardsEdge) onDismiss()
+                            dragged = 0f
+                        }
+                    ) { _, amount -> dragged += amount }
+                }
         ) {
             // Half the width, not the whole of it: this is two sliders, and a
             // panel that reaches the far edge of a 1280 dp screen to hold them
@@ -1213,6 +1256,17 @@ private const val NO_READING = "--"
  * button is back to being a stop button before the rider next glances at it.
  */
 private const val STOP_CONFIRM_TIMEOUT_MS = 4_000L
+
+/**
+ * How far the volume panel has to be pushed towards the dock edge to close it
+ * (11.5.9), and how long it stays open with nobody touching it.
+ *
+ * The distance is comfortably more than a slider's own travel would produce as
+ * incidental vertical movement, and the timeout is long enough to set two
+ * levels one after the other without the panel vanishing mid-thought.
+ */
+private const val VOLUME_DISMISS_DP = 40
+private const val VOLUME_IDLE_MS = 8_000L
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp
