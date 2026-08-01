@@ -17,7 +17,51 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (tenth sitting): nothing impossible reaches the record, and a dead board comes back
+### Latest session — 1 August 2026 (eleventh sitting): the frame says what it is
+
+**2.7 is solved.** Not fenced, not contained — the cause is found, the fix is
+in, and both halves were verified on the bike. **Read 2.7c, then 2.7d.**
+
+**`msg.what` was never the identifier.** Peloton's service passes the board's
+own wire frame in `responseHexString` beside every value, and the frame is
+self-identifying: `F1 <id> <len> <digits, least significant first> <checksum>
+F6`, with `0x41` cadence, `0x44` power (tenths of a watt), `0x49` resistance —
+and **`0x4A`, raw resistance, which is the intruder of 2.7b**. `msg.what` is
+assigned by position in the service's request cycle, so anything that disturbs
+the cycle slides the labels along while the payloads stay put. Provoked on the
+bike with a second sensor app: **55 of 204 messages carried a payload
+disagreeing with their own label, and a stationary rider was reported at 544
+rpm.**
+
+So `PelotonFrameParser` decodes the frame and the frame decides. The
+raw-resistance report is dropped **by identity rather than by plausibility** —
+which is the difference between a fence and a fix, because no bound could ever
+catch it in the power column, and that was the 636 W spike on the first real
+ride's chart.
+
+**Verified on the bike, one app, rider pedalling: 1609 messages on the ride
+screen and 464 with the overlay up, zero mislabels and zero dropouts in both.**
+The ride it recorded has 200 samples, no impossible values and no gaps.
+
+**And the overlay is exonerated.** It was never the cause; it correlates with
+*leaving the app*, and on this tablet that can mean a second bike app binding
+the same sensor service.
+
+**Underneath it, a second defect worth more attention than it has had (2.7d):
+`SensorService` opens the exclusive UART inside `onBind`.** One port, one open,
+so two bike apps can never both work — and the port **leaks**: the app sat dead
+on retry attempt 141 after the other app was gone, and the tablet needed a
+reboot. That is the *silence* half of 2.7, and it is why pedalling never
+revived the first real ride. 2.7.7 and 2.7.8 are what remains of it.
+
+Two techniques worth keeping. **The whole diagnosis cost 90 seconds of
+pedalling**, because the decisive captures were taken with the rider stationary
+— resistance polls regardless, and a cadence of 544 with nobody on the pedals
+needs no interpretation. And **this tablet has `log.tag=W` set globally**, so
+every `Log.i`/`Log.d` in the app is dropped device-wide; three trace attempts
+produced nothing at all before that was found.
+
+### The session before it — 1 August 2026 (tenth sitting): nothing impossible reaches the record, and a dead board comes back
 
 **Read 2.7 and then 2.7a.** The defect the ninth sitting handed over — the
 overlay corrupting telemetry and the corrupt values being *recorded* — is
@@ -446,21 +490,13 @@ swallowed failure with a plausible-looking fallback.
 
 ### Still needing a rider on the bike
 
-- **2.7.1b** — **first, and it costs about two minutes of pedalling.** The
-  defect is diagnosed (2.7b); this is the A/B that says which side to fix.
-  Start a Hardware-mode ride, raise the overlay, and watch:
-
-  ```bash
-  adb logcat -s PelotonSensorSource SensorRepository
-  ```
-
-  `Desync: impossible …` names the intruder and the event type it arrived on.
-  Then build with `REGISTER_COMMANDS` cut down to resistance alone and repeat.
-  Intruder still there → the raw report is unsolicited and needs recognising
-  and dropping. Intruder gone → three repeating polls into one reply Messenger
-  is what desyncs the service, and the fix is one Messenger per metric. While
-  they are on the bike, also count the intruder's rate with the overlay up
-  versus down (2.7.1c). Say clearly when they can stop.
+- ~~**2.7.1b / 2.7.1c**~~ — **done, 1 August 2026.** Root cause found and the
+  fix verified on the bike; see 2.7c. Two things worth carrying from how it
+  went: the whole diagnosis needed **90 seconds of pedalling in total**,
+  because the decisive captures were all taken with the rider stationary
+  (resistance polls regardless, and a non-zero cadence with nobody pedalling is
+  unmistakable evidence); and **this tablet has `log.tag=W` set globally**, so
+  three attempts produced no output at all until per-tag levels were raised.
 - **10.6** — a full-length ride (battery, thermals, memory, dropped samples).
 - **2.2a.1** — watch a Hardware-mode ride actually land in the calibration
   grid. Everything downstream of it is written and tested; nothing has seen the
@@ -532,7 +568,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | Next | Why now |
 |------|---------|
-| **2.7.1b** Which side mislabels the stream | **Read 2.7b first — the defect is now diagnosed, not guessed.** It is a one-place shift in a four-value stream, and the fourth value is the *raw* resistance reading (`11.13 × R + 229`, three sightings, 1% error). The remaining question is a two-minute A/B on the bike: register for resistance only and see whether the intruder survives. **Do it at the start of the next bike session, before anything else is asked of the rider** |
+| ~~**2.7.1b** Which side mislabels the stream~~ | **Done — root cause found and fixed, verified on the bike.** `msg.what` is assigned by position and slides; the frame in `responseHexString` is self-identifying and now decides the metric. Read **2.7c**. What is left of 2.7 is 2.7.5 (the rides already recorded), and 2.7.7 / 2.7.8 from the serial-port leak underneath it (2.7d) |
 | **2.7.5** What to do about the rides already recorded | Now the only open item that does not need hardware. The first real ride is on disk with 17 impossible samples in it, and the fence means no ride after it can be. `implausibleValues()` is the same predicate the recorder uses, so counting them per ride is one query — but do not silently rewrite a rider's history |
 | ~~**2.7.3** A plausibility fence~~ | Done and observed: 0 impossible values in 188 recorded samples across a ride carrying 30 s of the bike's own corruption signature |
 | ~~**2.7.4** Telemetry dies and never recovers~~ | Done and observed: silence is an `IOException` now, the one retry policy rebuilds the source, and the ride picked up again at 122 s with no app restart |
@@ -600,9 +636,9 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete at schema version 3. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account that nothing yet grants (23.1) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | 🔶 **Contained, not cured.** The fence and the watchdog are done and observed (2.7.3, 2.7.4): nothing impossible is recorded any more, and a dead board comes back by itself. But the rotation's cause is still unknown (2.7.1) and **an in-range swap is invisible to any bound**, so the record is free of the impossible rather than free of the wrong. Everything else — the board, the resistance scale, a real BLE strap, per-bike calibration — is verified on hardware |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **2.7 solved and verified on the bike (2.7c).** The board's own frame decides the metric, so the service's positional `msg.what` can no longer mislabel anything; the raw-resistance intruder is dropped by identity. 1609 + 464 messages captured with zero mislabels, a recorded ride with zero impossible values and zero gaps. Open underneath it: the exclusive serial port leaks (2.7d → 2.7.7, 2.7.8), and 2.7.5 for the rides recorded before the fix |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
-| 4 | Floating HUD overlay | 🔶 Renders correctly, and the corruption it triggers can no longer reach the record as an impossible value (2.7.3) — but **why raising it corrupts telemetry at all is still open** (2.7.1), so a ride taken with the overlay up is still not to be trusted sample for sample |
+| 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete, and **a simulated ride can no longer propose an FTP (7.10.7)**. Still open: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9) |
@@ -1571,9 +1607,9 @@ Three consequences that change what to do:
   raw report desyncs it, or the raw report is being labelled as one of the
   three. Both are on the far side of the binder.
 
-**What shipped in response** is the desync quarantine (2.7.1a below). What
-remains is 2.7.1 proper, and the experiment for it is now specific rather than
-exploratory.
+**Superseded by 2.7c, which has the answer.** The paragraph above guessed at
+two possibilities; the bike settled it, and it is the second one — the service
+labels by position and the raw report slides the labels along. Read 2.7c.
 
 - [ ] **2.7.1a** ~~**An impossible value discredits its neighbours.**~~ **Done.**
       The fence alone was the wrong shape: it removed the intruder and left the
@@ -1587,26 +1623,120 @@ exploratory.
       **Its one limitation is a test rather than a hope**: detection cannot
       precede evidence, so the first reading of a burst can still get out
       before the intruder has been seen once.
-- [ ] **2.7.1b** **The experiment that identifies the mislabeller.** Needs the
-      bike, needs about two minutes of pedalling, and is now a *comparison*
-      rather than a hunt. Register for **resistance only** and see whether the
-      intruder still appears. If it does, the board or the service emits raw
-      resistance unsolicited and the fix is to recognise and drop it — which
-      means finding its real `msg.what`, and the unhandled-event logger is
-      already in place to catch it. If it does not, three overlapping repeating
-      polls into **one reply Messenger** are what desyncs the service, and the
-      fix is one Messenger per metric so a response can only ever be attributed
-      to the metric that asked for it. **Do not change the registration
-      protocol blind** — telemetry is the one thing that must not stop working,
-      and there is no way to test a protocol change off the bike
-- [ ] **2.7.1c** **Why the overlay makes it worse is still unexplained**, and
-      the emulator has now ruled out everything downstream of the sensor
-      source: a 278-second simulated ride with the overlay genuinely up for 192
-      of them recorded **zero** inconsistent samples (see 2.7a). Whatever the
-      overlay does, it does it to the *hardware* path — most likely by loading
-      the process enough to change the timing of the binder traffic. Worth one
-      measurement on the bike: the intruder's rate per minute with the overlay
-      up versus down
+- [x] **2.7.1b** **The experiment that identifies the mislabeller.** Done on
+      the bike, 1 August 2026, and it needed no protocol change at all — the
+      answer was sitting in the message bundle the whole time. See 2.7c
+- [x] **2.7.1c** **Why the overlay makes it worse.** Answered: **the overlay
+      is not the cause.** With one app on the sensor service, a 464-message
+      capture with the overlay genuinely up and a rider pedalling recorded zero
+      mislabels, zero raw frames and zero dropouts. What the overlay correlates
+      with is *leaving the app* — and on this tablet the other things you leave
+      it for include a second bike app. 2.7c has the mechanism
+
+#### 2.7c The answer — the frame says what it is, and `msg.what` does not
+
+Settled on the bike, 1 August 2026. **This is the root cause and the fix; 2.7b
+is the correct description of the symptom and 2.7c is why.**
+
+**Every reply carries the board's own frame.** `SensorService` puts the decoded
+value in `data` and a `what` naming the metric — and it *also* passes
+`responseHexString`, the untouched wire frame. Nobody had looked at it. It is
+self-identifying:
+
+```
+F1 <id> <len> <len ASCII digits, least significant first> <checksum> F6
+
+F1 49 03 33 33 30 D3 F6         0x49  resistance   "330" -> 33 %
+F1 41 03 30 35 37 ...           0x41  cadence      whole rpm
+F1 44 05 30 38 33 30 30 35 F6   0x44  power        tenths of a watt -> 38.0 W
+F1 4A 04 33 34 35 30 0B F6      0x4A  RAW resistance -> 543
+```
+
+Checksum is the sum of every byte from `F1` to the last digit, mod 256.
+`0x4A` is **the intruder of 2.7b, identified**: raw resistance, one digit
+longer than the scaled reading beside it, `≈ 11.05 × resistance% + 233` across
+five sightings.
+
+**`msg.what` is assigned by position, not by content.** Provoked deliberately
+— starting and stopping a second sensor app three times, rider stationary:
+
+| | |
+|---|---|
+| Messages traced | 204 |
+| **Payloads disagreeing with their own label** | **55** |
+| Raw-resistance frames in the stream | 19 |
+| Reported cadence, rider standing still | **544 rpm** |
+
+A `0x49` resistance frame arrived under `what=8` (*power*). A `0x4A` raw frame
+arrived under `what=9` (*resistance*). That is the one-place shift of 2.7b,
+caught in the act, with the payload's own identity beside the wrong label.
+
+**So the fix is to stop believing the label.** `PelotonFrameParser` decodes the
+frame and *that* decides the metric; the label is only cross-checked and logged
+when it disagrees. The raw-resistance frame is dropped **by identity rather
+than by plausibility**, which is the whole difference between a fence and a
+fix — the fence could never see it in the power column, and that was the 636 W
+spike on the first real ride's chart.
+
+**Verified on the bike after the fix**, one app, rider pedalling:
+
+| Phase | Messages | Mislabels | Raw frames | Dropouts |
+|-------|----------|-----------|------------|----------|
+| Ride screen | 1609 | **0** | **0** | **0** |
+| Overlay up | 464 | **0** | **0** | **0** |
+
+and the ride it recorded: **200 samples, 0 impossible values, 0 gaps**,
+resistance steady at 27–28%, `power_is_measured` true throughout, and a
+spin-down that reads like a spin-down (21 → 19 → 17 → 15 → 12 rpm).
+
+#### 2.7d The other defect underneath it — one serial port, and it leaks
+
+Found in Peloton's own logs while chasing 2.7c, and it is the *silence* half of
+2.7 rather than the corruption half:
+
+```
+E SerialServiceJNI:      could not open /dev/ttyO0
+E SerialHandlerManager:  java.io.IOException: Could not open serial port /dev/ttyO0
+    at android.hardware.SerialManager.openSerialPort
+    at com.peloton.sensor.SensorService.onBind
+```
+
+**`SensorService` opens the exclusive UART inside `onBind`.** One port, one
+open. Two bike apps therefore cannot both work — and worse, **the port leaks**:
+after a second app was force-stopped, Pelonot sat dead on retry attempt **141**,
+and force-stopping every client no longer released it. `SerialService` lives in
+`system_server`, so the tablet had to be rebooted.
+
+This explains the rest of the first real ride: *Telemetry stale at 86s*,
+pedalling not reviving it, only an app restart helping — except an app restart
+would not have helped either, if the port was gone.
+
+Three consequences:
+
+- **Each rebind reopens the port**, so our own retry loop is itself a source of
+  the disturbance that mislabels the stream. That is now harmless (2.7c) but it
+  is why the corruption came in bursts and why it self-healed.
+- **The owner's position, recorded 1 August 2026:** he will never want another
+  bike app running beside Pelonot, so *sharing* the board is explicitly not a
+  goal. What matters is that Pelonot alone is correct, which 2.7c verifies.
+- **But a leaked port is still a ride lost**, and the app currently says
+  nothing useful about it — see 2.7.7.
+
+- [ ] **2.7.7** **Say what has actually happened when the board cannot be
+      opened.** Right now a leaked serial port looks exactly like a bike that
+      is switched off: the overlay shows `--`, the retry counter climbs
+      forever, and nothing tells the rider that another app has the sensor or
+      that the tablet needs restarting. `SerialHandlerManager`'s failure is
+      visible in logcat and our bind still "succeeds", so this needs the
+      distinction to be inferred — a bind that connects but never delivers,
+      repeatedly, is a different condition from a board that is absent, and it
+      has a different remedy. **Cap the retries and say so**, rather than
+      backing off to 30 s forever
+- [ ] **2.7.8** **Do not rebind more often than necessary.** Every rebind
+      reopens the UART, and every reopen is a chance to lose it (2.7d). The
+      silence watchdog is right to exist and should be *reluctant*: consider a
+      longer first timeout, and never rebind while the last bind is still
+      producing frames
 
 #### 2.7a The repro, and the run that closed 2.7.3 and 2.7.4
 

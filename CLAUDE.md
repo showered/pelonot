@@ -88,18 +88,24 @@ Two consequences to know before you are surprised by them:
 
 ## Things that will bite you
 
-- **THE HARDWARE TELEMETRY STREAM HAS ONE VALUE TOO MANY IN IT.** Diagnosed
-  1 August 2026 from `workout_metrics`, and it is **not** a rotation, an
-  average or a swap: three fields are being filled from a **four**-value
-  stream, so each recorded row is three consecutive values advancing by one
-  place. The intruder is the **raw resistance reading**, `≈ 11.13 ×
-  resistance% + 229` — three sightings across two rides, 1% error, 229 at 0%
-  to 1342 at 100%. **Read PLAN.md 2.7b before touching the sensor path.**
-  A positional shift cannot originate in our `when (msg.what)` dispatch, so
-  whatever mislabels is on the far side of the binder; 2.7.1b is the two-minute
-  A/B on the bike that says which side to fix. **Do not change
-  `REGISTER_COMMANDS` blind** — there is no way to test a protocol change off
-  the bike.
+- **`msg.what` FROM THE SENSOR SERVICE IS A LIE, AND THE FRAME IS NOT.** This
+  was 2.7, the worst defect the project has had, and it is fixed — but the rule
+  it leaves behind is permanent. Peloton's service assigns `what` by **position
+  in its own request cycle**, so anything disturbing that cycle slides the
+  labels along while the payloads stay put (measured: 55 of 204 messages
+  mislabelled, a stationary rider reported at 544 rpm). Every reply also
+  carries `responseHexString`, the board's own self-identifying frame:
+  `F1 <id> <len> <ASCII digits, least significant first> <checksum> F6`, with
+  `0x41` cadence, `0x44` power **in tenths of a watt**, `0x49` resistance and
+  `0x4A` **raw** resistance. `PelotonFrameParser` decodes it and **the frame
+  decides the metric**. Never reintroduce a `when (msg.what)`. **Read PLAN.md
+  2.7c.**
+- **The sensor service opens the exclusive UART inside `onBind`, and the port
+  leaks.** One `/dev/ttyO0`, one open, so two bike apps can never both work —
+  and after the other app is gone the port can stay unopenable until the tablet
+  is **rebooted** (observed: retry attempt 141, `could not open /dev/ttyO0`).
+  Every rebind reopens it, so our own retry loop is a source of disturbance:
+  be reluctant to rebind. PLAN.md 2.7d, 2.7.7, 2.7.8.
 - **It does not reproduce on the emulator, and that has been checked properly.**
   278-second simulated ride with the overlay genuinely raised for 192 of them:
   zero corrupt samples. The check that makes this cheap is that **a simulated
@@ -332,6 +338,37 @@ history and looked fine everywhere:
 ```bash
 sqlite3 db.sqlite "SELECT w.avg_hr, (SELECT AVG(heart_rate) FROM workout_metrics m WHERE m.workout_id=w.id) FROM workouts w ORDER BY w.rowid DESC LIMIT 1;"
 ```
+
+### Logging on this tablet — it drops your logs by default
+
+**`log.tag` is set to `W` device-wide**, so every `Log.i` and `Log.d` in the
+app is discarded before it reaches logcat. This cost three attempts and a
+wrong conclusion before it was noticed. Raise the tags you need first:
+
+```bash
+for t in PelotonSensorSource PelotonSensorTrace SensorRepository WorkoutService DebugTelemetry; do
+  adb shell setprop log.tag.$t VERBOSE
+done
+```
+
+It does not survive a reboot. `Log.w` and above always get through, which is
+why the stale-telemetry warnings were visible all along and nothing else was.
+
+**The raw sensor stream can be dumped on demand** (debug builds), which is what
+solved 2.7 — it shows each message's `what` beside the board's own frame, so a
+mislabel is visible directly:
+
+```bash
+adb shell am broadcast -a com.pelonot.debug.TRACE \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 60
+adb logcat -s PelotonSensorTrace
+```
+
+**Most of this needs no rider.** Resistance polls from the knob whether or not
+anyone is pedalling, so a bind, the poll cycle, and any mislabelling can all be
+confirmed alone — and with the bike stationary a non-zero cadence is
+unmistakable evidence rather than something to be picked out of real data. The
+whole of 2.7 was diagnosed on 90 seconds of pedalling.
 
 ### Permissions on this tablet
 

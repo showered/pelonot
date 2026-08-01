@@ -146,6 +146,34 @@ capped exponential backoff. Sources deliberately do not reconnect themselves;
 when they did, `close()` triggered a reconnect and `reconnect()` called
 `close()`, so ending a workout started an endless loop.
 
+### 1a-ter. The frame is the identifier
+
+`SensorService` replies with a `Messenger` message carrying a decoded `data`
+float and a `what` naming the metric. **`what` is assigned by position in the
+service's own request cycle and cannot be trusted** — see PLAN.md 2.7c, where a
+stationary rider was reported at 544 rpm.
+
+The same message carries `responseHexString`, the board's untouched frame,
+which names itself:
+
+```
+F1 <id> <len> <len ASCII digits, least significant first> <checksum> F6
+
+0x41 cadence, whole rpm          0x44 power, tenths of a watt
+0x49 resistance, whole percent   0x4A raw resistance — no column here
+```
+
+`PelotonFrameParser` decodes it, verifies the checksum (sum of bytes to the
+last digit, mod 256), and **the frame decides which metric a value is**. The
+label is cross-checked only so a disagreement can be logged. This is why the
+raw-resistance report is dropped by *identity* rather than by plausibility: at
+636 it is an impossible cadence and an impossible resistance, but a perfectly
+possible power.
+
+`SensorService.onBind` also opens the exclusive `/dev/ttyO0`, so **only one app
+on the tablet can read the board at a time**, and a lost port can outlive the
+app that took it (PLAN.md 2.7d).
+
 ### 1f. Three refusals between the board and the record
 
 The first real ride recorded cadence 603 rpm off a rider turning the cranks at
