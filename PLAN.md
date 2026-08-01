@@ -446,19 +446,21 @@ swallowed failure with a plausible-looking fallback.
 
 ### Still needing a rider on the bike
 
-- **2.7.1 / 2.7.2** — **first, and it costs one minute of pedalling.** Both
-  instruments are already in the build. Start a Hardware-mode ride, raise the
-  overlay, and watch:
+- **2.7.1b** — **first, and it costs about two minutes of pedalling.** The
+  defect is diagnosed (2.7b); this is the A/B that says which side to fix.
+  Start a Hardware-mode ride, raise the overlay, and watch:
 
   ```bash
   adb logcat -s PelotonSensorSource SensorRepository
   ```
 
-  Two lines settle two questions. `N live sensor registrations` at `E` says
-  whether the rotation is a second registration — and, since nothing in this
-  app can make one any more, a 2 there means it is Peloton's own app sharing
-  the board. `Unhandled sensor event what=…` with its bundle says what the
-  ghost near 602 is. Say when they can stop; nothing else needs the pedals.
+  `Desync: impossible …` names the intruder and the event type it arrived on.
+  Then build with `REGISTER_COMMANDS` cut down to resistance alone and repeat.
+  Intruder still there → the raw report is unsolicited and needs recognising
+  and dropping. Intruder gone → three repeating polls into one reply Messenger
+  is what desyncs the service, and the fix is one Messenger per metric. While
+  they are on the bike, also count the intruder's rate with the overlay up
+  versus down (2.7.1c). Say clearly when they can stop.
 - **10.6** — a full-length ride (battery, thermals, memory, dropped samples).
 - **2.2a.1** — watch a Hardware-mode ride actually land in the calibration
   grid. Everything downstream of it is written and tested; nothing has seen the
@@ -530,7 +532,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | Next | Why now |
 |------|---------|
-| **2.7.1 / 2.7.2** Why the overlay corrupts telemetry at all | **Unfinished, and it needs the bike.** The fence stops 603 rpm being written; it cannot stop a power value landing in the cadence column, and the AVD run recorded a 173 rpm peak that is exactly that. Both instruments are in place and both read in one minute of pedalling: a registration counter that logs at `E` when two are live, and every unhandled `msg.what` dumped with its bundle. **Do this at the start of the next bike session, before anything else is asked of the rider** |
+| **2.7.1b** Which side mislabels the stream | **Read 2.7b first — the defect is now diagnosed, not guessed.** It is a one-place shift in a four-value stream, and the fourth value is the *raw* resistance reading (`11.13 × R + 229`, three sightings, 1% error). The remaining question is a two-minute A/B on the bike: register for resistance only and see whether the intruder survives. **Do it at the start of the next bike session, before anything else is asked of the rider** |
 | **2.7.5** What to do about the rides already recorded | Now the only open item that does not need hardware. The first real ride is on disk with 17 impossible samples in it, and the fence means no ride after it can be. `implausibleValues()` is the same predicate the recorder uses, so counting them per ride is one query — but do not silently rewrite a rider's history |
 | ~~**2.7.3** A plausibility fence~~ | Done and observed: 0 impossible values in 188 recorded samples across a ride carrying 30 s of the bike's own corruption signature |
 | ~~**2.7.4** Telemetry dies and never recovers~~ | Done and observed: silence is an `IOException` now, the one retry policy rebuilds the source, and the ride picked up again at 122 s with no app restart |
@@ -1429,26 +1431,23 @@ overlay was up for part of it.
         A process-wide counter logs at `E` the moment a second one is live —
         which is the count the plan asked for, ready for the next ride.
 
-      **What is still unknown is whether that counter ever reads 2.** Nothing
-      in the app collects `readings()` twice; `SensorRepository.start()` guards
-      on `telemetryJob` and there is exactly one call to it. So the second
-      registration, if it exists, is either a rebind we now block or it is
-      **not ours** — the sensor service is bound by Peloton's own app too, and
-      a service multiplexing one UART's request/response between two clients
-      would produce precisely this signature. The next ride's logcat settles it
-- [ ] **2.7.2** **Identify the ~602/668 value.** It is not any of the three
+      **The "two registrations" hypothesis above is wrong, and 2.7b replaces
+      it.** Reading the recorded samples rather than the summary shows the
+      defect is a **one-place shift in a four-value stream**, and the fourth
+      value has been identified. See 2.7b for the evidence. What remains of
+      this item is the labelling itself, which needs the bike
+- [x] **2.7.2** **Identify the ~602/668 value.** It is not any of the three
       metrics and appeared in both sessions. Most likely an event type the
       source does not handle whose `msg.what` collides with `EVENT_RPM` /
       `EVENT_WATT` / `EVENT_RESISTANCE`, or a second registration receiving a
       different event set. Log every `msg.what` seen with its payload for one
       minute of pedalling and the answer falls out
 
-      **The instrument is built and needs the bike to read it.** Every
-      unhandled `msg.what` now has its first three occurrences logged with the
-      whole bundle — keys, types and values — and the totals are dumped when
-      the source closes. Nothing else is needed; one minute of pedalling with
-      `adb logcat -s PelotonSensorSource` gives the answer or rules the theory
-      out
+      **Identified from the recorded rides, without the bike. It is the raw
+      resistance reading**: `≈ 11.13 × resistance% + 229`, which predicts all
+      three independent sightings across two rides to within 1%, and spans 229
+      at 0% to 1342 at 100% — a potentiometer's ADC range. Heart rate, the only
+      rival with the right magnitude, is out by 12%. Full working in 2.7b
 - [x] **2.7.3** **A plausibility fence at the recording boundary.** Cadence 603
       is not a measurement, and neither is resistance 602. This is the same
       argument as 2.4.4: a value that cannot be true is an absence, and the
@@ -1518,6 +1517,97 @@ overlay was up for part of it.
 > `workout_metrics` records what the recorder actually saw, once a second, with
 > a timestamp. Reach for the table before the screenshots.
 
+#### 2.7b What is actually happening — read this before 2.7.1
+
+Established 1 August 2026 (tenth sitting) from `workout_metrics` alone, no
+bike required. **The earlier description — "values rotate between fields" —
+was true but too vague to act on, and the hypothesis attached to it (two live
+registrations) is wrong.**
+
+**It is a one-place shift in a stream of four values.** Here is the first real
+ride, `HC-01`, at the second burst. The rider is holding 78 rpm, 37%, 80 W:
+
+| t | cadence | resistance | power |
+|---|---|---|---|
+| 559 | 78 | 37 | 89.3 |
+| **560** | **78** | **636** | **37** |
+| **561** | **636** | **37** | **80** |
+| 568 | 77 | 87.4 | **636** |
+| 569 | 89.3 | **636** | 79 |
+
+Read 560 and 561 side by side. The underlying sequence is `78, 636, 37, 80`,
+and each recorded row is **three consecutive values from it, advancing by one**.
+That is not rotation and it is not averaging. It is three fields being filled
+from a stream that has one value too many in it.
+
+**The extra value is the raw resistance reading.** Three sightings, two
+different rides, one straight line:
+
+| ride | resistance at the time | intruder | predicted by `11.13 × R + 229` |
+|---|---|---|---|
+| HC-01, t≈10–23 | 19% | 439 | 440.3 (0.3%) |
+| free ride, overlay up | 33% | 602 | 596.1 (1.0%) |
+| HC-01, t≈560–575 | 37% | 636 | 640.6 (0.7%) |
+
+0% → 229, 100% → 1342: a potentiometer's ADC range. Heart rate is the only
+rival with the right magnitude and it misses by 12%. **So the board reports
+resistance twice — scaled and raw — and the raw one is entering the labelled
+stream.**
+
+Three consequences that change what to do:
+
+- **It self-heals, which is why most of the ride is clean.** Our code files
+  values by `msg.what` into three slots, so once the intruder stops, each slot
+  is corrected within one cycle. 17 impossible samples out of 1196. The bursts
+  are bursts because the intruder is intermittent, not because the alignment
+  drifts back.
+- **The 636 W spike on that ride's power chart is the intruder**, not a rider.
+  And it is the one column where no bound can catch it: 636 W is a possible
+  power, while 636 rpm and 636% are not. Across the knob's whole travel the
+  raw value stays inside any power bound worth having.
+- **Whatever mislabels is upstream of us.** We dispatch on `msg.what` and one
+  `HandlerThread`; a positional shift cannot originate there. Either Peloton's
+  service labels responses by position in a request queue and the unsolicited
+  raw report desyncs it, or the raw report is being labelled as one of the
+  three. Both are on the far side of the binder.
+
+**What shipped in response** is the desync quarantine (2.7.1a below). What
+remains is 2.7.1 proper, and the experiment for it is now specific rather than
+exploratory.
+
+- [ ] **2.7.1a** ~~**An impossible value discredits its neighbours.**~~ **Done.**
+      The fence alone was the wrong shape: it removed the intruder and left the
+      values on either side of it, which are in range, wrong, and now the only
+      thing in the record. `TelemetryAssembler` treats a rejection as evidence
+      that the *labelling* is untrustworthy — it throws away everything stored
+      and publishes nothing for four seconds, re-arming on each further
+      sighting. The burst becomes a gap. 4 s bridges the longest gap between
+      sightings inside either recorded burst, which was 3 s.
+
+      **Its one limitation is a test rather than a hope**: detection cannot
+      precede evidence, so the first reading of a burst can still get out
+      before the intruder has been seen once.
+- [ ] **2.7.1b** **The experiment that identifies the mislabeller.** Needs the
+      bike, needs about two minutes of pedalling, and is now a *comparison*
+      rather than a hunt. Register for **resistance only** and see whether the
+      intruder still appears. If it does, the board or the service emits raw
+      resistance unsolicited and the fix is to recognise and drop it — which
+      means finding its real `msg.what`, and the unhandled-event logger is
+      already in place to catch it. If it does not, three overlapping repeating
+      polls into **one reply Messenger** are what desyncs the service, and the
+      fix is one Messenger per metric so a response can only ever be attributed
+      to the metric that asked for it. **Do not change the registration
+      protocol blind** — telemetry is the one thing that must not stop working,
+      and there is no way to test a protocol change off the bike
+- [ ] **2.7.1c** **Why the overlay makes it worse is still unexplained**, and
+      the emulator has now ruled out everything downstream of the sensor
+      source: a 278-second simulated ride with the overlay genuinely up for 192
+      of them recorded **zero** inconsistent samples (see 2.7a). Whatever the
+      overlay does, it does it to the *hardware* path — most likely by loading
+      the process enough to change the timing of the binder traffic. Worth one
+      measurement on the bike: the intruder's rate per minute with the overlay
+      up versus down
+
 #### 2.7a The repro, and the run that closed 2.7.3 and 2.7.4
 
 The defect was found on a bike with a rider on it, which is not a thing to
@@ -1558,13 +1648,47 @@ restart** — which is the single thing 2.7.4 was about.
 recorded ride is 173 rpm: a *power* value that landed in the cadence column
 while pedalling hard, perfectly possible as a cadence, and no bound will ever
 catch it. The plan said so — "33 and 52 swapping is invisible to any bound" —
-and the run is the proof. **The record is now free of the impossible, not free
-of the wrong**, and it stays that way until 2.7.1 is closed on the bike.
+and the run is the proof. That is what 2.7.1a's quarantine now answers.
 
 The second is that this run exercised the fence, the watchdog and the recording
 boundary, but **not `TelemetryAssembler`**, which only runs in the hardware
 source. The emulator cannot produce a hardware ride, so the assembler is
 covered by tests and by nothing else.
+
+**The control run, and the invariant that made it worth doing.** The owner
+believed the corruption had also been seen under *simulated* telemetry, which
+if true would put the bug somewhere every ride goes through. It is testable
+without a bike, because **a simulated ride carries its own checksum**: the
+simulator derives power from the cadence and resistance it emits, so
+`power == PowerModel.estimateWatts(cadence, resistance)` must hold for every
+honestly recorded row, and any field swap breaks it.
+
+A 278-second simulated ride with the overlay **genuinely raised** for 192 of
+them — the earlier run had dismissed the overlay prompt, so it had not tested
+this at all:
+
+| Phase | Samples | `power != watts(cadence, resistance)` | Impossible values |
+|-------|---------|---------------------------------------|-------------------|
+| Ride screen | 87 | **0** | 0 |
+| Overlay up | 192 | **0** | 0 |
+
+**It does not reproduce off the bike.** Everything from the `StateFlow` to the
+row in `workout_metrics` is clean under exactly the condition that triggers it
+on hardware, which is what confines the defect to the multi-stream assembly in
+`PelotonSensorServiceSource` — and to whatever labels those streams.
+
+Two things worth knowing about what *can* look like the bug on the emulator,
+because both were mistaken for it during this session:
+
+- **The shipped power curve produces genuinely large numbers.** The simulated
+  rider reaches 130 rpm, and the curve returns ~650 W there. Those are
+  spikes, and they are not corruption; they are the curve being measurably
+  wrong (RMSE 137 W, R² 0.21). Same family as everything in 2.2a.
+- **`ride-simon` and `ride-alex` are hand-seeded fixtures** from the household
+  leaderboard work — 1200 rows each at a fixed 175 W and 200 W. Every one of
+  them fails the invariant above, by construction, because no simulator made
+  them. Anything reading them as a real simulated ride will conclude the app is
+  corrupting data.
 
 ---
 

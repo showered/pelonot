@@ -88,22 +88,40 @@ Two consequences to know before you are surprised by them:
 
 ## Things that will bite you
 
-- **THE OVERLAY CORRUPTS TELEMETRY. The record is now free of the impossible,
-  not free of the wrong.** Found on the first real ride, 1 August 2026: while
-  the overlay is up, cadence, resistance and power start appearing in each
-  other's columns — **41 of 53 samples corrupt, against 0 of 82 on the
-  full-screen ride screen**. A plausibility fence (`implausibleValues()`) now
-  refuses to publish or record a value that cannot be true, and `failOnSilence`
-  rebuilds a board that has stopped delivering. **But an in-range swap — a
-  power value of 52 landing in the cadence column — passes every bound there
-  is**, so a ride taken with the overlay up is still not trustworthy sample by
-  sample. **Read PLAN.md 2.7 before touching the sensor path or the overlay**;
-  2.7.1's cause is still open and needs one minute of pedalling to settle.
+- **THE HARDWARE TELEMETRY STREAM HAS ONE VALUE TOO MANY IN IT.** Diagnosed
+  1 August 2026 from `workout_metrics`, and it is **not** a rotation, an
+  average or a swap: three fields are being filled from a **four**-value
+  stream, so each recorded row is three consecutive values advancing by one
+  place. The intruder is the **raw resistance reading**, `≈ 11.13 ×
+  resistance% + 229` — three sightings across two rides, 1% error, 229 at 0%
+  to 1342 at 100%. **Read PLAN.md 2.7b before touching the sensor path.**
+  A positional shift cannot originate in our `when (msg.what)` dispatch, so
+  whatever mislabels is on the far side of the binder; 2.7.1b is the two-minute
+  A/B on the bike that says which side to fix. **Do not change
+  `REGISTER_COMMANDS` blind** — there is no way to test a protocol change off
+  the bike.
+- **It does not reproduce on the emulator, and that has been checked properly.**
+  278-second simulated ride with the overlay genuinely raised for 192 of them:
+  zero corrupt samples. The check that makes this cheap is that **a simulated
+  ride carries its own checksum** — the simulator derives power from the
+  cadence and resistance it emits, so `power == PowerModel.estimateWatts(
+  cadence, resistance)` must hold for every honest row, and any field swap
+  breaks it. Two things that look like the bug and are not: the shipped power
+  curve genuinely returns ~650 W at 130 rpm, and `ride-simon` / `ride-alex` are
+  hand-seeded leaderboard fixtures that fail the invariant by construction.
 - **Reject, never clamp.** The fence turns an impossible value into a *gap*,
   because clamping 603 rpm to 200 writes a plausible lie exactly where a gap
   belongs and nobody can tell it from a real sprint afterwards. Same argument
   as nullable `heartRateBpm` and as `isStaleAt`. If you add a new metric,
   give it bounds in `TelemetryBounds` and let it be absent.
+- **And an impossible value discredits the values either side of it.** This is
+  the part a plain fence got wrong: if the labelling is off by one, the
+  intruder is out of range but its neighbours are *in* range and wrong — a
+  power of 37 W filed as 37% resistance breaks no bound anyone can write.
+  `TelemetryAssembler` therefore throws away everything it holds on a rejection
+  and publishes nothing for four seconds. Note the intruder is caught in only
+  two columns of three: 636 W is a possible power, and that is precisely the
+  636 W spike on the first real ride's chart.
 - **The bike is a perishable resource, so both halves of 2.7 are levers on the
   emulator** — `com.pelonot.debug.CORRUPT` and `com.pelonot.debug.SILENCE`,
   beside `COAST`. See PLAN.md 2.7a for the commands and for the run that

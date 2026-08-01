@@ -18,6 +18,16 @@ sealed interface Intake {
 
     /** The fence turned it away. Nothing was updated, so the field ages. */
     data class Rejected(val value: ImplausibleValue) : Intake
+
+    /**
+     * Accepted and stored, but the stream is not trusted at all right now
+     * because an impossible value arrived recently.
+     *
+     * Distinct from [Held] because it means something different: Held is a
+     * triple that is not ready, Quarantined is a triple that may be complete
+     * and coherent and is still a lie.
+     */
+    data object Quarantined : Intake
 }
 
 /**
@@ -60,6 +70,27 @@ class TelemetryAssembler(
     private val coherenceWindowMs: Long = DEFAULT_COHERENCE_WINDOW_MS,
 
     /**
+     * How long the whole stream stays untrusted after one impossible value
+     * (2.7.1a).
+     *
+     * The reason this exists is the shape of the real defect. The board's
+     * events are labelled by whoever sends them, and on the ride of 1 August
+     * 2026 a **fourth value entered the cycle** — the raw resistance reading,
+     * `≈ 11.13 × resistance% + 229` — so three fields were being filled from a
+     * four-value stream and every label after the intruder was wrong. The
+     * intruder is out of range and easy to catch. **Its neighbours are not**:
+     * a power of 37 W filed as a resistance of 37% breaks no bound anyone can
+     * write.
+     *
+     * So an impossible value is not treated as one bad sample. It is treated
+     * as *evidence that the labelling is wrong*, and everything near it is
+     * suspect. Four seconds comfortably bridges the gaps between sightings
+     * within both recorded bursts (the longest was three), and the cost of
+     * being wrong is a gap, which is the honest answer anyway.
+     */
+    private val resyncQuietMs: Long = DEFAULT_RESYNC_QUIET_MS,
+
+    /**
      * Whether the watts this assembles were measured. True for the bike's own
      * board, which is the only thing that reports the three streams
      * separately; the parameter exists so the flag is set where the fact is
@@ -75,6 +106,15 @@ class TelemetryAssembler(
     var rejectedCount: Int = 0
         private set
 
+    /** How many readings were withheld because the stream was untrusted. */
+    var quarantinedCount: Int = 0
+        private set
+
+    private var quarantinedUntilMs: Long = Long.MIN_VALUE
+
+    /** True while an impossible value is still close enough to distrust. */
+    fun isQuarantinedAt(atMs: Long): Boolean = atMs < quarantinedUntilMs
+
     /**
      * Offers one field's value, measured at [atMs].
      *
@@ -86,11 +126,23 @@ class TelemetryAssembler(
             // an impossible reading must not refresh the field it lands in, or
             // a dead stream sending nonsense would look like a live one.
             rejectedCount++
+            // And everything already stored is now suspect too. If a value
+            // landed in the wrong field, so did the ones on either side of it,
+            // and those are in range. Throwing the lot away is what makes the
+            // burst a gap rather than a stretch of plausible fiction.
+            values.clear()
+            seenAtMs.clear()
+            quarantinedUntilMs = atMs + resyncQuietMs
             return Intake.Rejected(ImplausibleValue(field, value))
         }
 
         values[field] = value
         seenAtMs[field] = atMs
+
+        if (isQuarantinedAt(atMs)) {
+            quarantinedCount++
+            return Intake.Quarantined
+        }
 
         val oldest = seenAtMs.values.minOrNull() ?: return Intake.Held
         if (seenAtMs.size < TelemetryField.entries.size) return Intake.Held
@@ -116,9 +168,12 @@ class TelemetryAssembler(
         values.clear()
         seenAtMs.clear()
         rejectedCount = 0
+        quarantinedCount = 0
+        quarantinedUntilMs = Long.MIN_VALUE
     }
 
     companion object {
         const val DEFAULT_COHERENCE_WINDOW_MS = 2_500L
+        const val DEFAULT_RESYNC_QUIET_MS = 4_000L
     }
 }

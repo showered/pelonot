@@ -94,12 +94,18 @@ class PelotonSensorServiceSource(
                 val value = data.getFloat(KEY_DATA).toDouble()
                 when (val intake = assembler.onValue(field, value, System.currentTimeMillis())) {
                     is Intake.Emit -> trySend(intake.reading)
-                    is Intake.Held -> Unit
+                    is Intake.Held, is Intake.Quarantined -> Unit
                     is Intake.Rejected ->
                         // Logged rather than swallowed: this is the shape the
                         // corruption took on the bike, and if it happens again
-                        // the log says which stream carried it.
-                        Log.w(TAG, "Rejected impossible ${intake.value} (event ${msg.what})")
+                        // the log says which stream carried it. The value is
+                        // the evidence — on both recorded bursts it was the
+                        // raw resistance reading, ~11.13 x resistance% + 229.
+                        Log.w(
+                            TAG,
+                            "Desync: impossible ${intake.value} on event ${msg.what}; " +
+                                "distrusting the stream for ${TelemetryAssembler.DEFAULT_RESYNC_QUIET_MS}ms"
+                        )
                 }
             }
         }
@@ -175,8 +181,8 @@ class PelotonSensorServiceSource(
             }
             Log.d(
                 TAG,
-                "Peloton sensor service source closed " +
-                    "(${assembler.rejectedCount} impossible values rejected)"
+                "Peloton sensor service source closed (${assembler.rejectedCount} impossible " +
+                    "values rejected, ${assembler.quarantinedCount} readings withheld as suspect)"
             )
         }
     }
