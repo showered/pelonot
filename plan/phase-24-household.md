@@ -84,10 +84,44 @@ differences. This one carries none, because there is nothing to caveat.
 
 ### 24.3 Riding against a housemate
 
-- [ ] **24.3.1** Pick a household member's ride of the same class and draw
+- [x] **24.3.1** Pick a household member's ride of the same class and draw
       their trace behind yours on the ride detail screen. This is 18.4 —
       arguably the most motivating social feature in the plan — and in this
-      tier it costs one query and no schema
+      tier it costs one query and no schema. **Built and observed**, and it did
+      cost one query and no schema. Four things decided on the way:
+      - **The measured-power gate applies to both sides.** `householdRivals`
+        carries the same `WHERE` clause as the board's, and the *symmetric*
+        half is checked in the ViewModel: a modelled trace of **mine** drawn
+        against a measured one of theirs is the same lie facing the other way.
+        `PowerModel` is 137 W out at RMSE, which on a power chart is most of the
+        height of a zone — the comparison would look exact and be fiction
+      - **Aligned by absolute elapsed seconds, never stretched to fit.** The
+        comparison a rider wants is "at twelve minutes they were at 250 W and I
+        was at 210"; rescaling a ride that ran forty seconds longer moves every
+        one of their efforts off the block it was ridden in. Buckets past the
+        right-hand edge are dropped rather than squeezed in, so the chart runs
+        out rather than lying about when their last effort happened
+      - **A bare dashed line and nothing else** — no envelope, no second set of
+        zone bands, no second prescription. The chart already carries one
+        rider's zones and a second full record on the same axes is a graph
+        rather than a comparison. The ceiling grows to include the ghost, or a
+        stronger housemate is drawn along the top of the box and it reads as a
+        tie
+      - **Opt-in per tap, and nothing at all when there is nobody** — 24.1.6's
+        rule, because an empty comparison is a message about the people who are
+        not on it
+      - One thing to know before touching the query: it relies on **SQLite's
+        bare-column rule** — with `MAX()` over a `GROUP BY`, the other columns
+        come from the row the maximum came from. That is a documented SQLite
+        guarantee and not standard SQL, and getting it wrong draws the *wrong
+        ride* with the right number beside it, which nobody would spot. It has
+        a test of its own for that reason.
+
+      *Observed on the tablet AVD against two hand-seeded measured rides of
+      `CLB-02`: the chip appears under the power chart, tapping it draws Kilo's
+      dashed trace above Simon's with the axis growing from 200 W to 300 W to
+      hold it, tapping again clears it — and setting **one** of Kilo's 1200
+      samples to modelled removes the whole row.*
 - [ ] **24.3.2** A live pace target from that ride *during* a ride is the
       interesting version of it, and it belongs on the full ride screen only,
       never on the overlay (24.1.5). Read 11.6 first; that screen already has a
