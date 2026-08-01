@@ -16,6 +16,7 @@ import com.pelonot.domain.export.ExportRide
 import com.pelonot.domain.export.ExportSample
 import com.pelonot.domain.export.RideExport
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -120,6 +121,14 @@ class RideDetailViewModel(
                     )
                 },
                 ftpWatts = ftp,
+                // 16.1.6: counted from the samples themselves rather than
+                // asked of the ride, because the samples are where the answer
+                // lives and a ride can be both.
+                powerProvenance = PowerProvenance.of(
+                    measured = metrics.count { it.powerIsMeasured == true },
+                    modelled = metrics.count { it.powerIsMeasured == false },
+                    unknown = metrics.count { it.powerIsMeasured == null }
+                ),
                 intervals = intervals,
                 intentMultiplier = workout.intentModifier
             )

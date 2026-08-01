@@ -68,5 +68,27 @@ object AppMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    /**
+     * Adds `workout_metrics.power_is_measured`.
+     *
+     * The column three separate features were waiting on: the chart axis that
+     * cannot say what it is drawing (16.1.6), the FTP proposal that a simulated
+     * ride can currently make (7.10.7), and the household leaderboard that must
+     * not rank fiction beside fact (24.4.2). `SensorReading.powerIsMeasured`
+     * has always existed; it was thrown away at the database boundary, so a
+     * ride off the real board was indistinguishable on disk from one the app
+     * invented.
+     *
+     * **Nullable, and no default.** Every sample already on a tablet was
+     * recorded when nothing knew the answer. `DEFAULT 0` would say "the model
+     * produced these" of rides that came off a real bike, and `DEFAULT 1` would
+     * do the reverse and worse. Null says what is true: nobody wrote it down.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workout_metrics` ADD COLUMN `power_is_measured` INTEGER")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 }

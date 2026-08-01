@@ -58,6 +58,7 @@ import com.pelonot.R
 import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.export.ExportFormat
+import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.components.CadenceDistributionChart
 import com.pelonot.ui.components.ChartCard
 import com.pelonot.ui.components.HeartRateTraceChart
@@ -339,25 +340,25 @@ private fun RideChartsSection(charts: RideCharts?) {
 @Composable
 private fun PowerCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     title = "Power",
-    // 16.1.6 wants this to read from where the watts actually came from, and
-    // it cannot yet: **nothing records it**. `SensorReading.powerIsMeasured`
-    // exists per reading and `workout_metrics` has no column for it, so a ride
-    // off the real board is indistinguishable on disk from a simulated one.
-    // Until that migration exists (12.5) this errs towards "estimated", which
-    // is the safe direction — the rule this project cares about is never
-    // presenting a modelled watt as measured.
+    // 16.1.6, and it now reads from where the watts actually came from:
+    // `workout_metrics.power_is_measured` records it per sample. A ride from
+    // before that column existed says "estimated", which is the safe
+    // direction — the rule this project cares about is never presenting a
+    // modelled watt as a measured one, and "we did not write it down" is not
+    // grounds for claiming a measurement.
     caption = listOfNotNull(
-        if (charts.powerIsMeasured) {
-            "Measured by the bike"
-        } else {
-            "Estimated from cadence and resistance — see Settings"
+        when (charts.powerProvenance) {
+            PowerProvenance.Measured -> "Measured by the bike"
+            PowerProvenance.Mixed ->
+                "Partly measured — the bike's sensor dropped out during this ride"
+            else -> "Estimated from cadence and resistance — see Settings"
         },
         // Only said when there are blocks to explain. On a free ride there is
         // no prescription and no legend for one.
         "blocks are what the class asked for".takeUnless { charts.prescribed.isEmpty }
     ).joinToString(" · "),
     summary = listOf(
-        RideChartSummaries.power(charts.power, charts.powerIsMeasured),
+        RideChartSummaries.power(charts.power, charts.powerProvenance),
         RideChartSummaries.prescribed(charts.prescribed)
     ).filter { it.isNotEmpty() }.joinToString(" "),
     modifier = modifier

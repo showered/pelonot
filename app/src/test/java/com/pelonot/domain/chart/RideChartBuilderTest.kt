@@ -1,6 +1,7 @@
 package com.pelonot.domain.chart
 
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.PowerZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -143,10 +144,27 @@ class RideChartBuilderTest {
     }
 
     @Test
-    fun `the power summary says whether the watts were measured or modelled`() {
-        val charts = RideChartBuilder.build(ride(600), ftpWatts = 200, powerIsMeasured = true)
-        assertTrue(RideChartSummaries.power(charts.power, isMeasured = true).contains("measured"))
-        assertTrue(RideChartSummaries.power(charts.power, isMeasured = false).contains("estimated"))
+    fun `the power summary says where the watts came from`() {
+        val charts = RideChartBuilder.build(
+            ride(600),
+            ftpWatts = 200,
+            powerProvenance = PowerProvenance.Measured
+        )
+        assertEquals(PowerProvenance.Measured, charts.powerProvenance)
+        assertTrue(
+            RideChartSummaries.power(charts.power, PowerProvenance.Measured).contains("measured")
+        )
+        assertTrue(
+            RideChartSummaries.power(charts.power, PowerProvenance.Modelled).contains("estimated")
+        )
+        assertTrue(
+            RideChartSummaries.power(charts.power, PowerProvenance.Mixed).contains("partly measured")
+        )
+        // A ride from before the column existed is described the safe way
+        // round: never as a measurement.
+        assertTrue(
+            RideChartSummaries.power(charts.power, PowerProvenance.Unknown).contains("estimated")
+        )
     }
 
     // ---- 16.1.5: what you were asked for, against what you did ----

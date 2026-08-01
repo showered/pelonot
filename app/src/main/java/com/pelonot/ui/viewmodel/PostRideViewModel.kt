@@ -11,6 +11,7 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,10 +63,27 @@ class PostRideViewModel(
 
             val proposed = if (workout != null && currentFtp > 0) {
                 val metrics = workoutRepository.getMetrics(workoutId)
-                analyzer.analyze(
-                    metrics = metrics,
-                    currentFtp = currentFtp.toDouble()
-                ).proposedFtp?.toInt()
+                val provenance = PowerProvenance.of(
+                    measured = metrics.count { it.powerIsMeasured == true },
+                    modelled = metrics.count { it.powerIsMeasured == false },
+                    unknown = metrics.count { it.powerIsMeasured == null }
+                )
+                // 7.10.7. An FTP is a fact about a rider, and this one is
+                // computed from a twenty-minute peak. On a simulated ride that
+                // peak is `PowerModel`'s invention — a curve measured at RMSE
+                // 137 W against the real board — so offering a breakthrough
+                // from it would put a number the app made up into the rider's
+                // permanent record, and 7.9 would then keep it as evidence.
+                // A ride whose provenance was never written down is refused
+                // for the same reason: it cannot be shown to be measurement.
+                if (provenance.isTrustworthyAsMeasured) {
+                    analyzer.analyze(
+                        metrics = metrics,
+                        currentFtp = currentFtp.toDouble()
+                    ).proposedFtp?.toInt()
+                } else {
+                    null
+                }
             } else {
                 null
             }

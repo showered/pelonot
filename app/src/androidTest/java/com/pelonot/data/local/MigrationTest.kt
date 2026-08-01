@@ -144,6 +144,67 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The provenance column arriving over rides that already exist.
+     *
+     * `NULL`, not 0 and not 1. `DEFAULT 0` would say the model produced watts
+     * that came off a real bike; `DEFAULT 1` would do the reverse and worse,
+     * making a simulated ride eligible to propose an FTP (7.10.7) and to rank
+     * beside a real one (24.4.2). Null says the true thing: nobody wrote it
+     * down.
+     */
+    @Test
+    fun migrate3To4_leavesExistingSamplesWithNoClaimAboutTheirPower() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj,
+                    total_distance_km, avg_cadence, avg_power, avg_hr,
+                    intent_modifier, rpe_rating, is_complete, timestamp, was_recovered
+                ) VALUES ('w1', 1, NULL, 1800, 150.0, 10.0, 90.0, 200.0, 150.0, 1.0, 7, 1, 2000, 0)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence, resistance, power, heart_rate)
+                VALUES ('w1', 0, 90.0, 40.0, 200.0, 140), ('w1', 1, 91.0, 40.0, 205.0, 141)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 4, true, AppMigrations.MIGRATION_3_4)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT power, power_is_measured FROM workout_metrics WHERE workout_id = 'w1' ORDER BY timestamp_sec"
+            ).use { cursor ->
+                assertTrue("the samples recorded before the migration are gone", cursor.moveToFirst())
+                assertEquals(200.0, cursor.getDouble(0), 0.001)
+                assertTrue("an existing sample must claim nothing about its power", cursor.isNull(1))
+
+                assertTrue(cursor.moveToNext())
+                assertTrue("an existing sample must claim nothing about its power", cursor.isNull(1))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

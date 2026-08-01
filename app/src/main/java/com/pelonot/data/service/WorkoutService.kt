@@ -605,7 +605,11 @@ class WorkoutService : Service() {
             cadence = reading.cadenceRpm,
             resistance = reading.resistancePercent,
             power = reading.powerWatts,
-            heartRate = reading.heartRateBpm
+            heartRate = reading.heartRateBpm,
+            // 16.1.6 / 7.10.7 / 24.4.2: the one thing that says whether this
+            // watt is a measurement or the model's guess. It has always been
+            // on the reading and was thrown away here.
+            powerIsMeasured = reading.powerIsMeasured
         )
 
         // 2.2a.1: the ride is already the calibration dataset. Kept in memory

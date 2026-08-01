@@ -1,6 +1,7 @@
 package com.pelonot.domain.chart
 
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.PowerZone
 import kotlin.math.roundToInt
 
@@ -166,8 +167,8 @@ data class RideCharts(
     val timeInZone: TimeInZone = TimeInZone(),
     val prescribed: PrescribedPlan = PrescribedPlan(),
     val ftpWatts: Int = 0,
-    /** True when these watts came off the board rather than out of the model. */
-    val powerIsMeasured: Boolean = false
+    /** Where these watts came from — the board, the model, or both (16.1.6). */
+    val powerProvenance: PowerProvenance = PowerProvenance.Unknown
 ) {
     val hasAnything: Boolean
         get() = !power.isEmpty || !heartRate.isEmpty || cadence.totalSeconds > 0
@@ -185,7 +186,7 @@ object RideChartBuilder {
     fun build(
         samples: List<ChartSample>,
         ftpWatts: Int,
-        powerIsMeasured: Boolean = false,
+        powerProvenance: PowerProvenance = PowerProvenance.Unknown,
         /** The class this ride was ridden to, or empty for a free ride. */
         intervals: List<Interval> = emptyList(),
         /** `workouts.intent_modifier` — the multiplier the ride was ridden with. */
@@ -203,7 +204,7 @@ object RideChartBuilder {
             timeInZone = timeInZone(ordered, ftpWatts),
             prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
             ftpWatts = ftpWatts,
-            powerIsMeasured = powerIsMeasured
+            powerProvenance = powerProvenance
         )
     }
 
@@ -352,9 +353,13 @@ object RideChartBuilder {
  */
 object RideChartSummaries {
 
-    fun power(trace: RideTrace, isMeasured: Boolean): String {
+    fun power(trace: RideTrace, provenance: PowerProvenance): String {
         if (trace.isEmpty) return "No power was recorded for this ride."
-        val source = if (isMeasured) "measured" else "estimated"
+        val source = when (provenance) {
+            PowerProvenance.Measured -> "measured"
+            PowerProvenance.Mixed -> "partly measured"
+            else -> "estimated"
+        }
         return "Power over ${formatDuration(trace.durationSec)}, $source. " +
             "Peak ${trace.maxValue.roundToInt()} watts, " +
             "average ${trace.buckets.map { it.mean }.average().roundToInt()} watts."
