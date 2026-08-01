@@ -16,7 +16,13 @@ data class ChartSample(
     val powerWatts: Double,
     val cadenceRpm: Double,
     /** Null means **unknown**, never zero. See [heartRate]. */
-    val heartRateBpm: Int?
+    val heartRateBpm: Int?,
+    /**
+     * Carried although nothing draws it, because [isPlausible] reads it: an
+     * impossible resistance is what marks a row whose other two values have
+     * swapped columns (2.7.5).
+     */
+    val resistancePercent: Double = 0.0
 )
 
 /**
@@ -168,7 +174,14 @@ data class RideCharts(
     val prescribed: PrescribedPlan = PrescribedPlan(),
     val ftpWatts: Int = 0,
     /** Where these watts came from — the board, the model, or both (16.1.6). */
-    val powerProvenance: PowerProvenance = PowerProvenance.Unknown
+    val powerProvenance: PowerProvenance = PowerProvenance.Unknown,
+    /**
+     * What the fence makes of the ride's own samples (2.7.5).
+     *
+     * Everything above is drawn from the samples it accepts. On every ride
+     * recorded since the frame fix that is all of them.
+     */
+    val integrity: RideIntegrity = RideIntegrity()
 ) {
     val hasAnything: Boolean
         get() = !power.isEmpty || !heartRate.isEmpty || cadence.totalSeconds > 0
@@ -195,7 +208,15 @@ object RideChartBuilder {
     ): RideCharts {
         if (samples.isEmpty()) return RideCharts(ftpWatts = ftpWatts)
 
-        val ordered = samples.sortedBy { it.timestampSec }
+        // 2.7.5. A sample the fence would have rejected is left out of every
+        // trace, distribution and total below — the same treatment a rejected
+        // reading gets live, which is a gap rather than a clamped value. The
+        // count survives on `integrity` so the screen can say the ride was
+        // drawn short rather than quietly drawing it short.
+        val integrity = RideIntegrity.of(samples)
+        val ordered = samples.filter { it.isPlausible }.sortedBy { it.timestampSec }
+
+        if (ordered.isEmpty()) return RideCharts(ftpWatts = ftpWatts, integrity = integrity)
 
         return RideCharts(
             power = downsample(ordered, buckets) { it.powerWatts },
@@ -204,7 +225,8 @@ object RideChartBuilder {
             timeInZone = timeInZone(ordered, ftpWatts),
             prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
             ftpWatts = ftpWatts,
-            powerProvenance = powerProvenance
+            powerProvenance = powerProvenance,
+            integrity = integrity
         )
     }
 

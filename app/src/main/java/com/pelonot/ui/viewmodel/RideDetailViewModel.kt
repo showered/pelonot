@@ -117,7 +117,9 @@ class RideDetailViewModel(
                         powerWatts = metric.power,
                         cadenceRpm = metric.cadence,
                         // Preserved as null: 16.1.2 depends on it.
-                        heartRateBpm = metric.heartRate
+                        heartRateBpm = metric.heartRate,
+                        // Drawn by nothing, judged by 2.7.5.
+                        resistancePercent = metric.resistance
                     )
                 },
                 ftpWatts = ftp,

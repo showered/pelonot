@@ -32,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -57,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.components.CadenceDistributionChart
@@ -73,6 +75,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 
 /**
  * A ride from history.
@@ -257,6 +260,15 @@ fun RideDetailScreen(
 
             RideSummaryCard(workout)
 
+            state.charts?.integrity?.takeIf { it.isSuspect }?.let { integrity ->
+                Spacer(Modifier.size(MaterialTheme.spacing.medium))
+                SuspectSamplesNotice(
+                    integrity = integrity,
+                    storedAvgCadence = workout.avgCadence,
+                    storedAvgPower = workout.avgPower
+                )
+            }
+
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
             // 16.1. Every ride since the foreign-key fix has written a full
@@ -275,6 +287,85 @@ fun RideDetailScreen(
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
     }
+}
+
+/**
+ * The ride is not entirely trustworthy, and this says so (2.7.5).
+ *
+ * Shown only for the two rides recorded on the bike before the frame fix, and
+ * for nothing recorded after it. Three things it deliberately does:
+ *
+ * - **Says nothing has been changed.** The samples and the stored averages are
+ *   exactly as recorded. A rider who exports this ride gets every row of it.
+ * - **Puts both averages side by side** rather than replacing one with the
+ *   other. The stored figure is what the app told the rider on the day and it
+ *   is part of the record; the corrected one is what the surviving samples say.
+ * - **Names it as the app's fault**, because it was. The bike was fine.
+ */
+@Composable
+private fun SuspectSamplesNotice(
+    integrity: RideIntegrity,
+    storedAvgCadence: Double?,
+    storedAvgPower: Double?
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = MaterialTheme.expressiveShapes.large,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(MaterialTheme.spacing.medium)) {
+            Text(
+                text = "Some of this ride's samples are impossible",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            Text(
+                text = "${integrity.impossibleSamples} of ${integrity.totalSamples} " +
+                    "seconds (${integrity.percentImpossible.roundToInt()}%) hold values no " +
+                    "bike can produce. Pelonot recorded this ride while it still trusted " +
+                    "the labels on the sensor stream, and those labels can slide — so " +
+                    "cadence, resistance and power ended up in each other's columns. " +
+                    "Rides recorded since read the sensor board's own frames instead, " +
+                    "and cannot do this.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            Text(
+                text = "Nothing has been altered: every sample and every total above is " +
+                    "exactly as it was recorded. The charts below are drawn from the " +
+                    "${integrity.cleanSamples} seconds that survive.",
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            val corrected = listOfNotNull(
+                correctedAverage("Cadence", storedAvgCadence, integrity.cleanAvgCadenceRpm, "rpm"),
+                correctedAverage("Power", storedAvgPower, integrity.cleanAvgPowerWatts, "W")
+            )
+            if (corrected.isNotEmpty()) {
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                corrected.forEach { line ->
+                    Text(text = line, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+/** `Cadence: 109 rpm recorded, 61 rpm over the samples that survive.` */
+private fun correctedAverage(
+    label: String,
+    stored: Double?,
+    clean: Double?,
+    unit: String
+): String? {
+    if (stored == null || clean == null) return null
+    // A ride whose corrupted samples happened not to move the average is not
+    // worth two numbers; the count above already says they are there.
+    if (stored.roundToInt() == clean.roundToInt()) return null
+    return "$label: ${stored.roundToInt()} $unit recorded, " +
+        "${clean.roundToInt()} $unit over the samples that survive."
 }
 
 /**
