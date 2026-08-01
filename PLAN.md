@@ -17,14 +17,26 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 1 August 2026 (seventh sitting): the ladder, and a permission nobody asked for
+### Latest session — 1 August 2026 (seventh sitting): the ladder, the bottle stop, and a rider who could not stop
 
 Straight down the *What to do next* list, on the tablet AVD, no bike.
 
 Closed: **11.1a.6** (the ride notification that was never posted on Android
-13+) and **11.6.2a** (the zone ladder, which replaces the `CurrentZoneBar` the
-sixth sitting shipped and closes the overlay gap 11.6.2 left behind). 274 JVM
-tests green.
+13+), **11.6.2a** (the zone ladder, which replaces the `CurrentZoneBar` the
+sixth sitting shipped and closes the overlay gap 11.6.2 left behind), **19.1.2**
+(auto-pause) and **19.1.2a**, new and the reason 19.1.2 could be ticked at all.
+283 JVM tests green.
+
+**19.1.2a is the find of the sitting, and it is about verification rather than
+about the app.** Auto-pause is a feature about a rider *stopping*, and the
+simulated rider **never stops** — smooth effort wave, cadence never below about
+60. So the whole family of behaviour around standing still (auto-pause, the gap
+a stop leaves in `workout_metrics`, what the averages do across one) could only
+ever be seen with a person on the pedals, which `CLAUDE.md` rightly calls a
+perishable resource. The fix is four lines in the simulator and a receiver in
+the **debug source set** — `adb shell am broadcast … --ei seconds 40` makes the
+simulated rider stop — and nothing of it exists in a release build. Every
+observation ticked under 19.1.2 came from it.
 
 **11.6.2a is the substantial one, and building it answered its own three open
 questions.** A free ride draws the same ladder with nothing outlined; the watt
@@ -305,11 +317,10 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
-**The six MVP blockers above are done, and so are 11.1a.6 and 11.6.2a.** What
-is left of the readiness pass is **19.1.2** auto-pause and **19.1.3 / 12.4.4**
-local backup, which were on the plan already and belong in the same
-conversation: one is the other half of "the rider is not pedalling", and the
-other is the only safety net that exists before accounts.
+**The six MVP blockers above are done, and so are 11.1a.6, 11.6.2a and
+19.1.2.** What is left of the readiness pass is **19.1.3 / 12.4.4** local
+backup — the only safety net that exists before accounts, and the one that also
+covers the destructive-downgrade path.
 
 One of the owner's own is still open, and it carries more weight than anything
 below because he is the one riding this:
@@ -2195,7 +2206,53 @@ has simply never been written down.
       `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager'` with
       `ws=WorkSource{com.pelonot}` on the ride screen, and still held after
       minimising to the strip with another app in the foreground*
-- [ ] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
+- [x] **19.1.2** **Auto-pause** when cadence has been zero for ~20 s, and auto-resume on the first tick. Every ride has a bottle stop, and it currently drags the averages down
+      *Done. `AutoPausePolicy` (`domain/model/`, pure, 9 tests) decides; the
+      service's ticker asks it every second — while paused as well as while
+      riding, because the tick that lifts an auto-pause is a tick the clock is
+      not moving on. Pausing stops the clock, the class and the recording,
+      which are the three things that were wrong about standing still.*
+      *Two rules the policy holds, both of them the same trap in different
+      costumes. **A stalled board is not a stopped rider**: with telemetry not
+      live there is no reading to call zero, so the stillness clock is held —
+      and a frozen 90 rpm from a dead board does not lift an auto-pause either
+      (2.4.4, read in the other direction). **Only a pause the policy caused is
+      resumed automatically**: a rider who pressed pause and then turned the
+      pedals reaching for a towel has not asked to be racing again.*
+      *Both surfaces say why they stopped — "PAUSED — START PEDALLING TO
+      RESUME" on the ride screen, "PAUSED · PEDAL" on the overlay. A ride that
+      pauses itself silently is indistinguishable from one that has frozen.*
+      *The find, and it is 19.1.2a below: **the simulated rider never stops**,
+      so none of this could be seen without a bike. **Observed on the tablet
+      AVD** once it could be: paused at 20 s of stillness, resumed the second
+      the coast ended, held through a manual pause while the simulated rider
+      pedalled, and the ride recorded 86 rows over an 85 s ride containing a
+      45 s stop — no clock, no class and no rows through the pause*
+- [x] **19.1.2a** **The simulated rider never stops pedalling**, so nothing
+      about a rider standing still could be exercised without someone on the
+      bike — auto-pause, the gap a stop leaves in `workout_metrics`, what the
+      averages do across one. `CLAUDE.md` calls a pedalling rider a perishable
+      resource, and this was a whole family of behaviour that could only be
+      spent on. *Fixed with the smallest lever that stays out of a release
+      build: `SimulatedSensorSource.coastFor(seconds)` — cadence and power to
+      zero, resistance left where the knob is — driven by a receiver in the
+      **debug source set**, so a release build has no way to reach it:*
+      ```bash
+      adb shell am broadcast -a com.pelonot.debug.COAST \
+        -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
+      ```
+- [ ] **19.1.2b** **The twenty seconds before an auto-pause are still averaged
+      in.** They are recorded honestly — the rider really was at zero — but
+      `avg_power` and `avg_cadence` are computed live over every row, so a stop
+      still costs 20 s of zeros. On a 30-minute ride that is 1%; on the 85 s
+      test ride above it was 20 of 86 rows and pulled `avg_cadence` to 61. The
+      fix is *not* to delete the rows: they are true, the charts should draw
+      them, and deriving a summary by throwing away samples is the shape of
+      trouble this plan keeps cataloguing. It is to decide whether the `avg_*`
+      columns mean "over the whole recording" or "over the pedalling", say
+      which in one place, and apply it in `WorkoutMetricsCalculator`. Worth
+      settling alongside 7.8, which is the same question about a different
+      column
 - [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
 - [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped

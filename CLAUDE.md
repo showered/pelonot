@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 274 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 283 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -158,6 +158,16 @@ sqlite3 db.sqlite "SELECT COUNT(*) FROM workout_metrics;"
 
 Settings → Telemetry source → **Simulated** makes the whole ride flow work
 without a bike.
+
+The simulated rider rides a smooth effort wave and **never stops**, so anything
+about a rider standing still — auto-pause, the gap a stop leaves in the series,
+what the averages do across one — is invisible under it unless you ask for a
+stop. Debug builds have a receiver for exactly that (PLAN.md 19.1.2a):
+
+```bash
+adb shell am broadcast -a com.pelonot.debug.COAST \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
+```
 
 ### On the real bike
 
