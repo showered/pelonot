@@ -17,6 +17,50 @@
 
 ## Where the work stands — read this first
 
+### Latest session — 1 August 2026 (twelfth sitting): the record explains itself, and the numbers hold still
+
+No bike, no rider — the whole sitting ran on the bike tablet's *existing*
+database and on the tablet AVD. Four items closed: **2.7.5**, **11.6.7**,
+**11.6.8** and **13.8**. 374 JVM tests, 0 failures.
+
+**2.7 is now closed apart from the serial-port leak underneath it.** 2.7.5 asked
+what to do about the rides recorded before the frame fix, and the answer is
+**mark and say so, and change nothing**. `RideIntegrity` counts a ride's
+impossible samples on read, against the same bounds the recorder rejects on and
+**whole-row** — one impossible field condemns the other two, because that is
+precisely what the labelling defect does to them. Ride detail draws its charts
+from the samples that survive and says so, with the stored average and the
+corrected one side by side rather than one quietly replacing the other.
+
+It found **three** corrupted rides on the bike, not the two the plan expected —
+and, more usefully, a fourth ride recorded *after* the fix with **zero**
+impossible samples. That is the fix seen from the record's side.
+
+**Two of the four items had the wrong cause written down, and both were found
+by measuring rather than by reading.**
+
+- **11.6.8** blamed a border that adds to layout width. Compose borders draw
+  inside the element and add nothing. What actually moved was the column on
+  either side of the ladder sizing itself to its own text: "TEMPO" and
+  "NEUROMUSCULAR POWER" are the same element one zone apart, and 99% to 100% is
+  a whole digit. Both now reserve their widest string.
+- **13.8** said the label ignores the rider's preference. It does not — it
+  follows it, and the preference on a fresh install is a *guess from the
+  locale*, which is not the answer to this question for anyone in the UK. The
+  fix is a kg/lb control, not a better guess.
+
+**The technique worth carrying: a 2 Hz display update is hard to photograph, so
+make it a 3 s one.** 11.6.7 was verified by temporarily setting the display
+interval to 3000 ms and sampling the raw framebuffer: the cadence figure
+changed at 3.04, 3.05, 2.75, 2.99, 2.99, 3.01, 3.03 seconds — the pacing
+exactly, with no timing argument to make — while the *same ride* wrote 60 rows
+across a 60-second span, every one a distinct cadence. Screen slowed, record
+untouched, both measured in one run. Then restored to 500 ms.
+
+**And the cost of 13.8 is in the database, not on the screen.** 77 typed into
+the old dialog on an `en-US` device stores `34.93` kg. Half a rider — and the
+number kJ/kg divides by on the household leaderboard.
+
 ### Latest session — 1 August 2026 (eleventh sitting): the frame says what it is
 
 **2.7 is solved.** Not fenced, not contained — the cause is found, the fix is
@@ -568,8 +612,8 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | Next | Why now |
 |------|---------|
-| ~~**2.7.1b** Which side mislabels the stream~~ | **Done — root cause found and fixed, verified on the bike.** `msg.what` is assigned by position and slides; the frame in `responseHexString` is self-identifying and now decides the metric. Read **2.7c**. What is left of 2.7 is 2.7.5 (the rides already recorded), and 2.7.7 / 2.7.8 from the serial-port leak underneath it (2.7d) |
-| **2.7.5** What to do about the rides already recorded | Now the only open item that does not need hardware. The first real ride is on disk with 17 impossible samples in it, and the fence means no ride after it can be. `implausibleValues()` is the same predicate the recorder uses, so counting them per ride is one query — but do not silently rewrite a rider's history |
+| ~~**2.7.1b** Which side mislabels the stream~~ | **Done — root cause found and fixed, verified on the bike.** `msg.what` is assigned by position and slides; the frame in `responseHexString` is self-identifying and now decides the metric. Read **2.7c**. What is left of 2.7 is 2.7.7 / 2.7.8, from the serial-port leak underneath it (2.7d) |
+| ~~**2.7.5** What to do about the rides already recorded~~ | **Done and observed on the bike's own database.** Marked, not rewritten: three corrupted rides found, the fourth (post-fix) clean. Read 2.7.5 |
 | ~~**2.7.3** A plausibility fence~~ | Done and observed: 0 impossible values in 188 recorded samples across a ride carrying 30 s of the bike's own corruption signature |
 | ~~**2.7.4** Telemetry dies and never recovers~~ | Done and observed: silence is an `IOException` now, the one retry policy rebuilds the source, and the ride picked up again at 122 s with no app restart |
 
@@ -577,11 +621,11 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | Next | Why now |
 |------|---------|
-| **11.6.7** The numbers change too fast to read | Both surfaces. A rider glancing down gets a blur. Display-rate only — **it must not change what is recorded** |
-| **11.6.8** The zone ladder shifts sideways | Every zone change nudges the whole ladder along, on the one element the rider is watching to see that it changed. A border that adds to layout width; draw it inset |
-| **11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride | Tapping `--` should lead to pairing, and it cannot until there is a way into Settings that does not end the ride. Do them together |
+| ~~**11.6.7** The numbers change too fast to read~~ | **Done and observed.** `SensorRepository.displayReading`, 2 Hz, both surfaces, recorder untouched |
+| ~~**11.6.8** The zone ladder shifts sideways~~ | **Done and observed.** Not the border — the zone name and the FTP percentage sized themselves to their own text. Both now reserve their widest string |
+| **11.6.9 / 11.6.10** The heart-rate dead end, and Settings mid-ride | **Now first.** Tapping `--` should lead to pairing, and it cannot until there is a way into Settings that does not end the ride. Do them together |
 | **16.1.7 / 16.1.8** Axes on the charts | The heart-rate chart is a line with no numbers on it. Beautiful rather than scientific, and decided once for all four |
-| **13.8** kg/lb at signup | The first screen a new rider touches asks for pounds and never asks. Small |
+| ~~**13.8** kg/lb at signup~~ | **Done and observed.** The old dialog stored a 77 kg rider as 34.9 kg |
 
 **Then the substantial ones:**
 
@@ -636,7 +680,7 @@ Two notes worth carrying into the next bike session:
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
 | 1 | Local database (Room) + Supabase | 🔶 Room complete at schema version 3. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account that nothing yet grants (23.1) |
-| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **2.7 solved and verified on the bike (2.7c).** The board's own frame decides the metric, so the service's positional `msg.what` can no longer mislabel anything; the raw-resistance intruder is dropped by identity. 1609 + 464 messages captured with zero mislabels, a recorded ride with zero impossible values and zero gaps. Open underneath it: the exclusive serial port leaks (2.7d → 2.7.7, 2.7.8), and 2.7.5 for the rides recorded before the fix |
+| 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **2.7 solved and verified on the bike (2.7c).** The board's own frame decides the metric, so the service's positional `msg.what` can no longer mislabel anything; the raw-resistance intruder is dropped by identity. 1609 + 464 messages captured with zero mislabels, a recorded ride with zero impossible values and zero gaps. The three rides recorded before the fix are marked rather than rewritten (2.7.5). Open underneath it: the exclusive serial port leaks (2.7d → 2.7.7, 2.7.8) |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
@@ -1520,7 +1564,7 @@ overlay was up for part of it.
       source, which for the Peloton source means `awaitClose` unbinds and drops
       the registration *before* the new one is made, so the rebuild cannot
       leave two alive. **Observed on the tablet AVD**
-- [ ] **2.7.5** **Decide what happens to the rides already recorded.** They are
+- [x] **2.7.5** **Decide what happens to the rides already recorded.** They are
       real rides with real effort in them and a minority of corrupted samples.
       Deleting them is wrong; presenting their aggregates as fact is also wrong.
       The options are to recompute the aggregates with impossible samples
@@ -1533,6 +1577,38 @@ overlay was up for part of it.
       samples, so this is about the two rides on the bike today and nothing
       that comes after them. `implausibleValues()` is the same predicate the
       recorder uses, so counting the affected samples per ride is one query
+
+      **Answered: mark and say so, and change nothing.** `RideIntegrity`
+      (`domain/chart/`) judges a ride's own samples on read against the same
+      `TelemetryBounds` the recorder rejects on — **whole-row**, because one
+      impossible field means the labels slid and the other two values are then
+      in range and in the wrong columns. The charts are drawn from the samples
+      that survive; the samples, the `avg_*` columns and the export are
+      untouched; and ride detail says all of that out loud, with the stored
+      average and the corrected one **side by side** rather than one replacing
+      the other. The stored figure is what the app told the rider on the day
+      and is part of the record.
+
+      **Observed on the bike's own database** — it turned out to be three
+      rides, not two:
+
+      | Ride | Samples | Impossible | Stored cadence | Corrected |
+      |------|---------|-----------|----------------|-----------|
+      | `HC-01`, 20 min | 1196 | 17 (1%) | 83 rpm | 78 rpm |
+      | Just Ride, 3 min | 180 | 39 (22%) | 109 rpm | 53 rpm |
+      | Just Ride, 5 min | 85 | 32 (38%) | 196 rpm | 11 rpm |
+      | Just Ride, post-fix | 200 | **0** | 52 rpm | — |
+
+      The notice renders correctly on all three and is absent on the fourth and
+      on a clean AVD ride. Note the last row: the first ride recorded *after*
+      the frame fix has nothing wrong with it, which is the fix and the fence
+      seen from the record's side.
+
+      **One thing this deliberately does not do.** The 636 W spike on the first
+      ride's chart is still there, because 636 W is a possible power — the
+      intruder is only impossible in two columns of three. The fence never
+      claimed otherwise and neither does the notice: the record is free of the
+      impossible, not free of the wrong
 - [x] **2.7.6** **A test that would have caught this.** Nothing in 308 JVM
       tests could: the simulator is one well-behaved source and the defect
       needs two. A fake source that emits interleaved partial state, and an
@@ -2727,7 +2803,7 @@ per-second time series to `workout_metrics`, and there is no screen in the app
 that shows a rider a ride they finished yesterday. `WorkoutRepository` already
 has `observeWorkouts(userId)`, `getRecentWorkouts` and `getMetrics`; the data
 layer is done and nothing renders it.
-- [ ] **11.6.7** **The numbers change too fast to read, on both surfaces.**
+- [x] **11.6.7** **The numbers change too fast to read, on both surfaces.**
       The board reports several times a second and every emission is rendered,
       so a rider glancing down sees a blur rather than a number. Needs a
       **display cadence** — around 2 Hz, or a short rolling mean — applied
@@ -2735,7 +2811,27 @@ layer is done and nothing renders it.
       1 Hz sample written to `workout_metrics` is the rider's record and stays
       raw. This is a display concern and belongs in one place both surfaces
       read, not solved twice
-- [ ] **11.6.8** **The zone ladder shifts sideways when the zone changes.** The
+
+      `atDisplayRate` (`data/sensor/DisplayRate.kt`) paces the stream: the
+      first value at once, then at most one every 500 ms, always the latest.
+      **Nothing is averaged and nothing is invented** — every number on screen
+      is one the board actually reported, which is the same rule the fence
+      follows, and it also means a burst cannot build a backlog that plays out
+      in slow motion after the rider has stopped. It hangs off
+      `SensorRepository.displayReading`, which the ride screen and the overlay
+      both read; the recorder still reads `sensorReading`.
+
+      **Observed on the tablet AVD**, and the technique is worth keeping
+      because a 2 Hz update is hard to photograph: the interval was temporarily
+      set to **3000 ms** and the screen sampled through the raw framebuffer.
+      The cadence figure changed at 3.04, 3.05, 2.75, 2.99, 2.99, 3.01, 3.03 s
+      — the pacing exactly, unmistakably, with no timing argument needed. The
+      same ride's `workout_metrics` held **60 rows across a 60-second span,
+      every one a distinct cadence**: full raw fidelity underneath a screen
+      updating once every three seconds, which is the property that mattered.
+      Restored to 500 ms and re-measured at ~1.6 changes/s through a ~3 Hz
+      sampler
+- [x] **11.6.8** **The zone ladder shifts sideways when the zone changes.** The
       current-zone outline is drawn as a border that adds to the segment's
       layout width, so every neighbour moves along when the rider crosses a
       boundary — on the one element they are watching to see that they have.
@@ -2743,6 +2839,26 @@ layer is done and nothing renders it.
       or a background/elevation change) so the ladder is geometrically static
       and only its colouring moves. Affects the ride screen and the overlay's
       compact ladder both
+
+      **The diagnosis in the paragraph above is wrong and worth leaving in
+      place**, because it cost the first twenty minutes: the prescribed
+      outline *is* a `Modifier.border`, and a Compose border draws inside the
+      element and adds nothing to layout. The two things that actually moved
+      were the columns on either side of the segments, both of which sized
+      themselves to their own text — the zone **name** ("TEMPO" and
+      "NEUROMUSCULAR POWER" are the same element one zone apart) and the
+      **FTP percentage** (99% to 100% is a whole digit). Both now reserve the
+      width of the widest string they can ever hold, laid out in the font
+      actually in use rather than guessed at in dp, so a system font-size
+      change cannot reintroduce it. The widest zone name is derived from the
+      enum, so renaming a zone cannot either.
+
+      **Observed on the tablet AVD** by measuring the raw framebuffer rather
+      than by eye: with the rider in Z1 / `ACTIVE RECOVERY` / `29% OF FTP` and
+      later in Z4 / `LACTATE THRESHOLD` / `103% OF FTP`, the segment strip's
+      left and right edges were **x=830 and x=1380 in both**, unchanged to the
+      pixel across a name two characters longer and a percentage two digits
+      wider
 - [ ] **11.6.9** **A blank heart rate is a dead end.** The card shows `--` when
       no strap is paired and does nothing when tapped. It should be the way in
       to pairing — the strap is the one metric measured identically for every
@@ -2845,7 +2961,7 @@ is in miles.
 - [x] **13.5** Every surface reads the same setting, delivered through `LocalUnitSystem` from `PelonotTheme` — which is what lets the HUD read it, since the overlay is composed from the service and has no ViewModel to thread it through. Ride screen, post-ride summary, HUD strip, settings and profile creation all consume it
 - [x] **13.6** Watts, RPM, BPM and kJ are unit-agnostic and stay as they are. No calories, and the Settings copy says why
 - [x] **13.7** JVM tests for the conversions, the settings-field round trip, and locale-derived defaults — **plus** `FormattersTest`, which pins every number under `fr-FR` and `hi-IN-u-nu-deva`. A missing `Locale.US` is the same defect class that put epoch millis into a `TIMESTAMPTZ` (14.0)
-- [ ] **13.8** **Profile creation asks for weight in pounds and never asks
+- [x] **13.8** **Profile creation asks for weight in pounds and never asks
       which.** The field is labelled `Weight (lb)` regardless of the rider's
       unit preference, and it is the *first* screen a new rider touches —
       before they have seen Settings, and before anything has told them the
@@ -2854,6 +2970,23 @@ is in miles.
       seed the label from `UnitSystem.fromLocale()` like everything else does,
       or put a kg/lb toggle beside the field. Same question applies to the
       guest-ride "save to a new profile" dialog, which is the same component
+
+      **The first half of that was already true and is not the fix**: the label
+      does come from the preference, which on a fresh install is
+      `UnitSystem.fromLocale()`. The locale is simply not the answer to this
+      question — a rider in the UK weighs in kilograms and rides in miles — and
+      there is no route to Settings before a profile exists, so the guess could
+      not be argued with. So: **kg/lb chips beside the field**, opening on the
+      current preference and converting with the rider's choice. It does not
+      write the app-wide unit setting: distance and body weight are separate
+      questions and this dialog is not the place to answer both. The guest-ride
+      dialog is the same component and got it for free.
+
+      **Observed on the tablet AVD, in the database rather than on the screen**,
+      which is what makes the cost of it clear: 77 typed into the old dialog on
+      an `en-US` device is stored as `34.9266124907727` — **half a rider**, and
+      the number kJ/kg divides by on the household leaderboard (24.1). 77 with
+      `kg` chosen stores `77.0`
 
 ---
 
