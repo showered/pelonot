@@ -9,6 +9,7 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -64,6 +65,9 @@ class PelotonSensorServiceSource(
         val assembler = TelemetryAssembler()
         var consecutiveTimeouts = 0
 
+        /** How often the service's own label disagreed with the frame (2.7.1b). */
+        var mislabelled = 0
+
         // 2.7.2. The corrupted ride carried a value near 602 that is not
         // cadence, resistance or power. If it arrives on a message type this
         // source does not handle, this is what will say so.
@@ -72,6 +76,13 @@ class PelotonSensorServiceSource(
         val replyHandler = object : Handler(replyThread.looper) {
             override fun handleMessage(msg: Message) {
                 val data = msg.data ?: return
+
+                // 2.7.1b. Every message exactly as it arrives, before anything
+                // interprets it. This is the capture that decides which side of
+                // the binder mislabels the stream: if the raw resistance value
+                // turns up here already wearing `what=7`, nothing on this side
+                // put it there.
+                traceEvent(msg, data)
 
                 // The board answering with nothing is reported as a TIME_OUT
                 // carrying a 0.0 payload. That zero is an absence of data, not
@@ -86,12 +97,48 @@ class PelotonSensorServiceSource(
                 }
                 consecutiveTimeouts = 0
 
-                val field = fieldFor(msg.what) ?: run {
+                // 2.7.1b, and the whole of the fix: **the frame is the truth,
+                // `msg.what` is only a claim about it.** The service labels
+                // replies by position in its own request cycle, so anything
+                // that disturbs that cycle — a second app binding the sensor
+                // service is enough — slides the labels along while the
+                // payloads stay put. Measured on the bike: 55 of 204 messages
+                // carried a payload disagreeing with their own label, and a
+                // stationary rider was reported at 544 rpm.
+                val frame = PelotonFrameParser.parse(data.getString(KEY_RESPONSE_HEX))
+                if (frame == null) {
+                    // No frame, or a frame that failed its checksum. Falling
+                    // back to `msg.what` would be trusting the one thing this
+                    // whole class exists because we cannot trust.
                     recordUnknownEvent(unknownEvents, msg)
                     return
                 }
 
-                val value = data.getFloat(KEY_DATA).toDouble()
+                val claimed = fieldFor(msg.what)
+                if (claimed != frame.field) {
+                    mislabelled++
+                    if (mislabelled <= MISLABEL_LOG_LIMIT) {
+                        Log.w(
+                            TAG,
+                            "Service labelled a 0x${frame.id.toString(16).uppercase()} frame " +
+                                "as event ${msg.what} (${claimed?.label ?: "unknown"}); " +
+                                "trusting the frame"
+                        )
+                    }
+                }
+
+                val field = frame.field ?: run {
+                    // A real reading with no column of ours — the raw
+                    // resistance report. Dropping it by identity rather than
+                    // by plausibility is the difference between a fence and a
+                    // fix.
+                    if (!PelotonFrameParser.isKnownButUnused(frame.id)) {
+                        recordUnknownEvent(unknownEvents, msg)
+                    }
+                    return
+                }
+
+                val value = frame.value
                 when (val intake = assembler.onValue(field, value, System.currentTimeMillis())) {
                     is Intake.Emit -> trySend(intake.reading)
                     is Intake.Held, is Intake.Quarantined -> Unit
@@ -131,7 +178,7 @@ class PelotonSensorServiceSource(
                 runCatching {
                     // Each of these registers a *repeating* request, so the
                     // board is polled and events arrive until we unbind.
-                    for (command in REGISTER_COMMANDS) {
+                    for (command in registerCommands) {
                         outgoing.send(
                             Message.obtain(null, command).apply { replyTo = replyMessenger }
                         )
@@ -181,10 +228,30 @@ class PelotonSensorServiceSource(
             }
             Log.d(
                 TAG,
-                "Peloton sensor service source closed (${assembler.rejectedCount} impossible " +
-                    "values rejected, ${assembler.quarantinedCount} readings withheld as suspect)"
+                "Peloton sensor service source closed ($mislabelled mislabelled frames, " +
+                    "${assembler.rejectedCount} impossible values rejected, " +
+                    "${assembler.quarantinedCount} readings withheld as suspect)"
             )
         }
+    }
+
+    /**
+     * Dumps one raw message to logcat while a trace window is open (2.7.1b).
+     *
+     * Off unless somebody asked for it: the board reports several times a
+     * second and an always-on trace would push the evidence out of logcat's
+     * buffer before anyone read it. `SystemClock.uptimeMillis` rather than wall
+     * clock, because what matters is the *order and spacing* of arrivals.
+     */
+    @Suppress("DEPRECATION")
+    private fun traceEvent(msg: Message, data: android.os.Bundle) {
+        if (System.currentTimeMillis() >= traceUntilMs) return
+        val payload = data.keySet().joinToString { key -> "$key=${data.get(key)}" }
+        Log.i(
+            TRACE_TAG,
+            "${SystemClock.uptimeMillis()} what=${msg.what} arg1=${msg.arg1} " +
+                "arg2=${msg.arg2} [$payload]"
+        )
     }
 
     private fun fieldFor(what: Int): TelemetryField? = when (what) {
@@ -223,6 +290,24 @@ class PelotonSensorServiceSource(
     companion object {
         private const val TAG = "PelotonSensorSource"
 
+        /** Its own tag so the raw stream can be filtered out of everything else. */
+        const val TRACE_TAG = "PelotonSensorTrace"
+
+        /**
+         * Wall-clock instant the raw event trace stops (2.7.1b).
+         *
+         * Opened from `adb` rather than left on, and read by the debug
+         * receiver only — a release build has no way to reach it.
+         */
+        @Volatile
+        private var traceUntilMs: Long = 0L
+
+        /** Logs every raw sensor message for [seconds]. */
+        fun traceFor(seconds: Int) {
+            traceUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
+
+
         const val SERVICE_ACTION = "android.intent.action.peloton.SensorData"
         const val SERVICE_PACKAGE = "com.peloton.service.SensorData"
         const val BIKE_CATEGORY = "com.peloton.sensor.category.BIKE"
@@ -232,7 +317,34 @@ class PelotonSensorServiceSource(
         private const val REGISTER_RPM = 1
         private const val REGISTER_WATT = 2
         private const val REGISTER_RESISTANCE = 3
-        private val REGISTER_COMMANDS = intArrayOf(REGISTER_RPM, REGISTER_WATT, REGISTER_RESISTANCE)
+
+        /**
+         * Which repeating polls to register (2.7.1b).
+         *
+         * Normally all three. The A/B that identifies the mislabeller needs
+         * one run with **resistance alone**: if the raw-resistance intruder
+         * survives that, the board or the service emits it unsolicited; if it
+         * disappears, three overlapping polls answering into one reply
+         * Messenger are what desync the service, and the fix is one Messenger
+         * per metric.
+         *
+         * A `var` only so the experiment can be run without a rebuild between
+         * halves. Nothing in the app writes it; the debug receiver does.
+         */
+        @Volatile
+        var registerCommands: IntArray =
+            intArrayOf(REGISTER_RPM, REGISTER_WATT, REGISTER_RESISTANCE)
+            private set
+
+        /** Registers for resistance only on the next bind. Debug builds only. */
+        fun registerResistanceOnly() {
+            registerCommands = intArrayOf(REGISTER_RESISTANCE)
+        }
+
+        /** Back to all three. Debug builds only. */
+        fun registerEverything() {
+            registerCommands = intArrayOf(REGISTER_RPM, REGISTER_WATT, REGISTER_RESISTANCE)
+        }
 
         private const val EVENT_RPM = 7
         private const val EVENT_WATT = 8
@@ -247,6 +359,9 @@ class PelotonSensorServiceSource(
 
         /** How many of each unhandled event type get their payload logged. */
         private const val UNKNOWN_EVENT_LOG_LIMIT = 3
+
+        /** Mislabelling arrives in bursts; the first few are the evidence. */
+        private const val MISLABEL_LOG_LIMIT = 5
 
         /**
          * Live registrations across the whole process (2.7.1).

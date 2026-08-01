@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.pelonot.data.sensor.PelotonSensorServiceSource
 import com.pelonot.data.sensor.SimulatedSensorSource
 
 /**
@@ -45,6 +46,27 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
                 Log.i(TAG, "Simulated board goes silent — without failing — for ${seconds}s")
             }
 
+            ACTION_TRACE -> {
+                PelotonSensorServiceSource.traceFor(seconds)
+                Log.i(TAG, "Tracing raw sensor events for ${seconds}s")
+            }
+
+            // 2.7.1b. Takes effect on the next bind, so end the ride and start
+            // another — the registration is sent once, when the service binds.
+            ACTION_REGISTER -> {
+                val only = intent.getStringExtra(EXTRA_ONLY)
+                if (only == "resistance") {
+                    PelotonSensorServiceSource.registerResistanceOnly()
+                } else {
+                    PelotonSensorServiceSource.registerEverything()
+                }
+                Log.i(
+                    TAG,
+                    "Next bind registers: " +
+                        PelotonSensorServiceSource.registerCommands.joinToString()
+                )
+            }
+
             else -> {
                 SimulatedSensorSource.coastFor(seconds)
                 Log.i(TAG, "Simulated rider stops pedalling for ${seconds}s")
@@ -58,5 +80,8 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
         const val DEFAULT_SECONDS = 30
         const val ACTION_CORRUPT = "com.pelonot.debug.CORRUPT"
         const val ACTION_SILENCE = "com.pelonot.debug.SILENCE"
+        const val ACTION_TRACE = "com.pelonot.debug.TRACE"
+        const val ACTION_REGISTER = "com.pelonot.debug.REGISTER"
+        const val EXTRA_ONLY = "only"
     }
 }
