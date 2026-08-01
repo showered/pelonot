@@ -24,8 +24,20 @@ Straight down the *What to do next* list, on the tablet AVD, no bike.
 Closed: **11.1a.6** (the ride notification that was never posted on Android
 13+), **11.6.2a** (the zone ladder, which replaces the `CurrentZoneBar` the
 sixth sitting shipped and closes the overlay gap 11.6.2 left behind), **19.1.2**
-(auto-pause) and **19.1.2a**, new and the reason 19.1.2 could be ticked at all.
-283 JVM tests green.
+(auto-pause), **19.1.2a** (new, and the reason 19.1.2 could be ticked at all)
+and **19.1.3 / 12.4.4** (backup and restore). 291 JVM tests green.
+
+**With that, the fifth sitting's readiness pass is finished** — every blocker
+it found is built and observed, and a rider now has a way to get their whole
+history off the tablet and back onto one.
+
+**The backup work turned up a bug of exactly the shape this plan collects.**
+The SQLite magic is `SQLite format 3` followed by a **NUL**, and it had been
+written with a trailing space, so every genuine backup was refused with "that
+file is not a Pelonot backup". The unit tests all passed, because they built
+their test header out of the same wrong constant. A test written from the spec
+rather than from the code is the only thing that could have caught it, and
+there is now one.
 
 **19.1.2a is the find of the sitting, and it is about verification rather than
 about the app.** Auto-pause is a feature about a rider *stopping*, and the
@@ -317,10 +329,16 @@ Three consequences worth carrying forward:
 
 ### What to do next, in order
 
-**The six MVP blockers above are done, and so are 11.1a.6, 11.6.2a and
-19.1.2.** What is left of the readiness pass is **19.1.3 / 12.4.4** local
-backup — the only safety net that exists before accounts, and the one that also
-covers the destructive-downgrade path.
+**The six MVP blockers above are done, and so are 11.1a.6, 11.6.2a, 19.1.2 and
+19.1.3 / 12.4.4.** The readiness pass is finished: everything it found is built
+and seen working, and a rider now has a way to get their whole history off the
+tablet and back onto one.
+
+Two candidates that came out of this sitting rather than off the old list:
+**19.1.2b** (the twenty seconds before an auto-pause are still averaged in —
+and it is the same question as 7.8, asked of a different column) and **19.1.6**
+(the first run explains nothing, which is now the largest gap between "works"
+and "shippable").
 
 One of the owner's own is still open, and it carries more weight than anything
 below because he is the one riding this:
@@ -337,7 +355,6 @@ because its reasoning is still good:
 | **14.1.6** Finish the cloud round trip | **One query away.** The app drove it end to end on the emulator: a profile ride, `WorkoutSyncWorker` ran, and it logged `Synced workout … (135 samples)` — and postgrest-kt throws on a non-2xx, so that is a real HTTP success. But `workouts` has **no `SELECT` grant by design** (14.1.1), so nothing in the app or the anon key can read the row back, and the house rule for this box is *see the row appear*. It needs one `select count(*) from workouts` against the live project through the Management API, which this session was not able to run |
 | **11.1b.3 / 11.1b.4** Resizing and side docking | The half of 11.1b still outstanding. Opacity and the two-band layout landed; a vertical dock down one side is probably the better default on a 16:9 tablet and needs a genuine re-flow, not a rotation |
 | **11.2.2 / 11.2.3** Time in zone, and "ahead of your usual" | The two things still missing from the strip that are about the next sixty seconds |
-| **19.1.3** Local backup, and **12.4.4** restore | Ride export landed (12.4.3); this is the other half — the whole database as one file. Until accounts exist (15) it is the only backup a rider has, and the destructive-downgrade path is still there |
 | **11.1b.9** The chips as a piece of design | The HUD redesign is correct and not yet beautiful, and the owner has said he will come back to it. Read 11.1b.8 and 11.1b.4a first — they are the same conversation |
 
 Still blocked on things not to hand: **10.6** needs a full-length ride, and the
@@ -1859,7 +1876,7 @@ layer is done and nothing renders it.
       seconds, which describes a ride nobody did. The lap carries the real
       total. Whether Strava is content with that needs an actual upload to find
       out. Same family as 16.1.6: a missing column, not a missing calculation
-- [ ] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has
+- [x] **12.4.4** Export/import the whole local database as a file. Until 15 exists this is the *only* backup a rider has. *Done with 19.1.3 — read the detail there*
 
 ### 12.5 Room migrations — do this before anything in 12–19 ships
 - [x] **12.5.1** Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects. `AppMigrations.ALL` is the list; a downgrade still falls back destructively, since that only happens when an older APK is installed over a newer one on a development device
@@ -2253,7 +2270,36 @@ has simply never been written down.
       which in one place, and apply it in `WorkoutMetricsCalculator`. Worth
       settling alongside 7.8, which is the same question about a different
       column
-- [ ] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
+- [x] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
+      *Done, and 12.4.4 with it — they were always one piece of work. Settings
+      → **Backup** writes the database through the system's own file picker as
+      `pelonot-backup-YYYY-MM-DD.db`, and restores it back through the same
+      picker.*
+      *Three things worth carrying forward. **The checkpoint is the whole
+      trick**: Room runs in WAL mode, so the ride just finished lives in
+      `pelonot_database-wal` and *not* in the file being copied —
+      `PRAGMA wal_checkpoint(TRUNCATE)` first, or the backup is silently
+      missing the newest rides and only says so on the day it is restored.
+      **The file is the database itself**, not a format of our own: it restores
+      by being copied back, anything that reads SQLite can open it, and there
+      is no serialiser to fall behind the schema — the `intervals_json` failure
+      in another costume. **A restore is refused rather than attempted** when
+      the file is not ours, when it comes from a newer schema (Room's answer to
+      a database from the future is to empty it, 12.5.1) or when a ride is in
+      progress (8.3b's family), and everything is judged against a staged copy
+      in the cache, because the moment the live file is touched there is no way
+      back. Afterwards the app restarts itself: every DAO and `StateFlow` in
+      the process is holding a database that has been swapped underneath it.*
+      *The bug found while verifying, and it is a good one: the SQLite magic
+      is `SQLite format 3` followed by a **NUL**, and it had been written with
+      a trailing space — so every genuine backup was refused with "that file is
+      not a Pelonot backup". **No test built out of that same constant could
+      have caught it**; there is now one written from the spec instead.*
+      ***Observed on the tablet AVD**: 241 kB written to Downloads containing
+      the ride recorded two minutes earlier; a `.tcx` offered to the restore
+      and refused by name; the real backup restored — process 20063 → 20270,
+      the profile created after the backup was taken gone, and 5 workouts /
+      491 samples back exactly as the file had them*
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
 - [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped
       straight onto the profile picker; profile creation asks for an FTP with
