@@ -38,7 +38,29 @@ data class UserEntity(
      * asks for.
      */
     @ColumnInfo(name = "auth_user_id")
-    val authUserId: String? = null
+    val authUserId: String? = null,
+
+    /**
+     * Whether this rider's numbers appear on the screens the rest of the house
+     * sees (PLAN 24.2.3).
+     *
+     * Privacy inside a household is still privacy, and it is the kind that gets
+     * forgotten because everyone involved knows each other. One switch with one
+     * meaning: a rider who turns it off is out of household social entirely —
+     * the per-class leaderboard (24.1) as well as the dashboard's week (24.2) —
+     * because "out of some of it" is not what anybody is asking for.
+     *
+     * It takes nothing away from them: their own history, their own dashboard
+     * and their own trends are untouched. It is about what other people see.
+     *
+     * Defaults to true because every profile that already exists was created
+     * when the household leaderboard already showed them, and defaulting to
+     * false would quietly remove them from a board they are on today — a
+     * migration deciding a rider's preference for them, in either direction, is
+     * the thing to avoid.
+     */
+    @ColumnInfo(name = "household_visible")
+    val householdVisible: Boolean = true
 ) {
 
     /** True when this rider has an account, and therefore a cloud. */

@@ -266,6 +266,54 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The household opt-out arriving over profiles that already exist.
+     *
+     * `1`, not `0`, and the reasoning is the opposite of `auth_user_id`'s while
+     * the underlying rule is the same: **pick the value that is true of the
+     * rows that exist**. Nobody had ever consented to the cloud, so that column
+     * arrived null. Everybody was already on 24.1's household leaderboard, so
+     * this one arrives visible — defaulting to hidden would be a schema change
+     * quietly removing riders from a board they are on today.
+     */
+    @Test
+    fun migrate5To6_leavesExistingProfilesVisibleToTheirHousehold() {
+        helper.createDatabase(TEST_DB, 5).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL), (2, 'Housemate', 64.0, 180, 1100, NULL)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 6, true, AppMigrations.MIGRATION_5_6)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT name, household_visible FROM profiles ORDER BY local_user_id"
+            ).use { cursor ->
+                assertTrue("the profiles that existed before the migration are gone", cursor.moveToFirst())
+                assertEquals("Test Rider", cursor.getString(0))
+                assertEquals("a rider already on the board must stay on it", 1, cursor.getInt(1))
+
+                assertTrue(cursor.moveToNext())
+                assertEquals("Housemate", cursor.getString(0))
+                assertEquals("a rider already on the board must stay on it", 1, cursor.getInt(1))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

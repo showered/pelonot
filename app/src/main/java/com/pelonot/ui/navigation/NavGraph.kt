@@ -174,6 +174,8 @@ fun PelonotNavGraph(
                 ftp = uiState.selectedProfile?.ftpWatts
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 stats = uiState.dashboardStats,
+                householdWeek = uiState.householdWeek,
+                youId = uiState.selectedProfile?.localUserId,
                 onJustRide = {
                     pendingClassId = null
                     showIntentPrompt = true

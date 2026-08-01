@@ -5,8 +5,18 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.pelonot.data.local.entity.WorkoutEntity
 import kotlinx.coroutines.flow.Flow
+
+/** One rider's week on the dashboard's household panel — see [WorkoutDao.householdWeek]. */
+data class HouseholdWeekRow(
+    val localUserId: Int,
+    val name: String,
+    val rides: Int,
+    val outputKj: Double,
+    val lastRideAt: Long
+)
 
 /** One rider's place on a class's household board — see [WorkoutDao.householdLeaderboard]. */
 data class HouseholdLeaderboardRow(
@@ -19,7 +29,19 @@ data class HouseholdLeaderboardRow(
 @Dao
 interface WorkoutDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * `@Upsert` rather than `@Insert(onConflict = REPLACE)`, for the reason
+     * spelled out on `UserDao.insertUser`: REPLACE is a delete plus an insert
+     * and the delete fires foreign-key actions. `workout_metrics.workout_id` is
+     * `ON DELETE CASCADE`, so re-inserting a workout row would take its whole
+     * time series with it.
+     *
+     * That has never happened, because a ride is inserted once at the start
+     * with a fresh id and finalised through `@Update`. It is a loaded gun
+     * pointing at the one table in this app that cannot be regenerated, and
+     * there is no reason to keep it loaded.
+     */
+    @Upsert
     suspend fun insertWorkout(workout: WorkoutEntity)
 
     @Update
@@ -160,6 +182,7 @@ interface WorkoutDao {
         JOIN profiles p ON p.local_user_id = w.user_id
         WHERE w.class_id = :classId
           AND w.is_complete = 1
+          AND p.household_visible = 1
           AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
           AND NOT EXISTS (
               SELECT 1 FROM workout_metrics m
@@ -171,6 +194,83 @@ interface WorkoutDao {
         """
     )
     suspend fun householdLeaderboard(classId: String): List<HouseholdLeaderboardRow>
+
+    /**
+     * Who has ridden since [sinceMs], one row per rider (PLAN 24.2.1).
+     *
+     * **An inner join, deliberately.** A rider with no rides in the window is
+     * absent from the result rather than present with a zero — which is 24.2.4
+     * ("no nudging one household member about another") made structural instead
+     * of remembered. There is no row here that could ever be rendered as
+     * "Sam hasn't ridden this week", because the row does not exist.
+     *
+     * `household_visible` is the per-profile opt-out (24.2.3). It gates this
+     * and the per-class board above by the same column, because a rider who
+     * opts out of being seen has not asked to opt out of half of it.
+     *
+     * Unlike the per-class board this does **not** exclude modelled power: it
+     * counts rides and kilojoules rather than ranking one rider's watts against
+     * another's, so 24.4.2's argument does not apply. Presence is not a claim
+     * about accuracy.
+     */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId,
+               p.name AS name,
+               COUNT(w.id) AS rides,
+               COALESCE(SUM(w.total_output_kj), 0) AS outputKj,
+               MAX(w.timestamp) AS lastRideAt
+        FROM profiles p
+        JOIN workouts w ON w.user_id = p.local_user_id
+        WHERE p.household_visible = 1
+          AND w.is_complete = 1
+          AND w.timestamp >= :sinceMs
+        GROUP BY p.local_user_id
+        ORDER BY rides DESC, outputKj DESC
+        """
+    )
+    suspend fun householdWeek(sinceMs: Long): List<HouseholdWeekRow>
+
+    /**
+     * A change signal for the household panel, not a number anyone displays.
+     *
+     * **It joins `profiles` on purpose.** Room invalidates a query when any
+     * table it *mentions* is written, so mentioning both is what makes the
+     * dashboard's household week reload for both of the things that can change
+     * it: a housemate finishing a ride, and anybody turning
+     * `household_visible` off. The first version selected from `workouts`
+     * alone, and opting out left the rider sitting on the panel until the next
+     * ride — observed on the AVD, which is the only way that class of bug ever
+     * shows up.
+     *
+     * Every other dashboard flow is scoped to one profile and would notice
+     * neither.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts w
+        JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.is_complete = 1
+        """
+    )
+    fun observeAnyCompletedCount(): Flow<Int>
+
+    /**
+     * Ride timestamps per rider, for [com.pelonot.domain.social.StreakCalculator].
+     *
+     * The streak arithmetic is not done in SQL: "consecutive local calendar
+     * days" is exactly the kind of date logic that goes wrong twice a year and
+     * cannot be tested where it lives. It comes out as timestamps and is
+     * counted in a pure object with the clock and the timezone injected.
+     */
+    @Query(
+        """
+        SELECT w.timestamp FROM workouts w
+        WHERE w.user_id = :userId AND w.is_complete = 1 AND w.timestamp >= :sinceMs
+        ORDER BY w.timestamp DESC
+        """
+    )
+    suspend fun rideTimestampsSince(userId: Int, sinceMs: Long): List<Long>
 
     @Query(
         """

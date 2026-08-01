@@ -40,6 +40,20 @@ class UserRepository(
     }
 
     /**
+     * Whether this rider appears on the screens the rest of the house sees
+     * (PLAN 24.2.3).
+     *
+     * One switch, one meaning: it gates the per-class leaderboard and the
+     * dashboard's week by the same column, because a rider who does not want to
+     * be seen has not asked to be seen on half of it. It takes nothing away
+     * from them — their own history, dashboard and trends are untouched.
+     */
+    suspend fun setHouseholdVisible(userId: Int, visible: Boolean) {
+        val user = userDao.getUserById(userId) ?: return
+        save(user.copy(householdVisible = visible))
+    }
+
+    /**
      * Renames a profile (20.1.5).
      *
      * The one field Settings cannot change — it edits FTP and weight — and the

@@ -48,6 +48,8 @@ import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.ui.components.HouseholdWeekCard
 import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 
@@ -69,6 +71,9 @@ fun MainDashboardScreen(
     userName: String,
     ftp: Int,
     stats: DashboardStats,
+    /** Who else on this bike has ridden this week (24.2.1). */
+    householdWeek: List<HouseholdRiderWeek> = emptyList(),
+    youId: Int? = null,
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
     onHistory: () -> Unit,
@@ -156,6 +161,15 @@ fun MainDashboardScreen(
 
                 // ── 5️⃣ Progress Section ─────────────────────────────────
                 ProgressSection(stats = stats)
+
+                // ── 6️⃣ The household ───────────────────────────────────
+                // Below the rider's own numbers and never above them: 18.2's
+                // rule, applied here (24.2.1). This screen is about their
+                // training first, and everyone else's second.
+                if (householdWeek.size >= 2) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+                    HouseholdWeekCard(riders = householdWeek, youId = youId)
+                }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
             }

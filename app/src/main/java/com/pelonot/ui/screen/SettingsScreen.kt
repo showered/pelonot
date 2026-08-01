@@ -204,6 +204,13 @@ fun SettingsScreen(
                 )
             }
 
+            if (!state.isGuest) {
+                HouseholdSection(
+                    visible = state.profile?.householdVisible ?: true,
+                    onVisibleChange = viewModel::setHouseholdVisible
+                )
+            }
+
             UnitsSection(
                 units = state.settings.unitSystem,
                 onUnitsChange = viewModel::setUnitSystem
@@ -1077,6 +1084,43 @@ private fun SettingsSection(
             )
             content()
         }
+    }
+}
+
+/**
+ * Whether this rider is part of household social (PLAN 24.2.3).
+ *
+ * A rider on a shared bike may not want their numbers on a screen the rest of
+ * the house sees, and privacy inside a household is still privacy — it is
+ * precisely the kind that gets forgotten because everyone involved knows each
+ * other. Phrased as what other people see rather than as a feature switch,
+ * because that is the question being asked.
+ */
+@Composable
+private fun HouseholdSection(
+    visible: Boolean,
+    onVisibleChange: (Boolean) -> Unit
+) {
+    SettingsSection("On this bike") {
+        SettingsToggle(
+            title = "Show me to the others",
+            description = "Your rides appear on this bike's leaderboards and on the " +
+                "week summary everyone here can see.",
+            checked = visible,
+            onCheckedChange = onVisibleChange
+        )
+        Text(
+            text = if (visible) {
+                "Turn this off and you disappear from those screens. Your own history, " +
+                    "dashboard and records are untouched — this is only about what other " +
+                    "people on this tablet see."
+            } else {
+                "You're hidden from this bike's leaderboards and week summary. Your own " +
+                    "rides are all still here."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

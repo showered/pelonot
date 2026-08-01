@@ -109,6 +109,29 @@ object AppMigrations {
         }
     }
 
+    /**
+     * Adds `profiles.household_visible`.
+     *
+     * The per-profile opt-out from household social (PLAN 24.2.3). `NOT NULL
+     * DEFAULT 1` because every profile that already exists was created while
+     * 24.1's leaderboard was already showing them, so `true` is the state they
+     * are actually in — not a convenience. Defaulting to `0` would have this
+     * migration remove riders from a board they are on today, which is a
+     * migration deciding a preference on a rider's behalf.
+     *
+     * Note this is the opposite reasoning to `auth_user_id`'s, and for the same
+     * underlying rule: pick the value that is *true of the rows that exist*.
+     * Nobody had consented to the cloud, so null; everybody was already on the
+     * household board, so 1.
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `profiles` ADD COLUMN `household_visible` INTEGER NOT NULL DEFAULT 1"
+            )
+        }
+    }
+
     val ALL: Array<Migration> =
-        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }

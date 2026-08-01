@@ -113,6 +113,11 @@ class SettingsViewModel(
         viewModelScope.launch { userRepository.updateWeight(userId, weightKg) }
     }
 
+    fun setHouseholdVisible(visible: Boolean) {
+        val userId = uiState.value.profile?.localUserId ?: return
+        viewModelScope.launch { userRepository.setHouseholdVisible(userId, visible) }
+    }
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }

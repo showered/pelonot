@@ -9,6 +9,7 @@ import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.domain.social.HouseholdRiderWeek
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -40,6 +41,12 @@ data class AppUiState(
     val profiles: List<UserEntity> = emptyList(),
     val classes: List<ClassPlan> = emptyList(),
     val dashboardStats: DashboardStats = DashboardStats(),
+    /**
+     * Who else on this bike has ridden this week (PLAN 24.2). Empty for a
+     * household of one, for a household that has opted out, and for a week
+     * nobody rode — all of which draw nothing.
+     */
+    val householdWeek: List<HouseholdRiderWeek> = emptyList(),
     val isLoading: Boolean = true,
     /**
      * A ride the app was killed in the middle of. Non-null means the rider is
@@ -105,18 +112,30 @@ class AppViewModel(
         RideInProgress.active
     ) { recoverable, active -> recoverable to active }
 
+    /**
+     * The two dashboard-shaped flows, paired for the same reason [rideStatus]
+     * is: the typed `combine` overload stops at five. The rider's own numbers
+     * and the household's belong together anyway — one screen reads both, and
+     * 24.2.1's rule is that the household never appears above them.
+     */
+    private val dashboard = combine(
+        dashboardStats,
+        workoutRepository.observeHouseholdWeek()
+    ) { stats, household -> stats to household }
+
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
         userRepository.allUsers,
         classRepository.allPlans,
-        dashboardStats,
+        dashboard,
         rideStatus
-    ) { settings, profiles, classes, stats, (recoverable, active) ->
+    ) { settings, profiles, classes, (stats, household), (recoverable, active) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
             dashboardStats = stats,
+            householdWeek = household,
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active
