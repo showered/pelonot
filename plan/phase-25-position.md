@@ -67,23 +67,97 @@ exactly the thing that design has been avoiding — and exactly the thing this
 particular instruction deserves, because it is an instruction to act *right
 now*, unlike every other number on there.
 
-- [ ] **25.3.1** So the rule to design to: **the overlay may animate for a
+- [x] **25.3.1** So the rule to design to: **the overlay may animate for a
       transition and must go quiet again.** A few seconds of arrow at the moment
       the position changes, then nothing. Never a persistent indicator, never
-      anything that moves while the prescription is unchanged
-- [ ] **25.3.2** Which means it must be driven by the *edge*, not by the state.
+      anything that moves while the prescription is unchanged. *Six seconds,
+      which is the spoken announcement plus the time it takes to get out of the
+      saddle. Observed on the tablet AVD over the launcher, riding `CLB-02` with
+      the overlay raised: "STAY SEATED" at 05:01, gone by 05:08; "OUT OF THE
+      SADDLE" at 11:03, gone by 11:14 — and in between, the strip back at its
+      resting height with nothing on it moving.* Two decisions inside it:
+      - **Amber, not the zone accent.** The zone colour is already the
+        interval-change flash, so reusing it would say "new effort" twice and
+        "stand up" never — and **Zone 1's colour is grey** (11.1b.10), so a
+        warm-up that prescribed a position would announce it in the colour of a
+        stray divider. One colour for position across both surfaces, matching
+        the ride screen's
+      - **On the inner side of the numbers, whichever edge the strip is docked
+        against.** The overlay window is `WRAP_CONTENT` against a gravity, so it
+        grows into the screen and the figures the rider is reading do not move
+        underneath them. It survives collapsing, for the same reason the
+        countdown does: a rider who has given the film back the rest of the band
+        still has to be told to stand up
+- [x] **25.3.2** Which means it must be driven by the *edge*, not by the state.
       Build it off the interval change and not off "the current interval says
-      standing", or it will animate forever on a five-minute block
-- [ ] **25.3.3** Read 11.1b.9 and 11.1b.4a first — the chips are a design the
-      owner has said he will come back to, and this lands in the middle of them
+      standing", or it will animate forever on a five-minute block. *Built as
+      `PositionCallTracker`, and **the spoken coach now asks the same object** —
+      so the voice and the arrow cannot disagree about what counts as a change.
+      The two rules that are easy to get subtly wrong live there once instead of
+      at each call site: keyed on the **value** (`CLB-06` alternates six times
+      and would otherwise announce twelve), and compared against **the interval
+      just left** rather than the last thing announced (a rider sits down during
+      the recovery between two standing efforts). Observed: `CLB-02`'s second
+      standing attack was called again at 12:31, 90 seconds after the first*
+- [x] **25.3.3** Read 11.1b.9 and 11.1b.4a first — the chips are a design the
+      owner has said he will come back to, and this lands in the middle of them.
+      *Read, and the cue deliberately does **not** join the chip family: it is
+      not a chip, it does not take the chip fill or the opacity setting, and it
+      is gone before the rider could form an opinion about it. Whatever 11.1b.9
+      settles about the chips leaves this untouched*
 - [ ] **25.3.4** And check it over video on the bike, which is the only place it
       can be judged. Note the blind spot from `CLAUDE.md`: `screencap` returns
       black over DRM playback, so **how it looks over a film has to come from
-      the rider**
+      the rider**. *Still open and still needs the owner. What the AVD can and
+      does show is everything except the one question — whether an amber
+      lozenge over a moving picture reads as an instruction or as an
+      interruption*
 
 ### 25.4 Then the library uses it
 
-- [ ] **25.4.1** Go back through the 72 and put a position on the blocks that
+- [x] **25.4.1** Go back through the 72 and put a position on the blocks that
       want one — the standing attacks, the seated grinds, the sprint efforts —
       and on nothing else. This is a catalogue edit, not a code change, and it
-      wants doing *after* 25.2 and 25.3 so the effect of each one can be seen
+      wants doing *after* 25.2 and 25.3 so the effect of each one can be seen.
+      **Done, and it is an audit rather than a sweep — one block wanted one.**
+      Every heavy-torque and standing block in the library was listed with its
+      cadence and its current position, and the result was:
+      - **`CLB-05`'s torque ladder was the only `GRIND` work not marked
+        seated.** At 50–60 rpm that is not decoration: standing at that cadence
+        is a different exercise, and torque work out of the saddle is not torque
+        work. Its rests are two and three minutes, so the call at the top of each
+        rung is an instruction rather than a nag. Fixed
+      - **The sprint efforts resolve to *seated*, and therefore to nothing.**
+        `SPR-01`–`04` and `06` are at `SURGE`, 110–125 rpm, which R11 will not
+        let stand — rightly: a 120 rpm sprint *is* a seated sprint. Absence
+        already says the true thing there, and `SPR-05` is the class that makes
+        the distinction explicit by putting its one standing set at `STAND`
+        cadence
+      - **The `CLIMB`-cadence blocks were left alone on purpose.** A five- or
+        fifteen-minute climb at 60–70 rpm is exactly where a rider *should* come
+        out of the saddle when they feel like it, and prescribing "stay seated"
+        across it would be the app talking over the rider's own judgement
+- [ ] **25.4.2** **Three classes are named after a position they cannot
+      state, and it is the owner's call.** `END-08` "Seated Climbs 45",
+      `SWT-05` "Big Gear Sweet Spot 30" and `THR-06` "Big Gear Threshold 4×4 30"
+      are each *entirely* about being in the saddle in a big gear, and in each
+      one the title is the only thing saying so — which is precisely the defect
+      25.1 opened with, where `CLB-02` was called "Standing Attacks" and nothing
+      but its title made it standing.
+
+      They cannot be fixed as they stand, because marking their work blocks
+      seated puts them over **R11's half-a-class cap** — 1500 s of 2700, 960 of
+      1800, 960 of 1800. The cap is right for the general case and was settled
+      in 25.1.3, so it has not been touched. But the case it does not
+      distinguish is **a class whose identity *is* the position**: a rider who
+      picks "Seated Climbs" has opted into being told to stay seated, and the
+      cap's own words — *leave most of a class to the rider* — are about
+      discretion the rider has not already spent.
+
+      Three ways out, and the choice is a taste call rather than an
+      engineering one: measure the cap against a class's **work** rather than
+      its whole duration; exempt a class that declares the position as its
+      premise; or rename the three so the title stops claiming something the
+      data does not carry. **Do not simply raise the number** — the failure it
+      is guarding against is real, and 25.4.1 above is the evidence that most
+      classes want nothing
