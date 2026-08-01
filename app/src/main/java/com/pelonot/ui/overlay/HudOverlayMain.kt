@@ -74,11 +74,13 @@ import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
+import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
 import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.ui.components.ZoneGlyph
@@ -814,54 +816,75 @@ private fun MetricsBlock(
     // stopped pedalling is the one thing this display must never say.
     val live = snapshot.telemetryLive
 
-    Row(
+    Column(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        MetricReadout(
-            label = "CADENCE",
-            icon = MetricIcons.Cadence,
-            value = if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
-            unit = "RPM",
-            accent = MetricCadenceCyan,
-            band = if (showTargets) snapshot.cadenceTarget else TargetBand.NONE,
-            rawValue = reading.cadenceRpm,
-            valueSize = 42.sp,
-            modifier = Modifier.weight(1f)
-        )
-        MetricReadout(
-            label = "RESISTANCE",
-            icon = MetricIcons.Resistance,
-            value = if (live) reading.resistancePercent.toInt().toString() else NO_READING,
-            unit = "%",
-            accent = MetricResistanceViolet,
-            band = if (showTargets) snapshot.resistanceTarget else TargetBand.NONE,
-            rawValue = reading.resistancePercent,
-            valueSize = 42.sp,
-            modifier = Modifier.weight(1f)
-        )
-        MetricReadout(
-            label = "POWER",
-            icon = MetricIcons.Power,
-            value = if (live) reading.powerWatts.toInt().toString() else NO_READING,
-            unit = "W",
-            accent = MetricPowerCoral,
-            band = if (showTargets) snapshot.powerTarget else TargetBand.NONE,
-            rawValue = reading.powerWatts,
-            valueSize = 42.sp,
-            modifier = Modifier.weight(1f)
-        )
-        MetricReadout(
-            label = "HEART RATE",
-            icon = MetricIcons.HeartRate,
-            // Null means no strap, never a measured zero.
-            value = reading.heartRateBpm?.toString() ?: "--",
-            unit = "BPM",
-            accent = MetricHeartRateGreen,
-            rawValue = (reading.heartRateBpm ?: 0).toDouble(),
-            valueSize = 42.sp,
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        ) {
+            MetricReadout(
+                label = "CADENCE",
+                icon = MetricIcons.Cadence,
+                value = if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
+                unit = "RPM",
+                accent = MetricCadenceCyan,
+                band = if (showTargets) snapshot.cadenceTarget else TargetBand.NONE,
+                rawValue = reading.cadenceRpm,
+                valueSize = 42.sp,
+                modifier = Modifier.weight(1f)
+            )
+            MetricReadout(
+                label = "RESISTANCE",
+                icon = MetricIcons.Resistance,
+                value = if (live) reading.resistancePercent.toInt().toString() else NO_READING,
+                unit = "%",
+                accent = MetricResistanceViolet,
+                band = if (showTargets) snapshot.resistanceTarget else TargetBand.NONE,
+                rawValue = reading.resistancePercent,
+                valueSize = 42.sp,
+                modifier = Modifier.weight(1f)
+            )
+            MetricReadout(
+                label = "POWER",
+                icon = MetricIcons.Power,
+                value = if (live) reading.powerWatts.toInt().toString() else NO_READING,
+                unit = "W",
+                accent = MetricPowerCoral,
+                band = if (showTargets) snapshot.powerTarget else TargetBand.NONE,
+                rawValue = reading.powerWatts,
+                valueSize = 42.sp,
+                modifier = Modifier.weight(1f)
+            )
+            MetricReadout(
+                label = "HEART RATE",
+                icon = MetricIcons.HeartRate,
+                // Null means no strap, never a measured zero.
+                value = reading.heartRateBpm?.toString() ?: "--",
+                unit = "BPM",
+                accent = MetricHeartRateGreen,
+                rawValue = (reading.heartRateBpm ?: 0).toDouble(),
+                valueSize = 42.sp,
+                compact = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // 11.6.2a. The ladder under the numbers it is a reading of, in its
+        // compact form: segments and the zone digit, no watt labels. The
+        // boundaries are the first thing that stops being legible at this size,
+        // and a rider glancing at an overlay over a film is asking "how hard am
+        // I going", not "what is the next boundary" — that question has the
+        // ride screen. Two rows of 8 dp is the whole cost of it.
+        PowerZoneScale(
+            scale = ZoneScale.forReading(
+                ftp = snapshot.ftpWatts,
+                powerWatts = reading.powerWatts,
+                telemetryLive = live,
+                prescribed = if (showTargets) snapshot.interval.targetZone else null
+            ),
             compact = true,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }

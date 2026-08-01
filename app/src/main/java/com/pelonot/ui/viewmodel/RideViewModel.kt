@@ -18,6 +18,7 @@ import com.pelonot.data.service.WorkoutState
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,20 +53,23 @@ data class RideUiState(
     val isFinished: Boolean get() = workoutState == WorkoutState.Completed
     /**
      * The zone the rider's power actually falls in (11.6.2), or null when there
-     * is no power to speak of.
-     *
-     * [PowerZone.forPower] answers Z1 for zero watts and for an unknown FTP,
-     * which is true and useless: "Active Recovery" printed over a bike nobody
-     * is pedalling, or over a board that has gone quiet, is the same class of
-     * claim as a frozen cadence (2.4.4). The absence is the answer, so the
-     * caller gets a null it has to render as one.
+     * is no power to speak of. The rule itself lives on [ZoneScale] so that the
+     * overlay cannot answer this question differently.
      */
     val currentZone: PowerZone?
-        get() = if (ftpWatts <= 0 || reading.powerWatts <= 0.0 || !snapshot.telemetryLive) {
-            null
-        } else {
-            PowerZone.forPower(reading.powerWatts, ftpWatts.toDouble())
-        }
+        get() = ZoneScale.currentZone(ftpWatts, reading.powerWatts, snapshot.telemetryLive)
+
+    /**
+     * The zone ladder to draw (11.6.2a): the boundaries in watts, where the
+     * rider is standing on them, and where the class asked them to stand.
+     */
+    val zoneScale: ZoneScale
+        get() = ZoneScale.forReading(
+            ftp = ftpWatts,
+            powerWatts = reading.powerWatts,
+            telemetryLive = snapshot.telemetryLive,
+            prescribed = if (snapshot.interval.hasClass) snapshot.interval.targetZone else null
+        )
 
     /** True when telemetry is fabricated, so the UI can say so plainly. */
     val isSimulated: Boolean

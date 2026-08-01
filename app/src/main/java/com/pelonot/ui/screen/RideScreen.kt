@@ -77,11 +77,11 @@ import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.CountdownBanner
-import com.pelonot.ui.components.CurrentZoneBar
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.MetricIcons
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
+import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
 import com.pelonot.ui.components.UpcomingIntervals
 import com.pelonot.ui.components.ZoneGlyph
@@ -656,18 +656,16 @@ private fun MetricGrid(state: RideUiState, modifier: Modifier = Modifier) {
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        // 11.6.2. Over the numbers rather than beside the prescribed zone: the
-        // zone a rider is *in* is a reading of their live power, and this is
-        // the column live power lives in. It carries "asked for Z4" with it, so
-        // the comparison travels with the number rather than needing the two
-        // badges to be adjacent — and a strip of words beside the interval
-        // card's glyph could never be mistaken for it.
+        // 11.6.2 / 11.6.2a. Over the numbers rather than beside the prescribed
+        // zone: the zone a rider is *in* is a reading of their live power, and
+        // this is the column live power lives in. The class's own target is
+        // marked on the same ladder, so "where I am" and "where I was asked to
+        // be" are one comparison across one object.
         //
-        // Shown on a free ride too, where nothing is prescribed: "which zone am
-        // I in" is a question a class does not have to have asked.
-        CurrentZoneBar(
-            zone = state.currentZone,
-            prescribed = if (hasTargets) snapshot.interval.targetZone else null,
+        // Shown on a free ride too, where nothing is marked: "which zone am I
+        // in" is a question a class does not have to have asked.
+        PowerZoneScale(
+            scale = state.zoneScale,
             modifier = Modifier.fillMaxWidth()
         )
 

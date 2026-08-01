@@ -13,17 +13,20 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Bolt
@@ -58,6 +61,7 @@ import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetStatus
+import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.theme.AlertAmber
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
@@ -399,105 +403,220 @@ private val TargetStatus.spokenSuffix: String
     }
 
 // ==========================================================================
-// The zone the rider is actually in
+// The zone ladder
 // ==========================================================================
 
 /**
- * Which power zone the rider is in *right now* (11.6.2).
+ * The whole zone ladder with the rider standing on it (11.6.2a).
  *
- * Everything else on the ride screen shows the zone that was *prescribed* —
- * the big glyph in the interval card, the wash of colour behind the whole
- * screen. Being off it was rendered as an amber number and an arrow, which
- * says "wrong" without ever saying "you are in 3 and you were asked for 4".
+ * This replaces the sentence "NOW Z3 TEMPO" that 11.6.2 first shipped, and the
+ * reason is worth keeping: a zone *name* places a rider only if they already
+ * hold the ladder in their head. Seven segments put the whole range on screen,
+ * the watts under each one turn the reading into an instruction — "182 W gets
+ * you into 3" — and the fill inside the current segment tells Z3-just-in from
+ * Z3-nearly-out, which a label never could.
  *
- * Deliberately not a second badge beside the first. The prescribed zone is a
- * glyph with a shape per zone; this is a strip of words, so the two cannot be
- * confused at a glance even though they carry the same colour scheme. When
- * they agree, the sentence collapses to "ON TARGET" rather than repeating the
- * number back — a rider on target does not need to be told twice.
+ * The prescribed zone is marked on the same scale rather than stated
+ * separately, so "where I am" and "where I was asked to be" are one comparison
+ * across one object. On a free ride nothing is marked and the scale still
+ * reads: which zone am I in is a question a class does not have to have asked.
  *
- * [zone] is null when there is no power to speak of: a dead board, or a rider
- * who has stopped pedalling. [PowerZone.forPower] answers Z1 for zero watts,
- * which is true and useless, and printing "ACTIVE RECOVERY" over a bike nobody
- * is on is the same class of lie as a frozen cadence.
+ * [scale]`.current` is null when there is no power to speak of — a dead board,
+ * or a rider who has stopped. Nothing is lit then, because
+ * [PowerZone.forPower] answers Z1 for zero watts and lighting the bottom
+ * segment over a bike nobody is on is the same class of lie as a frozen
+ * cadence.
+ *
+ * [compact] is the overlay's form: segments and the zone number, no watt
+ * labels. The boundaries are the first thing that stops being legible when the
+ * scale is squeezed to a chip, and a rider glancing at an overlay over a film
+ * is asking "how hard am I going", not "what is the next boundary".
  */
 @Composable
-fun CurrentZoneBar(
-    zone: PowerZone?,
+fun PowerZoneScale(
+    scale: ZoneScale,
     modifier: Modifier = Modifier,
-    prescribed: PowerZone? = null,
     compact: Boolean = false
 ) {
-    val color by animateColorAsState(
+    val zone = scale.current
+    val zoneColor by animateColorAsState(
         targetValue = zone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "CurrentZoneColor"
+        label = "ZoneScaleColor"
+    )
+    val fraction by animateFloatAsState(
+        targetValue = scale.fractionThroughZone,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "ZoneScaleFraction"
     )
 
-    val onTarget = zone != null && prescribed != null && zone == prescribed
-    val spoken = when {
-        zone == null -> "No power reading, so no current zone"
-        prescribed == null -> "You are in zone ${zone.number}, ${zone.displayName}"
-        onTarget -> "You are in zone ${zone.number}, on target"
-        else -> "You are in zone ${zone.number}, ${zone.displayName}; " +
-            "asked for zone ${prescribed.number}"
+    val onTarget = zone != null && scale.prescribed != null && zone == scale.prescribed
+    val spoken = buildString {
+        append(
+            when {
+                zone == null -> "No power reading, so no current zone"
+                else -> "Zone ${zone.number}, ${zone.displayName}"
+            }
+        )
+        scale.ftpPercent?.let { append(", $it percent of FTP") }
+        scale.wattsToNextZone?.takeIf { zone != null }?.let { append("; ${it} watts reaches the next zone") }
+        scale.prescribed?.let {
+            append(if (onTarget) "; on target" else "; asked for zone ${it.number}")
+        }
     }
 
     Row(
-        modifier = modifier
-            .clip(MaterialTheme.expressiveShapes.large)
-            .background(color.copy(alpha = 0.14f))
-            .padding(
-                horizontal = if (compact) 8.dp else MaterialTheme.spacing.medium,
-                vertical = if (compact) 4.dp else MaterialTheme.spacing.small
-            )
-            .clearAndSetSemantics { contentDescription = spoken },
+        modifier = modifier.clearAndSetSemantics { contentDescription = spoken },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "NOW",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.width(if (compact) 6.dp else MaterialTheme.spacing.small))
-        Text(
-            text = zone?.let { "Z${it.number}" } ?: "--",
-            style = if (compact) {
-                MaterialTheme.typography.labelLarge
-            } else {
-                MaterialTheme.typography.titleMedium
-            },
-            color = color,
-            fontWeight = FontWeight.Black,
-            maxLines = 1
-        )
-
-        if (!compact && zone != null) {
-            Spacer(Modifier.width(6.dp))
+        // The zone number set large, the way it is on the bike's own console:
+        // the one thing a rider reads from a metre away without focusing.
+        Column(horizontalAlignment = Alignment.Start) {
             Text(
-                text = zone.displayName.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
+                text = zone?.let { "Z${it.number}" } ?: "--",
+                style = if (compact) {
+                    MaterialTheme.typography.labelLarge
+                } else {
+                    MaterialTheme.typography.headlineSmall
+                },
+                color = zoneColor,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
             )
+            if (!compact) {
+                Text(
+                    text = zone?.displayName?.uppercase() ?: "NO POWER",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
-        if (prescribed != null && zone != null) {
-            Spacer(Modifier.weight(1f))
+        Spacer(Modifier.width(if (compact) 6.dp else MaterialTheme.spacing.medium))
+
+        Column(modifier = Modifier.weight(1f)) {
+            ZoneSegments(
+                scale = scale,
+                fraction = fraction,
+                height = if (compact) 8.dp else 16.dp
+            )
+            if (!compact) {
+                Spacer(Modifier.height(3.dp))
+                ZoneBoundaryLabels(scale)
+            }
+        }
+
+        // FTP % on the far side, where the bike's own indicator puts it. It is
+        // the same reading as the segments, said exactly — and it is the number
+        // that survives the rider having moved their FTP since.
+        if (!compact) {
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = scale.ftpPercent?.let { "$it%" } ?: "--",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+                Text(
+                    text = "OF FTP",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The seven segments themselves.
+ *
+ * Equal widths rather than widths proportional to watts: Z7 is unbounded and
+ * Z1 spans 56% of FTP on its own, so a true scale would draw six zones as
+ * slivers beside two slabs. What the rider needs from the geometry is "seven
+ * rungs, this one" — the watts underneath carry the real proportions.
+ */
+@Composable
+private fun ZoneSegments(
+    scale: ZoneScale,
+    fraction: Float,
+    height: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
+    val prescribedOutline = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        scale.segments.forEach { segment ->
+            val isCurrent = segment.zone == scale.current
+            val isPrescribed = segment.zone == scale.prescribed
+            val base = segment.zone.color
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(height)
+                    .clip(RoundedCornerShape(3.dp))
+                    // Unlit segments keep their own hue at a whisper, so the
+                    // ladder reads as a ramp rather than as seven grey boxes.
+                    .background(base.copy(alpha = if (isCurrent) 0.30f else 0.16f))
+                    .then(
+                        if (isPrescribed) {
+                            Modifier.border(1.5.dp, prescribedOutline, RoundedCornerShape(3.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+            ) {
+                if (isCurrent) {
+                    // Filled to where the rider actually is inside the zone,
+                    // with a bright edge at the position itself — the fill
+                    // gives the sense, the edge gives the precision.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fraction.coerceIn(0.06f, 1f))
+                            .background(base)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The watts each zone starts at, under its own segment.
+ *
+ * Left-aligned under the segment rather than centred on the boundary: the
+ * label belongs to the rung it opens, and centring would hang the first one off
+ * the left edge of the scale.
+ */
+@Composable
+private fun ZoneBoundaryLabels(scale: ZoneScale, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        scale.segments.forEach { segment ->
+            val isCurrent = segment.zone == scale.current
             Text(
-                text = if (onTarget) "ON TARGET" else "ASKED FOR Z${prescribed.number}",
+                text = segment.startWatts.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (onTarget) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 10.sp,
+                color = if (isCurrent) {
+                    MaterialTheme.colorScheme.onSurface
                 } else {
-                    AlertAmber
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                fontWeight = FontWeight.Bold,
+                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
-                softWrap = false
+                modifier = Modifier.weight(1f)
             )
         }
     }
