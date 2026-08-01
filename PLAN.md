@@ -17,7 +17,51 @@
 
 ## Where the work stands — read this first
 
-### Latest session — 31 July 2026 (fifth sitting): an MVP readiness pass
+### Latest session — 1 August 2026 (sixth sitting): the ride screen, read
+
+A UI and UX pass, driven end to end on the tablet AVD. **Everything the owner
+raised in the "snags from using the app" table below about the ride screen is
+now built and seen working**, plus one dead end found while verifying and one
+snag reported mid-session.
+
+Closed: **11.6.1** (the next effort under the current one), **11.6.2** (the
+zone the rider is actually in), **11.6.3** (icons on the live numbers),
+**11.6.4** (the target gauge finally says what the target *is*), **11.6.5**
+(the overlay's name), **22.2.1** (the dashboard capped and centred), and
+**8.3c**, new. 263 JVM tests green.
+
+**The find of the sitting is 8.3c, and it was found the way 2.4.6 was — by
+using the fix for something else.** Driving 8.3b's own repro one screen
+further: force-stop mid-class, relaunch, *Keep it*, and the summary comes up
+with **both** buttons inert. The cause is one unread Boolean —
+`popBackStack` returns false when the destination was never on the stack, and
+the crash-recovery door navigates to the summary straight from "Who's riding?".
+**11.1a.5 hit precisely this trap on the other door and its comment names it**;
+this door was missed. The rider's only way out was to kill the app, which
+leaves another unfinished ride behind it.
+
+**The rider-facing name for the floating display is now "overlay".** Not "HUD"
+— jargon — and not "strip", which was this session's first answer and the
+owner rejected it. The button says **"View in Overlay Mode"**. Six places moved
+together; nothing user-visible may say HUD or strip again. The source, this
+plan and `ARCHITECTURE.md` still say HUD internally, which is deliberate: one
+name in the code, one name on screen.
+
+Two things raised by the owner and **written down rather than actioned**:
+
+- **11.1b.10** — the grey line across the overlay. Diagnosed on the AVD: it is
+  the zone-colour edge glow, and Zone 1's colour is grey, so during every
+  warm-up it reads as a divider somebody left behind. Fix candidates are in
+  the item; which one is right is a design call about an alert.
+- **11.6.2a** — the zones drawn as a **scale** rather than as the sentence
+  11.6.2 just shipped, after Peloton's own seven-segment indicator. The reason
+  it is better is worth reading: the whole ladder is on screen at once, the
+  boundaries are in watts (so "you are in 2" becomes "215 W gets you into 3"),
+  and the prescribed band can be marked on the same scale. It **replaces**
+  `CurrentZoneBar`; do not build both. The overlay never got 11.6.2's compact
+  form, so that gap and this item are the same piece of work.
+
+### The session before it — 31 July 2026 (fifth sitting): an MVP readiness pass
 
 The question asked was "are we near MVP, and where are the genuine gaps?" The
 answer is that **the happy path is finished and the unhappy paths are not**.
@@ -113,18 +157,18 @@ A batch of ten observations from the owner riding the app, written up and
 to do next* table below yet; that is a decision for whoever picks them up.
 Where they landed:
 
-| Snag | Item |
-|------|------|
-| "Up next" is on the far side of the screen from the current interval | **11.6.1** |
-| No sign of which power zone the rider is in *right now* | **11.6.2** |
-| No icons on the live numbers | **11.6.3** |
-| The target gauge never says what the target *is* | **11.6.4** |
-| "Back to the HUD" is geeky and factually wrong | **11.6.5** |
-| No gesture to dismiss the HUD's volume panel | **11.5.9** |
-| Heart-rate zones — shown, logged and tracked, and the age they need | **Phase 21** |
-| Classes built on heart-rate zones — is it advisable? | **21.5** (verdict: yes, with limits) |
-| "Your Progress" on the dashboard is meaningless | **22.1** |
-| The dashboard stretches too wide on a 1280 dp screen | **22.2** |
+| Snag | Item | State |
+|------|------|-------|
+| "Up next" is on the far side of the screen from the current interval | **11.6.1** | ✅ |
+| No sign of which power zone the rider is in *right now* | **11.6.2** | ✅ — and see **11.6.2a**, which supersedes how it is drawn |
+| No icons on the live numbers | **11.6.3** | ✅ |
+| The target gauge never says what the target *is* | **11.6.4** | ✅ |
+| "Back to the HUD" is geeky and factually wrong | **11.6.5** | ✅ — it is "View in Overlay Mode" |
+| No gesture to dismiss the HUD's volume panel | **11.5.9** | ❌ |
+| Heart-rate zones — shown, logged and tracked, and the age they need | **Phase 21** | ❌ |
+| Classes built on heart-rate zones — is it advisable? | **21.5** (verdict: yes, with limits) | ❌ |
+| "Your Progress" on the dashboard is meaningless | **22.1** | ❌ |
+| The dashboard stretches too wide on a 1280 dp screen | **22.2** | 🔶 **22.2.1** done; the rails (22.2.2–22.2.5) are open |
 
 **The calibration question is closed.** "Do we calibrate or leave the curve
 hardcoded?" now has a written answer with its reasoning, at the head of
@@ -241,6 +285,14 @@ undercuts the door 11.1a.5 just built), then **19.1.2** auto-pause and
 the same conversation: one is the other half of "the rider is not pedalling",
 and the other is the only safety net that exists before accounts.
 
+Two of the owner's own, raised in the sixth sitting and carrying more weight
+than anything below because he is the one riding this:
+
+| Next | Why now |
+|------|---------|
+| **11.6.2a** The zones as a scale | Supersedes the `CurrentZoneBar` the sixth sitting shipped. **Do not build both.** It also closes the overlay half of 11.6.2, which was designed for and never wired in |
+| **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
+
 Then the table below, which was written before the fifth sitting and is kept
 because its reasoning is still good:
 
@@ -260,7 +312,9 @@ Two notes worth carrying into the next bike session:
 - **The dashboard is fine in landscape** — re-confirmed on the matching AVD this
   session. It fills the width and shows none of the empty right-hand side
   11.3.1 describes. **11.3.1 is stale**; do not spend a session on it without
-  re-checking first.
+  re-checking first. (The sixth sitting then capped that width at 760 dp for a
+  different reason — 22.2.1 — which does not contradict it: 11.3.1 is about
+  dead space and 22.2.1 is about a card being too wide to read.)
 - **Every ride is now a guest ride no longer**: the emulator has real profiles
   and the sync path runs for them. The tablet still has none, and a guest ride
   never syncs by design, so make a profile on the bike before expecting 14 to
@@ -1047,6 +1101,23 @@ exists; nothing creates one. The previous value is overwritten and gone.
       started, task swiped away, app reopened — now cold-starts with the ride
       still running and no dialog, and a genuine orphan (left behind by
       reinstalling over a live ride) is still offered*
+- [x] **8.3c** **The ride summary was a dead end after a crash recovery.**
+      Found by driving 8.3b's own repro one screen further. Force-stop
+      mid-class, relaunch, answer *Keep it* — and the summary arrives with
+      **both** buttons inert. *Discard* did nothing, *Keep as a guest ride* did
+      nothing, and the only way off the screen was to kill the app, which
+      leaves another unfinished ride behind it and starts the loop again.
+      *One unread Boolean, which is the whole family this plan's Corrections
+      table exists for. `popBackStack(Dashboard, inclusive = false)` returns
+      **false** when Dashboard was never on the stack, and the recovery dialog
+      navigates to the summary straight from "Who's riding?", where it never
+      has been. **11.1a.5 hit this exact trap on the other door into a live
+      ride** and closed it by pushing Dashboard underneath — its comment names
+      the failure in so many words — and this door was simply missed. Answered
+      by reading the Boolean rather than by faking a stack: at that point
+      nobody has said who is riding, so the honest destination is the profile
+      selector. **Observed on the tablet AVD**: recover, keep, and the summary
+      returns to "Who's riding?"*
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
@@ -1371,6 +1442,25 @@ less of the screen and less of the attention.
       bright scenes; whether the timeline deserves the same silhouette as the
       chips or a deliberately different one; and whether the zone-change flash
       still reads now that it washes chips rather than a whole band
+- [ ] **11.1b.10** **The grey line across the overlay.** Reported by the owner
+      as "a weird grey line on the HUD", and reproduced on the tablet AVD: a
+      full-width hairline running edge to edge just below the chips, reading as
+      a stray divider rather than as part of anything.
+      *It is not a divider — it is the `edge` glow in `HudOverlayMain`, the
+      hairline of the current zone's colour that thickens and pulses as an
+      interval change approaches. Two things make it read as chrome instead of
+      as an alert. **Zone 1's colour is grey**, so during every warm-up and
+      recovery block the "accent" is indistinguishable from a rule someone
+      drew by accident; and at rest it is `alpha = 0.45` of that, which is
+      exactly the weight of a divider. Its comment also says it sits "along the
+      very screen edge", which is true only when the overlay is docked Bottom —
+      docked Top it is drawn **last**, so it lands on the inside edge, between
+      the chips and the film. Candidates, in order: drop the resting alpha to
+      nothing so the line exists only when it is saying something (it still
+      thickens and pulses on approach, which is the part that earns its place);
+      or give a grey zone a non-grey alert colour; or move it to the true screen
+      edge for both docks. **This is a design call about an alert, so it is the
+      owner's** — it is diagnosed, not decided*
 
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
@@ -1474,7 +1564,7 @@ them. All of it is emulator-checkable at 1920 × 1080 / 240 dpi.
 *(Note 5.4 says the removed leaderboard panel is "tracked as 11.6"; that work
 is **11.4**, and the cross-reference in 5.4 is stale.)*
 
-- [ ] **11.6.1** **"Up next" belongs directly under the current interval, not
+- [x] **11.6.1** **"Up next" belongs directly under the current interval, not
       across the screen from it.** In landscape the ride screen is three
       columns: `EffortColumn` on the left holds the current interval, and
       `UpNextColumn` on the right holds what is coming, with the whole metric
@@ -1486,8 +1576,14 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       carries pause, end and back-to-HUD, and those stay where a thumb expects
       them. `UpcomingIntervals` (the rest of the class beyond the next block)
       is a separate question — it can stay on the right, or fold into the
-      timeline at the top, which already draws the same information
-- [ ] **11.6.2** **Which power zone is the rider in *right now*.** The screen
+      timeline at the top, which already draws the same information.
+      *Done as written. `NextUpBlock` — the preview and the five-second
+      countdown it swaps to — hangs off the bottom of `EffortColumn`, directly
+      under the current interval card. `UpcomingIntervals` ("THEN") stayed on
+      the right with pause, end and the overlay button, which stay put because
+      a thumb has learned where End ride is. **Observed on the tablet AVD**:
+      "NEXT in 03:53 · ENDURANCE · 85–95 rpm" sitting under "INTERVAL 1 OF 7"*
+- [x] **11.6.2** **Which power zone is the rider in *right now*.** The screen
       shows the *prescribed* zone large and unmissable — that is what the
       `ProgressArc` and `ZoneGlyph` in the interval card are — and never says
       which zone the current power actually falls in. The rider learns they are
@@ -1498,8 +1594,51 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       probably show; the current and target zone must be tellable apart at a
       glance and not two identical badges side by side; and the HUD has exactly
       the same gap, so whatever is designed here should be shrinkable to the
-      strip
-- [ ] **11.6.3** **Iconography on the live numbers** — a heart for bpm, and the
+      strip.
+      *`CurrentZoneBar` — "NOW  Z2  ENDURANCE … ASKED FOR Z1", amber when the
+      two disagree, "ON TARGET" when they do not. Three decisions worth
+      recording. It sits **over the metric grid**, not beside the prescribed
+      glyph: the zone a rider is in is a reading of their live power, and the
+      "asked for" clause travels with it, so the comparison does not need the
+      two badges to be adjacent. It is a strip of words against a glyph with a
+      shape per zone, so they cannot be confused. And it renders on a free
+      ride, where nothing is prescribed.*
+      *The find while building it: `RideUiState.currentZone` had to become
+      **nullable**. `PowerZone.forPower` answers Z1 for zero watts and for an
+      unknown FTP — true, and useless — so a bike nobody is pedalling, or a
+      board that has gone quiet, was about to be labelled "Active Recovery".
+      Same family as 2.4.4: the absence is the answer. **Observed on the
+      tablet AVD** mid-class, both agreeing and disagreeing.*
+      *The overlay still has this gap; the compact form is designed for and not
+      wired in. **Read 11.6.2a before doing it** — the owner has since said the
+      whole thing is better drawn as a scale.*
+- [ ] **11.6.2a** **Draw the zones as a scale, not as a sentence.** Raised by
+      the owner against the 11.6.2 bar above, with a photo of Peloton's own
+      indicator: **seven segments in a row, one per zone**, the rider's current
+      zone lit, the boundaries labelled in watts underneath (`0 · 123 · 167 ·
+      200 · 233 · 266 · 333`), the zone number set large beside it and FTP %
+      at the other end. Not a request to copy it — a request for what it does
+      better, which is worth naming precisely:
+      - **The whole range is on screen at once.** "Z2" tells a rider where they
+        are only if they already hold the ladder in their head. A scale shows
+        it, and shows how far along the zone they are — Z3-and-just-in is a
+        different ride from Z3-nearly-out, and the current bar cannot tell them
+        apart.
+      - **The boundaries are in watts.** That turns "you are in 2" into "215 W
+        gets you into 3", which is an instruction rather than a label. The app
+        already has these numbers: `PowerZone.powerRange(ftp)`.
+      - **It absorbs the prescribed zone too.** The band the class is asking
+        for can be marked on the same scale, which is exactly the comparison
+        11.6.2 exists to make — and would let the prescribed glyph go back to
+        being decoration rather than the only statement of the target.
+      Things to settle rather than assume: what the scale does on a free ride
+      (probably the same, minus the prescribed band); whether the watt labels
+      survive being shrunk to the overlay (11.6.2 asked the same question and
+      the honest answer may be "numbers on the ride screen, segments only on
+      the overlay"); and that every watt figure here is FTP-derived, so it
+      moves under the rider when auto-FTP accepts a breakthrough (7.8). It
+      replaces `CurrentZoneBar` rather than sitting beside it
+- [x] **11.6.3** **Iconography on the live numbers** — a heart for bpm, and the
       same for cadence, resistance and power. The label is `labelSmall` under a
       104 sp number, which makes the only thing identifying the number the
       smallest text on the tile, read from a metre away mid-effort. An icon is
@@ -1509,8 +1648,14 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       because `MetricReadout` already sets a `clearAndSetSemantics` description
       for the whole tile and a labelled icon inside it would be announced twice.
       Same treatment for `SmallStat` (output, distance, avg power) and for the
-      HUD's compact readouts
-- [ ] **11.6.4** **The target gauge does not say what the target is.** This is
+      HUD's compact readouts.
+      *Done, and defined once in `MetricIcons` so the ride screen and the
+      overlay cannot drift apart: revolutions for cadence, the knob for
+      resistance, a bolt for power, a heart for bpm, a flame for output and a
+      rule for distance. `contentDescription = null` on every one, as the item
+      asks. **Observed on the tablet AVD** on all four tiles and all three
+      totals*
+- [x] **11.6.4** **The target gauge does not say what the target is.** This is
       the biggest of these. `TargetGauge` draws a track, a highlighted band and
       the rider's position on it, with **no numbers anywhere** — a rider can see
       they are below the band without ever learning that the interval asks for
@@ -1521,8 +1666,18 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       by shrinking one design until it fits both. Two details that will bite:
       the band needs its unit stated once or "85–95" beside a resistance tile is
       ambiguous, and a *missing* band (11.2.1 deliberately reports none when the
-      target is out of the knob's reach) must not render as "0–0"
-- [ ] **11.6.5** **"Back to the HUD" is the wrong label, twice over.** It is
+      target is out of the knob's reach) must not render as "0–0".
+      *`TargetBand.label` rounds to whole units and returns **null**, never
+      "0–0", when nothing is prescribed — and null is also what an unreachable
+      resistance target gives, so the app never invents an instruction it has
+      just decided it cannot give. The ride screen prints "TARGET 80–90 rpm"
+      under the gauge with the unit repeated; the overlay does not, and that is
+      the item's own instruction not to shrink one design until it fits both.
+      The screen reader gets the band on **both**, since the reason for hiding
+      it is width and a reader has none. **Observed on the tablet AVD**:
+      "TARGET 80–90 rpm" under cadence, "TARGET 0–80 watts" under power, and
+      the resistance tile correctly showing no target line at all*
+- [x] **11.6.5** **"Back to the HUD" is the wrong label, twice over.** It is
       jargon — "HUD" is a word this project's authors use and a rider does not
       — and it is factually wrong: "back" implies the rider has been there, and
       most of the time they have not been anywhere yet. What the button actually
@@ -1533,7 +1688,17 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       HUD prompt ("Don't use the HUD") and in Settings, so pick the rider-facing
       word for this thing **once** and change it everywhere, or the app will
       have two names for one feature. This revises copy that 11.1a.2 ticked; the
-      behaviour it describes is right and only the label is wrong
+      behaviour it describes is right and only the label is wrong.
+      *Done, and the name is the owner's: **"overlay"**, not "strip", which was
+      this session's first answer and was rejected. The button reads **"View in
+      Overlay Mode"**. The word was in six rider-facing places and all six
+      moved together — the button, the permission prompt's "Don't use the
+      overlay", the Settings section, the opacity slider's spoken label, the
+      drag handle's, and the Silent coach style's description. **"Overlay" is
+      now the rider-facing name for this thing and nothing user-visible may say
+      "HUD" or "strip".** The code, this plan and `ARCHITECTURE.md` still say
+      HUD internally, which is fine — it is one name in the source and one name
+      on screen. **Observed on the tablet AVD***
 - [x] **11.6.6** **Ending a ride takes one tap and cannot be undone.** The end
       button is a 72 dp pill at the bottom of the right-hand column, directly
       under pause, pressed with sweaty hands while moving; the HUD's stop is the
@@ -2305,9 +2470,15 @@ failure: a single column of full-width cards *stretched* across 1280 dp. A card
 at 600 dp, and the screen is big enough to be showing more than one thing at a
 time.
 
-- [ ] **22.2.1** Cap the main column and centre it — on the order of 700–800 dp
+- [x] **22.2.1** Cap the main column and centre it — on the order of 700–800 dp
       — so a card reads as a card rather than a band across the room. Measured
-      on the 1280 × 720 dp AVD from `HARDWARE.md`, never on a phone
+      on the 1280 × 720 dp AVD from `HARDWARE.md`, never on a phone.
+      *Capped at 760 dp. A **maximum**, not a width, so nothing changes below
+      the breakpoint. The rails it opens up are deliberately left empty —
+      22.2.2 and 22.2.3 are the decision about what goes in them, and filling
+      them card by card is exactly what 22.2.3 says produces three columns of
+      unrelated things. **Observed on the tablet AVD**; 22.2.5's check on the
+      bike itself is still owed*
 - [ ] **22.2.2** Then use the two rails that opens up **deliberately**, rather
       than leaving symmetrical dead space: for instance who is riding and
       today's context on one side, the last ride and the streak on the other.

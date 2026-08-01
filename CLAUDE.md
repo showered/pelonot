@@ -17,7 +17,7 @@ section naming the current priority — read that before picking work.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 260 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 263 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -43,6 +43,10 @@ an AVD at the right resolution but the wrong density hides half of them.
 - **Dependencies via `ServiceLocator`**, not new singletons.
 - **Dependency versions in `gradle/libs.versions.toml`**, never inline.
 - **Secrets in `local.properties` → `BuildConfig`**, never in source.
+- **The rider-facing name for the floating display is "overlay"** — never
+  "HUD" (jargon) and never "strip" (tried, rejected by the owner). The source,
+  `PLAN.md` and `ARCHITECTURE.md` still say HUD internally and should: one name
+  in the code, one name on screen. PLAN.md 11.6.5.
 - Comments explain *why*, not *what*. Match the density of surrounding code.
 
 ---
