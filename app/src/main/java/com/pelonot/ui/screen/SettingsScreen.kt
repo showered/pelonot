@@ -1,6 +1,8 @@
 package com.pelonot.ui.screen
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,14 +40,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +85,7 @@ import com.pelonot.ui.theme.DarkTextPrimary
 import com.pelonot.ui.theme.HudMinimumOpacity
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
+import kotlinx.coroutines.launch
 import com.pelonot.ui.viewmodel.SettingsViewModel
 import androidx.compose.ui.unit.dp
 import java.text.DateFormat
@@ -129,8 +137,47 @@ fun SettingsScreen(
         }
     }
 
+    // 19.1.3 / 12.4.4. Through the system's own pickers, like the ride export
+    // (12.4.3): the rider says where the file goes and where it comes from, and
+    // no FileProvider or storage permission is involved on any API level.
+    val scope = rememberCoroutineScope()
+    val snackbarHost = remember { SnackbarHostState() }
+    var pendingRestore by remember { mutableStateOf<Uri?>(null) }
+
+    val say: (String) -> Unit = { message -> scope.launch { snackbarHost.showSnackbar(message) } }
+
+    val backupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        // A cancelled picker is not a failure and does not deserve a message.
+        if (uri != null) viewModel.backupTo(uri, say)
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        // Confirmed *after* the file is chosen, so the warning can be about
+        // this restore rather than about restores in general.
+        if (uri != null) pendingRestore = uri
+    }
+
+    pendingRestore?.let { uri ->
+        RestoreConfirmDialog(
+            onConfirm = {
+                pendingRestore = null
+                viewModel.restoreFrom(
+                    source = uri,
+                    onRefused = say,
+                    onRestored = { restartApp(context) }
+                )
+            },
+            onDismiss = { pendingRestore = null }
+        )
+    }
+
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -229,6 +276,11 @@ fun SettingsScreen(
                 configured = state.cloudConfigured,
                 enabled = state.settings.cloudSyncEnabled,
                 onEnabledChange = viewModel::setCloudSyncEnabled
+            )
+
+            BackupSection(
+                onBackup = { backupLauncher.launch(viewModel.backupFileName()) },
+                onRestore = { restoreLauncher.launch(arrayOf("*/*")) }
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
@@ -812,6 +864,75 @@ private fun VolumeSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+/**
+ * The whole database out to a file, and back in (19.1.3 / 12.4.4).
+ *
+ * Until accounts exist this is the only backup a rider has. Ride export
+ * (12.4.3) gets one ride out in a form Strava understands and gets nothing
+ * back in; a wipe, a factory reset or an APK downgrade costs everything ridden.
+ */
+@Composable
+private fun BackupSection(
+    onBackup: () -> Unit,
+    onRestore: () -> Unit
+) {
+    SettingsSection("Backup") {
+        Text(
+            text = "Your rides live on this tablet and nowhere else. A backup is " +
+                "one file — copy it somewhere safe and it can be restored onto " +
+                "any tablet running Pelonot.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            Button(onClick = onBackup) { Text("Back up now") }
+            OutlinedButton(onClick = onRestore) { Text("Restore from a backup") }
+        }
+    }
+}
+
+/**
+ * The one dialog in this app that is genuinely about losing data.
+ *
+ * A restore is not a merge and cannot be undone, so the sentence says exactly
+ * that rather than asking "are you sure?" — and the confirming button is
+ * labelled with what it does, not with "OK".
+ */
+@Composable
+private fun RestoreConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Replace everything with this backup?") },
+        text = {
+            Text(
+                "Every ride, profile and setting on this tablet is replaced by " +
+                    "what is in the file. Anything recorded since that backup " +
+                    "was made is gone, and Pelonot restarts."
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Replace and restart") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+/**
+ * Restarts the app after a restore.
+ *
+ * The database this process is holding has been closed and its file swapped
+ * underneath every DAO, `StateFlow` and open cursor in the app. There is no
+ * safe way to carry on in that process, and pretending otherwise would leave a
+ * rider looking at the *old* history until something happened to reload it.
+ */
+private fun restartApp(context: Context) {
+    val relaunch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    if (relaunch != null) {
+        relaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        context.startActivity(relaunch)
+    }
+    Runtime.getRuntime().exit(0)
 }
 
 @Composable

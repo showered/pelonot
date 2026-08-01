@@ -1,8 +1,11 @@
 package com.pelonot.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.core.Formatters
 import com.pelonot.data.audio.VolumeController
+import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseModule
 import com.pelonot.data.repository.AppSettings
@@ -60,7 +63,8 @@ class SettingsViewModel(
     private val userRepository: UserRepository,
     private val sensorRepository: SensorRepository,
     private val volumeController: VolumeController,
-    private val calibrationRepository: CalibrationRepository
+    private val calibrationRepository: CalibrationRepository,
+    private val databaseBackup: DatabaseBackup
 ) : ViewModel() {
 
     private val profile = settingsRepository.settings
@@ -200,6 +204,39 @@ class SettingsViewModel(
         }
     }
 
+    // ── Backup and restore (19.1.3 / 12.4.4) ────────────────────────
+
+    /** The name the file picker opens with. */
+    fun backupFileName(): String = databaseBackup.suggestedFileName()
+
+    /**
+     * Both of these report their outcome as a sentence for the rider rather
+     * than as a Boolean nothing reads. A backup that silently did nothing is
+     * indistinguishable from one that worked, which is precisely how a rider
+     * discovers their safety net was imaginary — on the day they need it.
+     */
+    fun backupTo(target: Uri, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = databaseBackup.backupTo(target)
+            onResult(
+                result.fold(
+                    onSuccess = { "Backed up ${Formatters.fileSize(it)} — keep it somewhere else too." },
+                    onFailure = { "Could not write the backup: ${it.message}" }
+                )
+            )
+        }
+    }
+
+    /** @param onRestored called only when the app now has to restart. */
+    fun restoreFrom(source: Uri, onRefused: (String) -> Unit, onRestored: () -> Unit) {
+        viewModelScope.launch {
+            when (val outcome = databaseBackup.restoreFrom(source)) {
+                is DatabaseBackup.RestoreOutcome.Refused -> onRefused(outcome.reason)
+                DatabaseBackup.RestoreOutcome.RestartRequired -> onRestored()
+            }
+        }
+    }
+
     override fun onCleared() {
         // A scan left running is a meaningful battery drain.
         sensorRepository.stopHeartRateScan()
@@ -215,7 +252,8 @@ class SettingsViewModel(
                 userRepository = ServiceLocator.userRepository,
                 sensorRepository = ServiceLocator.sensorRepository,
                 volumeController = ServiceLocator.volumeController,
-                calibrationRepository = ServiceLocator.calibrationRepository
+                calibrationRepository = ServiceLocator.calibrationRepository,
+                databaseBackup = ServiceLocator.databaseBackup
             )
         }
     }

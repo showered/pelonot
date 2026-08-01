@@ -35,6 +35,13 @@ object Formatters {
 
     fun rpm(value: Double): String = String.format(Locale.US, "%.0f RPM", value)
 
+    /** Rounded the way a rider reads a file size, not the way a disk reports one. */
+    fun fileSize(bytes: Long): String = when {
+        bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024))
+        bytes >= 1024 -> String.format(Locale.US, "%.0f kB", bytes / 1024.0)
+        else -> "$bytes bytes"
+    }
+
     fun kilojoules(value: Double): String = String.format(Locale.US, "%.1f kJ", value)
 
     fun bpm(value: Int?): String = value?.let { "$it BPM" } ?: "--"

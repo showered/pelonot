@@ -2,6 +2,7 @@ package com.pelonot.di
 
 import android.content.Context
 import com.pelonot.data.audio.VolumeController
+import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
 import com.pelonot.data.remote.SupabaseSyncRepository
@@ -60,6 +61,12 @@ object ServiceLocator {
     }
 
     val database: AppDatabase by lazy { AppDatabase.getInstance(context) }
+
+    /**
+     * The whole database out to a file and back (19.1.3 / 12.4.4) — the only
+     * backup a rider has until accounts exist.
+     */
+    val databaseBackup: DatabaseBackup by lazy { DatabaseBackup(context, database) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(context) }
 

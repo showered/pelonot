@@ -32,6 +32,13 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
 
+        /**
+         * Kept beside the `@Database(version = …)` above and equal to it. A
+         * restore has to refuse a backup from a newer schema (12.4.4), and
+         * that comparison needs the number at runtime.
+         */
+        const val SCHEMA_VERSION = 2
+
         private const val DATABASE_NAME = "pelonot_database"
 
         @Volatile
