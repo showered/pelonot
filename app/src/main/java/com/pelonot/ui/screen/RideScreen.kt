@@ -88,6 +88,7 @@ import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.attentionBounce
 import com.pelonot.ui.components.rememberPulse
 import com.pelonot.ui.overlay.AppForeground
+import com.pelonot.ui.permission.RequestRideNotificationPermission
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
 import com.pelonot.ui.theme.MetricPowerCoral
@@ -175,6 +176,13 @@ fun RideScreen(
             onNever = viewModel::disableHud
         )
     }
+
+    // 11.1a.6. The ongoing ride notification is the route back into a class the
+    // Activity has been destroyed under, and on API 33+ it is never posted
+    // until this is asked for. Asked here rather than at launch because a rider
+    // who has never started a ride has nothing to say yes to, and held back
+    // while the overlay prompt is up so the two do not stack.
+    RequestRideNotificationPermission(deferred = state.overlayPermissionNeeded)
 
     // 11.1a.2: the other half of the door. Sending the task to the back returns
     // the rider to whatever they were watching, and the HUD comes back with it

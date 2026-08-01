@@ -1328,7 +1328,7 @@ polish item: it is the single journey a rider makes most often during a class.
       records, service still `isForeground=true`), reopened from the launcher →
       the ride screen at 00:26 and counting; ended it there and Done on the
       summary returned to the dashboard*
-- [ ] **11.1a.6** **The ride notification is missing entirely on Android 13+.**
+- [x] **11.1a.6** **The ride notification is missing entirely on Android 13+.**
       `POST_NOTIFICATIONS` is declared in the manifest and **requested by
       nothing** — the only runtime request the app makes is for Bluetooth. On
       API 33+ that means the ongoing ride notification is never posted, so the
@@ -1342,6 +1342,19 @@ polish item: it is the single journey a rider makes most often during a class.
       in it that nobody ever asks for. *Seen on the API 36 tablet AVD:
       `importance=NONE` for `com.pelonot` and no notification during a ride,
       until it was granted by hand with `pm grant`*
+      *Done. `NotificationPermission` + `RequestRideNotificationPermission`
+      (`ui/permission/`), called from the ride screen. Asked at the first ride
+      rather than at launch — the only notification this app posts is the
+      ongoing ride, so a rider who has never started one has nothing to say yes
+      to — and held back by a `deferred` flag while the overlay prompt is up,
+      because two system dialogs on the first ten seconds of a class is how
+      both get dismissed unread. A denial is not retried and not surfaced: the
+      ride is unaffected either way, and the platform stops offering after two
+      refusals. **Observed on the API 36 tablet AVD** with the permission
+      revoked: free ride started → the dialog appeared over the ride screen →
+      Allow → `POST_NOTIFICATIONS: granted=true` and notification id=101 on
+      `workout_channel` in `dumpsys notification`, where before there was
+      none*
 
 ### 11.1b The HUD getting out of the way
 
