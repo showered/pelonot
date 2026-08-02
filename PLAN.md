@@ -239,7 +239,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | **25.4.2** Three classes named after a position they cannot state | `END-08`, `SWT-05`, `THR-06` are each entirely about staying in the saddle and only their titles say so — and R11's half-a-class cap will not let them. A taste call on the rule, so it is the owner's |
 | ~~**24.2** The household, seen~~ | **Done and observed**, opt-out included |
 | ~~**24.3.1** Riding against a housemate~~ | **Done and observed.** One query and no schema, as advertised. **24.3.2** — the live pace target *during* a ride — is the interesting half and is still open; read 11.6 first |
-| **7.9** FTP history | Now that a simulated ride cannot propose an FTP (7.10.7), the proposals that arrive are trustworthy — and nothing keeps them. Blocks 16.3 |
+| ~~**7.8 / 7.9** The FTP a ride was ridden at, and FTP history~~ | **Both done and observed.** `workouts.ftp_watts` (migration 6→7) and `ftp_history` (7→8, seeded from the profiles that already exist). 16.3 is unblocked. Between them they found a live bug: **saving your FTP in Settings put the old one back**, invisibly, because a second coroutine carried a stale copy past it |
 | **23.2.3 / 23.2.4** The class library as an update channel | The only remaining reason to read the cloud at all. Additive only — deleting a class takes a rider's history link with it |
 | **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire |
 | **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual |
@@ -289,7 +289,7 @@ Two notes worth carrying into the next bike session:
 | 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection and the update flow complete, and **a simulated ride can no longer propose an FTP (7.10.7)**. Still open: the FTP a ride was ridden at is discarded (7.8) and no history of FTP changes is kept (7.9) |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 Detection, the update flow, **the FTP a ride was ridden at (7.8) and the history of every change (7.9)** are complete and observed, and a simulated ride can no longer propose an FTP (7.10.7). What remains is showing the history: the trend line (7.10.1, with 16.3), the dashboard line (7.10.2, with 22.1.4), reverting an auto change (7.10.4) and not re-offering a declined one (7.10.5) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains — **plus 8.3b, newly opened: the recovery prompt cannot tell a crashed ride from a live one** |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |

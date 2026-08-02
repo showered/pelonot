@@ -81,33 +81,64 @@ ride. It keeps only the latest value. **16.3.1** ("FTP over time, marked with
 the rides that triggered each change") and **22.1.4** both assume a history
 exists; nothing creates one. The previous value is overwritten and gone.
 
-- [ ] **7.9.1** An `ftp_history` table: profile, watts, when, **how it changed**
+- [x] **7.9.1** An `ftp_history` table: profile, watts, when, **how it changed**
       and, where there was one, the workout that caused it. A derived history is
       not available — the old value is destroyed on update — so this has to be
-      recorded at the moment of the change or it does not exist
-- [ ] **7.9.2** The *how* is a typed enum, not a string: profile creation,
+      recorded at the moment of the change or it does not exist. *Migration 7→8,
+      schema `8.json`*
+- [x] **7.9.2** The *how* is a typed enum, not a string: profile creation,
       manual edit in Settings, accepted auto-breakthrough, guided FTP test
       (19.2.3), pulled from another device (15.3). `RideIntent` is the
       precedent — 5.8 made exactly this a typed enum after a bare display string
       let a typo silently defeat it. The distinction matters on the chart: an
-      FTP the rider typed is a claim, one the app measured is evidence
-- [ ] **7.9.3** The workout reference is nullable and `ON DELETE SET NULL`.
+      FTP the rider typed is a claim, one the app measured is evidence.
+      *`FtpChangeSource`, stored by name, with `Unknown` as a real case rather
+      than a defensive branch*
+- [x] **7.9.3** The workout reference is nullable and `ON DELETE SET NULL`.
       Deleting a ride (12.3) must not delete the fact that the rider's FTP
-      changed — the training history is not the ride's to take with it
-- [ ] **7.9.4** **One funnel.** Every path that changes FTP goes through a single
+      changed — the training history is not the ride's to take with it.
+      *Checked against the database rather than reasoned about, along with its
+      counterpart: the **profile** reference is `CASCADE`, because unlike a ride
+      — a record of something that happened — an FTP history is a statement
+      about somebody and means nothing without them*
+- [x] **7.9.4** **One funnel.** Every path that changes FTP goes through a single
       repository method that writes the profile and the history row in one
       transaction. There are already four call sites and 15 and 19.2.3 add more;
       a history that depends on each new path remembering to append to it is a
-      history that will be wrong within two features
-- [ ] **7.9.5** A change to the same value is not a change. Do not record a row
+      history that will be wrong within two features. *It is
+      `UserRepository.save`, not `updateFtp` — every path already ends up there,
+      including profile creation and a guest keeping their ride. The consequence
+      worth knowing: **a caller that changes FTP without naming a reason still
+      gets a row**, marked `Unknown`. Losing the reason is survivable; losing the
+      change is not, because it cannot be recovered afterwards. There is a test
+      of exactly that shape*
+- [x] **7.9.5** A change to the same value is not a change. Do not record a row
       when the number has not moved, or a re-save in Settings or an idempotent
-      cloud pull will fill the trend chart with vertical noise
-- [ ] **7.9.6** Seed the first row from the existing profile at migration time,
+      cloud pull will fill the trend chart with vertical noise. *Observed on the
+      AVD: pressing Save twice on 215 adds one row*
+- [x] **7.9.6** Seed the first row from the existing profile at migration time,
       dated to the profile's `created_at` and marked as unknown-origin. Without
-      it every existing rider's chart starts at their second FTP change
-- [ ] **7.9.7** Room migration, exported schema and a `MigrationTestHelper` test
+      it every existing rider's chart starts at their second FTP change.
+      *Marked `Unknown` rather than `ProfileCreated` on purpose: a profile whose
+      FTP has been edited four times since is not described by either, and the
+      enum has a case for "nobody wrote it down"*
+- [x] **7.9.7** Room migration, exported schema and a `MigrationTestHelper` test
       (12.5), with the seeding in 7.9.6 covered by it — a data-moving migration
-      is exactly the kind that passes a schema check and loses rows
+
+> **Building this found a bug older than it, in the busiest FTP path there is.**
+> Settings fired two coroutines off one tap of Save — one for FTP, one for
+> weight — each doing read-modify-write on the same profile row. The weight
+> write read the profile *before* the FTP write committed and carried the old
+> FTP back past it, so **typing a new FTP and pressing Save left the old number
+> in the database**, with the screen still showing the new one until the next
+> launch. Nothing on any screen was wrong, which is why it survived.
+>
+> What found it was two `ManualEdit` rows for the same value twenty-three
+> seconds apart — which can only happen if the number went back in between. The
+> same two techniques as 24.2's find: **build the feature that reads the data,
+> then look at the data**, and **the database is the witness, not the
+> screenshots**. FTP and weight are one write now, and the test asserts the
+> property rather than the annotation.
 
 ### 7.10 Showing it, and being honest about it
 
@@ -117,9 +148,12 @@ exists; nothing creates one. The previous value is overwritten and gone.
       through to the ride that triggered it
 - [ ] **7.10.2** On the dashboard (22.1.4): current FTP, when it last changed,
       and the direction. This is the progress line the section is missing
-- [ ] **7.10.3** In Settings, beside the editable field: what it is now and when
+- [x] **7.10.3** In Settings, beside the editable field: what it is now and when
       it last moved, so a rider who does not remember agreeing to a change can
-      see the app made it
+      see the app made it. *"Last changed Aug 2, 2026 · up from 200 W · you set
+      it", observed on the AVD. Silent until the number has actually moved: a
+      rider's first row is the value their profile started with, and reporting
+      that as a change would be announcing an event that never happened*
 - [ ] **7.10.4** **An auto-FTP change is the app editing the rider's own
       record**, so it stays visible and reversible: the history says the app did
       it, off which ride, and reverting to the previous value is one action and
