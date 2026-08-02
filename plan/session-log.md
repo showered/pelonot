@@ -8,6 +8,108 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 2 August 2026 (fifteenth sitting): four items, and a query the bike answered on its own
+
+No rider, and none needed. The tablet AVD for everything with a screen, and
+**the bike's own database for the one question that had been waiting on
+hardware** — which turned out not to need a rider at all, only 1,661 rows that
+were already there. Closed: **25.4.2**, **16.3.1 / 7.10.1**, **14.4** (with
+14.4.6, the item it was blocked behind), **23.3.1**, **7.10.4** and **7.10.5** —
+which finishes **Phase 7**. 443 JVM tests and 9 migration tests, 0 failures.
+Three new items came out of it.
+
+**The owner answered 25.4.2 in the plan file: rename them.** `END-08` was
+called "Seated Climbs 45" and not one block in it said *seated* — the same
+defect 25.1 opened with, pointed the other way round. R11's half-a-class cap
+was never the thing that was wrong and has not been touched. **It was four
+classes rather than three**, because auditing the titles turned up `END-12`
+doing the same at Z2, and an audit is only worth having if it is finished. The
+rule the four leave behind is in `classlibrary/README.md` under R10: **a
+position word in a title is a promise that the blocks say it too** — and "big
+gear" is a position word, because in cycling usage it means seated torque and a
+rider reads it as the instruction. `SWT-09` "Big Gear / Fast Legs 45" keeps its
+name, since its big-gear blocks really are marked `SEATED`. The new names come
+off the axis the data does carry: *Tempo Climbs 5×5*, *Climb and Spin*, *Low
+Cadence Sweet Spot*, *Low Cadence Threshold 4×4* — which is also what the rest
+of the industry calls them. A rename is safe where 23.2.6's rebuild had to take
+new ids, because the title is not the foreign key.
+
+**The FTP trend got the screen it had been waiting for (16.3.1 / 7.10.1).** The
+dashboard card answers *where is it now*; this answers *how did it get here*.
+Two decisions are about honesty rather than drawing. **A mark per change says
+how the app came to believe it** — filled where it measured the value off a
+ride, hollow where the rider typed it, which is the distinction
+`FtpChangeSource`'s own documentation opens with, drawn rather than described;
+`PulledFromCloud` is hollow too, because another device's arithmetic is not
+this bike's measurement. And **the first value is not a change**: it is where
+the number began, so it has no mark and no row. The third came out of looking
+at it — **the axis runs to *now*, not to the last change**, because stopping on
+the day of the last change says the record ends there when the flat run to the
+edge is the rider's answer to "how long have I been at this".
+
+**Then 14.4, which had a precondition, and the precondition is the interesting
+part.** 14.4.6 said settle the `getFloat().toDouble()` question first: if the
+board reports fractional values, the noise digits are in the payload, the
+charts, the exports and the calibration grid. It has been sitting there marked
+as needing the bike — and it needed the bike only in the sense that the bike
+was already holding the answer. One `sqlite3` query over 1,661 recorded rows:
+
+- **The board does report fractional power and the digits are real.** Tenths of
+  a watt, off the `0x44` frame. 1,360 of the rows are fractional.
+- **The noise the finding feared existed and had already been fixed.**
+  `29.2000007629395` is `29.2f` widened, and it appears only in the three rides
+  recorded *before* 2.7c — the fix that made the frame decide the metric also
+  took the value off `getFloat()`. Nothing is rewritten; those rides are
+  already marked suspect by 2.7.5.
+- **Cadence and resistance are integral in every row**, which turned out to be
+  worth 11 KB a ride.
+
+That last one is why the payload landed where the storage budget said it would.
+The first columnar draft measured **64 KB**, not 49 — `80.0` is two characters
+more than `80`, across three columns and 2,700 samples. `CompactDouble` writes
+a whole number without its decimal, which is not a rounding, and the round-trip
+test now reports **49 KB against 228 KB** with both shapes built from the same
+samples. The version went **inside** the payload rather than in a column beside
+it, against the item's wording: a column and the JSON it describes are written
+by different code and can drift, and a version that disagrees with its payload
+is worse than none.
+
+**And the backup reminder (23.3.1), which is a design problem disguised as a
+feature.** The hard half is not knowing when to speak, it is knowing when not
+to. It counts **rides, not days** — a rider off the bike for a fortnight has
+lost nothing since their last backup; time passing is not risk. **"Not now"
+moves the line rather than silencing it**, one mark serving both a backup and a
+dismissal because the reminder only asks one question. And **never having
+backed up does not lower the bar**, because a rider three rides in has nothing
+to lose yet and an app that opens with a warning is one whose warnings are gone
+by the day they matter. The mark is written only on success: recording a failed
+backup would tell the rider they are safe on precisely the day they are not.
+
+**And the two items that finish Phase 7, which are the same principle twice:
+the app must not edit the rider's record behind them.** Declining a
+breakthrough cleared a field in memory and nothing else, so closing the summary
+and reopening it asked again about a ride the rider had already answered for —
+and asked often enough, "no" stops being a decision and becomes a thing to tap
+past, with a permanent change to their own record on the button beside it. It
+is written on the ride now (migration 8→9), because it is a fact about a ride:
+it travels in the backup and it goes away when the ride does. The other half is
+the accepted case — an auto change can be **put back in one action that appends
+a row rather than erasing one**, since deleting it would be a second edit
+covering the first and leaving a history saying nothing ever happened.
+`AutoBreakthroughReverted` earns its own source: "I set this myself" and "the
+app moved my FTP and I disagreed" are different events, and only the second says
+the app was wrong.
+
+Three items opened. **25.4.3** — the rename put `SWT-05` and `THR-06` in the
+same words and made visible that they are nearly the same class, identical work
+differing only in the recovery, which is a small version of what 23.2.6 was
+complaining about. **14.4.7** — the new payload drops `power_is_measured`, the
+one thing it does not carry, and `PowerProvenance` gates real decisions.
+**23.3.1a** — cloud backup is per profile and the backup file is per tablet,
+which nobody has to answer until Phase 15 exists.
+
+---
+
 ### 2 August 2026 (fourteenth sitting): the record stops editing itself
 
 No bike, no rider, no HITL at all — the tablet AVD throughout, with the real

@@ -84,105 +84,56 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 2 August 2026 (fifteenth sitting): four items, and a query the bike answered on its own
+### Latest session — 2 August 2026 (sixteenth sitting): three quick items, and one of them was a rule about ids
 
-No rider, and none needed. The tablet AVD for everything with a screen, and
-**the bike's own database for the one question that had been waiting on
-hardware** — which turned out not to need a rider at all, only 1,661 rows that
-were already there. Closed: **25.4.2**, **16.3.1 / 7.10.1**, **14.4** (with
-14.4.6, the item it was blocked behind), **23.3.1**, **7.10.4** and **7.10.5** —
-which finishes **Phase 7**. 443 JVM tests and 9 migration tests, 0 failures.
-Three new items came out of it.
+No bike and no rider, and nothing here needed either: a wire format, a
+workflow file and a class. Closed **14.4.7** and **25.4.3**; **19.1.4** is
+written but stays unticked until a run is green on GitHub, which is the house
+rule doing its job rather than paperwork. 448 JVM tests, 0 failures.
 
-**The owner answered 25.4.2 in the plan file: rename them.** `END-08` was
-called "Seated Climbs 45" and not one block in it said *seated* — the same
-defect 25.1 opened with, pointed the other way round. R11's half-a-class cap
-was never the thing that was wrong and has not been touched. **It was four
-classes rather than three**, because auditing the titles turned up `END-12`
-doing the same at Z2, and an audit is only worth having if it is finished. The
-rule the four leave behind is in `classlibrary/README.md` under R10: **a
-position word in a title is a promise that the blocks say it too** — and "big
-gear" is a position word, because in cycling usage it means seated torque and a
-rider reads it as the instruction. `SWT-09` "Big Gear / Fast Legs 45" keeps its
-name, since its big-gear blocks really are marked `SEATED`. The new names come
-off the axis the data does carry: *Tempo Climbs 5×5*, *Climb and Spin*, *Low
-Cadence Sweet Spot*, *Low Cadence Threshold 4×4* — which is also what the rest
-of the industry calls them. A rename is safe where 23.2.6's rebuild had to take
-new ids, because the title is not the foreign key.
+**The payload carries where the watts came from (14.4.7).** The tempting shape
+was a scalar on the row, because `PowerProvenance` reduces a ride's samples to
+one answer anyway — but it reduces it *from* the samples, and `Mixed` exists
+precisely because a board that drops out mid-ride leaves them disagreeing. A
+scalar has to pick a side, which is the fabrication `t` already refuses to
+commit when it declines to imply the second from the array index. So `pm`, per
+sample, absent meaning every sample unknown exactly as `hr` does. The 13 KB
+that made the row look attractive turned out to be 5 KB: `CompactBoolean`
+writes `1` and `0` rather than `true` and `false`, three characters a sample
+across 2,700 of them, so the **cheap encoding buys the honest shape**. A
+45-minute ride measures 55,635 bytes and the budget moves 56 → 60 KB to keep
+its headroom. Without the column every restored ride comes back `Unknown`,
+which fails `isTrustworthyAsMeasured` — a cloud copy of a real bike ride could
+not propose an FTP or stand on a leaderboard the original qualified for.
 
-**The FTP trend got the screen it had been waiting for (16.3.1 / 7.10.1).** The
-dashboard card answers *where is it now*; this answers *how did it get here*.
-Two decisions are about honesty rather than drawing. **A mark per change says
-how the app came to believe it** — filled where it measured the value off a
-ride, hollow where the rider typed it, which is the distinction
-`FtpChangeSource`'s own documentation opens with, drawn rather than described;
-`PulledFromCloud` is hollow too, because another device's arithmetic is not
-this bike's measurement. And **the first value is not a change**: it is where
-the number began, so it has no mark and no row. The third came out of looking
-at it — **the axis runs to *now*, not to the last change**, because stopping on
-the day of the last change says the record ends there when the flat run to the
-edge is the rider's answer to "how long have I been at this".
+**CI (19.1.4).** `assembleDebug` then `testDebugUnitTest` on every PR, with the
+HTML report kept as an artifact on failure so a contributor sees *which* test.
+Two deliberate omissions: **no secret and no `local.properties`**, because the
+cloud credentials are optional by design and the day this workflow needs one is
+the day offline-first broke; and **not `connectedDebugAndroidTest`**, whose
+suite is order-dependent — a red run that means "re-run it" trains everyone to
+ignore the whole thing.
 
-**Then 14.4, which had a precondition, and the precondition is the interesting
-part.** 14.4.6 said settle the `getFloat().toDouble()` question first: if the
-board reports fractional values, the noise digits are in the payload, the
-charts, the exports and the calibration grid. It has been sitting there marked
-as needing the bike — and it needed the bike only in the sense that the bike
-was already holding the answer. One `sqlite3` query over 1,661 recorded rows:
+**And the near-twin classes (25.4.3), where the interesting part is not the
+class.** `SWT-05` was 4×4 at Z4 over the gear, which is `THR-06` block for
+block; they differed only in the recovery. The fix is both halves of what the
+item offered — a different work interval *and* titles that say so: *Low Cadence
+Sweet Spot **4-5-6*** against *Low Cadence Threshold **4×4***, distinguishable
+from the library list without opening either. **But it is `SWT-13`, not a
+rewritten `SWT-05`.** `workouts.class_id` is a foreign key and the library's own
+non-negotiable is that changing what an id *is* while a ride points at it
+rewrites what that ride was — the argument 23.2.6 took a whole new id series
+for, and editing in place would have been that rule broken at one class instead
+of seventy-two. 25.4.2's renames last sitting were **not** this: a title is not
+the foreign key. `SWT-05` leaves the bundle and the seeder retires it if
+anyone rode it.
 
-- **The board does report fractional power and the digits are real.** Tenths of
-  a watt, off the `0x44` frame. 1,360 of the rows are fractional.
-- **The noise the finding feared existed and had already been fixed.**
-  `29.2000007629395` is `29.2f` widened, and it appears only in the three rides
-  recorded *before* 2.7c — the fix that made the frame decide the metric also
-  took the value off `getFloat()`. Nothing is rewritten; those rides are
-  already marked suspect by 2.7.5.
-- **Cadence and resistance are integral in every row**, which turned out to be
-  worth 11 KB a ride.
-
-That last one is why the payload landed where the storage budget said it would.
-The first columnar draft measured **64 KB**, not 49 — `80.0` is two characters
-more than `80`, across three columns and 2,700 samples. `CompactDouble` writes
-a whole number without its decimal, which is not a rounding, and the round-trip
-test now reports **49 KB against 228 KB** with both shapes built from the same
-samples. The version went **inside** the payload rather than in a column beside
-it, against the item's wording: a column and the JSON it describes are written
-by different code and can drift, and a version that disagrees with its payload
-is worse than none.
-
-**And the backup reminder (23.3.1), which is a design problem disguised as a
-feature.** The hard half is not knowing when to speak, it is knowing when not
-to. It counts **rides, not days** — a rider off the bike for a fortnight has
-lost nothing since their last backup; time passing is not risk. **"Not now"
-moves the line rather than silencing it**, one mark serving both a backup and a
-dismissal because the reminder only asks one question. And **never having
-backed up does not lower the bar**, because a rider three rides in has nothing
-to lose yet and an app that opens with a warning is one whose warnings are gone
-by the day they matter. The mark is written only on success: recording a failed
-backup would tell the rider they are safe on precisely the day they are not.
-
-**And the two items that finish Phase 7, which are the same principle twice:
-the app must not edit the rider's record behind them.** Declining a
-breakthrough cleared a field in memory and nothing else, so closing the summary
-and reopening it asked again about a ride the rider had already answered for —
-and asked often enough, "no" stops being a decision and becomes a thing to tap
-past, with a permanent change to their own record on the button beside it. It
-is written on the ride now (migration 8→9), because it is a fact about a ride:
-it travels in the backup and it goes away when the ride does. The other half is
-the accepted case — an auto change can be **put back in one action that appends
-a row rather than erasing one**, since deleting it would be a second edit
-covering the first and leaving a history saying nothing ever happened.
-`AutoBreakthroughReverted` earns its own source: "I set this myself" and "the
-app moved my FTP and I disagreed" are different events, and only the second says
-the app was wrong.
-
-Three items opened. **25.4.3** — the rename put `SWT-05` and `THR-06` in the
-same words and made visible that they are nearly the same class, identical work
-differing only in the recovery, which is a small version of what 23.2.6 was
-complaining about. **14.4.7** — the new payload drops `power_is_measured`, the
-one thing it does not carry, and `PowerProvenance` gates real decisions.
-**23.3.1a** — cloud backup is per profile and the backup file is per tablet,
-which nobody has to answer until Phase 15 exists.
+Two smaller things worth carrying. **R4 refused the obvious 3×6** — 120 s after
+a 360 s Z4 effort is under the half it demands, and 180 s rests make it a
+32-minute class — which is the generator doing what it was built for. And the
+library is down to **50 distinct zone sequences from 51**, because `SWT-13`
+shares one with `SWT-12`: right, and recorded in `classlibrary/README.md`,
+because that count measures variety and is not a target to defend.
 
 ### Still needing a rider on the bike
 
@@ -257,6 +208,10 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**14.4** The payload format~~ | **Done, and the numbers are measured now rather than modelled: 228 KB → 49 KB** per ride, asserted in the round trip against the old shape built from the same samples. It also settled **14.4.6** off the bike's own database with no rider: the board's fractional power is real data, and the float-widening noise it feared went away with 2.7c. 14.4.5 still wants the cloud trip; **14.4.7** is new — the payload drops `power_is_measured` |
 | ~~**23.3.1** The backup reminder~~ | **Done and observed.** Ten rides, counted across the whole tablet because the file is; "Not now" moves the line rather than silencing it; and the mark is written only when a backup actually succeeds. **23.3.1a** is new and belongs to Phase 15: cloud backup is per profile and the file is per tablet |
 
+| ~~**14.4.7** The payload's last missing field~~ | **Done.** `pm`, per sample rather than a scalar on the row, because `PowerProvenance` reduces the samples to one answer *from* them and `Mixed` is samples disagreeing. `CompactBoolean` writes 1/0, which is what makes a per-sample column affordable: 55,635 bytes a 45-minute ride, budget 56 → 60 KB |
+| ~~**25.4.3** The two near-twin classes~~ | **Done, and as `SWT-13` rather than an edited `SWT-05`** — changing what an id *is* while a ride points at it rewrites what that ride was, which is why 23.2.6 took a new series. Titles now separate them from the library list: *4-5-6* against *4×4* |
+| **19.1.4** CI on every PR | **Written, not yet green.** `.github/workflows/ci.yml` — build then the JVM tests, no secret (offline-first is the reason), no instrumented suite (order-dependent). One green run on GitHub ticks it |
+
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
 
 One of the owner's own is still open and unchanged:
@@ -311,15 +266,15 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured. What it drops is `power_is_measured` (14.4.7) |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
 | 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. The other four (16.3.2–16.3.5) remain |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
-| 19 | Ideas worth having, ranked | ❌ Not started — mixed |
+| 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |
-| 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider), and 25.4.3 — two classes the rename showed to be near-twins |
+| 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider). **25.4.3 is closed**: the two near-twins the rename exposed are separated by their work as well as their titles, as `SWT-13` rather than an edited `SWT-05` — the id is the foreign key |
