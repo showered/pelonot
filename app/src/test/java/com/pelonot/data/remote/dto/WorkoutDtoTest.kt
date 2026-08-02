@@ -103,13 +103,17 @@ class WorkoutDtoTest {
         )
         val dto = WorkoutDto.from(workout(), listOf(metric))
 
-        assertNull(dto.metrics.single().heartRate)
+        // Columnar since 14.4: a ride nobody wore a strap for has no `hr`
+        // column at all, which is the same claim as a column of nulls and not
+        // remotely the claim a zero would make. `MetricsPayloadTest` holds the
+        // rest of the round trip.
+        assertNull(dto.metrics.heartRate)
+        assertEquals(1, dto.metrics.size)
 
-        // and survives the round trip through JSON as null, not 0
         val encoded = json.encodeToJsonElement(WorkoutDto.serializer(), dto)
             .let { it as kotlinx.serialization.json.JsonObject }
-        val sample = (encoded["metrics_payload"] as kotlinx.serialization.json.JsonArray)
-            .single() as kotlinx.serialization.json.JsonObject
-        assertTrue(sample["heart_rate"]!!.jsonPrimitive.content == "null")
+        val payload = encoded["metrics_payload"] as kotlinx.serialization.json.JsonObject
+        assertEquals("null", payload["hr"].toString())
+        assertEquals("1", payload["v"].toString())
     }
 }

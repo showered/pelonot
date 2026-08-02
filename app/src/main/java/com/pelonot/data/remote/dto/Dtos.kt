@@ -60,26 +60,11 @@ data class ClassTemplateDto(
     )
 }
 
-@Serializable
-data class WorkoutMetricDto(
-    @SerialName("timestamp_sec") val timestampSec: Int,
-    val cadence: Double,
-    val resistance: Double,
-    val power: Double,
-    @SerialName("heart_rate") val heartRate: Int? = null
-) {
-    companion object {
-        fun from(metric: WorkoutMetricEntity) = WorkoutMetricDto(
-            timestampSec = metric.timestampSec,
-            cadence = metric.cadence,
-            resistance = metric.resistance,
-            power = metric.power,
-            // Preserved as null rather than coerced to 0: a strap that was
-            // never paired is not a rider with no pulse.
-            heartRate = metric.heartRate
-        )
-    }
-}
+// `WorkoutMetricDto` — one object per sample — was here until 14.4. It was
+// replaced rather than kept beside `MetricsPayload` because two wire shapes for
+// one series is how a reader ends up guessing. Nullability did not change with
+// it: a heart rate is still preserved as null rather than coerced to 0, since a
+// strap that was never paired is not a rider with no pulse.
 
 @Serializable
 data class WorkoutDto(
@@ -94,7 +79,8 @@ data class WorkoutDto(
     @SerialName("intent_modifier") val intentModifier: Double,
     @SerialName("rpe_rating") val rpeRating: Int? = null,
     @SerialName("recorded_at") val recordedAt: String,
-    @SerialName("metrics_payload") val metrics: List<WorkoutMetricDto>
+    /** Columnar since 14.4 — see [MetricsPayload] for why, and for what `v` is. */
+    @SerialName("metrics_payload") val metrics: MetricsPayload
 ) {
     companion object {
         fun from(workout: WorkoutEntity, metrics: List<WorkoutMetricEntity>) = WorkoutDto(
@@ -109,7 +95,7 @@ data class WorkoutDto(
             intentModifier = workout.intentModifier,
             rpeRating = workout.rpeRating,
             recordedAt = workout.timestamp.toIso8601Utc(),
-            metrics = metrics.map(WorkoutMetricDto::from)
+            metrics = MetricsPayload.from(metrics)
         )
     }
 }
