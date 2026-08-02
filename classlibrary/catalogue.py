@@ -69,7 +69,7 @@ klass("END-07", "Base Ride 45", ENDURANCE,
       hold(480, 2, FAST), hold(480, 2, STEADY),
       CD5)
 
-klass("END-08", "Seated Climbs 45", ENDURANCE,
+klass("END-08", "Tempo Climbs 5×5 45", ENDURANCE,
       WU8,
       sets(5, on=300, zone=3, cadence=CLIMB, off=60, off_zone=2, off_cadence=EASY,
            trailing=True),
@@ -92,7 +92,7 @@ klass("END-11", "Endurance with Surges 60", ENDURANCE,
       alternate(9, 240, 2, BRISK, 60, 3, FAST),
       CD7)
 
-klass("END-12", "Big Gear Endurance 60", ENDURANCE,
+klass("END-12", "Climb and Spin 60", ENDURANCE,
       WU8,
       alternate(6, 360, 2, CLIMB, 60, 2, SPIN),
       hold(180, 2, STEADY),
@@ -185,7 +185,7 @@ klass("SWT-04", "Sweet Spot Build 30", SWEET_SPOT,
       hold(360, 4, BRISK),
       CD5)
 
-klass("SWT-05", "Big Gear Sweet Spot 30", SWEET_SPOT,
+klass("SWT-05", "Low Cadence Sweet Spot 30", SWEET_SPOT,
       WU5,
       sets(4, on=240, zone=4, cadence=CLIMB, off=120, off_zone=2, off_cadence=SPIN),
       CD3)
@@ -264,7 +264,7 @@ klass("THR-05", "Threshold Descending 30", THRESHOLD,
       ladder([360, 300, 180], zone=4, cadence=FAST, rests=[180, 180]),
       CD4)
 
-klass("THR-06", "Big Gear Threshold 4×4 30", THRESHOLD,
+klass("THR-06", "Low Cadence Threshold 4×4 30", THRESHOLD,
       WU5,
       sets(4, on=240, zone=4, cadence=CLIMB, off=120),
       CD3)
