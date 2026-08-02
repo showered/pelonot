@@ -162,7 +162,35 @@ once four riders have a year of history up there.
         row of every ride, which is what 14.4.1a then cashes in.
         **Nothing is rewritten** — those three rides are already marked as
         suspect by 2.7.5, and marking rather than editing is the rule
-- [ ] **14.4.7** **The payload does not carry `power_is_measured`, and that is now the only thing it drops.** Opened by 14.4.1 rather than solved by it: the column is per sample and nullable, so honestly it is a sixth array — but on the bike every entry is the same value, and 2,700 `true`s cost 13 KB against a 49 KB payload. The distinction is not decorative (`PowerProvenance` gates the FTP proposal and the household leaderboard), so a cloud copy without it cannot tell a measured ride from a modelled one. Three ways: the sixth array; a scalar when the whole ride agrees and an array when it does not, which is two shapes for one field and how readers start guessing; or on the row, where the *ride's* provenance arguably belongs anyway since `PowerProvenance` already reduces the series to one answer
+- [x] **14.4.7** **The payload does not carry `power_is_measured`, and that is now the only thing it drops.** Opened by 14.4.1 rather than solved by it: the column is per sample and nullable, so honestly it is a sixth array — but on the bike every entry is the same value, and 2,700 `true`s cost 13 KB against a 49 KB payload. The distinction is not decorative (`PowerProvenance` gates the FTP proposal and the household leaderboard), so a cloud copy without it cannot tell a measured ride from a modelled one. Three ways: the sixth array; a scalar when the whole ride agrees and an array when it does not, which is two shapes for one field and how readers start guessing; or on the row, where the *ride's* provenance arguably belongs anyway since `PowerProvenance` already reduces the series to one answer
+
+      **The sixth array, and the third option is the one worth arguing with.**
+      Putting the ride's provenance on the row is tempting precisely because
+      `PowerProvenance` does reduce the series to one answer — but it reduces
+      it *from the samples*, and `Mixed` exists because a board that drops out
+      mid-ride leaves samples that disagree. A scalar has to pick a side, which
+      is the same fabrication `t` refuses to commit when it declines to imply
+      the second from the array index. So: `pm`, per sample, following `hr`'s
+      rule for absence — **no array means every sample unknown**, which is
+      exactly what every ride recorded before the column existed is, and what a
+      restored ride must come back as rather than as `Modelled`.
+
+      **The 13 KB that made the row look attractive is 5 KB.** `CompactBoolean`
+      writes `1` and `0` rather than `true` and `false` — the same trick as
+      `CompactDouble` one field up, and worth three characters a sample across
+      2,700 of them. Measured: a 45-minute ride is **55,635 bytes**, against
+      49 KB before and a budget that moves 56 → 60 KB to keep its headroom.
+      Written as JSON booleans it would not have fitted at all. So the cheap
+      encoding buys the honest shape rather than only bytes.
+
+      *Five tests, and two of them are the argument rather than the code: a
+      measured ride comes back `Measured` (without the column every restored
+      ride is `Unknown`, and `Unknown` fails `isTrustworthyAsMeasured` — so a
+      cloud copy of a real bike ride could not propose an FTP or stand on a
+      household leaderboard the original qualified for), and a ride the board
+      dropped out of comes back `Mixed` sample for sample. A short `pm` column
+      is rejected by the same length check as the rest. 448 JVM tests, 0
+      failures.*
 
 ### 14.10 Configuring the endpoint — open-source hygiene
 

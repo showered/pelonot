@@ -17,9 +17,10 @@ import kotlin.math.floor
  *
  * The old shape was an array of 2,700 five-key objects, which repeats the key
  * names 13,500 times: a 45-minute ride posted **228 KB** in a single insert and
- * stored about 30 KB of it. The same data as five parallel arrays is **49 KB**
- * on the wire and about 19 KB stored. The storage is the smaller half — the
- * request body is the point, and a 90-minute ride was posting 457 KB in one go.
+ * stored about 30 KB of it. The same data as parallel arrays is **54 KB** on
+ * the wire — 49 KB before provenance joined it (14.4.7) — and about 19 KB
+ * stored. The storage is the smaller half: the request body is the point, and a
+ * 90-minute ride was posting 457 KB in one go.
  *
  * It is changed now because it is free now. `workouts` holds one row in the
  * cloud; the same change costs a migration with a backfill once four riders
@@ -48,6 +49,16 @@ import kotlin.math.floor
  * one costs 13 KB less. This is safe precisely because it is not the claim a
  * *zero* would make: null is unknown, 0 is a rider with no pulse, and the two
  * have been confused in this project before.
+ *
+ * **`pm` is per sample, not per ride** (14.4.7). The tempting version is a
+ * scalar on the row, since `PowerProvenance` reduces the series to one answer
+ * anyway — but it reduces it *from* the samples, and a board that drops out
+ * mid-ride is [PowerProvenance.Mixed][com.pelonot.domain.model.PowerProvenance]
+ * precisely because the samples disagree. A scalar would have to pick one of
+ * them, which is the same fabrication `t` refuses to commit above. It follows
+ * `hr`'s rule for absence — no array means every sample unknown, which is what
+ * every ride recorded before the column existed is — and its own compact
+ * encoding below keeps it inside the size budget.
  */
 @Serializable
 data class MetricsPayload(
@@ -58,7 +69,13 @@ data class MetricsPayload(
     @SerialName("r") val resistance: List<@Serializable(CompactDouble::class) Double> = emptyList(),
     @SerialName("p") val power: List<@Serializable(CompactDouble::class) Double> = emptyList(),
     /** Null where the sample had no heart rate; absent where no sample did. */
-    @SerialName("hr") val heartRate: List<Int?>? = null
+    @SerialName("hr") val heartRate: List<Int?>? = null,
+    /**
+     * `1` where the watts came off the board, `0` where the model made them up,
+     * null where nobody wrote it down. Absent where no sample did.
+     */
+    @SerialName("pm")
+    val powerIsMeasured: List<@Serializable(CompactBoolean::class) Boolean?>? = null
 ) {
 
     val size: Int get() = timestampSec.size
@@ -79,6 +96,7 @@ data class MetricsPayload(
             add("r" to resistance.size)
             add("p" to power.size)
             heartRate?.let { add("hr" to it.size) }
+            powerIsMeasured?.let { add("pm" to it.size) }
         }
         val disagree = lengths.filter { it.second != size }
         if (disagree.isNotEmpty()) {
@@ -100,7 +118,11 @@ data class MetricsPayload(
                     power = power[index],
                     // An absent column is every sample unknown, which is what a
                     // ride with no strap is.
-                    heartRate = heartRate?.get(index)
+                    heartRate = heartRate?.get(index),
+                    // Absent is *unknown*, never modelled: "the app made this
+                    // up" is a different claim from "nobody wrote it down",
+                    // and only one of them is safe to invent.
+                    powerIsMeasured = powerIsMeasured?.get(index)
                 )
             }
         )
@@ -144,6 +166,29 @@ data class MetricsPayload(
         private const val MAX_EXACT_INTEGER = 9_007_199_254_740_992.0
     }
 
+    /**
+     * Writes provenance as `1` and `0` rather than `true` and `false`.
+     *
+     * Three characters a sample sounds like pedantry and is the difference
+     * between carrying the field and not: `true` across 2,700 samples is
+     * **13 KB** on a 49 KB payload, which puts the ride over the budget the
+     * round-trip test asserts; `1` is 5 KB and leaves it inside. The saving is
+     * the reason the column can be per sample at all (14.4.7), so it buys
+     * honesty rather than only bytes.
+     *
+     * Anything non-zero reads back as measured, so a future writer emitting
+     * JSON's own `true` is not a decode failure — but this one writes digits.
+     */
+    object CompactBoolean : KSerializer<Boolean> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("CompactBoolean", PrimitiveKind.INT)
+
+        override fun serialize(encoder: Encoder, value: Boolean) =
+            encoder.encodeInt(if (value) 1 else 0)
+
+        override fun deserialize(decoder: Decoder): Boolean = decoder.decodeInt() != 0
+    }
+
     companion object {
         /**
          * 1 is the columnar shape. There is no 0 — a payload written before
@@ -151,15 +196,26 @@ data class MetricsPayload(
          */
         const val VERSION = 1
 
-        /** What a 45-minute ride measured at, so a regression has a number to fail against. */
-        const val FORTY_FIVE_MINUTE_BUDGET_BYTES = 56 * 1024
+        /**
+         * What a 45-minute ride measured at, so a regression has a number to
+         * fail against.
+         *
+         * 49 KB when the shape landed, **54 KB** once provenance joined it
+         * (14.4.7) — the budget moved with it rather than the column being
+         * dropped to fit, because the alternative to carrying it is a cloud
+         * copy that cannot tell a bike ride from a simulated one. Written as
+         * `true`/`false` it would not have fitted at all; see [CompactBoolean].
+         */
+        const val FORTY_FIVE_MINUTE_BUDGET_BYTES = 60 * 1024
 
         fun from(metrics: List<WorkoutMetricEntity>) = MetricsPayload(
             timestampSec = metrics.map { it.timestampSec },
             cadence = metrics.map { it.cadence },
             resistance = metrics.map { it.resistance },
             power = metrics.map { it.power },
-            heartRate = metrics.map { it.heartRate }.takeIf { hr -> hr.any { it != null } }
+            heartRate = metrics.map { it.heartRate }.takeIf { hr -> hr.any { it != null } },
+            powerIsMeasured = metrics.map { it.powerIsMeasured }
+                .takeIf { pm -> pm.any { it != null } }
         )
     }
 }
