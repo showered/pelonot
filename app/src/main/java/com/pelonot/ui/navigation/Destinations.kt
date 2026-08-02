@@ -41,6 +41,13 @@ sealed class Destination(val route: String) {
     data object History : Destination("history")
 
     /**
+     * The FTP trend, reached from the dashboard's FTP card (16.3.1). No
+     * argument: it is always the selected profile's, because FTP is a statement
+     * about a person and there is no view of somebody else's.
+     */
+    data object FtpProgress : Destination("ftp_progress")
+
+    /**
      * A finished ride, opened from history — distinct from [PostRide], which is
      * the same figures wrapped in the RPE prompt, the FTP breakthrough dialog
      * and the guest-filing flow. None of those belong on a ride from March.

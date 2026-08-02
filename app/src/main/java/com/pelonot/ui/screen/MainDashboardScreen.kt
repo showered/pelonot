@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -89,7 +91,9 @@ fun MainDashboardScreen(
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
     onHistory: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    /** The full-size trend behind the card's sparkline (16.3.1). */
+    onFtpProgress: () -> Unit = {}
 ) {
     // The whole screen fades in when first composed.
     val visibleState = remember { MutableTransitionState(false) }
@@ -127,7 +131,14 @@ fun MainDashboardScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
                 // ── 2️⃣ FTP Hero Card ────────────────────────────────────
-                FtpHeroCard(ftp = ftp, trend = ftpTrend)
+                FtpHeroCard(
+                    ftp = ftp,
+                    trend = ftpTrend,
+                    // A guest has no profile and therefore no history of one, so
+                    // the card does not invite a tap that lands on an empty
+                    // screen. Nothing is disabled — it simply is not a door.
+                    onClick = onFtpProgress.takeIf { ftpTrend.current != null }
+                )
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
@@ -250,9 +261,14 @@ private fun GreetingHeader(userName: String) {
 // FTP Hero Card
 // =========================================================================
 @Composable
-private fun FtpHeroCard(ftp: Int, trend: FtpTrend) {
+private fun FtpHeroCard(ftp: Int, trend: FtpTrend, onClick: (() -> Unit)? = null) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { base ->
+                if (onClick == null) base
+                else base.clickable(onClickLabel = "See how your FTP has changed") { onClick() }
+            },
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -277,13 +293,31 @@ private fun FtpHeroCard(ftp: Int, trend: FtpTrend) {
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-            Text(
-                text = "FTP",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "FTP",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                if (onClick != null) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    // Not "History" — that word is already a card on this same
+                    // screen and it means the rider's rides.
+                    Text(
+                        text = "How it changed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 

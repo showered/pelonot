@@ -28,6 +28,7 @@ import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
+import com.pelonot.ui.screen.FtpProgressScreen
 import com.pelonot.ui.screen.HistoryScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
@@ -183,7 +184,20 @@ fun PelonotNavGraph(
                 },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
                 onHistory = { navController.navigate(Destination.History.route) },
-                onSettings = { navController.navigate(Destination.Settings.route) }
+                onSettings = { navController.navigate(Destination.Settings.route) },
+                onFtpProgress = { navController.navigate(Destination.FtpProgress.route) }
+            )
+        }
+
+        composable(Destination.FtpProgress.route) {
+            FtpProgressScreen(
+                trend = uiState.ftpTrend,
+                onBack = navController::popBackStack,
+                // The same destination history uses, so a ride opened from a
+                // breakthrough is the ride, not a second rendering of one.
+                onOpenRide = { workoutId ->
+                    navController.navigate(Destination.RideDetail.of(workoutId))
+                }
             )
         }
 
