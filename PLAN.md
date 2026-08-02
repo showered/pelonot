@@ -90,8 +90,9 @@ No rider, and none needed. The tablet AVD for everything with a screen, and
 **the bike's own database for the one question that had been waiting on
 hardware** — which turned out not to need a rider at all, only 1,661 rows that
 were already there. Closed: **25.4.2**, **16.3.1 / 7.10.1**, **14.4** (with
-14.4.6, the item it was blocked behind) and **23.3.1**. 443 JVM tests, 0
-failures. Three new items came out of it and one of those is the owner's.
+14.4.6, the item it was blocked behind), **23.3.1**, **7.10.4** and **7.10.5** —
+which finishes **Phase 7**. 443 JVM tests and 9 migration tests, 0 failures.
+Three new items came out of it.
 
 **The owner answered 25.4.2 in the plan file: rename them.** `END-08` was
 called "Seated Climbs 45" and not one block in it said *seated* — the same
@@ -159,6 +160,21 @@ backed up does not lower the bar**, because a rider three rides in has nothing
 to lose yet and an app that opens with a warning is one whose warnings are gone
 by the day they matter. The mark is written only on success: recording a failed
 backup would tell the rider they are safe on precisely the day they are not.
+
+**And the two items that finish Phase 7, which are the same principle twice:
+the app must not edit the rider's record behind them.** Declining a
+breakthrough cleared a field in memory and nothing else, so closing the summary
+and reopening it asked again about a ride the rider had already answered for —
+and asked often enough, "no" stops being a decision and becomes a thing to tap
+past, with a permanent change to their own record on the button beside it. It
+is written on the ride now (migration 8→9), because it is a fact about a ride:
+it travels in the backup and it goes away when the ride does. The other half is
+the accepted case — an auto change can be **put back in one action that appends
+a row rather than erasing one**, since deleting it would be a second edit
+covering the first and leaving a history saying nothing ever happened.
+`AutoBreakthroughReverted` earns its own source: "I set this myself" and "the
+app moved my FTP and I disagreed" are different events, and only the second says
+the app was wrong.
 
 Three items opened. **25.4.3** — the rename put `SWT-05` and `THR-06` in the
 same words and made visible that they are nearly the same class, identical work
