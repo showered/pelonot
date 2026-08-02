@@ -188,14 +188,46 @@ exists; nothing creates one. The previous value is overwritten and gone.
       it", observed on the AVD. Silent until the number has actually moved: a
       rider's first row is the value their profile started with, and reporting
       that as a change would be announcing an event that never happened*
-- [ ] **7.10.4** **An auto-FTP change is the app editing the rider's own
+- [x] **7.10.4** **An auto-FTP change is the app editing the rider's own
       record**, so it stays visible and reversible: the history says the app did
       it, off which ride, and reverting to the previous value is one action and
-      appends a row rather than erasing one
-- [ ] **7.10.5** A declined breakthrough should not be re-offered for the same
+      appends a row rather than erasing one.
+      *Done and observed*, on the screen 7.10.1 built. Three decisions:
+      - **It appends.** Deleting the row would be a second edit covering the
+        first, leaving a history that says nothing ever happened — the state 7.9
+        exists to make impossible
+      - **`AutoBreakthroughReverted` is its own source**, not `ManualEdit`. Both
+        are claims rather than evidence, but "I set this myself" and "the app
+        moved my FTP and I disagreed" are different events, and only the second
+        one says the app was wrong about something. It carries no `workoutId`:
+        the ride caused the change being undone, not this one
+      - **Offered on the newest change only, and only when the app made it.** An
+        undo three moves back would have to decide what the two moves after it
+        now mean; on the newest, "put it back" has exactly one meaning. A value
+        the rider typed needs no undo from the app — they can type another
+
+      *Observed: accepting a seeded 1,300-second measured ride's proposal wrote
+      247 W with an `AutoBreakthrough` row against `bt-ride`, and "Put back
+      215 W" appended `215 | AutoBreakthroughReverted` with the auto change
+      still listed above it.*
+- [x] **7.10.5** A declined breakthrough should not be re-offered for the same
       ride. `PostRideViewModel` runs the analyser on load, so a rider who
       declines and re-opens the summary is asked again about a ride they have
-      already answered for
+      already answered for.
+      *Done and observed.* Asked often enough, "no" stops being a decision and
+      becomes a thing to tap past — and the button beside it commits a permanent
+      change to the rider's record. The answer is
+      `workouts.ftp_proposal_declined` (migration 8→9) rather than a preference,
+      because it is **a fact about a ride**: it travels in the backup and it
+      goes away when the ride does. `NOT NULL DEFAULT 0`, unlike
+      `power_is_measured` — "never asked" and "asked and said no" make no
+      different claim here, and both behave the same way. The migration test
+      asserts the safe direction: a ride recorded before the column existed has
+      **not** been declined, so a genuine breakthrough sitting in an old ride is
+      still offered.
+      *Observed on the AVD: the summary offering 247 W against 215; declining
+      leaving the FTP at 215 and writing the column; and the same ride reopening
+      straight to the RPE prompt with no dialog.*
 - [ ] **7.10.6** **The honesty caveat — narrower than it first looked, and
       calibration is not part of it.** An FTP trend is only a fitness trend if
       the watts behind it are comparable over time. On the bike they are
