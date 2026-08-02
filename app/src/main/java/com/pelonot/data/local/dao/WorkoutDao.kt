@@ -311,6 +311,24 @@ interface WorkoutDao {
     fun observeAnyCompletedCount(): Flow<Int>
 
     /**
+     * Completed rides recorded since a moment, **on this tablet and by anybody**
+     * (23.3.1).
+     *
+     * Not scoped to a profile, and not joined to one, because the thing it
+     * counts is what a backup would protect: the backup file is the whole
+     * database, so a housemate's rides are as much at stake as the current
+     * rider's — and a guest ride, which has no profile at all, is in the file
+     * too and would be lost with it.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts
+        WHERE is_complete = 1 AND timestamp > :sinceEpochMs
+        """
+    )
+    fun observeCompletedSince(sinceEpochMs: Long): Flow<Int>
+
+    /**
      * Ride timestamps per rider, for [com.pelonot.domain.social.StreakCalculator].
      *
      * The streak arithmetic is not done in SQL: "consecutive local calendar

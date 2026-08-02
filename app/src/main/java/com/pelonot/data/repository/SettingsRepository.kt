@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pelonot.data.sensor.SensorMode
@@ -74,7 +75,22 @@ data class AppSettings(
      * metric, so a UK or US rider is not shown kilometres on a bike whose own
      * display is in miles.
      */
-    val unitSystem: UnitSystem = UnitSystem.fromLocale()
+    val unitSystem: UnitSystem = UnitSystem.fromLocale(),
+
+    /**
+     * When the rider last backed up, or last said "not now" — whichever is
+     * later (23.3.1).
+     *
+     * **One mark for both**, because the reminder only ever asks one question:
+     * how much riding has happened that a backup would not have. A dismissal
+     * answers it honestly by moving the line to now — the rides already
+     * recorded stop asking, and the next ten earn the next reminder. Null means
+     * neither has ever happened, so the count runs from the first ride.
+     */
+    val backupMarkAtMs: Long? = null,
+
+    /** Distinguishes "nothing since your backup" from "no backup at all". */
+    val hasEverBackedUp: Boolean = false
 ) {
     companion object {
         /**
@@ -118,7 +134,9 @@ class SettingsRepository(context: Context) {
                 // Absent means the rider has never chosen, so fall back to the
                 // locale each time rather than pinning metric on first read.
                 unitSystem = UnitSystem.fromName(prefs[Keys.UNIT_SYSTEM])
-                    ?: UnitSystem.fromLocale()
+                    ?: UnitSystem.fromLocale(),
+                backupMarkAtMs = prefs[Keys.BACKUP_MARK_AT],
+                hasEverBackedUp = prefs[Keys.HAS_EVER_BACKED_UP] ?: false
             )
         }
 
@@ -156,6 +174,24 @@ class SettingsRepository(context: Context) {
 
     suspend fun setUnitSystem(units: UnitSystem) = edit { it[Keys.UNIT_SYSTEM] = units.name }
 
+    /**
+     * A backup was written (23.3.1). Only ever called on success — a backup
+     * that failed has protected nothing, and recording it would tell the rider
+     * they are safe on the one day they are not.
+     */
+    suspend fun markBackedUp(atMs: Long = System.currentTimeMillis()) = edit {
+        it[Keys.BACKUP_MARK_AT] = atMs
+        it[Keys.HAS_EVER_BACKED_UP] = true
+    }
+
+    /**
+     * "Not now". Moves the line without claiming a backup happened, so the
+     * sentence next time is still *no backup yet* if that is the truth.
+     */
+    suspend fun snoozeBackupReminder(atMs: Long = System.currentTimeMillis()) = edit {
+        it[Keys.BACKUP_MARK_AT] = atMs
+    }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         dataStore.edit(block)
     }
@@ -173,5 +209,7 @@ class SettingsRepository(context: Context) {
         val HUD_DOCK = stringPreferencesKey("hud_dock")
         val HUD_OPACITY = floatPreferencesKey("hud_opacity")
         val UNIT_SYSTEM = stringPreferencesKey("unit_system")
+        val BACKUP_MARK_AT = longPreferencesKey("backup_mark_at")
+        val HAS_EVER_BACKED_UP = booleanPreferencesKey("has_ever_backed_up")
     }
 }

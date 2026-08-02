@@ -247,6 +247,10 @@ class WorkoutRepository(
      * the point of this panel is the *other* riders and their rides would
      * otherwise never move it.
      */
+    /** Completed rides on this tablet since a moment, for the backup reminder (23.3.1). */
+    fun observeCompletedSince(sinceEpochMs: Long): Flow<Int> =
+        workoutDao.observeCompletedSince(sinceEpochMs)
+
     fun observeHouseholdWeek(): Flow<List<HouseholdRiderWeek>> =
         workoutDao.observeAnyCompletedCount().map { householdWeek() }
 

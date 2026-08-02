@@ -64,6 +64,8 @@ fun PelonotNavGraph(
     onDiscardRecoverableWorkout: () -> Unit = {},
     onRenameProfile: (com.pelonot.data.local.entity.UserEntity, String) -> Unit = { _, _ -> },
     onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
+    /** "Not now" on the backup reminder (23.3.1) — moves the line, does not silence it. */
+    onDismissBackupReminder: () -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
     onLoadLeaderboard: suspend (classId: String, youId: Int?) -> HouseholdLeaderboard =
         { classId, _ -> HouseholdLeaderboard(classId) }
@@ -178,6 +180,8 @@ fun PelonotNavGraph(
                 stats = uiState.dashboardStats,
                 householdWeek = uiState.householdWeek,
                 youId = uiState.selectedProfile?.localUserId,
+                backupReminder = uiState.backupReminder,
+                onDismissBackupReminder = onDismissBackupReminder,
                 onJustRide = {
                     pendingClassId = null
                     showIntentPrompt = true

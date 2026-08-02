@@ -9,6 +9,7 @@ import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.social.HouseholdRiderWeek
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -55,6 +57,12 @@ data class AppUiState(
      * which draw no trend.
      */
     val ftpTrend: FtpTrend = FtpTrend(),
+    /**
+     * How much riding a backup would be protecting (PLAN 23.3.1). Only *due*
+     * once ten rides have gone by unprotected, and the dashboard draws nothing
+     * until then.
+     */
+    val backupReminder: BackupReminder = BackupReminder.None,
     val isLoading: Boolean = true,
     /**
      * A ride the app was killed in the middle of. Non-null means the rider is
@@ -120,12 +128,7 @@ class AppViewModel(
         RideInProgress.active
     ) { recoverable, active -> recoverable to active }
 
-    /**
-     * The two dashboard-shaped flows, paired for the same reason [rideStatus]
-     * is: the typed `combine` overload stops at five. The rider's own numbers
-     * and the household's belong together anyway — one screen reads both, and
-     * 24.2.1's rule is that the household never appears above them.
-     */
+    /** The selected rider's FTP over time (7.10.2, and 16.3.1's screen). */
     private val ftpTrend = settingsRepository.settings
         .map { it.lastProfileId }
         .flatMapLatest { profileId ->
@@ -145,11 +148,43 @@ class AppViewModel(
             }
         }
 
+    /**
+     * How many rides have been recorded since the last backup — or since the
+     * last "not now", whichever is later (23.3.1).
+     *
+     * Counted across the whole tablet rather than for the selected profile,
+     * because the backup file is the whole database: a housemate's rides and a
+     * guest's ride are equally in it and equally lost without it.
+     */
+    private val backupReminder = settingsRepository.settings
+        .map { it.backupMarkAtMs to it.hasEverBackedUp }
+        .distinctUntilChanged()
+        .flatMapLatest { (markedAt, everBackedUp) ->
+            workoutRepository.observeCompletedSince(markedAt ?: 0L).map { count ->
+                BackupReminder(ridesSinceMark = count, hasEverBackedUp = everBackedUp)
+            }
+        }
+
     private val dashboard = combine(
         dashboardStats,
         workoutRepository.observeHouseholdWeek(),
-        ftpTrend
-    ) { stats, household, ftp -> Triple(stats, household, ftp) }
+        ftpTrend,
+        backupReminder
+    ) { stats, household, ftp, backup -> DashboardState(stats, household, ftp, backup) }
+
+    /**
+     * The dashboard-shaped flows, travelling together for the same reason
+     * [rideStatus] does: the typed `combine` overload stops at five, and one
+     * screen reads all of these. A named class rather than a `Triple` now there
+     * are four of them — nesting a `Pair` inside a `Triple` to keep counting is
+     * where a destructuring bug goes to hide.
+     */
+    private data class DashboardState(
+        val stats: DashboardStats,
+        val household: List<HouseholdRiderWeek>,
+        val ftpTrend: FtpTrend,
+        val backupReminder: BackupReminder
+    )
 
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
@@ -157,14 +192,15 @@ class AppViewModel(
         classRepository.allPlans,
         dashboard,
         rideStatus
-    ) { settings, profiles, classes, (stats, household, ftpTrend), (recoverable, active) ->
+    ) { settings, profiles, classes, dashboard, (recoverable, active) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
-            dashboardStats = stats,
-            householdWeek = household,
-            ftpTrend = ftpTrend,
+            dashboardStats = dashboard.stats,
+            householdWeek = dashboard.household,
+            ftpTrend = dashboard.ftpTrend,
+            backupReminder = dashboard.backupReminder,
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active
@@ -247,6 +283,17 @@ class AppViewModel(
             workoutRepository.clearRecoverableWorkouts()
             _recoverableWorkout.value = null
         }
+    }
+
+    /**
+     * "Not now" (23.3.1). Moves the line to today, so the rides already
+     * recorded stop asking and the next ten earn the next reminder.
+     *
+     * It does not claim a backup happened, so a rider who has never made one is
+     * still told so next time.
+     */
+    fun snoozeBackupReminder() {
+        viewModelScope.launch { settingsRepository.snoozeBackupReminder() }
     }
 
     companion object {

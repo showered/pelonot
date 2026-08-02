@@ -3,6 +3,7 @@ package com.pelonot.ui.screen
 import androidx.compose.ui.graphics.Color
 import java.util.Date
 import java.text.DateFormat
+import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.data.local.entity.FtpChangeSource
 import androidx.compose.ui.semantics.semantics
@@ -40,11 +41,13 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -88,12 +91,15 @@ fun MainDashboardScreen(
     /** Who else on this bike has ridden this week (24.2.1). */
     householdWeek: List<HouseholdRiderWeek> = emptyList(),
     youId: Int? = null,
+    /** How much riding a backup would protect (23.3.1). Draws nothing until it is due. */
+    backupReminder: BackupReminder = BackupReminder.None,
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
     /** The full-size trend behind the card's sparkline (16.3.1). */
-    onFtpProgress: () -> Unit = {}
+    onFtpProgress: () -> Unit = {},
+    onDismissBackupReminder: () -> Unit = {}
 ) {
     // The whole screen fades in when first composed.
     val visibleState = remember { MutableTransitionState(false) }
@@ -177,6 +183,19 @@ fun MainDashboardScreen(
                         icon = Icons.Default.Settings,
                         onClick = onSettings,
                         modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // ── 4️⃣a The backup reminder, when there is one ──────────
+                // Under the actions rather than above them, and never as a
+                // dialog: it is a reminder, not a nag (23.3.1). It sits beside
+                // the Settings card because that is where it sends the rider.
+                if (backupReminder.isDue) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+                    BackupReminderCard(
+                        reminder = backupReminder,
+                        onBackup = onSettings,
+                        onDismiss = onDismissBackupReminder
                     )
                 }
 
@@ -456,6 +475,68 @@ private fun SecondaryActionCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+// =========================================================================
+// The backup reminder (23.3.1)
+// =========================================================================
+/**
+ * A card, on the dashboard, below the things the rider came for.
+ *
+ * Deliberately **not** a dialog and **not** at the top of the screen. Backup is
+ * the offline rider's only durability story, so the app has to say something —
+ * but the item's own words are "a reminder and not a nag", and a modal on
+ * launch is how a warning gets dismissed by reflex long before the day it
+ * matters. It waits ten rides, it says how many, and "Not now" is answered by
+ * moving the line rather than by asking again tomorrow.
+ *
+ * The action goes to Settings rather than raising the file picker here. The
+ * backup flow — picker, write, and the sentence saying how many bytes landed —
+ * exists once, and a second copy of it on the dashboard is a second place for
+ * it to go quietly wrong.
+ */
+@Composable
+private fun BackupReminderCard(
+    reminder: BackupReminder,
+    onBackup: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Save,
+                contentDescription = null,
+                // Tertiary, not error: nothing has gone wrong. This is a fact
+                // about where the rides live, not a fault to be fixed.
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
+            Text(
+                text = reminder.message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            TextButton(onClick = onDismiss) { Text("Not now") }
+            TextButton(onClick = onBackup) { Text("Back up") }
         }
     }
 }

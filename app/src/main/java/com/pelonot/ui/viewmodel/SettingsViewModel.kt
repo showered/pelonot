@@ -277,6 +277,10 @@ class SettingsViewModel(
     fun backupTo(target: Uri, onResult: (String) -> Unit) {
         viewModelScope.launch {
             val result = databaseBackup.backupTo(target)
+            // Marked only on success, and this is the whole reason the reminder
+            // can be trusted (23.3.1): recording a backup that failed would
+            // tell the rider they are safe on precisely the day they are not.
+            if (result.isSuccess) settingsRepository.markBackedUp()
             onResult(
                 result.fold(
                     onSuccess = { "Backed up ${Formatters.fileSize(it)} — keep it somewhere else too." },
