@@ -206,7 +206,7 @@ now*, unlike every other number on there.
       rpm and no position on any block, and the seeder logged one reconcile on
       first launch and nothing on the second.*
 
-- [ ] **25.4.3** **`SWT-05` and `THR-06` are nearly the same class**, which the
+- [x] **25.4.3** **`SWT-05` and `THR-06` are nearly the same class**, which the
       rename made visible by putting them in the same words. Identical work — 4
       × 4 min at Z4, 60–70 rpm — and they differ only in the recovery: Z2 at
       105–115 rpm against Z1 at 75–85. That passes R9, which compares the full
@@ -216,3 +216,40 @@ now*, unlike every other number on there.
       and this is the same shape of thing at a much smaller scale. Either give
       one of them a different work interval, or let the titles say what actually
       separates them
+
+      *Both, because either alone leaves it half-answered. The low-cadence
+      sweet spot is **4-5-6** now — three rungs that grow, 240/300/360 s at Z4
+      over the gear, with the spin-out recoveries it always had — and the title
+      says so: "Low Cadence Sweet Spot **4-5-6** 30" against "Low Cadence
+      Threshold **4×4** 30". A rider choosing between them can do it from the
+      library list without opening either, which is what the pair failed at
+      before. The recovery difference was never wrong; it was only never enough
+      on its own to be the whole difference.*
+
+      ***It is `SWT-13`, not a rewritten `SWT-05`, and that is the constraint
+      rather than a preference.*** `workouts.class_id` is a foreign key, and
+      the library's own non-negotiable is that changing what an id *is* while a
+      ride points at it silently rewrites what that ride was — the argument
+      23.2.6 took a whole new id series for. Editing the blocks in place would
+      have been that rule broken at one class instead of seventy-two. So
+      `SWT-05` leaves the bundle, `ClassTemplateSeeder` retires it if anyone
+      rode it and deletes it if nobody did (23.2.6c), and the count stays 12
+      sweet-spot classes with the same duration spread. **25.4.2's renames were
+      not this**, and the distinction is worth keeping: a title is not the
+      foreign key and a rider's ride is unchanged by it; its blocks are what
+      they rode.
+
+      *Two things the shape had to answer. **R4 refuses a 3×6**, which was the
+      first version tried: 120 s after a 360 s Z4 effort is under the half it
+      requires, and taking the rests to 180 s puts the class at 32 minutes. The
+      growing ladder fits 30 exactly — 240/180/300/240/360 — with every rest
+      over the half. And **the library is down to 50 distinct zone sequences
+      from 51**, because `SWT-13` shares one with `SWT-12`: allowed, and right,
+      since a 30-minute 4-5-6 and an hour of 10/10/15 share a shape and nothing
+      a rider would recognise. `classlibrary/README.md` carries the number and
+      the reasoning; the count measures variety and is not a target to defend.*
+
+      *Rebuilt — fingerprint `d7c4b2d9c2685a53`, which is what gets it to a
+      tablet that has already seeded. 448 JVM tests green, `ClassLibraryAssets
+      Test` among them, which is the check that matters here because the assets
+      are what ships and the generator that wrote them runs on nobody's bike.*

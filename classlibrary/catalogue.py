@@ -185,10 +185,9 @@ klass("SWT-04", "Sweet Spot Build 30", SWEET_SPOT,
       hold(360, 4, BRISK),
       CD5)
 
-klass("SWT-05", "Low Cadence Sweet Spot 30", SWEET_SPOT,
-      WU5,
-      sets(4, on=240, zone=4, cadence=CLIMB, off=120, off_zone=2, off_cadence=SPIN),
-      CD3)
+# SWT-05 is gone from here on purpose: it was 4×4 at Z4/CLIMB, which is
+# `THR-06` block for block, and it is replaced by `SWT-13` below rather than
+# edited in place. See that class, and PLAN 25.4.3.
 
 klass("SWT-06", "Sweet Spot Descending 30", SWEET_SPOT,
       WU5,
@@ -231,6 +230,25 @@ klass("SWT-12", "Sweet Spot Endurance 60", SWEET_SPOT,
       hold(600, 4, BRISK), hold(300, 2, STEADY),
       hold(900, 4, CLIMB),
       CD7)
+
+# What `SWT-05` should have been. It was 4×4 at Z4 over the gear, which is
+# `THR-06` block for block — the two differed only in the recovery, which is
+# defensible on paper and is the same complaint 23.2.6 made about the old
+# library at a smaller scale (PLAN 25.4.3). Rungs that grow are what make this
+# the sweet-spot half of the pair, and the title says so without the rider
+# opening either class. The spin-out recovery stays: it was never the wrong
+# idea, only never the whole of the difference.
+#
+# **A new id rather than an edit**, and that is the constraint rather than a
+# preference: `workouts.class_id` is a foreign key, and rewriting what `SWT-05`
+# *is* while a ride still points at it changes what that ride was. `SWT-05`
+# leaves the bundle and `ClassTemplateSeeder` retires it if anyone rode it
+# (23.2.6c), so the ride keeps the class it actually rode.
+klass("SWT-13", "Low Cadence Sweet Spot 4-5-6 30", SWEET_SPOT,
+      WU5,
+      ladder([240, 300, 360], zone=4, cadence=CLIMB, rests=[180, 240],
+             rest_zone=2, rest_cadence=SPIN),
+      CD3)
 
 
 # ---------------------------------------------------------------------------

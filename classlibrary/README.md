@@ -183,8 +183,13 @@ hard to author by accident.
 
 No two classes may share a full signature (zones, lengths and cadences), and
 two classes of the same category and duration must differ in more than one
-block. *Tested.* The rebuilt library has **51 distinct sequences of zones
-across 72 classes**, against 12 before.
+block. *Tested.* The rebuilt library has **50 distinct sequences of zones
+across 72 classes**, against 12 before. It was 51 until `SWT-05` was replaced
+by `SWT-13` (PLAN 25.4.3), whose zone sequence is `SWT-12`'s — which the rule
+allows and should: one is 30 minutes of 4-5-6 over the gear and the other an
+hour of 10/10/15, so they share a *shape* (three efforts, two recoveries) and
+nothing a rider would recognise. The number is a measure of variety, not a
+target; a class earns its blocks from what it is for.
 
 ### R10 — The title says what the ride is
 
@@ -218,7 +223,7 @@ off the axis the data does carry — cadence:
 |---|---|---|
 | `END-08` Seated Climbs 45 | **Tempo Climbs 5×5 45** | 5 × 5 min at Z3, `CLIMB` |
 | `END-12` Big Gear Endurance 60 | **Climb and Spin 60** | 6 min `CLIMB` alternating 1 min `SPIN`, all Z2 |
-| `SWT-05` Big Gear Sweet Spot 30 | **Low Cadence Sweet Spot 30** | 4 × 4 min at Z4, `CLIMB`, spin recoveries |
+| `SWT-05` Big Gear Sweet Spot 30 | **Low Cadence Sweet Spot 30** | 4 × 4 min at Z4, `CLIMB`, spin recoveries — since replaced by `SWT-13`, *Low Cadence Sweet Spot 4-5-6 30*, because those blocks were `THR-06`'s (25.4.3) |
 | `THR-06` Big Gear Threshold 4×4 30 | **Low Cadence Threshold 4×4 30** | 4 × 4 min at Z4, `CLIMB`, easy recoveries |
 
 "Low cadence" rather than "big gear" because it is the thing the interval
