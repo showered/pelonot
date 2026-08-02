@@ -708,6 +708,7 @@ private fun FtpTrendLine(trend: FtpTrend) {
         FtpChangeSource.AutoBreakthrough -> "measured from a ride"
         FtpChangeSource.GuidedTest -> "an FTP test"
         FtpChangeSource.PulledFromCloud -> "another device"
+        FtpChangeSource.AutoBreakthroughReverted -> "you put it back"
         FtpChangeSource.ProfileCreated -> null
         FtpChangeSource.Unknown -> null
     }

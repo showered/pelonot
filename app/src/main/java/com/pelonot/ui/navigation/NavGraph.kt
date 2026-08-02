@@ -66,6 +66,8 @@ fun PelonotNavGraph(
     onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
     /** "Not now" on the backup reminder (23.3.1) — moves the line, does not silence it. */
     onDismissBackupReminder: () -> Unit = {},
+    /** Put back the FTP an auto change replaced (7.10.4). */
+    onRevertFtpChange: (Int) -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
     onLoadLeaderboard: suspend (classId: String, youId: Int?) -> HouseholdLeaderboard =
         { classId, _ -> HouseholdLeaderboard(classId) }
@@ -201,7 +203,8 @@ fun PelonotNavGraph(
                 // breakthrough is the ride, not a second rendering of one.
                 onOpenRide = { workoutId ->
                     navController.navigate(Destination.RideDetail.of(workoutId))
-                }
+                },
+                onRevert = { change -> onRevertFtpChange(change.from) }
             )
         }
 

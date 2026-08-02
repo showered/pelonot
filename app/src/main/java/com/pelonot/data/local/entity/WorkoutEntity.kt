@@ -111,5 +111,21 @@ data class WorkoutEntity(
     val wasRecovered: Boolean = false,
 
     @ColumnInfo(name = "timestamp")
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+
+    /**
+     * The rider was offered an FTP breakthrough off this ride and said no
+     * (PLAN 7.10.5).
+     *
+     * Kept because the analyser runs on every load of the summary, so without
+     * it declining lasted until the screen was closed and the rider was asked
+     * again about a ride they had already answered for. Asked often enough,
+     * "no" stops being a decision and becomes a thing to tap past.
+     *
+     * It is not the same fact as accepting: an accepted proposal is recorded in
+     * `ftp_history` because the rider's FTP *changed*, and a decline changed
+     * nothing about them. It is only a note that the question has been asked.
+     */
+    @ColumnInfo(name = "ftp_proposal_declined")
+    val ftpProposalDeclined: Boolean = false
 )

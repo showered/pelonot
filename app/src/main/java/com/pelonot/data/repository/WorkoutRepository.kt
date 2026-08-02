@@ -99,6 +99,9 @@ class WorkoutRepository(
 
     suspend fun setRpe(workoutId: String, rpe: Int) = workoutDao.setRpeRating(workoutId, rpe)
 
+    /** The rider said no to a breakthrough off this ride (7.10.5). */
+    suspend fun declineFtpProposal(workoutId: String) = workoutDao.declineFtpProposal(workoutId)
+
     /** Moves a guest ride onto a profile once the rider says whose it was. */
     suspend fun assignToUser(workoutId: String, userId: Int) =
         workoutDao.assignWorkoutToUser(workoutId, userId)

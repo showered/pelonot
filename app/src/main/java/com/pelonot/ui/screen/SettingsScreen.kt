@@ -501,6 +501,7 @@ private fun FtpLastChanged(entry: FtpHistoryEntity?, previousWatts: Int?) {
         FtpChangeSource.AutoBreakthrough -> "the app measured it from a ride"
         FtpChangeSource.GuidedTest -> "an FTP test"
         FtpChangeSource.PulledFromCloud -> "another device"
+        FtpChangeSource.AutoBreakthroughReverted -> "you put back the app's change"
         FtpChangeSource.ProfileCreated -> "when the profile was made"
         // Every value seeded by migration 7→8, and any write path that changes
         // the number without saying why. The date is still true.

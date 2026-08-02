@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -85,6 +86,8 @@ fun FtpProgressScreen(
     trend: FtpTrend,
     onBack: () -> Unit,
     onOpenRide: (String) -> Unit,
+    /** Put back the value an auto change replaced (7.10.4). */
+    onRevert: (FtpChange) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -131,7 +134,7 @@ fun FtpProgressScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
-            ChangeList(trend, onOpenRide)
+            ChangeList(trend, onOpenRide, onRevert)
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -331,7 +334,11 @@ private fun AxisDate(atEpochMs: Long) {
 }
 
 @Composable
-private fun ChangeList(trend: FtpTrend, onOpenRide: (String) -> Unit) {
+private fun ChangeList(
+    trend: FtpTrend,
+    onOpenRide: (String) -> Unit,
+    onRevert: (FtpChange) -> Unit
+) {
     Text(
         text = "Every change",
         style = MaterialTheme.typography.titleMedium,
@@ -352,14 +359,32 @@ private fun ChangeList(trend: FtpTrend, onOpenRide: (String) -> Unit) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        trend.changes.forEach { change ->
-            ChangeRow(change, onOpenRide)
+        trend.changes.forEachIndexed { index, change ->
+            ChangeRow(
+                change = change,
+                onOpenRide = onOpenRide,
+                // 7.10.4. Only the newest, and only when the app made it. An
+                // undo offered on a change three moves back would have to
+                // decide what the two moves after it now mean; on the newest,
+                // "put it back" has exactly one meaning. And a value the rider
+                // typed themselves does not need undoing by the app — they can
+                // type another.
+                onRevert = onRevert.takeIf {
+                    index == 0 &&
+                        FtpChangeSource.fromName(change.source) ==
+                        FtpChangeSource.AutoBreakthrough
+                }
+            )
         }
     }
 }
 
 @Composable
-private fun ChangeRow(change: FtpChange, onOpenRide: (String) -> Unit) {
+private fun ChangeRow(
+    change: FtpChange,
+    onOpenRide: (String) -> Unit,
+    onRevert: ((FtpChange) -> Unit)? = null
+) {
     val accent = if (change.isRise) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -422,6 +447,16 @@ private fun ChangeRow(change: FtpChange, onOpenRide: (String) -> Unit) {
                 )
             }
 
+            if (onRevert != null) {
+                // One action, and it *appends* rather than erasing (7.10.4):
+                // the app moving somebody's FTP is the app editing their own
+                // record, and an undo that deleted the row would be a second
+                // edit hiding the first.
+                TextButton(onClick = { onRevert(change) }) {
+                    Text("Put back ${change.from} W")
+                }
+            }
+
             if (rideId != null) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.DirectionsBike,
@@ -452,6 +487,7 @@ private fun FtpChangeSource.describe(): String? = when (this) {
     FtpChangeSource.GuidedTest -> "an FTP test"
     FtpChangeSource.PulledFromCloud -> "another device"
     FtpChangeSource.ProfileCreated -> "when you made this profile"
+    FtpChangeSource.AutoBreakthroughReverted -> "you put it back"
     FtpChangeSource.Unknown -> null
 }
 

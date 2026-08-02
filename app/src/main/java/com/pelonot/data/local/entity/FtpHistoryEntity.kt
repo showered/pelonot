@@ -33,6 +33,17 @@ enum class FtpChangeSource {
     /** A ramp or 20-minute test the app ran on purpose (19.2.3). */
     GuidedTest,
 
+    /**
+     * The rider put back the value an [AutoBreakthrough] had replaced (7.10.4).
+     *
+     * A claim rather than evidence, like [ManualEdit] — the rider is saying the
+     * app's measurement does not describe them — but a *different* claim, and
+     * worth its own case: "I set this myself" and "the app moved my FTP and I
+     * disagreed" are not the same event, and only the second one says the app
+     * was wrong about something.
+     */
+    AutoBreakthroughReverted,
+
     /** Arrived from another device (15.3). */
     PulledFromCloud,
 

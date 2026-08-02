@@ -219,8 +219,33 @@ object AppMigrations {
         }
     }
 
+    /**
+     * Remembers that the rider said no to a breakthrough (PLAN 7.10.5).
+     *
+     * `PostRideViewModel` runs the analyser on every load, so declining cleared
+     * a field in memory and nothing else: closing the summary and reopening it
+     * asked again about a ride the rider had already answered for. Asked often
+     * enough, "no" stops being a decision and becomes a thing to tap past.
+     *
+     * A column on `workouts` rather than a preference, because it is a fact
+     * about a ride: it travels in the backup, and it goes away when the ride
+     * does. `NOT NULL DEFAULT 0` rather than nullable — unlike
+     * `power_is_measured`, "never asked" and "asked and said no" do not make
+     * different claims here. Both mean the app has no answer on file, and both
+     * behave the same way.
+     */
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `workouts` ADD COLUMN `ftp_proposal_declined` " +
+                    "INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8
+        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+        MIGRATION_8_9
     )
 }

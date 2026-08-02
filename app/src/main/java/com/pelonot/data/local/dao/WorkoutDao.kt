@@ -63,6 +63,17 @@ interface WorkoutDao {
     suspend fun setRpeRating(id: String, rpe: Int)
 
     /**
+     * Records that the rider declined a breakthrough off this ride (7.10.5).
+     *
+     * One-way on purpose: nothing clears it. Accepting later is done by typing
+     * the number in Settings, which is a different act with a different reason
+     * on it, and re-offering a proposal the rider has refused is exactly what
+     * this exists to stop.
+     */
+    @Query("UPDATE workouts SET ftp_proposal_declined = 1 WHERE id = :id")
+    suspend fun declineFtpProposal(id: String)
+
+    /**
      * Assigns a guest ride to a profile after the fact.
      *
      * A guest ride is recorded with a null `user_id`, and the rider is asked

@@ -69,7 +69,12 @@ class PostRideViewModel(
             val profileId = settingsRepository.settings.first().lastProfileId
             val currentFtp = profileId?.let { userRepository.getUser(it)?.ftpWatts } ?: 0
 
-            val proposed = if (workout != null && currentFtp > 0) {
+            // 7.10.5. A ride the rider has already answered for is not asked
+            // about again. The analyser is run on every load — that is what
+            // makes the summary re-offer a proposal after it is closed and
+            // reopened — so the answer has to be on the ride rather than in
+            // this object's memory.
+            val proposed = if (workout != null && currentFtp > 0 && !workout.ftpProposalDeclined) {
                 val metrics = workoutRepository.getMetrics(workoutId)
                 val provenance = PowerProvenance.of(
                     measured = metrics.count { it.powerIsMeasured == true },
@@ -144,8 +149,19 @@ class PostRideViewModel(
         }
     }
 
+    /**
+     * Written down rather than merely cleared (7.10.5).
+     *
+     * Asked often enough, "no" stops being a decision and becomes a thing to
+     * tap past — and the tap next to it accepts a permanent change to the
+     * rider's own record.
+     */
     fun declineFtpProposal() {
+        val workoutId = _uiState.value.workout?.id
         _uiState.update { it.copy(proposedFtp = null) }
+        if (workoutId != null) {
+            viewModelScope.launch { workoutRepository.declineFtpProposal(workoutId) }
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.pelonot.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.AppSettings
@@ -282,6 +283,29 @@ class AppViewModel(
         viewModelScope.launch {
             workoutRepository.clearRecoverableWorkouts()
             _recoverableWorkout.value = null
+        }
+    }
+
+    /**
+     * Puts back the value an auto-FTP change replaced (7.10.4).
+     *
+     * **Appends a row rather than erasing one.** The app moving somebody's FTP
+     * by itself is the app editing their own record, and an undo that deleted
+     * the row would be a second edit covering the first — leaving a history
+     * that says nothing ever happened, which is exactly the state 7.9 exists to
+     * make impossible.
+     *
+     * It carries no `workoutId`: the ride caused the change being undone, not
+     * this one, and pointing at it would read as "this ride said 215".
+     */
+    fun revertFtpChange(toWatts: Int) {
+        viewModelScope.launch {
+            val profileId = settingsRepository.settings.first().lastProfileId ?: return@launch
+            userRepository.updateFtp(
+                userId = profileId,
+                ftpWatts = toWatts,
+                source = FtpChangeSource.AutoBreakthroughReverted
+            )
         }
     }
 
