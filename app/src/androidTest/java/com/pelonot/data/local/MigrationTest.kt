@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -366,6 +367,142 @@ class MigrationTest {
                     cursor.isNull(1)
                 )
                 assertEquals(180.0, cursor.getDouble(2), 0.001)
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * The FTP history table arriving, and the row it seeds for each rider.
+     *
+     * The seeded row is the point (7.9.6). Without it, every rider who already
+     * exists has a trend chart that begins at their **second** FTP change — the
+     * first value they ever had is on `profiles` and nowhere else, and a history
+     * cannot be derived from a column that is overwritten on update.
+     *
+     * Dated to the profile's own `created_at` rather than to the migration,
+     * because that is when the number was true of the rider, and marked
+     * `Unknown` rather than `ProfileCreated`: a profile whose FTP has been
+     * edited four times since is not described by either, and the enum has a
+     * case for exactly "nobody wrote it down".
+     */
+    @Test
+    fun migrate7To8_seedsEachRidersFirstFtpFromTheProfileTheyAlreadyHave() {
+        helper.createDatabase(TEST_DB, 7).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1), (2, 'Housemate', 64.0, 185, 2000, NULL, 1)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 8, true, AppMigrations.MIGRATION_7_8)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT local_user_id, ftp_watts, changed_at, source, workout_id " +
+                    "FROM ftp_history ORDER BY local_user_id"
+            ).use { cursor ->
+                assertTrue("no history was seeded at all", cursor.moveToFirst())
+                assertEquals(1, cursor.getInt(0))
+                assertEquals(210, cursor.getInt(1))
+                assertEquals(
+                    "the seed must be dated to when the number was true, not to the migration",
+                    1000L,
+                    cursor.getLong(2)
+                )
+                assertEquals("Unknown", cursor.getString(3))
+                assertTrue("nothing caused this one", cursor.isNull(4))
+
+                assertTrue("only one rider was seeded", cursor.moveToNext())
+                assertEquals(2, cursor.getInt(0))
+                assertEquals(185, cursor.getInt(1))
+                assertEquals(2000L, cursor.getLong(2))
+
+                assertFalse("one row per rider, not more", cursor.moveToNext())
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * 7.9.3, checked against the database rather than reasoned about: deleting a
+     * ride must not delete the fact that the rider's FTP changed.
+     *
+     * The counterpart matters as much — the profile reference is `CASCADE` — so
+     * both directions are asserted here. This project has had three
+     * delete-plus-insert defects and one live one; a foreign-key action is
+     * cheap to check and expensive to be wrong about.
+     */
+    @Test
+    fun deletingTheRideThatMovedAnFtpKeepsTheFtpChange() {
+        helper.createDatabase(TEST_DB, 7).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj, total_distance_km,
+                    avg_cadence, avg_power, avg_hr, intent_modifier, rpe_rating,
+                    is_complete, was_recovered, timestamp, ftp_watts
+                ) VALUES ('w1', 1, NULL, 1200, 180.0, 8.0, 85.0, 150.0, 140.0, 1.0, NULL, 1, 0, 1000, 200)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 8, true, AppMigrations.MIGRATION_7_8)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val db = migrated.openHelper.writableDatabase
+            db.execSQL(
+                "INSERT INTO ftp_history (local_user_id, ftp_watts, changed_at, source, workout_id) " +
+                    "VALUES (1, 225, 3000, 'AutoBreakthrough', 'w1')"
+            )
+
+            db.execSQL("DELETE FROM workouts WHERE id = 'w1'")
+
+            db.query("SELECT ftp_watts, workout_id FROM ftp_history WHERE changed_at = 3000")
+                .use { cursor ->
+                    assertTrue(
+                        "deleting the ride took the FTP change with it",
+                        cursor.moveToFirst()
+                    )
+                    assertEquals(225, cursor.getInt(0))
+                    assertTrue("the ride reference should be nulled, not kept", cursor.isNull(1))
+                }
+
+            db.execSQL("DELETE FROM profiles WHERE local_user_id = 1")
+
+            db.query("SELECT COUNT(*) FROM ftp_history").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(
+                    "an FTP history is a statement about a rider and goes with them",
+                    0,
+                    cursor.getInt(0)
+                )
             }
         } finally {
             migrated.close()

@@ -7,6 +7,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.CalibrationState
@@ -105,7 +106,11 @@ class SettingsViewModel(
 
     fun setFtp(ftpWatts: Int) {
         val userId = uiState.value.profile?.localUserId ?: return
-        viewModelScope.launch { userRepository.updateFtp(userId, ftpWatts) }
+        // 7.9.2. A number the rider typed is a *claim*; the chart draws it
+        // differently from one the app measured off a twenty-minute peak.
+        viewModelScope.launch {
+            userRepository.updateFtp(userId, ftpWatts, FtpChangeSource.ManualEdit)
+        }
     }
 
     fun setWeight(weightKg: Double) {

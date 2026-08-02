@@ -1,6 +1,11 @@
 package com.pelonot.data.repository
 
+import androidx.room.withTransaction
+import com.pelonot.data.local.AppDatabase
+import com.pelonot.data.local.dao.FtpHistoryDao
 import com.pelonot.data.local.dao.UserDao
+import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseSyncRepository
 import kotlinx.coroutines.flow.Flow
@@ -10,28 +15,94 @@ import kotlinx.coroutines.flow.Flow
  * mirror, so a sync failure never blocks a local change.
  */
 class UserRepository(
+    private val database: AppDatabase,
     private val userDao: UserDao,
-    private val syncRepository: SupabaseSyncRepository
+    private val ftpHistoryDao: FtpHistoryDao,
+    private val syncRepository: SupabaseSyncRepository,
+    private val clock: () -> Long = System::currentTimeMillis
 ) {
 
     val allUsers: Flow<List<UserEntity>> = userDao.getAllUsers()
+
+    /** A rider's FTP over time, oldest first (7.9). */
+    fun observeFtpHistory(userId: Int): Flow<List<FtpHistoryEntity>> =
+        ftpHistoryDao.observeForUser(userId)
+
+    suspend fun ftpHistory(userId: Int): List<FtpHistoryEntity> = ftpHistoryDao.forUser(userId)
 
     fun observeUser(userId: Int): Flow<UserEntity?> = userDao.getUserByIdFlow(userId)
 
     suspend fun getUser(userId: Int): UserEntity? = userDao.getUserById(userId)
 
-    /** Inserts or updates a profile, returning it with its assigned id. */
-    suspend fun save(user: UserEntity): UserEntity {
-        val rowId = userDao.insertUser(user)
-        // A new profile has localUserId 0 until Room autogenerates one.
-        val saved = if (user.localUserId == 0) user.copy(localUserId = rowId.toInt()) else user
+    /**
+     * Inserts or updates a profile, returning it with its assigned id.
+     *
+     * **This is the one funnel (7.9.4).** Every path that changes FTP ends up
+     * here — Settings, the auto-breakthrough dialog, profile creation, a guest
+     * keeping their ride, and whatever 15 and 19.2.3 add next — so the history
+     * row is written *here*, in the same transaction as the profile, rather
+     * than at each call site. A history that depends on every new path
+     * remembering to append to it is a history that will be wrong within two
+     * features, and it will be wrong silently.
+     *
+     * The consequence worth stating: a caller that changes FTP without naming
+     * a [ftpSource] still gets a row, marked [FtpChangeSource.Unknown]. Losing
+     * the reason is survivable; losing the change is not.
+     */
+    suspend fun save(
+        user: UserEntity,
+        ftpSource: FtpChangeSource = FtpChangeSource.Unknown,
+        ftpWorkoutId: String? = null
+    ): UserEntity {
+        val previous = if (user.localUserId == 0) null else userDao.getUserById(user.localUserId)
+
+        val saved = database.withTransaction {
+            val rowId = userDao.insertUser(user)
+            // A new profile has localUserId 0 until Room autogenerates one.
+            val stored =
+                if (user.localUserId == 0) user.copy(localUserId = rowId.toInt()) else user
+
+            // 7.9.5. A change to the same value is not a change. Without this,
+            // a re-save in Settings, a rename, or an idempotent pull from
+            // another device fills the trend chart with vertical noise at the
+            // same height.
+            if (previous?.ftpWatts != stored.ftpWatts) {
+                ftpHistoryDao.insert(
+                    FtpHistoryEntity(
+                        localUserId = stored.localUserId,
+                        ftpWatts = stored.ftpWatts,
+                        changedAt = clock(),
+                        // A brand-new profile's first FTP is where the number
+                        // came from, whatever the caller said about it.
+                        source = (if (previous == null) FtpChangeSource.ProfileCreated
+                        else ftpSource).name,
+                        workoutId = ftpWorkoutId
+                    )
+                )
+            }
+            stored
+        }
+
+        // Outside the transaction: the cloud is a best-effort mirror and a
+        // network call has no business holding a database lock.
         syncRepository.syncProfile(saved)
         return saved
     }
 
-    suspend fun updateFtp(userId: Int, ftpWatts: Int) {
+    /**
+     * @param source why it moved (7.9.2) — the distinction the trend chart
+     *   draws, because an FTP the rider typed is a claim and one the app
+     *   measured is evidence.
+     * @param workoutId the ride that caused it, where there was one.
+     */
+    suspend fun updateFtp(
+        userId: Int,
+        ftpWatts: Int,
+        source: FtpChangeSource = FtpChangeSource.Unknown,
+        workoutId: String? = null
+    ) {
         val user = userDao.getUserById(userId) ?: return
-        save(user.copy(ftpWatts = ftpWatts))
+        save(user.copy(ftpWatts = ftpWatts), ftpSource = source, ftpWorkoutId = workoutId)
     }
 
     suspend fun updateWeight(userId: Int, weightKg: Double) {

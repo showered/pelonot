@@ -199,11 +199,25 @@ class WorkoutServiceTest {
         assertNull(ServiceLocator.workoutRepository.findRecoverableWorkout())
     }
 
+    /**
+     * Stopping when there is no ride must change nothing and invent nothing.
+     *
+     * Asserted against the state *before* the call rather than against `Idle`.
+     * `WorkoutService` is one instance for the whole process, so it is only
+     * `Idle` while no test in this run has yet finished a ride — which made this
+     * assertion a statement about test **ordering** rather than about the
+     * service, and it duly failed the first time a new test class was added
+     * ahead of this one alphabetically.
+     */
     @Test
     fun stoppingWithoutStartingIsHarmless() {
+        val before = service.workoutState.value
+        assertNull("this test needs no ride in flight", service.currentSession.value)
+
         service.stopWorkout()
 
-        assertEquals(WorkoutState.Idle, service.workoutState.value)
+        assertEquals("stopping with no ride must change nothing", before, service.workoutState.value)
+        assertNull("stopping with no ride must not invent one", service.currentSession.value)
     }
 
     // ── Helpers ─────────────────────────────────────────────────────

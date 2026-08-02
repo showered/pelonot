@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.pelonot.data.local.dao.ClassTemplateDao
+import com.pelonot.data.local.dao.FtpHistoryDao
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.ClassTemplateEntity
+import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
@@ -18,9 +20,10 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
         UserEntity::class,
         ClassTemplateEntity::class,
         WorkoutEntity::class,
-        WorkoutMetricEntity::class
+        WorkoutMetricEntity::class,
+        FtpHistoryEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun classTemplateDao(): ClassTemplateDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutMetricDao(): WorkoutMetricDao
+    abstract fun ftpHistoryDao(): FtpHistoryDao
 
     companion object {
 
@@ -37,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
          * restore has to refuse a backup from a newer schema (12.4.4), and
          * that comparison needs the number at runtime.
          */
-        const val SCHEMA_VERSION = 7
+        const val SCHEMA_VERSION = 8
 
         private const val DATABASE_NAME = "pelonot_database"
 

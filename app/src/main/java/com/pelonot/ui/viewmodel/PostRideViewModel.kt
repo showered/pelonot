@@ -3,6 +3,7 @@ package com.pelonot.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.SettingsRepository
@@ -129,7 +130,16 @@ class PostRideViewModel(
         val proposed = _uiState.value.proposedFtp ?: return
         viewModelScope.launch {
             val profileId = settingsRepository.settings.first().lastProfileId ?: return@launch
-            userRepository.updateFtp(profileId, proposed)
+            // 7.9.2 / 7.9.3. Named as evidence rather than a claim, and tied to
+            // the ride that produced it — which stays true if the ride is later
+            // deleted: `workout_id` is ON DELETE SET NULL, because the training
+            // history is not the ride's to take with it.
+            userRepository.updateFtp(
+                userId = profileId,
+                ftpWatts = proposed,
+                source = FtpChangeSource.AutoBreakthrough,
+                workoutId = _uiState.value.workout?.id
+            )
             _uiState.update { it.copy(currentFtp = proposed, proposedFtp = null) }
         }
     }

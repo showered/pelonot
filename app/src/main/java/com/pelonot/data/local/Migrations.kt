@@ -155,8 +155,72 @@ object AppMigrations {
         }
     }
 
+    /**
+     * Adds the `ftp_history` table, and seeds it (PLAN 7.9).
+     *
+     * FTP is the app's one genuine fitness measure, it is recomputed for free
+     * after every ride, and until now the previous value was overwritten and
+     * gone. A history cannot be derived afterwards from a column that was
+     * destroyed on update, so it has to start being recorded — and the first
+     * row of each rider's has to be **seeded here**, because otherwise every
+     * existing rider's trend chart begins at their *second* FTP change (7.9.6).
+     *
+     * Two details in that seed are deliberate. It is dated to the profile's own
+     * `created_at` rather than to the migration, because that is when the number
+     * was actually true of the rider; and it is marked `Unknown` rather than
+     * `ProfileCreated`, because a profile whose FTP has been edited four times
+     * since is not being described accurately by either "created" or by any
+     * other label this migration could invent. The value is known, the reason
+     * is not, and the enum has a case for exactly that.
+     *
+     * `workout_id` is `ON DELETE SET NULL`: deleting a ride must not delete the
+     * fact that the rider's FTP changed. `local_user_id` is `CASCADE`, because
+     * an FTP history means nothing once there is no rider it is about — the
+     * opposite call to `workouts.user_id`'s, and for a real difference. A ride
+     * is a record of something that happened and survives its rider; a history
+     * of somebody's FTP is a statement about somebody.
+     */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ftp_history` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `local_user_id` INTEGER NOT NULL,
+                    `ftp_watts` INTEGER NOT NULL,
+                    `changed_at` INTEGER NOT NULL,
+                    `source` TEXT NOT NULL,
+                    `workout_id` TEXT,
+                    FOREIGN KEY(`local_user_id`) REFERENCES `profiles`(`local_user_id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE ,
+                    FOREIGN KEY(`workout_id`) REFERENCES `workouts`(`id`)
+                        ON UPDATE NO ACTION ON DELETE SET NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_ftp_history_local_user_id` " +
+                    "ON `ftp_history` (`local_user_id`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_ftp_history_workout_id` " +
+                    "ON `ftp_history` (`workout_id`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_ftp_history_changed_at` " +
+                    "ON `ftp_history` (`changed_at`)"
+            )
+            db.execSQL(
+                """
+                INSERT INTO `ftp_history` (`local_user_id`, `ftp_watts`, `changed_at`, `source`, `workout_id`)
+                SELECT `local_user_id`, `ftp_watts`, `created_at`, 'Unknown', NULL FROM `profiles`
+                """.trimIndent()
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8
     )
 }

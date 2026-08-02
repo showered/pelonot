@@ -102,7 +102,12 @@ object ServiceLocator {
     }
 
     val userRepository: UserRepository by lazy {
-        UserRepository(database.userDao(), syncRepository)
+        UserRepository(
+            database = database,
+            userDao = database.userDao(),
+            ftpHistoryDao = database.ftpHistoryDao(),
+            syncRepository = syncRepository
+        )
     }
 
     val classRepository: ClassRepository by lazy {
