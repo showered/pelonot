@@ -192,6 +192,49 @@ Name the shape and the demand — "Threshold 3×8", "Descending Climbs", "Sweet
 Spot Over/Under". Not the category and the length, which the rider can already
 see. *Not tested.*
 
+**And it may only name what the intervals carry.** PLAN.md **25.4.2**. Four
+classes were named after a position their blocks did not prescribe: `END-08`
+"Seated Climbs 45", `SWT-05` "Big Gear Sweet Spot 30", `THR-06` "Big Gear
+Threshold 4×4 30" and `END-12` "Big Gear Endurance 60". That is the same defect
+25.1 opened with — `CLB-02` was called "Standing Attacks" and nothing but its
+title made it standing — except pointed the other way: the ride screen, the
+spoken coach and the overlay all say *nothing* about position while the title
+says "seated", so the rider is told one thing by the name and another by every
+surface that speaks during the ride.
+
+The owner's call was to rename rather than to bend R11's cap, and the working
+rule that comes out of it:
+
+> **A position word in a title is a promise that the blocks say it too.**
+> "Seated", "standing", "out of the saddle" — and **"big gear"**, which in
+> cycling usage means seated torque and reads as the same instruction.
+
+So `SWT-09` "Big Gear / Fast Legs 45" keeps its name: its two big-gear blocks
+*are* marked `SEATED`, and at 5 minutes each with 3 minutes between them they
+are under both the length cap and the nagging guide. The other four are named
+off the axis the data does carry — cadence:
+
+| Was | Is | What the data says |
+|---|---|---|
+| `END-08` Seated Climbs 45 | **Tempo Climbs 5×5 45** | 5 × 5 min at Z3, `CLIMB` |
+| `END-12` Big Gear Endurance 60 | **Climb and Spin 60** | 6 min `CLIMB` alternating 1 min `SPIN`, all Z2 |
+| `SWT-05` Big Gear Sweet Spot 30 | **Low Cadence Sweet Spot 30** | 4 × 4 min at Z4, `CLIMB`, spin recoveries |
+| `THR-06` Big Gear Threshold 4×4 30 | **Low Cadence Threshold 4×4 30** | 4 × 4 min at Z4, `CLIMB`, easy recoveries |
+
+"Low cadence" rather than "big gear" because it is the thing the interval
+literally states — 60–70 rpm is on the class detail screen and on the ride
+screen — and because it makes no claim about the saddle either way, which is
+exactly what an unpositioned block means. It is also what the rest of the
+industry calls these: TrainerRoad and Wahoo SYSTM both name the variant "low
+cadence", and Peloton, which has no way to prescribe anything, sells the same
+session as a "Climb Ride".
+
+**A rename is safe and a re-id is not.** `workouts.class_id` is the foreign
+key; the title is not, so a ride recorded on `END-08` still resolves and simply
+displays the better name. It reaches a tablet that has already seeded because
+`build.py`'s fingerprint hashes each file's whole body — `ClassTemplateSeeder`
+upserts on a fingerprint change, and nothing is retired because no id moved.
+
 ### R11 — A position is an instruction, so it has to be a possible one
 
 PLAN.md **25.1**. A block may name `STANDING`, `SEATED` or nothing, and

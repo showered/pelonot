@@ -137,7 +137,7 @@ now*, unlike every other number on there.
         fifteen-minute climb at 60–70 rpm is exactly where a rider *should* come
         out of the saddle when they feel like it, and prescribing "stay seated"
         across it would be the app talking over the rider's own judgement
-- [ ] **25.4.2** **Three classes are named after a position they cannot
+- [x] **25.4.2** **Three classes are named after a position they cannot
       state, and it is the owner's call.** `END-08` "Seated Climbs 45",
       `SWT-05` "Big Gear Sweet Spot 30" and `THR-06` "Big Gear Threshold 4×4 30"
       are each *entirely* about being in the saddle in a big gear, and in each
@@ -161,3 +161,58 @@ now*, unlike every other number on there.
       data does not carry. **Do not simply raise the number** — the failure it
       is guarding against is real, and 25.4.1 above is the evidence that most
       classes want nothing
+
+      **The owner chose the third: rename them.** *"Rename the ride so it's not
+      contradictory. Do what you think is best based on your thoughts and other
+      established rides by Peloton, Whoosh, etc."* R11's cap is untouched, which
+      is the point — the cap was never the thing that was wrong.
+
+      **It was four classes, not three.** Auditing the titles for the rename
+      turned up `END-12` "Big Gear Endurance 60" doing exactly the same thing at
+      Z2, and the audit is only worth having if it is complete. The rule the
+      four have in common, now written into `classlibrary/README.md` under R10:
+      **a position word in a title is a promise that the blocks say it too** —
+      and "big gear" is a position word, because in cycling usage it means
+      seated torque and a rider reads it as the instruction. So `SWT-09` "Big
+      Gear / Fast Legs 45" keeps its name, since its two big-gear blocks really
+      are marked `SEATED`.
+
+      | Was | Is |
+      |---|---|
+      | `END-08` Seated Climbs 45 | **Tempo Climbs 5×5 45** |
+      | `END-12` Big Gear Endurance 60 | **Climb and Spin 60** |
+      | `SWT-05` Big Gear Sweet Spot 30 | **Low Cadence Sweet Spot 30** |
+      | `THR-06` Big Gear Threshold 4×4 30 | **Low Cadence Threshold 4×4 30** |
+
+      Named off the axis the data does carry. "Low cadence" rather than "big
+      gear" because 60–70 rpm is literally on the class detail screen and on the
+      ride screen while the rider is in the block, and because it claims nothing
+      about the saddle in either direction — which is precisely what an
+      unpositioned block means. It is also the industry's own word: TrainerRoad
+      and Wahoo SYSTM both call the variant "low cadence", and Peloton, which
+      cannot prescribe a position at all, sells the session as a "Climb Ride".
+
+      **A rename is safe where a re-id would not be.** `workouts.class_id` is
+      the foreign key and the title is not, so a ride recorded on `END-08` keeps
+      resolving and simply shows the better name — the opposite of 23.2.6's
+      constraint, which is why that rebuild had to take new ids and this did
+      not. It reaches an already-seeded tablet because `build.py`'s fingerprint
+      hashes each file's whole body, so the title change moves it (`42e31385` →
+      `0047b4b8`) and `ClassTemplateSeeder` upserts all 72; nothing is retired,
+      because no id moved.
+
+      *Observed on the tablet AVD: the library browser lists all four new
+      titles, `Low Cadence Threshold 4×4 30` opens with its 4 × 4 min at 60–70
+      rpm and no position on any block, and the seeder logged one reconcile on
+      first launch and nothing on the second.*
+
+- [ ] **25.4.3** **`SWT-05` and `THR-06` are nearly the same class**, which the
+      rename made visible by putting them in the same words. Identical work — 4
+      × 4 min at Z4, 60–70 rpm — and they differ only in the recovery: Z2 at
+      105–115 rpm against Z1 at 75–85. That passes R9, which compares the full
+      signature, and it is defensible on paper (the spin recovery is what makes
+      one sweet spot and the other threshold). But 23.2.6's whole complaint
+      about the old library was that `SS-03` and `TH-03` were the same class,
+      and this is the same shape of thing at a much smaller scale. Either give
+      one of them a different work interval, or let the titles say what actually
+      separates them
