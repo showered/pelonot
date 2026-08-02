@@ -27,22 +27,51 @@ difference between a stale reading and a record that edits itself. It is the
 same family as the `avg_*` defect in CLAUDE.md: a number derived on read, from
 a source that has moved since.
 
-- [ ] **7.8.1** `workouts.ftp_watts`, written when the ride is created, with the
+- [x] **7.8.1** `workouts.ftp_watts`, written when the ride is created, with the
       value the ride was actually judged against. A `Migration`, an exported
       schema in `app/schemas/` and a `MigrationTestHelper` test (12.5), and it
-      belongs in the same migration as the other columns 12.5.4 is waiting on
-- [ ] **7.8.2** **Nullable, and null means unknown** — do not backfill existing
+      belongs in the same migration as the other columns 12.5.4 is waiting on.
+      *Migration 6→7, schema `7.json`, and `migrate6To7_…` in `MigrationTest`.
+      Written in `WorkoutService.toEntity()`, which runs at **insert** — that
+      is, at the start of the ride — so it is the number the ride was judged
+      against and not one reconstructed afterwards. Observed on the AVD: a ride
+      started fresh wrote `ftp_watts=230` beside `intent_modifier=1.05`*
+- [x] **7.8.2** **Nullable, and null means unknown** — do not backfill existing
       rows with the profile's current FTP, which would bake today's guess into
-      the record permanently and look exactly like real data afterwards
-- [ ] **7.8.3** Every read site uses the ride's own value and falls back to the
+      the record permanently and look exactly like real data afterwards.
+      *The migration test asserts the null rather than the column, because that
+      is the whole of this item*
+- [x] **7.8.3** Every read site uses the ride's own value and falls back to the
       profile's only when it is null: the power chart's zone bands and FTP rule
       (16.1.1), any time-in-zone summary (16.1.4, 11.3.3), and `leaderboardFor`
       if it ever compares zones rather than raw watts. The fallback is today's
-      behaviour, so old rides are no worse than they are now
-- [ ] **7.8.4** Where the fallback is in use, the screen says so rather than
-      drawing bands that look as authoritative as the real ones
-- [ ] **7.8.5** A guest ride has no profile and so no FTP at all. It gets no zone
-      bands rather than the last-selected rider's
+      behaviour, so old rides are no worse than they are now. *One read site
+      turned out to feed all of them — `RideDetailViewModel.buildCharts` hands
+      one FTP to `RideChartBuilder`, which is where the bands, the FTP rule,
+      the prescription and the time-in-zone all come from*
+- [x] **7.8.4** Where the fallback is in use, the screen says so rather than
+      drawing bands that look as authoritative as the real ones.
+      *`RideCharts.ftpIsTheRides` carries it out of the builder; the power card
+      says "zones from your FTP today — this ride did not record its own".
+      Observed against a seeded ride with a null column, and absent on one with
+      230 beside it*
+- [x] **7.8.5** ~~A guest ride has no profile and so no FTP at all. It gets no
+      zone bands rather than the last-selected rider's.~~ **Done differently,
+      because the premise is not true.** A guest ride *does* have an FTP — the
+      app's default — and it is not the last-selected rider's: it is what the
+      ride's live target gauge, resistance band and zone ladder were all built
+      from while the guest was pedalling. So the number on the row is a true
+      record of what the ride was judged against, and 7.8.1 writes it for a
+      guest like any other ride.
+
+      What a guest ride lacks is a **rider**, and "Zone 5" is a claim about
+      somebody. So the card says *"no rider on this ride — zones from the app's
+      default FTP"* rather than withdrawing the bands. Withdrawing them was the
+      original instruction and it costs more than it saves: `ftpWatts` is the
+      single input to the prescription blocks and the time-in-zone bar as well,
+      so a guest would lose the record of what the class asked of them — and
+      the ride's own screen would then disagree with what the guest was looking
+      at while they rode it
 
 ### 7.9 FTP history — the progress measure the app already has and discards
 
