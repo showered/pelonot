@@ -145,9 +145,21 @@ exists; nothing creates one. The previous value is overwritten and gone.
 - [ ] **7.10.1** 16.3.1 is now buildable: FTP over time, stepped rather than
       interpolated — FTP does not drift smoothly between two rides, it changes
       on a day — with each change marked by what caused it (7.9.2) and tappable
-      through to the ride that triggered it
-- [ ] **7.10.2** On the dashboard (22.1.4): current FTP, when it last changed,
-      and the direction. This is the progress line the section is missing
+      through to the ride that triggered it. *Half done: the **stepped** part is
+      built and drawn on the dashboard's card (7.10.2), and `FtpTrend` carries
+      the source and the workout id for every point. What is missing is the
+      full-size version — marks per change, and tapping one through to the ride
+      — which wants a screen to live on that does not exist yet (16.3)*
+- [x] **7.10.2** On the dashboard (22.1.4): current FTP, when it last changed,
+      and the direction. This is the progress line the section is missing.
+      *Done, with a stepped sparkline beside it. `FtpTrend` is pure and holds
+      the rules: the direction is measured against the **previous** value rather
+      than the lowest, so 200 → 240 → 225 is a fall of 15 and not a rise of 25;
+      a fall is shown, because a progress card that could only go up would be
+      lying by omission; and the range is padded, so a five-watt move is not
+      drawn as a cliff filling the box. Observed on the AVD both ways — Simon
+      with "+15 W since Aug 2, 2026 · you set it", and Kilo, whose FTP has never
+      moved, with nothing but the number*
 - [x] **7.10.3** In Settings, beside the editable field: what it is now and when
       it last moved, so a rider who does not remember agreeing to a change can
       see the app made it. *"Last changed Aug 2, 2026 · up from 200 W · you set

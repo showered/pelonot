@@ -86,8 +86,8 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 No bike, no rider, no HITL at all — the tablet AVD throughout, with the real
 bike left connected over adb and untouched. Closed: **25.3**, **25.4.1**,
-**24.3.1**, **7.8**, **7.9** and **7.10.3**. 414 JVM tests and **50 instrumented
-tests**, 0 failures. One new plan item came out of it (**25.4.2**, which is
+**24.3.1**, **7.8**, **7.9** and **7.10.3** and **7.10.2 / 22.1.4**. 421 JVM tests and **50
+instrumented tests**, 0 failures. One new plan item came out of it (**25.4.2**, which is
 the owner's call) and one live bug was found and fixed.
 
 **PLAN.md is an index now.** 4527 lines read start to finish by every session,
@@ -173,6 +173,17 @@ unless the number went back in between. Same two techniques as the twelfth and
 thirteenth sittings': **build the feature that reads the data, then look at the
 data**, and **the database is the witness, not the screenshots**.
 
+**And the payoff of 7.9 landed in the same sitting.** The dashboard's FTP card
+is a progress card now — the number, a **stepped** sparkline of every value it
+has held, and how far it moved, when, and who moved it. Stepped rather than
+interpolated because FTP does not drift between two rides: a diagonal from 200
+to 215 would say the rider passed through 207 on a Tuesday, which nothing
+measured. The direction is read against the *previous* value rather than the
+lowest, so 200 → 240 → 225 is a fall of 15 and not a rise of 25 — and a fall is
+shown, because a progress card that could only go up would be lying by
+omission. *Observed both ways: Simon with "+15 W since Aug 2, 2026 · you set
+it", and Kilo, whose FTP has never moved, with nothing but the number.*
+
 **One test was a statement about ordering rather than about the code.**
 `WorkoutService` is one instance per process, so
 `stoppingWithoutStartingIsHarmless` asserting `Idle` only held while no earlier
@@ -238,6 +249,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**24.2** The household, seen~~ | **Done and observed**, opt-out included |
 | ~~**24.3.1** Riding against a housemate~~ | **Done and observed.** One query and no schema, as advertised. **24.3.2** — the live pace target *during* a ride — is the interesting half and is still open; read 11.6 first |
 | ~~**7.8 / 7.9** The FTP a ride was ridden at, and FTP history~~ | **Both done and observed.** `workouts.ftp_watts` (migration 6→7) and `ftp_history` (7→8, seeded from the profiles that already exist). 16.3 is unblocked. Between them they found a live bug: **saving your FTP in Settings put the old one back**, invisibly, because a second coroutine carried a stale copy past it |
+| **16.3.1 / 7.10.1** The full FTP trend | Half of it is built and on the dashboard. What is missing is the full-size chart with a mark per change and a tap through to the ride — and it wants a screen to live on, which is really 16.3's question |
 | **23.2.3 / 23.2.4** The class library as an update channel | The only remaining reason to read the cloud at all. Additive only — deleting a class takes a rider's history link with it |
 | **14.4** The payload format | Only while the cloud holds one row. **228 KB → 49 KB** per ride on the wire |
 | **23.3.1** The backup reminder | Backup is the offline rider's only durability story and it is entirely manual |
@@ -302,7 +314,7 @@ Two notes worth carrying into the next bike session:
 | 19 | Ideas worth having, ranked | ❌ Not started — mixed |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
-| 22 | The dashboard | 🔶 Barely started — *"Your Progress" shows no progress. The width cap is now a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided* |
+| 22 | The dashboard | 🔶 **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1) and the class library (23.2) are done and observed** — rule 1 is true rather than intended, and the 72 classes are now designed rather than generated (23.2.6), reaching an already-seeded tablet by reconcile-and-retire (23.2.6c). The cloud as an update channel (23.2.3/23.2.4), the backup reminder (23.3.1) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |
 | 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach and now the overlay's cue are done and observed (25.1, 25.2, 25.3).** What is left is one judgement each way: how the cue reads over a playing film (25.3.4, needs the rider), and whether R11's cap should let a class whose identity *is* a position say so (25.4.2, the owner's call) |

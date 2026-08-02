@@ -27,11 +27,15 @@ replaced it mean anything.
 - [ ] **22.1.3** **A trend that is genuinely a trend** — output or minutes per
       week over the last six to eight weeks, sparkline-sized. The history query
       already returns what this needs
-- [ ] **22.1.4** FTP, with the date it last changed and what changed it
+- [x] **22.1.4** FTP, with the date it last changed and what changed it
       (7.10.2, 16.3.1). The app already computes this (7.1) and it is the
       closest thing to a real progress number it owns — but it currently keeps
       only the latest value, so the history this card wants has to be recorded
-      first (7.9)
+      first (7.9). *7.9 recorded it and this card now reads it: the number, a
+      stepped sparkline of every value it has held, and how far it moved, when,
+      and who moved it. **The first thing in this section that is a trend rather
+      than a total.** The two kJ cards below it (22.1.2) are still what they
+      were*
 - [ ] **22.1.5** A **last ride** card that opens the ride detail (12.2) —
       class name, RPE, and whether it beat the rider's own previous ride of the
       same class, which `leaderboardFor` already computes and nothing renders
