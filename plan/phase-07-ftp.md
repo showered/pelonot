@@ -142,14 +142,36 @@ exists; nothing creates one. The previous value is overwritten and gone.
 
 ### 7.10 Showing it, and being honest about it
 
-- [ ] **7.10.1** 16.3.1 is now buildable: FTP over time, stepped rather than
+- [x] **7.10.1** 16.3.1 is now buildable: FTP over time, stepped rather than
       interpolated — FTP does not drift smoothly between two rides, it changes
       on a day — with each change marked by what caused it (7.9.2) and tappable
-      through to the ride that triggered it. *Half done: the **stepped** part is
-      built and drawn on the dashboard's card (7.10.2), and `FtpTrend` carries
-      the source and the workout id for every point. What is missing is the
-      full-size version — marks per change, and tapping one through to the ride
-      — which wants a screen to live on that does not exist yet (16.3)*
+      through to the ride that triggered it. *Done and observed.* The screen it
+      wanted is `FtpProgressScreen`, reached from the dashboard's FTP card,
+      which now carries "How it changed" and a chevron — **not "History"**,
+      which is already a card on the same screen and means the rider's rides.
+      Three decisions in it:
+      - **A mark per change says how the app came to believe it.** Filled where
+        the app measured it off a ride, hollow where the rider typed it — the
+        distinction `FtpChangeSource`'s own documentation opens with, drawn
+        rather than described. `PulledFromCloud` is hollow too: another
+        device's arithmetic is not this bike's measurement
+      - **The first value gets no mark and no row.** It is where the number
+        began, not somewhere it moved to, and `FtpTrend.changes` is one shorter
+        than `points` for exactly that reason
+      - **The axis runs to *now*, not to the last change.** Stopping on the day
+        of the most recent change says the record ends there; the flat run out
+        to the right-hand edge is the rider's answer to "how long have I been
+        at this". It also stops a change made this morning being drawn half off
+        the plot, which reads as data continuing off the chart. `spanToNow`
+        takes the clock as an argument so it stays pure — and a device whose
+        time has moved backwards must not mirror the chart, which is a test
+
+      *Observed on the tablet AVD against a hand-seeded four-value history —
+      200 → 212 (measured, off `ride-simon`) → 205 → 215 — with the marks
+      filled and hollow correctly, the tap on "+12 · measured from a ride"
+      landing on `Standing Attacks 20`'s ride detail, and Kilo, whose FTP has
+      never moved, getting a flat line, "It has not moved since" and no list. A
+      guest's card is not a door rather than a door onto an empty room*
 - [x] **7.10.2** On the dashboard (22.1.4): current FTP, when it last changed,
       and the direction. This is the progress line the section is missing.
       *Done, with a stepped sparkline beside it. `FtpTrend` is pure and holds

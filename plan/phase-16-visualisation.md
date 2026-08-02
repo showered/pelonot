@@ -120,7 +120,16 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       announced once rather than twice*
 
 ### 16.3 Trends — nice to have
-- [ ] **16.3.1** FTP over time, marked with the rides that triggered each change. **Blocked on 7.9** — this was written as a charting task, and the data it charts does not exist: a profile holds one FTP and the previous value is overwritten. See 7.10.1 for what to draw and 7.10.6 for what the line is allowed to claim
+
+**And the screen they live on now exists.** 16.3.1 was the first of these to
+become buildable and it had nowhere to be drawn, so it brought a screen with it:
+`FtpProgressScreen`, off the dashboard's FTP card. It is *Your FTP* rather than
+*Trends* on purpose — one subject, named after what it is about. Whether
+16.3.2–16.3.5 join it there or get their own is still open, and the deciding
+question is whether they are about the rider (FTP, personal bests) or about the
+riding (volume, the calendar).
+
+- [x] **16.3.1** FTP over time, marked with the rides that triggered each change. ~~**Blocked on 7.9**~~ — unblocked by 7.9 and **done and observed**: the stepped line, a mark per change that says whether the app measured it or the rider claimed it, and every change listed newest-first with the ride behind it one tap away. The full write-up, including why the axis runs to *now* and why the first value is not a change, is at **7.10.1**; 7.10.6 is what the line is still not allowed to claim
 - [ ] **16.3.2** Weekly volume and output
 - [ ] **16.3.3** Personal bests by duration
 - [ ] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
