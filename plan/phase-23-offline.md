@@ -168,10 +168,58 @@ whole-database backup and restore (12.4.4 / 19.1.3), the post-ride charts
 and household social (24). **Every one of these is either done or planned with
 no cloud dependency**, which is the good news in this phase.
 
-- [ ] **23.3.1** Backup is the offline rider's only durability story and it is
+- [x] **23.3.1** Backup is the offline rider's only durability story and it is
       manual. A gentle reminder after N rides since the last backup, or a
       change of tablet, is the offline answer to what the cloud tier gets for
-      free. It must be a reminder and not a nag
+      free. It must be a reminder and not a nag.
+
+      *Done and observed.* N is **ten rides**, which is about three weeks for
+      somebody on the bike three or four times a week, and long enough that
+      nobody meets it in their first fortnight. "A reminder and not a nag" is
+      the whole design and it cashes out to four decisions, three of them in
+      `BackupReminder` where they are tested against a count rather than
+      against a screenshot:
+      - **Counted in rides, not in days.** A rider who has been off the bike
+        for a fortnight has lost nothing since their last backup and does not
+        need telling. Time passing is not risk; unbacked riding is
+      - **"Not now" moves the line rather than silencing it.** One mark serves
+        both a backup and a dismissal, because the reminder only ever asks one
+        question — how much riding has happened that a backup would not have
+        covered. The rides already recorded stop asking; the next ten earn the
+        next reminder
+      - **Never having backed up does not lower the bar.** The temptation is to
+        treat it as urgent; it is not. A rider three rides in has nothing to
+        lose yet, and an app that opens with a warning is one whose warnings
+        are ignored by the day they matter. It changes the sentence, not the
+        threshold
+      - **A card on the dashboard, under the actions, in tertiary and not
+        error.** Nothing has gone wrong. It is a fact about where the rides
+        live, and a modal on launch is how that fact gets dismissed by reflex.
+        "Back up" goes to Settings rather than raising a second picker: the
+        backup flow exists once, including the sentence saying how many bytes
+        landed
+
+      Two smaller things worth keeping. The count is **across the whole
+      tablet**, not the selected profile, because the backup file is the whole
+      database — a housemate's rides and a guest's ride are equally in it and
+      equally lost without it. And the mark is written **only on success**:
+      recording a failed backup would tell the rider they are safe on precisely
+      the day they are not.
+
+      *Observed on the tablet AVD across all three paths — the card at 12
+      unbacked rides; "Not now" clearing it and surviving a force-stop, with
+      `has_ever_backed_up` still unset because a dismissal is not a backup; the
+      reminder returning at 14 once more rides landed; and a real backup
+      through the picker writing 405,504 bytes to Downloads, setting the flag
+      and clearing the card.*
+- [ ] **23.3.1a** **Whose backup, once accounts exist?** The reminder counts
+      rides on the tablet and says nothing about sign-in, which is right today
+      because no profile can have an account (15 does not exist) — but it is a
+      real question and not an oversight. Cloud backup is **per profile** and
+      the backup file is **per tablet**, so a household where one rider signs
+      in still has everybody else's rides in one place only. The likely answer
+      is that the reminder counts *unsynced* rides rather than all of them, and
+      it belongs to whoever builds 15
 - [x] **23.3.2** The Backup section says it: *copy it somewhere safe and it can
       be restored onto any tablet running Pelonot*. Reworded for a signed-in
       rider too, where "your rides live on this tablet and nowhere else" had

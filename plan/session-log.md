@@ -8,6 +8,117 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 2 August 2026 (fourteenth sitting): the record stops editing itself
+
+No bike, no rider, no HITL at all — the tablet AVD throughout, with the real
+bike left connected over adb and untouched. Closed: **25.3**, **25.4.1**,
+**24.3.1**, **7.8**, **7.9** and **7.10.3** and **7.10.2 / 22.1.4**. 421 JVM tests and **50
+instrumented tests**, 0 failures. One new plan item came out of it (**25.4.2**, which is
+the owner's call) and one live bug was found and fixed.
+
+**PLAN.md is an index now.** 4527 lines read start to finish by every session,
+of which four sections change. The phases are one file each under `plan/`, the
+split was mechanical, and item numbers — which is what forty-odd pointers in
+`CLAUDE.md` depend on — are unchanged. 309 lines instead of 4527.
+
+**The overlay says get out of the saddle, and then goes quiet (25.3).** The
+owner's own idea and the part he was specific about. The rule was written before
+the code: animate for the transition, then stop — which makes the *edge*, not
+the state, the thing to build on. `PositionCallTracker` answers one question,
+is this interval boundary a call, and **the spoken coach now asks the same
+object**, so the voice and the arrow cannot disagree about what a change is.
+Amber rather than the zone accent, because the zone colour is already the
+interval-change flash and **Zone 1's colour is grey** (11.1b.10) — a warm-up
+that prescribed a position would announce it in the colour of a stray divider.
+*Observed riding `CLB-02` with the overlay up: "STAY SEATED" at 05:01, gone by
+05:08; "OUT OF THE SADDLE" at 11:03, gone by 11:14, and called again at 12:31
+for the second standing attack.* What is left is 25.3.4 — how it reads over a
+playing film — and that needs the rider, because `screencap` returns black over
+DRM.
+
+**25.4.1 was an audit, not a sweep, and that is the finding.** Every
+heavy-torque and standing block in the library listed with its cadence: one
+wanted a position and did not have it (`CLB-05`'s grind ladder, and at 50–60 rpm
+that is not decoration). The sprint efforts resolve to *seated* and therefore to
+nothing — a 120 rpm sprint is a seated sprint, and absence already says so. The
+climb blocks were left alone on purpose: a five-minute climb at 60–70 rpm is
+exactly where a rider *should* stand up when they feel like it.
+
+It also turned up a rule that is not arithmetic and now lives in
+`classlibrary/README.md`: **a positioned effort at Tabata spacing re-announces
+every rep.** Eight "stay seated"s in four minutes. Roughly 30 seconds of
+recovery between positioned reps, or position the set rather than each rep of
+it. And **25.4.2**, which is the owner's: three classes — `END-08`, `SWT-05`,
+`THR-06` — are *entirely* about being in the saddle in a big gear, only their
+titles say so, and R11's half-a-class cap will not let them say it properly.
+That is the same defect 25.1 opened with, and the fix is a taste call about a
+rule he settled.
+
+**Riding against a housemate (24.3.1) cost one query and no schema**, as
+advertised. Their trace behind yours on ride detail, a bare dashed line and
+nothing else — the chart already carries one rider's zones and a second full
+record on the same axes is a graph rather than a comparison. **Aligned by
+absolute elapsed seconds, never stretched to fit**: rescaling a ride that ran
+forty seconds longer moves every one of their efforts off the block it was
+ridden in. The measured-power gate applies to **both** sides, the symmetric half
+checked in the ViewModel, because a modelled trace of mine against a measured
+one of theirs is the same lie facing the other way.
+
+**Then 7.8 and 7.9, which are the same bug seen from two ends.**
+`profiles.ftp_watts` moves — by hand, and by itself when an auto-breakthrough is
+accepted — and everything that drew a past ride read that current value. So a
+ride ridden in Zone 5 in January was redrawn as Zone 4 in March with nothing
+saying anything had changed: a record editing itself. `workouts.ftp_watts`
+(migration 6→7) fixes the reading; `ftp_history` (7→8) fixes the forgetting, and
+the migration **seeds itself from the profiles that already exist** so a rider's
+chart does not begin at their second change.
+
+Three decisions in 7.9 worth carrying:
+
+- **The funnel is `UserRepository.save`, not `updateFtp`.** Every path already
+  ends there. A caller that changes FTP without naming a reason still gets a
+  row, marked `Unknown` — losing the reason is survivable, losing the change is
+  not, because it cannot be recovered from a column that was overwritten.
+- **The two foreign keys go opposite ways and both are tested against the
+  database.** `workout_id` is SET NULL: deleting a ride must not delete the fact
+  that the rider's FTP changed. The profile is CASCADE: unlike a ride, which is
+  a record of something that happened, an FTP history is a statement about
+  somebody.
+- **The seed is marked `Unknown`, not `ProfileCreated`.** A profile whose FTP
+  has been edited four times since is described accurately by neither.
+
+**And the find of the sitting, which the history itself produced.** Settings
+fired two coroutines off one tap of Save — one for FTP, one for weight — each
+doing read-modify-write on the same profile row. The weight write read the
+profile *before* the FTP write committed and carried the old FTP back past it,
+so **typing 215 and pressing Save left 200 in the database**, with the screen
+showing 215 until the next launch. Nothing on any screen was wrong, which is why
+it survived the whole life of the project. What made it visible was two
+`ManualEdit` rows for the same value twenty-three seconds apart — impossible
+unless the number went back in between. Same two techniques as the twelfth and
+thirteenth sittings': **build the feature that reads the data, then look at the
+data**, and **the database is the witness, not the screenshots**.
+
+**And the payoff of 7.9 landed in the same sitting.** The dashboard's FTP card
+is a progress card now — the number, a **stepped** sparkline of every value it
+has held, and how far it moved, when, and who moved it. Stepped rather than
+interpolated because FTP does not drift between two rides: a diagonal from 200
+to 215 would say the rider passed through 207 on a Tuesday, which nothing
+measured. The direction is read against the *previous* value rather than the
+lowest, so 200 → 240 → 225 is a fall of 15 and not a rise of 25 — and a fall is
+shown, because a progress card that could only go up would be lying by
+omission. *Observed both ways: Simon with "+15 W since Aug 2, 2026 · you set
+it", and Kilo, whose FTP has never moved, with nothing but the number.*
+
+**One test was a statement about ordering rather than about the code.**
+`WorkoutService` is one instance per process, so
+`stoppingWithoutStartingIsHarmless` asserting `Idle` only held while no earlier
+test had finished a ride — adding a class ahead of it alphabetically was enough
+to fail it, twice, non-deterministically. It asserts against the state before
+the call now. Worth knowing before trusting a red instrumented run.
+
+---
+
 ### 1 August 2026 (thirteenth sitting): a library that was designed, and the instruction it could not give
 
 No bike, no rider — the tablet AVD throughout. Closed: **23.2.6**, **23.2.6c**
