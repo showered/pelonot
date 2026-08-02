@@ -173,6 +173,7 @@ fun PelonotNavGraph(
                 userName = uiState.selectedProfile?.name ?: "Guest",
                 ftp = uiState.selectedProfile?.ftpWatts
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
+                ftpTrend = uiState.ftpTrend,
                 stats = uiState.dashboardStats,
                 householdWeek = uiState.householdWeek,
                 youId = uiState.selectedProfile?.localUserId,

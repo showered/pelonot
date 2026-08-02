@@ -1,5 +1,16 @@
 package com.pelonot.ui.screen
 
+import androidx.compose.ui.graphics.Color
+import java.util.Date
+import java.text.DateFormat
+import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.data.local.entity.FtpChangeSource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.foundation.Canvas
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -70,6 +81,7 @@ import com.pelonot.ui.theme.spacing
 fun MainDashboardScreen(
     userName: String,
     ftp: Int,
+    ftpTrend: FtpTrend,
     stats: DashboardStats,
     /** Who else on this bike has ridden this week (24.2.1). */
     householdWeek: List<HouseholdRiderWeek> = emptyList(),
@@ -115,7 +127,7 @@ fun MainDashboardScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
                 // ── 2️⃣ FTP Hero Card ────────────────────────────────────
-                FtpHeroCard(ftp = ftp)
+                FtpHeroCard(ftp = ftp, trend = ftpTrend)
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
@@ -238,7 +250,7 @@ private fun GreetingHeader(userName: String) {
 // FTP Hero Card
 // =========================================================================
 @Composable
-private fun FtpHeroCard(ftp: Int) {
+private fun FtpHeroCard(ftp: Int, trend: FtpTrend) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -295,6 +307,8 @@ private fun FtpHeroCard(ftp: Int) {
             }
 
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+
+            FtpTrendLine(trend)
 
             Text(
                 text = "Functional Threshold Power — your baseline for all training zones",
@@ -540,6 +554,114 @@ private fun ProgressMetricCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * The rider's FTP over time, on the card that shows the number (7.10.2 / 22.1.4).
+ *
+ * **Draws nothing until the number has actually moved.** A brand-new rider has
+ * one recorded value — the one their profile started with — and a card
+ * announcing "last changed" for it would be reporting an event that never
+ * happened, on their first ever look at the app. This is the same rule the
+ * household panel follows (24.1.6): the empty case draws nothing at all, not an
+ * empty version of the thing.
+ *
+ * The line is **stepped, not interpolated** (7.10.1). FTP does not drift
+ * smoothly between two rides; it was one number until the day it became
+ * another. A diagonal between 200 and 215 would claim the rider passed through
+ * 207 on a Tuesday, which nothing measured.
+ *
+ * And it says **who moved it**, which is 7.10.4's reason rather than this
+ * item's: an accepted auto-FTP change is the app editing the rider's own
+ * record, and a number that changes by itself and cannot be traced is
+ * indistinguishable from a bug.
+ */
+@Composable
+private fun FtpTrendLine(trend: FtpTrend) {
+    val change = trend.lastChange ?: return
+    val delta = trend.deltaWatts ?: return
+
+    val rising = delta > 0
+    val accent = if (rising) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.tertiary
+    }
+    val who = when (FtpChangeSource.fromName(change.source)) {
+        FtpChangeSource.ManualEdit -> "you set it"
+        FtpChangeSource.AutoBreakthrough -> "measured from a ride"
+        FtpChangeSource.GuidedTest -> "an FTP test"
+        FtpChangeSource.PulledFromCloud -> "another device"
+        FtpChangeSource.ProfileCreated -> null
+        FtpChangeSource.Unknown -> null
+    }
+    val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(change.atEpochMs))
+
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        FtpSparkline(
+            trend = trend,
+            color = accent,
+            modifier = Modifier.size(width = 76.dp, height = 24.dp)
+        )
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+        Text(
+            text = listOfNotNull(
+                "${if (rising) "+" else ""}$delta W since $date",
+                who
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = accent,
+            fontWeight = FontWeight.Medium
+        )
+    }
+
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+}
+
+/**
+ * The stepped line itself — a horizontal run at each value, a vertical jump on
+ * the day it changed.
+ *
+ * Positioned by **when** each value became true rather than by its index, so
+ * three changes in one week and three across a year do not look the same. A
+ * rider with two points gets one step, which is the honest picture of one
+ * change.
+ */
+@Composable
+private fun FtpSparkline(trend: FtpTrend, color: Color, modifier: Modifier = Modifier) {
+    val points = trend.points
+    val range = trend.range ?: return
+    if (points.size < 2) return
+
+    Canvas(modifier = modifier.semantics {
+        contentDescription = "FTP from ${points.first().watts} to ${points.last().watts} watts"
+    }) {
+        val span = (range.last - range.first).coerceAtLeast(1)
+        val first = points.first().atEpochMs
+        val elapsed = (points.last().atEpochMs - first).coerceAtLeast(1L)
+
+        val x = { at: Long -> size.width * ((at - first).toFloat() / elapsed) }
+        val y = { watts: Int ->
+            size.height * (1f - ((watts - range.first).toFloat() / span))
+        }
+
+        val path = Path()
+        path.moveTo(0f, y(points.first().watts))
+        points.drop(1).forEach { point ->
+            // Along at the old value to the day it changed, then straight up or
+            // down. Never a diagonal: the rider was not gradually becoming
+            // fitter between two numbers, they had one number and then another.
+            path.lineTo(x(point.atEpochMs), y(points[points.indexOf(point) - 1].watts))
+            path.lineTo(x(point.atEpochMs), y(point.watts))
+        }
+        // And hold the latest value out to the right-hand edge, because it is
+        // true now and not only on the day it was set.
+        path.lineTo(size.width, y(points.last().watts))
+
+        drawPath(path, color, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
     }
 }
 

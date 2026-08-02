@@ -9,6 +9,8 @@ import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.domain.progress.FtpPoint
+import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.social.HouseholdRiderWeek
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
@@ -47,6 +49,12 @@ data class AppUiState(
      * nobody rode — all of which draw nothing.
      */
     val householdWeek: List<HouseholdRiderWeek> = emptyList(),
+    /**
+     * The selected rider's FTP over time (PLAN 7.10.2 / 22.1.4). Empty for a
+     * guest, and a single point for a rider whose FTP has never moved — both of
+     * which draw no trend.
+     */
+    val ftpTrend: FtpTrend = FtpTrend(),
     val isLoading: Boolean = true,
     /**
      * A ride the app was killed in the middle of. Non-null means the rider is
@@ -118,10 +126,30 @@ class AppViewModel(
      * and the household's belong together anyway — one screen reads both, and
      * 24.2.1's rule is that the household never appears above them.
      */
+    private val ftpTrend = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            // A guest has no profile, so no FTP and no history of one.
+            if (profileId == null) flowOf(FtpTrend())
+            else userRepository.observeFtpHistory(profileId).map { entries ->
+                FtpTrend(
+                    entries.map { entry ->
+                        FtpPoint(
+                            watts = entry.ftpWatts,
+                            atEpochMs = entry.changedAt,
+                            source = entry.source,
+                            workoutId = entry.workoutId
+                        )
+                    }
+                )
+            }
+        }
+
     private val dashboard = combine(
         dashboardStats,
-        workoutRepository.observeHouseholdWeek()
-    ) { stats, household -> stats to household }
+        workoutRepository.observeHouseholdWeek(),
+        ftpTrend
+    ) { stats, household, ftp -> Triple(stats, household, ftp) }
 
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
@@ -129,13 +157,14 @@ class AppViewModel(
         classRepository.allPlans,
         dashboard,
         rideStatus
-    ) { settings, profiles, classes, (stats, household), (recoverable, active) ->
+    ) { settings, profiles, classes, (stats, household, ftpTrend), (recoverable, active) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
             dashboardStats = stats,
             householdWeek = household,
+            ftpTrend = ftpTrend,
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active
