@@ -115,12 +115,54 @@ an item rather than an optimisation is timing: `workouts` holds **one row**,
 and the format is free to change today and a migration-with-backfill to change
 once four riders have a year of history up there.
 
-- [ ] **14.4.1** `metrics_payload` becomes **columnar**: `{"t":[…],"c":[…],"r":[…],"p":[…],"hr":[…]}` rather than an array of 2,700 five-key objects. **228 KB → 49 KB** on the wire for a 45-minute ride; ~30 KB → ~19 KB stored. Same data, same nullability, one twentieth of the key strings
-- [ ] **14.4.2** **`t` stays explicit.** Implying the timestamp from the array index saves another 12 KB and silently closes the gaps that 2.4.4 deliberately leaves, that 16.1.2 and 16.2.2 deliberately draw, and that a ride with a two-minute bottle stop in it genuinely has. A cloud copy that looks continuous when the ride was not is a fabricated record, which is the one thing this project does not do
-- [ ] **14.4.3** A `payload_version` on the row, or the shape is undecidable for any future reader — the web app (17.3) is the reader that will care
-- [ ] **14.4.4** A round-trip test: entity list → payload → entity list, asserting a null heart rate survives as null and a gapped series comes back gapped. Both are failures this project has already had in other places
-- [ ] **14.4.5** Confirm the stored size with `pg_column_size()` rather than trusting the model in *What a workout costs*. Same trip as 14.1.6; the query is in that section
-- [ ] **14.4.6** Settle the `getFloat().toDouble()` question first — finding 3 in that section. If the board reports fractional values, the noise digits are in the payload, in the exports, in the charts and in the calibration grid, and they are a bigger problem than the format
+- [x] **14.4.1** `metrics_payload` becomes **columnar**: `{"t":[…],"c":[…],"r":[…],"p":[…],"hr":[…]}` rather than an array of 2,700 five-key objects. **228 KB → 49 KB** on the wire for a 45-minute ride; ~30 KB → ~19 KB stored. Same data, same nullability, one twentieth of the key strings.
+      *Done. **The two numbers are measured rather than modelled** — the test
+      builds the old shape beside the new one from the same 2,700 samples and
+      reports `columnar 49 KB against 228 KB per-sample`, which is the storage
+      budget's estimate confirmed to the kilobyte. Getting there needed one
+      thing the estimate did not mention, below*
+- [x] **14.4.1a** **11 KB of a 45-minute ride was trailing zeroes.** The first
+      columnar draft measured **64 KB**, not 49: `cadence` and `resistance` are
+      `Double`, the board reports them whole, and `80.0` is two characters more
+      than `80` across three columns and 2,700 samples. `CompactDouble` writes a
+      whole number without its decimal and everything else unchanged — not a
+      rounding and not a precision decision, since `80` parses back to exactly
+      `80.0`. Power keeps its tenth, because 14.4.6 says that tenth is real
+- [x] **14.4.2** **`t` stays explicit.** Implying the timestamp from the array index saves another 12 KB and silently closes the gaps that 2.4.4 deliberately leaves, that 16.1.2 and 16.2.2 deliberately draw, and that a ride with a two-minute bottle stop in it genuinely has. A cloud copy that looks continuous when the ride was not is a fabricated record, which is the one thing this project does not do. *Kept, and tested with a ride that jumps 1 → 120*
+- [x] **14.4.3** A `payload_version` on the row, or the shape is undecidable for any future reader — the web app (17.3) is the reader that will care.
+      ***Inside the payload rather than beside it, which is a deliberate
+      departure from the item.*** A column and the JSON it describes are written
+      by different code and can drift, and a version that disagrees with its
+      payload is worse than no version at all; inside the object they cannot
+      come apart. Nothing is lost by it — `payload->>'v'` is queryable in
+      Postgres, and a reader holding only the JSON can still decide what it has.
+      **An absent `v` means the pre-14.4 array-of-objects**, which is exactly
+      the one row already in the cloud
+- [x] **14.4.4** A round-trip test: entity list → payload → entity list, asserting a null heart rate survives as null and a gapped series comes back gapped. Both are failures this project has already had in other places.
+      *Both asserted, plus the two the writing turned up: a ride nobody wore a
+      strap for **omits `hr` entirely** — an absent column and 2,700 nulls are
+      the same claim, and it is emphatically not the claim a zero would make —
+      and **columns of unequal length are rejected rather than repaired**,
+      because past that point sample 900's power lines up with sample 900's
+      cadence only by luck. Same argument as the telemetry fence*
+- [ ] **14.4.5** Confirm the stored size with `pg_column_size()` rather than trusting the model in *What a workout costs*. Same trip as 14.1.6; the query is in that section. **Still open and still needs the trip** — and note it now measures the *old* shape, since the one row up there predates 14.4
+- [x] **14.4.6** Settle the `getFloat().toDouble()` question first — finding 3 in that section. If the board reports fractional values, the noise digits are in the payload, in the exports, in the charts and in the calibration grid, and they are a bigger problem than the format.
+      **Settled on the bike's own database, and it needed no rider** — one
+      `sqlite3` query over 1,661 recorded rows across its four rides. Two
+      halves to the answer:
+      - **The board does report fractional power, and the digits are real.**
+        Power arrives in tenths of a watt (`0x44`, and `PelotonFrameParser`
+        does `magnitude / 10.0`), so `29.7` and `1.4` are measurements. 1,360
+        of the 1,661 rows are fractional
+      - **The noise the finding feared existed, and is already gone.**
+        `29.2000007629395` is `29.2f` widened to a double, and it appears only
+        in the three rides recorded *before* 2.7c: the fix that made the frame
+        decide the metric also took the value off `getFloat()`. The post-fix
+        ride carries clean tenths. Cadence and resistance are integral in every
+        row of every ride, which is what 14.4.1a then cashes in.
+        **Nothing is rewritten** — those three rides are already marked as
+        suspect by 2.7.5, and marking rather than editing is the rule
+- [ ] **14.4.7** **The payload does not carry `power_is_measured`, and that is now the only thing it drops.** Opened by 14.4.1 rather than solved by it: the column is per sample and nullable, so honestly it is a sixth array — but on the bike every entry is the same value, and 2,700 `true`s cost 13 KB against a 49 KB payload. The distinction is not decorative (`PowerProvenance` gates the FTP proposal and the household leaderboard), so a cloud copy without it cannot tell a measured ride from a modelled one. Three ways: the sixth array; a scalar when the whole ride agrees and an array when it does not, which is two shapes for one field and how readers start guessing; or on the row, where the *ride's* provenance arguably belongs anyway since `PowerProvenance` already reduces the series to one answer
 
 ### 14.10 Configuring the endpoint — open-source hygiene
 

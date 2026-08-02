@@ -68,15 +68,27 @@ one now would be building the wrong thing.
    **250 riders riding once a week for one year** — or sixty riders riding
    properly. This is a second and more concrete reason for 14.10.4's caution
    than the RLS one, and it belongs in that decision.
-3. **A float-to-double widening could triple every payload, and nobody has
-   checked.** `PelotonSensorServiceSource` does `data.getFloat(KEY_DATA)
-   .toDouble()`. If the board ever reports a fractional value, `176.3f` widens
-   to `176.30000305175781` and is serialised in full: the same ride goes from
-   228 KB to **330 KB** on the wire and its stored size roughly triples,
-   because the digits are noise and noise does not compress. It is a
-   data-quality question before it is a storage one — those digits are also
-   what the charts, the exports and the calibration grid read. **One query on
-   the bike's own database settles it**, and it needs no rider:
+3. ~~**A float-to-double widening could triple every payload, and nobody has
+   checked.**~~ **Checked, 2 August 2026 — the fear was justified, the damage
+   is already repaired, and one useful fact came out of it.** 1,661 rows across
+   the bike's four rides:
+   - **The board reports fractional power and those digits are data**, not
+     noise. Power arrives in tenths of a watt on the `0x44` frame and
+     `PelotonFrameParser` divides by ten in doubles, so `29.7` means 29.7 W.
+     1,360 of the 1,661 rows are fractional
+   - **The widening noise is real and is confined to the pre-2.7c rides.**
+     `29.2000007629395` is `29.2f` widened, and it appears only in the three
+     rides recorded before the frame parser took over from
+     `data.getFloat(KEY_DATA).toDouble()`. The ride recorded after it carries
+     clean tenths. So the fix for the corruption defect quietly fixed this too,
+     and nothing needs rewriting — those three rides are already marked suspect
+     by 2.7.5
+   - **Cadence and resistance are integral in every row**, which turned out to
+     be worth 11 KB a ride: `80.0` costs two characters more than `80` across
+     three columns and 2,700 samples, and that difference is the whole gap
+     between the first columnar draft (64 KB) and the 49 KB predicted below.
+     See 14.4.1a
+
    ```bash
    sqlite3 db.sqlite "SELECT cadence, resistance, power FROM workout_metrics LIMIT 20;"
    ```
@@ -90,7 +102,9 @@ one now would be building the wrong thing.
   the smaller half; **the request body is the point**, and a 90-minute ride
   currently posts 457 KB in a single insert, which is precisely what 14.2.7 was
   worried about. It is free to change today and expensive to change once rides
-  are up there. See **14.4**.
+  are up there. See **14.4**. ***Done, 2 August 2026*** — and the two figures
+  above are no longer estimates: the round-trip test builds both shapes from
+  the same 2,700 samples and measures `49 KB against 228 KB`.
 - **Keep the timestamp array explicit. Do not imply time from the index.** It
   would save another 12 KB and it is exactly the wrong 12 KB: a stalled board
   leaves a genuine gap in the series (2.4.4), the charts draw those gaps
