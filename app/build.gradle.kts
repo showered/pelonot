@@ -9,17 +9,34 @@ plugins {
 }
 
 /**
- * Supabase credentials are read from `local.properties` (git-ignored) or the
- * environment, never from source. When they are absent the app builds and runs
- * fine — cloud sync simply reports itself as disabled.
+ * Supabase credentials, never from source (PLAN 14.10).
+ *
+ * Four places, highest first: the environment, `local.properties`
+ * (git-ignored), the checked-in `cloud.properties`, and then nothing — and
+ * **nothing is a supported configuration**, not a failure. When both values are
+ * absent the app builds and runs entirely locally and cloud sync reports itself
+ * disabled, which is the whole of the offline tier (14.10.3).
+ *
+ * `cloud.properties` is in the repository because `local.properties` is not: a
+ * fresh clone used to have no cloud and no in-repo record of what the endpoint
+ * even was. It ships empty on purpose — read its comments before filling it in.
  */
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
+fun properties(name: String) = Properties().apply {
+    val file = rootProject.file(name)
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+val localProperties = properties("local.properties")
+val cloudDefaults = properties("cloud.properties")
+
+// A blank is an absence at every level, so an exported-but-empty environment
+// variable falls through to the file rather than blanking the build.
 fun secret(key: String, envKey: String): String =
-    localProperties.getProperty(key) ?: System.getenv(envKey) ?: ""
+    listOf(
+        System.getenv(envKey),
+        localProperties.getProperty(key),
+        cloudDefaults.getProperty(key)
+    ).firstOrNull { !it.isNullOrBlank() } ?: ""
 
 val supabaseUrl = secret("supabase.url", "SUPABASE_URL")
 val supabaseAnonKey = secret("supabase.anonKey", "SUPABASE_ANON_KEY")

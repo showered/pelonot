@@ -6,6 +6,24 @@ the app is fully functional offline. Everything here is optional.
 
 ---
 
+## Standing up your own
+
+There is no community endpoint to join, deliberately (PLAN 14.10.4): a shared
+project is a bill somebody has to pay, and at the measured ~30 KB a stored ride
+the free tier is about 13,000 rides before it fails for everyone at once. So a
+rider who wants the cloud runs their own, and it is four steps:
+
+1. Create a project at [supabase.com](https://supabase.com) — the free tier is
+   ample for a household. Note its **project ref** and region.
+2. Run the migrations below **in order** in the SQL Editor.
+3. Copy the **publishable** (`anon`) key from *Project Settings → API*. Not the
+   service-role key, and not a personal access token — see below.
+4. Point a build at it: the two lines under *Configuring a build*.
+
+Nothing else in the repository needs changing, and a build with none of this
+still works — it is offline, which is the supported state rather than a
+degraded one.
+
 ## Migrations, in order
 
 | File | What it does |
@@ -31,7 +49,13 @@ supabase.anonKey=sb_publishable_...
 ```
 
 Omit both and the app runs offline. These are the **only** two values that may
-ever become `buildConfigField`s.
+ever become `buildConfigField`s, and `CloudConfigFenceTest` fails the build if a
+third appears.
+
+The build reads them from the environment first (`SUPABASE_URL`,
+`SUPABASE_ANON_KEY`), then `local.properties`, then the checked-in
+`cloud.properties` — which ships empty and should stay that way while every RLS
+policy is `USING (true)`. The root `README.md` has the table.
 
 ### Do not put an access token in a build
 

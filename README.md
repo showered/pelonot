@@ -87,6 +87,25 @@ They reach the app through `BuildConfig`, never through source. Without them the
 app runs entirely locally, which is the supported configuration — the cloud is a
 mirror here, never a dependency.
 
+**Where the build looks, highest first:**
+
+| | Source | Notes |
+|---|---|---|
+| 1 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` in the environment | for CI and for a build you do not want to leave on disk |
+| 2 | `supabase.url`, `supabase.anonKey` in `local.properties` | git-ignored; the normal place |
+| 3 | the same two keys in `cloud.properties` | checked in, and **empty** |
+| 4 | nothing | offline, and supported |
+
+A blank counts as absent at every level, so an exported-but-empty variable falls
+through rather than blanking the build.
+
+`cloud.properties` is in the repository so that a fresh clone has an in-repo
+record of what the cloud even is; it ships with no endpoint and no key, and its
+comments say why (short version: every RLS policy is still `USING (true)`, and
+a shared endpoint is a bill somebody has to pay). A test fails the build if it
+stops being empty. **To run your own, see [`supabase/README.md`](supabase/README.md)** —
+the schema, the migrations, and the order to apply them in.
+
 ---
 
 ## How it is put together

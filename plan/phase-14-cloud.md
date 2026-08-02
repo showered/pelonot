@@ -198,9 +198,9 @@ The endpoint must be configurable **in code, not in the app's UI**: a rider
 should never be asked to type a URL, and a self-hoster should not need to fork
 a screen.
 
-- [ ] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
-- [ ] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
-- [ ] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
+- [x] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
+- [x] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
+- [x] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
 - [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it.
       **A second reason, added 1 August 2026 and less obvious than the first:
       a published endpoint is a bill.** At the measured ~30 KB a stored ride
@@ -209,8 +209,27 @@ a screen.
       properly. The community endpoint fills up in its first year and then
       fails for everyone at once, including the riders who trusted it with
       their only backup. Decide who pays, or decide that the default is
-      **no endpoint** and a self-hoster stands up their own (14.10.5)
-- [ ] **14.10.5** `supabase/README.md`: how to stand up your own project, run the migrations in order, and point a build at it
+      **no endpoint** and a self-hoster stands up their own (14.10.5).
+      *Not ticked, because the decision it asks for is still 15.5's to make —
+      but it is **written down and fenced** now rather than living here:
+      `cloud.properties` ships with both values empty and its own comments
+      carrying both arguments, and `CloudConfigFenceTest` fails the build if
+      either stops being blank. So filling it in has to be a decision somebody
+      takes, which is all this item was ever protecting*
+- [x] **14.10.5** `supabase/README.md`: how to stand up your own project, run the migrations in order, and point a build at it.
+      *It had the migrations and the build lines already; what it lacked was
+      the four steps before them and the reason there is no endpoint to join —
+      **there is deliberately no community project**, so "stand up your own" is
+      the only path and the README now opens with it*
+
+      *The four above landed together, because they are one change: the
+      precedence is `env → local.properties → cloud.properties → offline`, a
+      blank counts as absent at every level (an exported-but-empty variable
+      falls through rather than blanking the build), and the root README carries
+      the table. `cloud.properties` ships **empty**, which is 14.10.4's answer
+      written down where a contributor will meet it rather than left in a plan
+      file. Verified: with `local.properties` present the URL still reaches
+      `BuildConfig`, so the new layer changed nothing for an existing checkout*
 
 ### 14.11 Credential hygiene
 
@@ -219,6 +238,11 @@ dangerous than its name suggests.
 
 - [x] **14.11.1** `local.properties`' third Supabase value (was `supabase.serviceKey`) is **not** a service-role key — it is an `sbp_` **personal access token**, which is account-wide and can create, modify and delete *every project on the account*, not just this one. It is correctly gitignored and, verified, is read by nothing in `app/build.gradle.kts` and referenced nowhere in the source, so it cannot reach `BuildConfig` or an APK
 - [x] **14.11.2** Renamed to `supabase.accessToken` so nobody wires it into `BuildConfig` on the assumption that it belongs there. A service-role key in a client app would be bad; **this one is worse**
-- [ ] **14.11.3** Never add a `secret()` call for it. The two that exist (`supabase.url`, `supabase.anonKey`) are the only two that may ever become `buildConfigField`s
+- [x] **14.11.3** *Fenced, not merely intended: `CloudConfigFenceTest` reads
+      `app/build.gradle.kts` and asserts the `secret()` calls are exactly
+      `supabase.url` and `supabase.anonKey`, in that order, and that the string
+      `accessToken` appears in the build script nowhere at all. A third call is
+      one line and reaches an APK; this is the line that has to fail first.*
+      Never add a `secret()` call for it. The two that exist (`supabase.url`, `supabase.anonKey`) are the only two that may ever become `buildConfigField`s
 - [ ] **14.11.4** Rotate it when the schema work is done — it has been used from a shell and lives in a plaintext file
 - [x] **14.11.5** Said in `supabase/README.md`, since a contributor following the setup will otherwise put whatever key they find into the same file
