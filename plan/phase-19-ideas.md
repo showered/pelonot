@@ -96,6 +96,24 @@ has simply never been written down.
       the profile created after the backup was taken gone, and 5 workouts /
       491 samples back exactly as the file had them*
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
+
+      *Written — `.github/workflows/ci.yml`, JDK 17, the Gradle wrapper,
+      `assembleDebug` then `testDebugUnitTest`, with the HTML test report kept
+      as an artifact on failure so a contributor can see **which** test rather
+      than only that one broke. **The box stays unticked until a run is green
+      on GitHub**, which is the house rule and not a formality here: a workflow
+      that parses is not a workflow that builds.*
+
+      Two decisions in it worth keeping. **No `local.properties` and no
+      secret**, deliberately — the cloud credentials are optional by design
+      (14.10.3) and a clone without them must still build and run offline, so
+      the day this workflow needs a secret is the day offline-first broke.
+      And **not `connectedDebugAndroidTest`**: it needs an emulator, and this
+      project's instrumented suite is order-dependent (a test asserting
+      `WorkoutService` is `Idle` only holds while nothing earlier in the run
+      finished a ride), so a red run would mean "re-run it" often enough to
+      train everyone to ignore the whole thing. 8.8b is the same complaint
+      about the same suite
 - [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped
       straight onto the profile picker; profile creation asks for an FTP with
       **200 prefilled** and no way to find a real one (19.2.3 is the guided test
