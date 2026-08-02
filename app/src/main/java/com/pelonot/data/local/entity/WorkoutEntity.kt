@@ -60,6 +60,25 @@ data class WorkoutEntity(
     @ColumnInfo(name = "intent_modifier")
     val intentModifier: Double = 1.0,
 
+    /**
+     * The FTP this ride was actually judged against (PLAN 7.8).
+     *
+     * `profiles.ftp_watts` moves — by hand in Settings, and by itself when the
+     * rider accepts an auto-FTP breakthrough. Everything that draws a past
+     * ride's zones used to read that current value, so a ride ridden in Zone 5
+     * in January was silently redrawn as Zone 4 in March: a record editing
+     * itself behind the rider. The same family as the `avg_*` trap — a number
+     * derived on read from a source that has since moved.
+     *
+     * **Nullable, and null means nobody wrote it down.** Every ride recorded
+     * before this column existed is one, and backfilling them with the
+     * profile's *current* FTP would bake today's guess permanently into the
+     * record while looking exactly like real data. A reader falls back to the
+     * profile and says that it is doing so (7.8.4).
+     */
+    @ColumnInfo(name = "ftp_watts")
+    val ftpWatts: Int? = null,
+
     @ColumnInfo(name = "rpe_rating")
     val rpeRating: Int? = null,
 

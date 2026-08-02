@@ -132,6 +132,31 @@ object AppMigrations {
         }
     }
 
-    val ALL: Array<Migration> =
-        arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    /**
+     * Adds `workouts.ftp_watts`.
+     *
+     * The FTP a ride was ridden at (PLAN 7.8) — the bug underneath the whole of
+     * phase 7. `profiles.ftp_watts` is a moving number and every chart of a past
+     * ride read it, so accepting one auto-FTP breakthrough redrew the zone bands
+     * of the rider's entire history and gave no sign that anything had changed.
+     *
+     * **Nullable, no default, and deliberately not backfilled.** Setting it to
+     * the profile's current FTP would freeze today's number into every past ride
+     * as though it had been recorded at the time, which is worse than not
+     * knowing: the reader can tell "we did not write this down" from "this is
+     * what it was", and it can say so. Same reasoning as
+     * `power_is_measured`'s, and the opposite of `household_visible`'s — the
+     * rule underneath all three is to pick the value that is *true of the rows
+     * that already exist*.
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `ftp_watts` INTEGER")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(
+        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+    )
 }

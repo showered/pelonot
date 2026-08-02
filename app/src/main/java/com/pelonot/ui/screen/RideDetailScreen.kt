@@ -284,7 +284,8 @@ fun RideDetailScreen(
                 charts = state.charts,
                 rivals = state.rivals,
                 ghost = state.ghost,
-                onPickRival = viewModel::showGhost
+                onPickRival = viewModel::showGhost,
+                isGuestRide = state.workout?.userId == null
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
@@ -390,7 +391,8 @@ private fun RideChartsSection(
     charts: RideCharts?,
     rivals: List<RideDetailUiState.Rival>,
     ghost: RideDetailUiState.GhostRide?,
-    onPickRival: (String?) -> Unit
+    onPickRival: (String?) -> Unit,
+    isGuestRide: Boolean
 ) {
     if (charts == null) {
         // Distinguished from "this ride recorded nothing", which is a
@@ -425,7 +427,7 @@ private fun RideChartsSection(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
-                    PowerCard(charts, ghost, rivals, onPickRival, Modifier.weight(1f))
+                    PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.weight(1f))
                     HeartCard(charts, Modifier.weight(1f))
                 }
                 Row(
@@ -435,7 +437,7 @@ private fun RideChartsSection(
                     ZoneCard(charts, Modifier.weight(1f))
                 }
             } else {
-                PowerCard(charts, ghost, rivals, onPickRival, Modifier.fillMaxWidth())
+                PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.fillMaxWidth())
                 HeartCard(charts, Modifier.fillMaxWidth())
                 CadenceCard(charts, Modifier.fillMaxWidth())
                 ZoneCard(charts, Modifier.fillMaxWidth())
@@ -450,6 +452,7 @@ private fun PowerCard(
     ghost: RideDetailUiState.GhostRide?,
     rivals: List<RideDetailUiState.Rival>,
     onPickRival: (String?) -> Unit,
+    isGuestRide: Boolean,
     modifier: Modifier
 ) = ChartCard(
     title = "Power",
@@ -468,7 +471,23 @@ private fun PowerCard(
         },
         // Only said when there are blocks to explain. On a free ride there is
         // no prescription and no legend for one.
-        "blocks are what the class asked for".takeUnless { charts.prescribed.isEmpty }
+        "blocks are what the class asked for".takeUnless { charts.prescribed.isEmpty },
+        // 7.8.4. Said only when it is true, and it is true only of rides
+        // recorded before the app kept the number. Bands drawn from an FTP the
+        // ride never saw are a re-derivation from a source that has moved
+        // since, and they must not sit here looking like a record.
+        "zones from your FTP today — this ride did not record its own"
+            .takeUnless { charts.ftpIsTheRides },
+        // 7.8.5, adjusted. A guest ride *does* have an FTP — the app's default,
+        // which is what its live targets and its zone ladder were built from
+        // during the ride, so the number on the row is a true record of what it
+        // was judged against. What it does not have is a *rider*, and "Zone 5"
+        // is a claim about somebody. Said, rather than the bands withdrawn:
+        // withdrawing them would also take the prescription and the
+        // time-in-zone with them, and would make the ride's own screen disagree
+        // with what the guest was looking at while they rode it.
+        "no rider on this ride — zones from the app's default FTP"
+            .takeIf { isGuestRide }
     ).joinToString(" · "),
     summary = listOf(
         RideChartSummaries.power(charts.power, charts.powerProvenance),

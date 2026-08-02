@@ -173,6 +173,16 @@ data class RideCharts(
     val timeInZone: TimeInZone = TimeInZone(),
     val prescribed: PrescribedPlan = PrescribedPlan(),
     val ftpWatts: Int = 0,
+    /**
+     * True when [ftpWatts] is the FTP **this ride was judged against**, false
+     * when it is the rider's current one standing in for a ride recorded before
+     * `workouts.ftp_watts` existed (7.8.4).
+     *
+     * The distinction is the whole point of 7.8: zone bands drawn from a number
+     * the ride never saw are a re-derivation, not a record, and they must not
+     * be presented with the same authority as the real thing.
+     */
+    val ftpIsTheRides: Boolean = false,
     /** Where these watts came from — the board, the model, or both (16.1.6). */
     val powerProvenance: PowerProvenance = PowerProvenance.Unknown,
     /**
@@ -204,9 +214,13 @@ object RideChartBuilder {
         intervals: List<Interval> = emptyList(),
         /** `workouts.intent_modifier` — the multiplier the ride was ridden with. */
         intentMultiplier: Double = 1.0,
+        /** See [RideCharts.ftpIsTheRides]. */
+        ftpIsTheRides: Boolean = false,
         buckets: Int = DEFAULT_BUCKETS
     ): RideCharts {
-        if (samples.isEmpty()) return RideCharts(ftpWatts = ftpWatts)
+        if (samples.isEmpty()) {
+            return RideCharts(ftpWatts = ftpWatts, ftpIsTheRides = ftpIsTheRides)
+        }
 
         // 2.7.5. A sample the fence would have rejected is left out of every
         // trace, distribution and total below — the same treatment a rejected
@@ -216,7 +230,13 @@ object RideChartBuilder {
         val integrity = RideIntegrity.of(samples)
         val ordered = samples.filter { it.isPlausible }.sortedBy { it.timestampSec }
 
-        if (ordered.isEmpty()) return RideCharts(ftpWatts = ftpWatts, integrity = integrity)
+        if (ordered.isEmpty()) {
+            return RideCharts(
+                ftpWatts = ftpWatts,
+                ftpIsTheRides = ftpIsTheRides,
+                integrity = integrity
+            )
+        }
 
         return RideCharts(
             power = downsample(ordered, buckets) { it.powerWatts },
@@ -225,6 +245,7 @@ object RideChartBuilder {
             timeInZone = timeInZone(ordered, ftpWatts),
             prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
             ftpWatts = ftpWatts,
+            ftpIsTheRides = ftpIsTheRides,
             powerProvenance = powerProvenance,
             integrity = integrity
         )

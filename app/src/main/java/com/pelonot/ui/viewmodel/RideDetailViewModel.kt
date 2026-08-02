@@ -111,11 +111,13 @@ class RideDetailViewModel(
     /**
      * Off the main thread and computed once (16.2.3).
      *
-     * The FTP used for the zone bands is the rider's **current** one, which is
-     * a deliberate simplification worth knowing about: a ride from before an
-     * FTP change is banded against today's zones, not the ones it was ridden
-     * under. Storing the FTP on the workout row would fix it and needs a
-     * migration (7.8 / 12.5).
+     * The FTP used for the zone bands is **the ride's own** (7.8), falling back
+     * to the rider's current one only for a ride recorded before
+     * `workouts.ftp_watts` existed. That fallback is what the whole app used to
+     * do, and it is why accepting one auto-FTP breakthrough silently redrew
+     * every past ride's zones; `RideCharts.ftpIsTheRides` carries which of the
+     * two was used so the screen can say so rather than presenting both with
+     * the same authority.
      *
      * The intent multiplier has no such problem — `workouts.intent_modifier` is
      * on the row, so the prescribed band is the one the rider was actually
@@ -124,8 +126,14 @@ class RideDetailViewModel(
     private suspend fun buildCharts(workout: WorkoutEntity, intervals: List<Interval>) {
         val charts = withContext(Dispatchers.Default) {
             val metrics = workoutRepository.getMetrics(workout.id)
-            val ftp = workout.userId
-                ?.let { userRepository.getUser(it)?.ftpWatts }
+            // 7.8.3. The ride's own FTP, and the rider's current one only as a
+            // fallback for a ride recorded before the column existed. That
+            // fallback is exactly today's behaviour, so an old ride is no worse
+            // than it was — but the screen now says which of the two it used
+            // (7.8.4), because bands drawn from a number the ride never saw
+            // must not look as authoritative as bands drawn from one it did.
+            val ftp = workout.ftpWatts
+                ?: workout.userId?.let { userRepository.getUser(it)?.ftpWatts }
                 ?: UserEntity.DEFAULT_FTP
 
             RideChartBuilder.build(
@@ -150,7 +158,8 @@ class RideDetailViewModel(
                     unknown = metrics.count { it.powerIsMeasured == null }
                 ),
                 intervals = intervals,
-                intentMultiplier = workout.intentModifier
+                intentMultiplier = workout.intentModifier,
+                ftpIsTheRides = workout.ftpWatts != null
             )
         }
         _uiState.update { it.copy(charts = charts) }

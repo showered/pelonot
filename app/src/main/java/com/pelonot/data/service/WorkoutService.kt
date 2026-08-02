@@ -682,6 +682,10 @@ class WorkoutService : Service() {
         // The unrounded mean, matching how avg_power and avg_cadence are stored.
         avgHr = avgHeartRateBpm,
         intentModifier = intent.multiplier,
+        // 7.8. Written at insert, which is at the *start* of the ride, so it is
+        // the number the ride was actually judged against rather than one
+        // reconstructed afterwards from a profile that may have moved.
+        ftpWatts = ftpWatts,
         timestamp = startedAtEpochMs
     )
 

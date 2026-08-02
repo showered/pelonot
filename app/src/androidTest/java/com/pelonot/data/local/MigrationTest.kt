@@ -314,6 +314,64 @@ class MigrationTest {
         }
     }
 
+    /**
+     * The FTP a ride was ridden at, arriving over rides that never recorded it.
+     *
+     * **The assertion that matters is that it is null**, and it is the whole of
+     * 7.8.2: backfilling these rows with the profile's current FTP would be
+     * indistinguishable afterwards from a ride that really had been recorded at
+     * that number, and it would bake one particular day's guess into the
+     * rider's entire history. Null is the only honest value, and it is what lets
+     * the chart say "zones from your FTP today" instead of quietly implying
+     * otherwise.
+     */
+    @Test
+    fun migrate6To7_leavesExistingRidesWithNoClaimAboutTheFtpTheyWereRiddenAt() {
+        helper.createDatabase(TEST_DB, 6).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj, total_distance_km,
+                    avg_cadence, avg_power, avg_hr, intent_modifier, rpe_rating,
+                    is_complete, was_recovered, timestamp
+                ) VALUES ('w1', 1, NULL, 1200, 180.0, 8.0, 85.0, 150.0, 140.0, 1.0, NULL, 1, 0, 1000)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 7, true, AppMigrations.MIGRATION_6_7)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase.query(
+                "SELECT id, ftp_watts, total_output_kj FROM workouts"
+            ).use { cursor ->
+                assertTrue("the ride that existed before the migration is gone", cursor.moveToFirst())
+                assertEquals("w1", cursor.getString(0))
+                assertTrue(
+                    "a ride recorded before the column existed must not claim an FTP",
+                    cursor.isNull(1)
+                )
+                assertEquals(180.0, cursor.getDouble(2), 0.001)
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }
