@@ -25,12 +25,19 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 405 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 414 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
 
 `adb` lives at `~/Library/Android/sdk/platform-tools/adb`.
+
+**`connectedDebugAndroidTest` can fail on ordering, not on code.**
+`WorkoutService` is one instance per test process, so a test asserting the
+service is `Idle` only holds while nothing earlier in the run has finished a
+ride. Adding a test class whose package sorts ahead of `data.service` was enough
+to fail two of them. Before believing a red run, re-run the failing class on its
+own.
 
 **Do not check UI work on `Medium_Phone_API_36.1`.** The bike is a landscape
 **1920 × 1080 at 240 dpi — 1280 × 720 dp** — with a 48 dp bottom navigation bar
@@ -156,6 +163,16 @@ Two consequences to know before you are surprised by them:
   what turned "the overlay looks erratic" into a 0-vs-41 measurement in
   fifteen minutes. Reach for the table first.
 
+- **Two coroutines doing read-modify-write on one row will eat each other's
+  field.** Settings fired `setFtp` and `setWeight` off one tap of Save, each
+  reading the profile and writing back a copy; whichever read first put its
+  stale value back on the way past, so **typing a new FTP and pressing Save left
+  the old one in the database** — with the screen still showing the new number
+  until the next launch. Nothing on any screen was wrong. One tap is one write:
+  build the row once and save it once. It was found by `ftp_history` recording
+  two identical changes twenty-three seconds apart, which is the technique as
+  much as the rule — build the feature that reads the data, then look at the
+  data. PLAN.md 7.9, 7.10.3.
 - **`workout_metrics` has a foreign key onto `workouts`.** The workout row must
   be inserted (with `is_complete = 0`) *before* any metric is written. This
   ordering is why metric recording was silently broken for the whole project
