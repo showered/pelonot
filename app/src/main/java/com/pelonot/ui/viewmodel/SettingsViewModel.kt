@@ -8,6 +8,7 @@ import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.CalibrationState
@@ -41,11 +42,27 @@ data class SettingsUiState(
     val mediaVolume: Float = 0f,
     val volumeError: String? = null,
     /** What this bike has learnt about its own power curve (2.2a.6). */
-    val calibration: CalibrationState = CalibrationState()
+    val calibration: CalibrationState = CalibrationState(),
+    /** This rider's FTP over time, oldest first (7.9). */
+    val ftpHistory: List<FtpHistoryEntity> = emptyList()
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
     val isGuest: Boolean get() = profile == null
+
+    /**
+     * The most recent *move*, or null when the number has never moved (7.10.3).
+     *
+     * A history of one is the value the profile started with, and calling that
+     * "last changed" would be the app reporting an event that never happened —
+     * on a brand-new rider's very first visit to Settings, which is the worst
+     * possible moment to be wrong about their record.
+     */
+    val lastFtpChange: FtpHistoryEntity? get() = ftpHistory.takeIf { it.size > 1 }?.last()
+
+    /** What it moved from, for the direction. */
+    val previousFtpWatts: Int? get() =
+        ftpHistory.takeIf { it.size > 1 }?.let { it[it.size - 2].ftpWatts }
 }
 
 /**
@@ -66,10 +83,22 @@ class SettingsViewModel(
     private val databaseBackup: DatabaseBackup
 ) : ViewModel() {
 
+    /**
+     * The rider and their FTP history together, because the state combine is
+     * already at the width of its typed overload and these two are read as one
+     * thing: what the number is now, and when it last moved (7.10.3).
+     */
     private val profile = settingsRepository.settings
         .map { it.lastProfileId }
         .flatMapLatest { id ->
-            if (id == null) flowOf(null) else userRepository.observeUser(id)
+            if (id == null) {
+                flowOf<Pair<UserEntity?, List<FtpHistoryEntity>>>(null to emptyList())
+            } else {
+                combine(
+                    userRepository.observeUser(id),
+                    userRepository.observeFtpHistory(id)
+                ) { user, history -> user to history }
+            }
         }
 
     private val sensors = combine(
@@ -88,10 +117,11 @@ class SettingsViewModel(
         sensors,
         volume,
         calibrationRepository.state
-    ) { settings, user, (hrStatus, hrDevices), (mediaVolume, volumeError), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices), (mediaVolume, volumeError), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
+            ftpHistory = ftpHistory,
             heartRateStatus = hrStatus,
             heartRateDevices = hrDevices,
             mediaVolume = mediaVolume,
@@ -104,18 +134,40 @@ class SettingsViewModel(
         initialValue = SettingsUiState()
     )
 
-    fun setFtp(ftpWatts: Int) {
-        val userId = uiState.value.profile?.localUserId ?: return
-        // 7.9.2. A number the rider typed is a *claim*; the chart draws it
-        // differently from one the app measured off a twenty-minute peak.
+    /**
+     * FTP and weight in **one** write.
+     *
+     * They used to be two — `setFtp` and `setWeight`, each launching its own
+     * coroutine off one tap of Save, each doing read-modify-write on the same
+     * profile row. That is a race, and it silently ate the rider's edit: the
+     * weight write read the profile before the FTP write committed, then put
+     * the *old* FTP back on its way past. Typing 215 into the field and
+     * pressing Save left 200 in the database, with the screen showing 215 until
+     * the next launch.
+     *
+     * It had been there the whole time and was invisible. What found it was
+     * 7.9's history — two `ManualEdit` rows for the same value, twenty-three
+     * seconds apart, which can only happen if the number went back to 200 in
+     * between. Build the feature that reads the data, then look at the data.
+     *
+     * Nulls mean "unchanged", not zero, so a rider who edits one field does not
+     * have to have a valid value in the other.
+     */
+    fun saveRider(ftpWatts: Int?, weightKg: Double?) {
+        val profile = uiState.value.profile ?: return
         viewModelScope.launch {
-            userRepository.updateFtp(userId, ftpWatts, FtpChangeSource.ManualEdit)
+            userRepository.save(
+                profile.copy(
+                    ftpWatts = ftpWatts ?: profile.ftpWatts,
+                    weightKg = weightKg ?: profile.weightKg
+                ),
+                // 7.9.2. A number the rider typed is a *claim*; the chart draws
+                // it differently from one the app measured off a 20-minute peak.
+                // Ignored when the FTP has not moved — `save` records a change,
+                // not a save.
+                ftpSource = FtpChangeSource.ManualEdit
+            )
         }
-    }
-
-    fun setWeight(weightKg: Double) {
-        val userId = uiState.value.profile?.localUserId ?: return
-        viewModelScope.launch { userRepository.updateWeight(userId, weightKg) }
     }
 
     fun setHouseholdVisible(visible: Boolean) {

@@ -91,6 +91,8 @@ import com.pelonot.ui.theme.spacing
 import kotlinx.coroutines.launch
 import com.pelonot.ui.viewmodel.SettingsViewModel
 import androidx.compose.ui.unit.dp
+import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.data.local.entity.FtpHistoryEntity
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -199,8 +201,9 @@ fun SettingsScreen(
                     ftp = state.ftpWatts,
                     weightKg = state.weightKg,
                     units = state.settings.unitSystem,
-                    onFtpChange = viewModel::setFtp,
-                    onWeightChange = viewModel::setWeight
+                    lastFtpChange = state.lastFtpChange,
+                    previousFtpWatts = state.previousFtpWatts,
+                    onSave = viewModel::saveRider
                 )
             }
 
@@ -390,8 +393,10 @@ private fun RiderSection(
     ftp: Int,
     weightKg: Double?,
     units: UnitSystem,
-    onFtpChange: (Int) -> Unit,
-    onWeightChange: (Double) -> Unit
+    lastFtpChange: FtpHistoryEntity?,
+    previousFtpWatts: Int?,
+    /** One call, not two — see `SettingsViewModel.saveRider`. */
+    onSave: (ftpWatts: Int?, weightKg: Double?) -> Unit
 ) {
     // Seeded from the persisted value, then re-seeded whenever it changes
     // underneath us (e.g. an accepted FTP breakthrough) — or whenever the unit
@@ -427,6 +432,8 @@ private fun RiderSection(
             modifier = Modifier.fillMaxWidth()
         )
 
+        FtpLastChanged(lastFtpChange, previousFtpWatts)
+
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
         OutlinedTextField(
@@ -452,8 +459,10 @@ private fun RiderSection(
 
         Button(
             onClick = {
-                ftpValue?.takeIf { it in MIN_FTP..MAX_FTP }?.let(onFtpChange)
-                weightValue?.takeIf { it in MIN_WEIGHT..MAX_WEIGHT }?.let(onWeightChange)
+                onSave(
+                    ftpValue?.takeIf { it in MIN_FTP..MAX_FTP },
+                    weightValue?.takeIf { it in MIN_WEIGHT..MAX_WEIGHT }
+                )
             },
             enabled = !ftpError && !weightError,
             modifier = Modifier.fillMaxWidth(),
@@ -462,6 +471,49 @@ private fun RiderSection(
             Text("Save")
         }
     }
+}
+
+/**
+ * When this rider's FTP last moved, and who moved it (PLAN 7.10.3).
+ *
+ * The reason it says *who* is 7.10.4: **an accepted auto-FTP change is the app
+ * editing the rider's own record**, and until 7.9 there was no way for a rider
+ * who did not remember agreeing to it to find out that it had happened. A
+ * number that changed by itself and cannot be traced is indistinguishable from
+ * a bug.
+ *
+ * Silent until the number has actually moved. A rider's first row is the value
+ * their profile started with, and reporting that as a change would be the app
+ * announcing an event that never took place.
+ */
+@Composable
+private fun FtpLastChanged(entry: FtpHistoryEntity?, previousWatts: Int?) {
+    if (entry == null) return
+
+    val direction = when {
+        previousWatts == null -> null
+        entry.ftpWatts > previousWatts -> "up from $previousWatts W"
+        entry.ftpWatts < previousWatts -> "down from $previousWatts W"
+        else -> null
+    }
+    val who = when (FtpChangeSource.fromName(entry.source)) {
+        FtpChangeSource.ManualEdit -> "you set it"
+        FtpChangeSource.AutoBreakthrough -> "the app measured it from a ride"
+        FtpChangeSource.GuidedTest -> "an FTP test"
+        FtpChangeSource.PulledFromCloud -> "another device"
+        FtpChangeSource.ProfileCreated -> "when the profile was made"
+        // Every value seeded by migration 7→8, and any write path that changes
+        // the number without saying why. The date is still true.
+        FtpChangeSource.Unknown -> null
+    }
+    val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(entry.changedAt))
+
+    Text(
+        text = listOfNotNull("Last changed $date", direction, who).joinToString(" · "),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = MaterialTheme.spacing.medium)
+    )
 }
 
 /**

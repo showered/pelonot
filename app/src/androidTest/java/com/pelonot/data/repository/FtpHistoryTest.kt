@@ -149,6 +149,36 @@ class FtpHistoryTest {
         assertEquals(1, repository.ftpHistory(rider.localUserId).size)
     }
 
+    /**
+     * The bug 7.9's own history found, kept as a test.
+     *
+     * Settings used to fire two coroutines off one tap of Save — one for FTP,
+     * one for weight — each doing read-modify-write on the same profile row.
+     * The weight write read the profile before the FTP write committed and put
+     * the *old* FTP back on its way past, so typing a new FTP and pressing Save
+     * left the old number in the database with the screen still showing the new
+     * one. Invisible until a history table recorded two identical changes
+     * twenty-three seconds apart.
+     *
+     * This asserts the property that made it impossible: **one save, one
+     * write**, carrying both fields.
+     */
+    @Test
+    fun savingFtpAndWeightTogetherKeepsBoth() = runBlocking {
+        val rider = newRider(ftp = 200)
+
+        now = 2_000
+        repository.save(
+            rider.copy(ftpWatts = 215, weightKg = 68.0),
+            ftpSource = FtpChangeSource.ManualEdit
+        )
+
+        val stored = repository.getUser(rider.localUserId)!!
+        assertEquals(215, stored.ftpWatts)
+        assertEquals(68.0, stored.weightKg, 0.001)
+        assertEquals(listOf(200, 215), repository.ftpHistory(rider.localUserId).map { it.ftpWatts })
+    }
+
     /** One rider's history is theirs; a housemate's changes do not appear in it. */
     @Test
     fun historiesDoNotLeakBetweenRiders() = runBlocking {
