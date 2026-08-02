@@ -87,9 +87,11 @@ the latest, it goes to the top of `plan/session-log.md`.
 ### Latest session — 2 August 2026 (sixteenth sitting): three quick items, and one of them was a rule about ids
 
 No bike and no rider, and nothing here needed either: a wire format, a
-workflow file and a class. Closed **14.4.7** and **25.4.3**; **19.1.4** is
-written but stays unticked until a run is green on GitHub, which is the house
-rule doing its job rather than paperwork. 448 JVM tests, 0 failures.
+workflow file, a class and the build's own hygiene. Closed **14.4.7**,
+**25.4.3**, **14.10.1 / 14.10.2 / 14.10.3 / 14.10.5** and **14.11.3**;
+**19.1.4** is written but stays unticked until a run is green on GitHub, which
+is the house rule doing its job rather than paperwork. 452 JVM tests, 0
+failures.
 
 **The payload carries where the watts came from (14.4.7).** The tempting shape
 was a scalar on the row, because `PowerProvenance` reduces a ride's samples to
@@ -134,6 +136,24 @@ a 360 s Z4 effort is under the half it demands, and 180 s rests make it a
 library is down to **50 distinct zone sequences from 51**, because `SWT-13`
 shares one with `SWT-12`: right, and recorded in `classlibrary/README.md`,
 because that count measures variety and is not a target to defend.
+
+**And what a fresh clone finds (14.10, 14.11.3).** `local.properties` is
+git-ignored, so an open-source project's only record of its own endpoint was in
+a file nobody receives. `cloud.properties` is checked in and **empty**, which is
+14.10.4's answer moved to where a contributor meets it: every RLS policy is
+still `USING (true)`, and a shared endpoint is a bill — about 13,000 rides of
+free tier before it fails for everyone at once, including the riders whose only
+backup it was. Precedence is env → `local.properties` → `cloud.properties` →
+offline, with a blank counting as absent at every level so an exported-but-empty
+variable falls through rather than blanking the build.
+
+The fence is the part worth keeping. Two mistakes here are one line each and
+invisible in review: a key committed to `cloud.properties`, and a third
+`secret()` call — `local.properties` holds an `sbp_` token that can delete every
+project on the account, one `buildConfigField` from an APK. `CloudConfigFence
+Test` asserts the checked-in values are blank and that the `secret()` calls are
+exactly the URL and the anon key, in that order. Same idea as the `CloudAccess`
+and `PowerModel` fences: **the danger is the line nobody has written yet.**
 
 ### Still needing a rider on the bike
 
@@ -210,6 +230,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | ~~**14.4.7** The payload's last missing field~~ | **Done.** `pm`, per sample rather than a scalar on the row, because `PowerProvenance` reduces the samples to one answer *from* them and `Mixed` is samples disagreeing. `CompactBoolean` writes 1/0, which is what makes a per-sample column affordable: 55,635 bytes a 45-minute ride, budget 56 → 60 KB |
 | ~~**25.4.3** The two near-twin classes~~ | **Done, and as `SWT-13` rather than an edited `SWT-05`** — changing what an id *is* while a ride points at it rewrites what that ride was, which is why 23.2.6 took a new series. Titles now separate them from the library list: *4-5-6* against *4×4* |
+| ~~**14.10 / 14.11.3** What a fresh clone finds~~ | **Done.** `cloud.properties`, checked in and empty; precedence env → `local.properties` → it → offline; `CloudConfigFenceTest` fails the build if a key lands in it or a third `secret()` call appears. 14.10.4 stays open because the *decision* is 15.5's, but it is now fenced rather than remembered |
 | **19.1.4** CI on every PR | **Written, not yet green.** `.github/workflows/ci.yml` — build then the JVM tests, no secret (offline-first is the reason), no instrumented suite (order-dependent). One green run on GitHub ticks it |
 
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
@@ -266,7 +287,7 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
 | 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. The other four (16.3.2–16.3.5) remain |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
