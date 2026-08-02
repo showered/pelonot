@@ -65,6 +65,7 @@ import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.components.CadenceDistributionChart
+import com.pelonot.ui.components.CadenceTraceChart
 import com.pelonot.ui.components.ChartCard
 import com.pelonot.ui.components.HeartRateTraceChart
 import com.pelonot.ui.components.PowerTraceChart
@@ -430,15 +431,21 @@ private fun RideChartsSection(
                     PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.weight(1f))
                     HeartCard(charts, Modifier.weight(1f))
                 }
+                // The two cadence cards side by side on purpose: they are the
+                // same metric answering two questions — when, and how long at
+                // each — and the one with a time axis is the only one a
+                // prescribed cadence can be drawn on (16.1.5a).
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
                 ) {
+                    CadenceTraceCard(charts, Modifier.weight(1f))
                     CadenceCard(charts, Modifier.weight(1f))
-                    ZoneCard(charts, Modifier.weight(1f))
                 }
+                ZoneCard(charts, Modifier.fillMaxWidth())
             } else {
                 PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.fillMaxWidth())
                 HeartCard(charts, Modifier.fillMaxWidth())
+                CadenceTraceCard(charts, Modifier.fillMaxWidth())
                 CadenceCard(charts, Modifier.fillMaxWidth())
                 ZoneCard(charts, Modifier.fillMaxWidth())
             }
@@ -572,8 +579,19 @@ private fun HeartCard(charts: RideCharts, modifier: Modifier) = ChartCard(
 }
 
 @Composable
+private fun CadenceTraceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Cadence over time",
+    caption = "What the class asked for, behind what you turned"
+        .takeUnless { charts.prescribed.isEmpty },
+    summary = RideChartSummaries.cadenceOverTime(charts.cadenceTrace, charts.prescribed),
+    modifier = modifier
+) {
+    CadenceTraceChart(trace = charts.cadenceTrace, prescribed = charts.prescribed)
+}
+
+@Composable
 private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
-    title = "Cadence",
+    title = "Cadence spread",
     caption = "How long was spent at each cadence",
     summary = RideChartSummaries.cadence(charts.cadence),
     modifier = modifier

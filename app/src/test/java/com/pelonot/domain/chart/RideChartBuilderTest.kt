@@ -178,6 +178,80 @@ class RideChartBuilderTest {
         powerZoneNumber = zone
     )
 
+    // ---- 16.1.5a: the cadence the class asked for ----
+
+    @Test
+    fun `a coast is drawn on the cadence trace and left out of the spread`() {
+        // The two cadence charts disagree on purpose. The distribution excludes
+        // coasting because every ride would otherwise have a meaningless spike
+        // in the 0-9 band; the trace keeps it, because a stop is a measured
+        // thing that happened at a moment — and it is *measured*, which is what
+        // separates it from a null heart rate.
+        val samples = ride(600, cadence = { if (it in 200..259) 0.0 else 85.0 })
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200)
+
+        assertEquals(0.0, charts.cadenceTrace.minValue, 0.001)
+        assertTrue(charts.cadenceTrace.buckets.any { it.min == 0.0 })
+        // 540 pedalling seconds, and not one of them in a band below 20 rpm.
+        assertEquals(540, charts.cadence.totalSeconds)
+        assertTrue(charts.cadence.secondsByBand.keys.none { it * 10 < 20 })
+    }
+
+    @Test
+    fun `the prescribed cadence is counted separately from the prescribed power`() {
+        // A torque block ridden at spinning cadence: the watts are dead on and
+        // the legs are wrong, which is a different session from the one that was
+        // written and is invisible on a histogram.
+        val samples = ride(601, power = { 195.0 }, cadence = { if (it < 300) 62.0 else 95.0 })
+        val charts = RideChartBuilder.build(
+            samples,
+            ftpWatts = 200,
+            intervals = listOf(
+                Interval(0, 300, cadenceMin = 60, cadenceMax = 70, powerZoneNumber = 4),
+                Interval(300, 600, cadenceMin = 60, cadenceMax = 70, powerZoneNumber = 4)
+            )
+        )
+
+        // Every prescribed second was inside the power band...
+        assertEquals(600, charts.prescribed.secondsRidden)
+        assertEquals(600, charts.prescribed.secondsInBand)
+        // ...and only half of them inside the cadence.
+        assertEquals(300, charts.prescribed.secondsInCadenceBand)
+        assertEquals(0.5f, charts.prescribed.fractionInCadenceBand, 0.001f)
+
+        val summary = RideChartSummaries.cadenceOverTime(charts.cadenceTrace, charts.prescribed)
+        assertTrue(summary, summary.contains("50%"))
+        assertTrue(summary, summary.contains("95 rpm"))
+    }
+
+    @Test
+    fun `the prescribed cadence is not scaled by the ride's intent`() {
+        // Riding a class easier means fewer watts, not slower legs. The power
+        // band moves with the multiplier and the cadence does not.
+        val charts = RideChartBuilder.build(
+            ride(301, cadence = { 85.0 }),
+            ftpWatts = 200,
+            intervals = listOf(Interval(0, 300, cadenceMin = 80, cadenceMax = 90, powerZoneNumber = 4)),
+            intentMultiplier = 0.8
+        )
+
+        val segment = charts.prescribed.segments.single()
+        assertEquals(80, segment.targetCadenceLow)
+        assertEquals(90, segment.targetCadenceHigh)
+        assertEquals(300, segment.secondsInCadenceBand)
+        // The watts did move, which is what makes the comparison meaningful.
+        assertEquals(182.0 * 0.8, segment.targetLowWatts, 0.5)
+    }
+
+    @Test
+    fun `a free ride's cadence trace says nothing about compliance`() {
+        val charts = RideChartBuilder.build(ride(600), ftpWatts = 200)
+        val summary = RideChartSummaries.cadenceOverTime(charts.cadenceTrace, charts.prescribed)
+
+        assertTrue(summary, summary.contains("Cadence over"))
+        assertFalse(summary, summary.contains("target cadence"))
+    }
+
     @Test
     fun `a free ride is not marked down against a class it never rode`() {
         val charts = RideChartBuilder.build(ride(600), ftpWatts = 200)

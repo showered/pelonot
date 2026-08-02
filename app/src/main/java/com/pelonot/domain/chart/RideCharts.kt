@@ -119,10 +119,22 @@ data class PrescribedSegment(
     val zone: PowerZone,
     val targetLowWatts: Double,
     val targetHighWatts: Double,
+    /**
+     * The prescribed cadence, in rpm (16.1.5a).
+     *
+     * **Not scaled by the intent multiplier**, unlike the watts above. Riding
+     * *easier* than the class asks means less power; it does not mean turning
+     * the pedals more slowly, and a 60–70 rpm torque block ridden at 0.9× is
+     * still a 60–70 rpm torque block. The multiplier is a power thing.
+     */
+    val targetCadenceLow: Int,
+    val targetCadenceHigh: Int,
     /** Seconds of this segment the ride actually recorded. */
     val secondsRidden: Int,
     /** Of those, how many were inside the target band. */
-    val secondsInBand: Int
+    val secondsInBand: Int,
+    /** And how many were inside the prescribed cadence, which is a separate question. */
+    val secondsInCadenceBand: Int
 ) {
     val durationSec: Int get() = (endSec - startSec).coerceAtLeast(0)
 }
@@ -151,6 +163,11 @@ data class PrescribedPlan(
     val fractionInBand: Float
         get() = if (secondsRidden == 0) 0f else secondsInBand.toFloat() / secondsRidden
 
+    val secondsInCadenceBand: Int get() = segments.sumOf { it.secondsInCadenceBand }
+
+    val fractionInCadenceBand: Float
+        get() = if (secondsRidden == 0) 0f else secondsInCadenceBand.toFloat() / secondsRidden
+
     /** True when the rider saw the class out rather than stopping part way. */
     val finishedClass: Boolean
         get() = classDurationSec > 0 && riddenSec >= classDurationSec - FINISH_TOLERANCE_SEC
@@ -158,6 +175,16 @@ data class PrescribedPlan(
     /** The highest target *floor*, which is what the chart has to leave room for. */
     val highestTargetFloor: Double
         get() = segments.maxOfOrNull { it.targetLowWatts } ?: 0.0
+
+    /**
+     * The top of the prescribed cadence, which the cadence chart *does* have to
+     * fit whole — unlike the power bands, where a Z7 ceiling at twice FTP would
+     * flatten the trace. Cadence targets live in a narrow, human range and a
+     * block drawn half off the top would be the one the rider most wants to
+     * see.
+     */
+    val highestTargetCadence: Int
+        get() = segments.maxOfOrNull { it.targetCadenceHigh } ?: 0
 
     private companion object {
         /** A class ending on the tick is rare; a few seconds short is not. */
@@ -169,6 +196,18 @@ data class PrescribedPlan(
 data class RideCharts(
     val power: RideTrace = RideTrace(),
     val heartRate: RideTrace = RideTrace(),
+    /**
+     * Cadence on the clock (16.1.5a), which is a different question from
+     * [cadence] and the only one a *prescribed* cadence can be drawn against —
+     * a distribution has no time axis to lay a target on.
+     *
+     * **Zeros are drawn**, unlike the distribution, which excludes them. There
+     * the 0–9 band is a spike that says nothing about how the ride was ridden;
+     * here a coast is a real thing that happened at a real moment, and it is
+     * measured rather than unknown. That is the line between this and the heart
+     * rate trace, which refuses to draw a gap at all.
+     */
+    val cadenceTrace: RideTrace = RideTrace(),
     val cadence: CadenceDistribution = CadenceDistribution(),
     val timeInZone: TimeInZone = TimeInZone(),
     val prescribed: PrescribedPlan = PrescribedPlan(),
@@ -241,6 +280,7 @@ object RideChartBuilder {
         return RideCharts(
             power = downsample(ordered, buckets) { it.powerWatts },
             heartRate = downsampleNullable(ordered, buckets) { it.heartRateBpm?.toDouble() },
+            cadenceTrace = downsample(ordered, buckets) { it.cadenceRpm },
             cadence = cadenceDistribution(ordered),
             timeInZone = timeInZone(ordered, ftpWatts),
             prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
@@ -370,8 +410,15 @@ object RideChartBuilder {
                     zone = interval.powerZone,
                     targetLowWatts = low,
                     targetHighWatts = high,
+                    targetCadenceLow = interval.cadenceMin,
+                    targetCadenceHigh = interval.cadenceMax,
                     secondsRidden = ridden.size,
-                    secondsInBand = ridden.count { it.powerWatts in low..high }
+                    secondsInBand = ridden.count { it.powerWatts in low..high },
+                    // A coast is outside the target, and counted as such: the
+                    // rider was asked to turn the pedals at 85 and was not.
+                    secondsInCadenceBand = ridden.count {
+                        it.cadenceRpm >= interval.cadenceMin && it.cadenceRpm <= interval.cadenceMax
+                    }
                 )
             }
             .filter { it.durationSec > 0 }
@@ -434,6 +481,28 @@ object RideChartSummaries {
         }
         return "Heart rate from ${trace.minValue.roundToInt()} to " +
             "${trace.maxValue.roundToInt()} beats per minute."
+    }
+
+    /**
+     * Cadence on the clock, and what it was asked to be (16.1.5a).
+     *
+     * The peak is stated because the chart's own scale is rounded, and a rider
+     * who put in a 130 rpm effort wants the number rather than "somewhere above
+     * 125". The compliance half is silent for a free ride, exactly as
+     * [prescribed] is: a class that asked for nothing was not disobeyed.
+     */
+    fun cadenceOverTime(trace: RideTrace, plan: PrescribedPlan): String {
+        if (trace.isEmpty) return "No cadence was recorded for this ride."
+
+        val shape = "Cadence over ${formatDuration(trace.durationSec)}, " +
+            "peaking at ${trace.maxValue.roundToInt()} rpm."
+
+        if (plan.isEmpty || plan.secondsRidden == 0) return shape
+
+        val percent = (plan.fractionInCadenceBand * 100).roundToInt()
+        return "$shape Inside the class's target cadence for " +
+            "${formatDuration(plan.secondsInCadenceBand)} of " +
+            "${formatDuration(plan.secondsRidden)} prescribed — $percent%."
     }
 
     fun cadence(distribution: CadenceDistribution): String {

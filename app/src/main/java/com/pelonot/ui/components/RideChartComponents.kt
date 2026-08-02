@@ -468,6 +468,114 @@ fun HeartRateTraceChart(
     }
 }
 
+/**
+ * Cadence over time, with the cadence the class asked for drawn under it
+ * (16.1.5a).
+ *
+ * The prescription was parsed and thrown away before this existed: an interval
+ * names a cadence range as well as a zone, and the distribution chart below has
+ * no time axis to lay a target on. So either this chart or nothing — and a
+ * torque block ridden at 95 rpm is a different session from the one that was
+ * written, which is precisely what a rider cannot see from a histogram.
+ *
+ * **The blocks are absolute rpm**, not scaled by the ride's intent multiplier
+ * the way the power bands are: riding a class easier means fewer watts, not
+ * slower legs.
+ *
+ * **Zeros are drawn.** A coast is measured, and it happened at a moment — which
+ * is the difference between this and [HeartRateTraceChart], where a gap is
+ * *unknown* and drawing it would say the rider's heart stopped.
+ */
+@Composable
+fun CadenceTraceChart(
+    trace: RideTrace,
+    modifier: Modifier = Modifier,
+    prescribed: PrescribedPlan = PrescribedPlan(),
+    height: androidx.compose.ui.unit.Dp = CHART_HEIGHT
+) {
+    if (trace.isEmpty) {
+        EmptyChart("No cadence was recorded.", modifier, height)
+        return
+    }
+
+    // From zero, because a coast is a real reading and a chart starting at 40
+    // rpm would draw one as the floor of the box rather than as a stop. The
+    // ceiling fits the prescription whole — cadence targets are a narrow human
+    // range, so unlike the power chart there is nothing to be gained by
+    // clipping them.
+    val ceiling = maxOf(
+        trace.maxValue,
+        prescribed.highestTargetCadence.toDouble()
+    ).coerceAtLeast(1.0) * CADENCE_HEADROOM
+
+    ChartFrame(
+        scale = ChartScale(0.0, ceiling),
+        unit = "",
+        durationSec = trace.durationSec,
+        height = height,
+        modifier = modifier
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(MaterialTheme.expressiveShapes.small)
+        ) {
+            val x = { sec: Int -> size.width * (sec.toFloat() / trace.durationSec.coerceAtLeast(1)) }
+            val y = { rpm: Double -> size.height * (1f - (rpm / ceiling).toFloat()) }
+
+            // Under the trace, like the power prescription: the record goes on
+            // top of what was asked for.
+            prescribed.segments.forEach { segment ->
+                val left = x(segment.startSec)
+                val right = x(segment.endSec)
+                val top = y(segment.targetCadenceHigh.toDouble())
+                val bottom = y(segment.targetCadenceLow.toDouble())
+                if (right > left && bottom > top) {
+                    val block = Size(right - left, bottom - top)
+                    drawRect(
+                        color = MetricCadenceCyan.copy(alpha = 0.16f),
+                        topLeft = Offset(left, top),
+                        size = block
+                    )
+                    // Outlined as well as filled, for the same reason the power
+                    // blocks are: two neighbouring intervals asking for the same
+                    // cadence are one long block without it, and that is a
+                    // different class from the one that was ridden.
+                    drawRect(
+                        color = MetricCadenceCyan.copy(alpha = 0.5f),
+                        topLeft = Offset(left, top),
+                        size = block,
+                        style = Stroke(width = 1.dp.toPx())
+                    )
+                }
+            }
+
+            val area = Path().apply {
+                trace.buckets.forEachIndexed { i, bucket ->
+                    val px = x(bucket.startSec)
+                    if (i == 0) moveTo(px, y(bucket.max)) else lineTo(px, y(bucket.max))
+                }
+                trace.buckets.asReversed().forEach { bucket ->
+                    lineTo(x(bucket.startSec), y(bucket.min))
+                }
+                close()
+            }
+            drawPath(area, MetricCadenceCyan.copy(alpha = 0.30f))
+
+            val mean = Path().apply {
+                trace.buckets.forEachIndexed { i, bucket ->
+                    val px = x(bucket.startSec)
+                    if (i == 0) moveTo(px, y(bucket.mean)) else lineTo(px, y(bucket.mean))
+                }
+            }
+            drawPath(mean, MetricCadenceCyan, style = Stroke(width = 2.dp.toPx()))
+        }
+    }
+}
+
+/** Enough that a ride's fastest spin is not drawn along the top edge. */
+private const val CADENCE_HEADROOM = 1.08
+
 /** How the ride's cadence was spread (16.1.3). */
 @Composable
 fun CadenceDistributionChart(
