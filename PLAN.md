@@ -36,89 +36,29 @@ takes its place in it — what it buys is a written-down item with the reasoning
 attached, not a promotion past work that matters more. (This replaces the older
 line that said the inbox outranks *What to do next*.)
 
-*Empty. Five entries have passed through it. Standing and seated riding is now
-**Phase 25**, built but for one judgement that needs a rider (25.3.4). The two
-left in the eighteenth sitting, and the two left in the nineteenth, are written
-up with the owner's words kept verbatim at the head of each:*
+**Where an emptied entry goes.** One line here saying which item it became, and
+nothing else. The reasoning belongs in the item, and the story of the sitting
+belongs in the sitting — [plan/session-log.md](plan/session-log.md) has
+every earlier write-up in full, verbatim, including the owner's own words.
+*This paragraph is itself the answer to an inbox entry:* the section kept
+growing not because entries were going unhandled but because each one left a
+paragraph of write-up behind, and thirteen handled entries make a long section
+that reads exactly like a backlog. The live inbox is now the last heading on
+this page and nothing else.
 
-- ***Max panel width** → **22.4**. The point is that `readableWidth` is a rule
-  about a **line**, not about the **screen**, and every surface that took the
-  token in 22.2.6 chose "cap it" by default because that was the only answer on
-  offer. The rule it lands on: **cap what is read at arm's length, tile what is
-  looked at.** The owner's own example — ride detail's charts in one column — is
-  22.4.2.*
-- ***Initial FTP** → **20.3**. "Nobody in their right mind would know this",
-  and the field is the third thing the app ever says to a rider. Two facts
-  constrain it and pull against each other: the app **cannot** have no number
-  (FTP is the denominator of the whole zone system and is written onto the ride
-  at its start), and inferring one from the first ride is gated on measured
-  power (7.10.7), so it cannot be the **first** act. The owner's two routes are
-  a real choice and 20.3.2 is where it gets made rather than assumed.*
-
-*Both of the nineteenth sitting's entries are written up, with the owner's words
-kept verbatim at the head of each:*
-
-- ***In-ride targets** → **11.7**. The owner's question — "do i focus on zone,
-  cadence, or resistance?" — is the right one, and the screen does not answer
-  it. It is not three targets: it is one **outcome** (power) and the two
-  **controls** that produce it, drawn as three tiles of equal weight.
-  Measuring the library moved most of the question: all 1071 intervals
-  prescribe both a zone and a cadence band, so nothing today can tell a cadence
-  **instruction** from a cadence **suggestion** — but the catalogue already
-  knows the difference and cannot say it, with 574 blocks in the two neutral
-  bands and 231 out in the tails where cadence plainly is the exercise. **11.7.2 is
-  the owner's decision** (derive it, or name it in the catalogue — the
-  recommendation is to name it, and the argument is 25.4.2's). **11.7.1a is a
-  defect found on the way and worth fixing whichever way that goes**: amber
-  fires on every metric equally, so a threshold block tells a rider spinning a
-  perfectly good 92 rpm that they are wrong.*
-- ***Resume session** → **8.3d**. The owner wants an interrupted ride resumed,
-  not merely kept — which **contests 8.3a**, so its reasoning had to be
-  answered rather than overruled. It does not survive: the gap it calls "of
-  unknown length" is arithmetic off the row and the last sample, and
-  `elapsedSeconds()` has excluded paused time since Phase 3, so `timestamp_sec`
-  was never seconds-since-start but **seconds of riding**. **A crash is a pause
-  nobody got to press.** 8.3a's concern is kept rather than discarded, as
-  8.3d.2: the break becomes a fact on the row, because a contiguous series
-  cannot show it and `was_recovered` means the other thing.*
-
-*The twentieth sitting's five ride-screen snags are written up and the entries
-are out. **The owner also set the rule for this section itself** — verbatim:
-"even though you read my comments as one of the first things you do, don't
-necessarily action them first. They should have plan entries created and then
-triaged with just the same weighting as any other plan items." That is now how
-CLAUDE.md reads: the inbox is emptied first, the **ordering** is argued
-afterwards on the merits. Where the five went, with the owner's words kept
-verbatim at the head of each:*
-
-- ***Powerzone indicator** → **11.6.11**. The bounce is not the animation, it is
-  the quantity: `fractionThroughZone` is per-zone, so crossing a boundary drives
-  the fill backwards across a whole segment before it grows again. One
-  continuous coordinate across all seven rungs, monotonic in power, and the
-  boundary stops being an event.*
-- ***Output in watts** → **11.6.12**. The call is the owner's and stands. The
-  live tiles already round; the number with the tenth on it is **OUTPUT**, and
-  it is the one that clips its own unit label as the kilojoules reach three
-  digits.*
-- ***Heart rate pulse** → **21.3.4**, and it needs nothing else in Phase 21, so
-  it is the half of the heart-rate note that can land now. Two rules make it
-  honest: the period is the live bpm, and it stops when the reading does.*
-- ***Heart rate zones** → **21.3.1**, and the honest answer is that it is **not**
-  already covered: the app has no maximum heart rate for anybody, so it has no
-  boundaries to colour between. Cheap once 21.1 asks the question; inventing the
-  number instead of asking is what 21.1 exists to refuse.*
-- ***Beginning of ride countdown** → **11.6.13**. Ten seconds, skippable. The
-  thing to get right is that it sits **before** `startRide` — a curtain over a
-  ride that has already begun moves the defect rather than fixing it, because
-  the clock, the first interval and the recorder are all behind it.*
+**Fourteen entries have passed through it.** In order: standing and seated
+riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
+in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
+ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
+(**21.3.4**), heart-rate zones (**21.3.1**), the pre-ride countdown
+(**11.6.13**), this section's own rule (in CLAUDE.md and above), the inbox's
+growth (the paragraph above), inferring the maximum heart rate (**21.1.6**, and
+**20.3.9** for what it shares with the FTP question), and signing in by QR code
+(**15.6**).
 
 ### Owner's inbox
 
-It's still getting larger after each session. Shouldn't we clear it out? Or is everything ok?
-
-### Infer max bpm
-
-It's better UX to ask people their age and weight than to ask max bpm. No normal person knows their max bpm! Let's infer it. This whole app needs to be great UX for normal people who just want to crack on and ride.
+*Empty.*
 
 ---
 
@@ -270,8 +210,9 @@ here:
 | 2 | **14.2.1a** apply `003`, **15.5.4** verify it from a second account | The only step in this list where being wrong is a **breach** rather than a bug. Nothing else may go online first, and "the SQL looks right" is not the check. **The wipe is authorised** (owner, 3 Aug); run `003` *before* 15.1, not after. And the endpoint now has friends on it, so this is other people's data |
 | 3 | **15.1** auth, **15.2** identity, **15.3** sync both ways | The phase that unlocks everything. 15.3.1 is mostly built already — it is 14.2.6's drain with a sign-in trigger on it |
 | 4 | ~~**14.2.3** sync state in Settings~~ | **Done in the same sitting**, because it belongs before riders trust the thing rather than after. Two of three states seen on the AVD; the failing one is tested and will be seen for free the first time 14.2.1a's endpoint refuses something |
-| 5 | **20.3** the initial FTP, **22.4** use the width | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders |
-| 6 | **17** the web app, **18** social across bikes | Last, and in that order: the bike's tablet is a bad place to type, so the web app is the natural home for friend requests and display names, and 18 is those features arriving back on the bike. **Read Phase 24 first** — the household half is built, needs no account from anybody, and 18.9 says every screen here is built *on top of* its 24 equivalent rather than beside it |
+| 4a | **17.1**, **17.13** the web app's first page, **15.6** signing in by QR | **Moved up from row 6 by the owner's note of 3 August**, and it is not a reshuffle of priorities so much as a correction: the web app was filed as a *destination* when it is also **the only way either of us can see what the bike actually put in the cloud** without writing SQL. Every cloud defect this project has had was found by query rather than by looking. The QR flow (15.6) needs a page to point at, which makes `link.html` the first thing built and the rest of 17 an easy follow-on |
+| 5 | **20.3** the initial FTP, **22.4** use the width | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders. **20.3.9 changed its cost**: date of birth is already on the profile, so Route B is one extra question rather than two, and the same screen answers 21.1.6 |
+| 6 | **17** the rest of the web app, **18** social across bikes | In that order: the bike's tablet is a bad place to type, so the web app is the natural home for friend requests and display names, and 18 is those features arriving back on the bike. **Read Phase 24 first** — the household half is built, needs no account from anybody, and 18.9 says every screen here is built *on top of* its 24 equivalent rather than beside it |
 
 Two things that are **not** blockers and were checked rather than assumed: the
 payload format is settled and versioned inside itself (14.4, incl. 14.4.7's

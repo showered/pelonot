@@ -82,6 +82,45 @@ asks less about the person, which is a rare combination and worth taking.
       strap data across their real rides.*
 - [ ] **21.1.4** Resting heart rate, if and only if the model chosen in 21.2
       needs it. Do not collect a field nothing reads
+- [ ] **21.1.6** **Ask the answerable question first — the owner's note, 3
+      August 2026.** Verbatim: *"It's better UX to ask people their age and
+      weight than to ask max bpm. No normal person knows their max bpm! Let's
+      infer it. This whole app needs to be great UX for normal people who just
+      want to crack on and ride."*
+
+      **This contests 21.1's ordering, and it should win — but only the
+      ordering.** The two arguments are about different things and both are
+      right. 21.1 is about *accuracy*: an age formula has a 10–12 bpm spread
+      between individuals, which is wider than a zone, so an estimate gives a
+      meaningful fraction of riders the wrong zones outright. The owner's note
+      is about *answerability*: a field is worthless at any accuracy if the
+      rider cannot fill it in, and a text box asking a normal person for a
+      number they have never measured does not produce a careful answer — it
+      produces a guess typed into a field the app will then treat as measured
+      fact. **An unanswerable question is not more accurate than an estimate.
+      It is less.**
+
+      So the synthesis, and it is the same one 20.3 reaches for FTP: **ask what
+      everyone can answer, offer what the few can.** Date of birth becomes the
+      default path with the estimate shown live as it is filled in (21.1.2 is
+      already built and already says it is an estimate); the measured number
+      moves behind an explicit *"I know my maximum heart rate"*, where the
+      riders who have actually done a ramp test will look for it. 21.1.3 stays
+      exactly as built and keeps its offer off the rider's own recorded samples
+      — what changes is which of the two is the first thing on the screen, not
+      which one wins when both exist. **The measured number still overrides the
+      estimate**, which is the part of 21.1 that is about accuracy rather than
+      about ordering.
+
+      What this must not do is quietly make the estimate look like a fact.
+      Every surface showing a derived maximum says so (21.1.2), and 20.3.4's
+      rule applies here unchanged: a rider who knows the number is a guess will
+      correct it, and one who does not will ride a year of wrong zones without
+      ever suspecting the app of anything.
+
+      See **20.3.7** — the same question, asked once, answers both this and the
+      FTP estimate, and that is an argument for Route B in 20.3.2 rather than a
+      coincidence
 - [ ] **21.1.5** Threshold heart rate (LTHR) as the best-quality basis, optional
       and much later. The guided FTP test in 19.2.3 is the same twenty minutes
       of riding, so if that is built, this comes almost free from it

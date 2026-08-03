@@ -19,6 +19,35 @@ friend requests, display names, bios, ride titles. **Anything that requires a
 keyboard should be possible on the web and optional on the bike.**
 
 - [ ] **17.1** Stack and repo layout. A separate top-level `web/` directory or a separate repo — **the Android build must never depend on it**
+
+      *Decided, 3 August 2026, and the owner's reason for bringing it forward is
+      worth recording: the web app is not only a destination, it is **the
+      cheapest way for either of us to see what the bike put in the cloud**.
+      A ride that reaches Supabase is currently invisible without a
+      Management-API query, which means every cloud defect in this project's
+      history has been found by SQL rather than by looking.*
+
+      ***`web/`, static, and with no build step*** — hand-written HTML, CSS and
+      ES modules, with the Supabase JS client loaded from the CDN and pinned by
+      version. The reasoning is the same one that keeps `cloud.properties` empty
+      and the class library in the APK: this is a hobby project on a household
+      endpoint, and a toolchain is a thing that rots between sittings. It opens
+      from `file://` for development and drops onto any static host for real
+      use. **No npm, no bundler, and nothing the Gradle build can see.**
+      If it ever needs a framework it can grow one; starting with one buys
+      nothing today and costs a maintenance surface immediately
+- [ ] **17.13** **The pairing page — `link.html`, and it is the first thing to
+      build here** (15.6). The whole of the QR sign-in flow lands on this page,
+      it is the reason the web app exists before it has anything pretty to show,
+      and it is one screen: sign in (or sign up), see which bike is asking, and
+      confirm. **It must name the device** (15.6.5), and it must work on a phone
+      held in one hand, which is the only device it will ever be opened on
+- [ ] **17.14** **Where the endpoint comes from, on a static page with no build
+      step.** The same rule as 14.10 and for the same reason: not in the source.
+      A `config.js` beside the page, git-ignored, with a checked-in
+      `config.example.js` — and the page says plainly that it is unconfigured
+      rather than failing in the console, which is where this project's cloud
+      defects have historically gone to die
 - [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
 - [ ] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
 - [ ] **17.4** Profile customisation: display name, avatar, bio, FTP, units

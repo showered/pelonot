@@ -25,9 +25,47 @@ something they could have had offline.**
 ### 15.1 Auth
 - [ ] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
 - [ ] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
+
+      **Amended by the owner, 3 August 2026**, who asked for *"profile setup
+      (email, password, confirm email, etc)"* directly. Both halves are built,
+      and the tension between them is resolved by **which one is the default**
+      rather than by picking one:
+
+      - **Email and password is the floor** (15.1.2a). It is what works with no
+        second device, no email client on the tablet, and no network round trip
+        through an inbox. A bike in a garage may be the only screen the rider
+        has to hand.
+      - **The QR hand-off is the door** (15.6), and it is the one that honours
+        the original instinct: a rider who scans it never types a credential on
+        the bike at all, their password manager does the work on a device
+        built for typing, and the tablet only ever holds a session it was
+        handed.
+
+      The thing the original wording was really protecting against is a bike
+      tablet, in a shared household room, becoming a place where passwords are
+      typed and possibly remembered. 15.6 removes that for anyone with a phone
+      and 15.1.2a keeps the app usable for everyone else
+- [ ] **15.1.2a** **Email and password, with the confirmations that go with
+      them.** Sign up takes an email, a password and a **repeated password** —
+      the second field is not ceremony on a bike, where the keyboard is a
+      touchscreen at arm's length and a typo in a password is a support
+      problem no offline app can solve. The project's Supabase instance has
+      `mailer_autoconfirm` off, so **sign-up does not produce a session**: it
+      produces an email the rider has to open. That state is real, it lasts
+      minutes to hours, and it must be drawn as a state of its own — *"check
+      your email, then come back and sign in"* — rather than as a failure or,
+      worse, as success. Rate limits on the built-in mailer are low (a handful
+      an hour), so a rider who asks twice must be told that rather than shown
+      a generic error
 - [ ] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
 - [ ] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
 - [ ] **15.1.5** The copy calls it what it does — **"Back up my rides"**, not "Log in". A rider on a bike is not looking for an account; they are deciding whether their history is safe
+- [ ] **15.1.6** **Nothing in this phase may be reachable during a ride, and
+      nothing may block one.** Sign-in lives in Settings, and Settings is
+      reachable mid-ride through the sheet (11.6.10) — so the failure to avoid
+      is a rider who taps *Back up my rides* at minute 12 and gets a modal over
+      a class they are pedalling. Auth screens are their own destination, not a
+      dialog
 
 ### 15.2 Identity model
 - [ ] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
@@ -100,3 +138,99 @@ on the strength of the file existing — 15.5.4 is the whole point.
       in advance of one — the first schema where a rider can see another
       rider's data deserves its own item, its own review and its own second
       account to test from
+
+---
+
+### 15.6 Signing in by QR code — the owner's note, 3 August 2026
+
+**The owner's words:** *"when logging in (and signing up?) you can scan a QR
+code and do it on your phone. Good for password managers etc and generally good
+experience. Not sure if that's feasible with our supabase setup."*
+
+**It is feasible, and it is the flow this app should have led with.** The bike's
+tablet is the worst keyboard in the house — 1280 dp of glass at arm's length,
+no password manager, an on-screen keyboard that eats half the screen, and a
+shared room. A phone is the opposite of all four. What the rider gets is the TV
+flow they already know from every streaming app: a code on the big screen,
+scanned, and the big screen signs itself in. It is also the honest reading of
+15.1.2's *"the app should not be in the business of handling credentials"* — in
+this flow **the bike never sees one**.
+
+**Feasibility, since the owner asked directly.** Supabase has no device
+authorization grant of its own, so this is built rather than configured, out of
+three parts it does have: a table with row-level security, a `SECURITY DEFINER`
+function (the standard way to let an unauthenticated caller touch one row of a
+locked table without granting it the table), and the admin API's ability to mint
+a one-time email OTP for a user who is already authenticated somewhere else.
+Nothing exotic and nothing that needs the anon key to be trusted.
+
+**The shape, and why it is this shape.** The naïve version — the phone hands the
+bike its own refresh token — is the one to avoid, and the reason is specific:
+**this project has refresh-token rotation on** (`refresh_token_rotation_enabled`,
+with a 10-second reuse interval). Two devices sharing one token family means the
+first one to refresh invalidates the other, and a detected reuse can revoke the
+family and sign out *both*. So the bike must end up with a **session of its
+own**, minted for it, not a copy of the phone's.
+
+- [ ] **15.6.1** **`device_link`, a table that holds a pairing for five
+      minutes.** `code` (short, unambiguous, typeable — the QR is the fast path
+      and not the only one), `secret_hash`, `label`, `created_at`,
+      `expires_at`, `claimed_at`, `claimed_by`, and the payload. RLS on, and
+      **no policy at all for `anon` or `authenticated`** — every access is
+      through a function, which is what stops a leaked anon key enumerating
+      pending pairings
+- [ ] **15.6.2** **The code is not the credential.** The bike generates a random
+      **device secret**, sends only its SHA-256, and shows the *code*. The QR
+      and the printed code are therefore safe to be photographed off a wall:
+      collecting the session needs the secret, which never leaves the tablet.
+      Without this split, anyone who can see the bike's screen from across the
+      room can race the bike for its own session
+- [ ] **15.6.3** **Three functions, `SECURITY DEFINER`, one grant each.**
+      `device_link_begin` (to `anon`: create a pairing, return the code),
+      `device_link_claim` (to `authenticated` only: attach my account to this
+      code), `device_link_poll` (to `anon`: given code **and** secret, return
+      the payload once and delete the row). Single use and short TTL are
+      enforced in the function, not in the caller. `search_path` pinned on all
+      three — a `SECURITY DEFINER` function without it is the classic Postgres
+      privilege-escalation footgun
+- [ ] **15.6.4** **The bike gets its own session, minted by an Edge Function.**
+      The phone calls it with its own access token; the function verifies that
+      token, asks the admin API for a one-time email OTP for that user, and
+      writes it into the pairing row. The bike collects it and verifies it like
+      any OTP, which gives it an independent session and its own refresh-token
+      family. The service-role key stays inside the function and reaches
+      neither device. **This is the only part that needs anything deployed
+      beyond SQL**, and if it cannot be deployed the fallback is written down
+      in 15.6.9 rather than improvised
+- [ ] **15.6.5** **What the phone shows before it commits.** *"Sign in to
+      Pelonot on **PLTN-RB1VQ**?"* — the label the bike sent, its own words,
+      shown to the rider before anything is claimed. A pairing flow that does
+      not name the device being paired is a phishing primitive: the QR is a URL
+      and a URL can be printed by anyone
+- [ ] **15.6.6** **What the bike shows while it waits, and what it does when it
+      stops.** A QR, the code underneath it in large type, a plain fallback URL,
+      and a countdown that is honest about the five minutes. On expiry it
+      offers a fresh code rather than sitting on a dead one — and it polls at a
+      human interval (two seconds), not a spin
+- [ ] **15.6.7** **Signing *up* by QR too**, which is the owner's parenthesis
+      and is the easier half: the phone is a browser, so it can run the whole
+      email-and-password-and-confirm dance with a password manager, and the
+      pairing is just the same hand-off afterwards. The bike's own sign-up
+      (15.1.2a) stays for the rider with no phone
+- [ ] **15.6.8** **It must degrade to nothing.** A build with no cloud
+      configured shows no QR, no code and no mention of any of this — rule 1 of
+      the connectivity model. A build with a cloud but no web app configured
+      shows the code and the URL and says plainly that the pairing page is not
+      set up, rather than drawing a QR that leads nowhere
+- [ ] **15.6.9** **The fallback if 15.6.4 cannot be deployed**, written down now
+      so it is a decision rather than a scramble: the phone hands over a
+      `session` for a **second** sign-in it performs itself, or the flow is
+      dropped to *"type this code into the web app, then type the six digits it
+      gives you into the bike"* — which is worse UX but needs no service role
+      anywhere. **What must not happen is the phone's own refresh token being
+      copied to the bike**, for the rotation reason above
+- [ ] **15.6.10** **The pairing table is the one piece of schema in this project
+      that an unauthenticated stranger can write to**, and it should be treated
+      that way: expired rows deleted on every `begin`, a cap on how many
+      unclaimed pairings can exist, and nothing in the row that identifies a
+      rider until the moment one claims it

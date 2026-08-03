@@ -170,6 +170,34 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       because every existing profile has neither and a backfilled guess is
       indistinguishable from an answer. Do not add them until 20.3.2 is decided;
       Route A needs none of it
+
+      *Half of this is already done and it happened for another reason:
+      `profiles.birth_date` landed in migration 11 → 12 as heart-rate zones'
+      fallback input (21.1.1), nullable for the same argument stated in the same
+      words. So Route B's cost is now one column — the self-assessed category —
+      rather than two, which is a real change to the balance in 20.3.2*
+- [ ] **20.3.9** **One question, two answers — and it is why the owner has now
+      asked for the same thing twice.** Their FTP note (the head of this
+      section) and their heart-rate note (21.1.6) are the same complaint about
+      two different fields: *nobody in their right mind would know this*, and
+      *no normal person knows their max bpm*. Taken together they are a rule
+      rather than two fixes: **the app does not ask a rider a question they
+      cannot answer, and where it needs a number they cannot give, it derives
+      one and says that it did.**
+
+      The practical consequence is a saving rather than a cost. **Date of birth
+      is the input to both** — Tanaka for the maximum heart rate (21.1.2, built)
+      and age-adjusted W/kg for the FTP estimate (20.3.2 Route B) — and it is
+      already on the profile, already nullable, already collected by a date
+      picker in Settings. So an onboarding flow that asks it once has paid for
+      two estimates, which materially changes 20.3.2's arithmetic: Route B's
+      "two more questions" is really one more question (the self-assessed
+      category), because the other one is a question the app wants anyway for a
+      feature the rider will meet in their first ride.
+
+      It also sets the order of the two phases: **20.3.3's screen is where the
+      date is asked**, and 21.1.6 is that same screen's second consumer. Build
+      the screen once
 - [ ] **20.3.8** **Guests skip all of this.** A guest ride has no profile and no
       FTP, and adding an onboarding flow in front of "just let me ride" would
       break the one thing the guest rung is for. Check what a guest ride's zone
