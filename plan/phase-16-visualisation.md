@@ -159,7 +159,52 @@ claim about the rider.
 - [x] **16.3.2** Weekly volume and output — **done and observed**, on a screen
       it shares with 16.3.5. See the note under 16.3.5: they are one subject
       and one screen, *Your riding*
-- [ ] **16.3.3** Personal bests by duration
+- [x] **16.3.3** Personal bests by duration
+
+      ***Mean-maximal power***, *which is what "by duration" means in cycling:
+      the best average watts held for 5 seconds, 1 minute, 5, 20 and 60. Not
+      "best total output for a 45-minute ride" — that is the leaderboard's
+      question (11.4) and it mostly measures how long the class was. These are
+      comparable across every ride the rider has ever done.*
+
+      *On **Your FTP**, by the rule 16.3.2/16.3.5 settled: a best is a claim
+      about the **rider**. And beside the FTP for a plainer reason — the
+      twenty-minute row is the number every FTP protocol is built on, so having
+      them a thumb apart is a comparison the rider would otherwise do on paper.*
+
+      ***A gap breaks the window**, and that is the rule the object exists for.
+      The series has real holes in it — a stalled board (2.4.4), an auto-pause
+      (19.1.2) — and averaging across seconds nobody recorded would award a
+      twenty-minute best to a ride that stopped for four of them. A ride with a
+      bottle stop in it therefore has **two shorter efforts rather than one long
+      one**, which is true, and the card says so in as many words.*
+
+      ***Measured rides only**, said out loud rather than filtered silently: a
+      best derived from `PowerModel` (RMSE 137 W) is a fiction filed as a
+      record. The count of skipped rides travels with the result, so a rider
+      whose rides were all simulated is told **why** the list is empty instead
+      of being left to conclude they have never ridden. Same gate as the
+      household leaderboard (24.4.2) and the FTP proposal (7.10.7).*
+
+      *A window the rider has never held is **absent, not zero** — a rider with
+      no hour-long ride has no hour row, rather than a row saying 0 W.*
+
+      ***Observed on the tablet AVD***: *5 s 209 W, 1 min 202 W, 5 min 188 W,
+      20 min 156 W, each naming the ride it came from and opening it on a tap;
+      no hour row, because no ride is an hour long; and* From 22 rides the bike
+      measured, of 23. *Eight JVM tests. Two label bugs came off the screen
+      rather than the tests — "1 minutes", and the calendar's invisible empty
+      day — which is the argument for driving it.*
+- [ ] **16.3.3a** **The scan has a ceiling, and it is not reached yet.**
+      `personalBests` walks every measured ride's samples on every visit to
+      *Your FTP* — one ride at a time, so memory is bounded by the longest ride
+      rather than by the history, but the reads are not: a year of daily riding
+      is ~365 queries and ~1M rows. On the AVD's 22 rides it is instant. The fix
+      when it stops being instant is to compute a ride's bests **once, when it
+      is recorded**, and keep them — a column set or a small table, plus a
+      backfill. Deliberately not built today: a schema change made before
+      anybody has felt it be slow is a guess, and this is the second time that
+      argument has been written down (see 23.4)
 - [x] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
 
       *It went in the picker the housemates are already in (24.3.1), because

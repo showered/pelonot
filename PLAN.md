@@ -88,7 +88,7 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 down to one
+### Latest session — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 finished
 
 No bike and no rider, and nothing here needed either: a wire format, a
 workflow file, a class and the build's own hygiene. Closed **14.4.7**,
@@ -97,8 +97,9 @@ workflow file, a class and the build's own hygiene. Closed **14.4.7**,
 is the house rule doing its job rather than paperwork. 452 JVM tests, 0
 failures.
 
-**Then Phase 16, which is now one item from done.** Closed **16.1.5a**,
-**16.3.2**, **16.3.4** and **16.3.5**, all four observed on the tablet AVD.
+**Then Phase 16, which is finished.** Closed **16.1.5a**, **16.3.2**,
+**16.3.3**, **16.3.4** and **16.3.5**, all five observed on the tablet AVD.
+471 JVM tests, 0 failures.
 
 **The cadence the class asked for has somewhere to be drawn (16.1.5a).** An
 interval prescribes a cadence range as well as a zone and the distribution has
@@ -132,6 +133,22 @@ measured-power rule. **Previous best, not best-ever**: a ride is compared with
 what the rider had already done when they rode it, so a ride from March says the
 same thing next year and a personal best is never quietly drawn against the ride
 that beat it.
+
+**Personal bests by duration (16.3.3), which is mean-maximal power.** Not "best
+output for a 45-minute ride" — that mostly measures how long the class was — but
+the best average watts held for 5 seconds, a minute, 5, 20 and 60, which are
+comparable across every ride the rider has done. It lives on *Your FTP* by the
+rule the other three settled (a best is a claim about the **rider**), and beside
+the FTP for a plainer reason: the twenty-minute row is what every FTP protocol
+is built on. **A gap breaks the window** — averaging across seconds nobody
+recorded would award a twenty-minute best to a ride that stopped for four of
+them, so a ride with a bottle stop has two shorter efforts rather than one long
+one. **Measured rides only**, with the skipped count travelling alongside, so an
+empty list can say why it is empty instead of implying the rider has never
+ridden. A window never held is absent, not zero. **16.3.3a** is opened against
+it: the scan reads every measured ride, which is instant at 22 rides and is a
+year of daily riding away from not being — the fix is per-ride bests computed
+once at recording, and it is not a schema change to make on a guess.
 
 **One thing the AVD changed, and it is the reason for driving it.** The
 calendar's not-ridden tile and its not-yet cell were both invisible, so
@@ -279,7 +296,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**16.1.5a** The prescribed cadence~~ | **Done and observed.** A cadence trace with the class's rpm blocks under it, and a compliance count of its own — the fixture ride is 63% on power and 0% on cadence, which is the case the item existed for |
 | ~~**16.3.2 / 16.3.5** Weekly volume, and the calendar~~ | **Done and observed**, on one screen — *Your riding*, off a **This Week** card. It also settles where a trend lives: *Your FTP* is about the rider, this is about the riding |
 | ~~**16.3.4** This ride against your previous best~~ | **Done and observed.** In the housemates' own picker, drawn in the power colour because it is still you. Previous best, not best-ever |
-| **16.3.3** Personal bests by duration | **The last item in Phase 16.** By the rule the other three settled it belongs on *Your FTP*, since a best is a claim about the rider — but read the item first: a mean-maximal curve over every ride is a `workout_metrics` scan, and honest caching of it is a schema change |
+| ~~**16.3.3** Personal bests by duration~~ | **Done and observed — and it finishes Phase 16.** Mean-maximal power on *Your FTP*, measured rides only, and a gap breaks the window. **16.3.3a** carries what is left: the scan is instant now and has a ceiling |
 | **19.1.4** CI on every PR | **Written, not yet green.** `.github/workflows/ci.yml` — build then the JVM tests, no secret (offline-first is the reason), no instrumented suite (order-dependent). One green run on GitHub ticks it |
 
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
@@ -338,7 +355,7 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
-| 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Only 16.3.3 remains** |
+| 16 | Data visualisation | ✅ **Complete.** Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Phase 16 is complete**: 16.3.3 is mean-maximal power on *Your FTP*, measured rides only, with a gap breaking the window. What is left is **16.3.3a**, the scan's ceiling |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
