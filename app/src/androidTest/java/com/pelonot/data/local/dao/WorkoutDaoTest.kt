@@ -573,6 +573,96 @@ class WorkoutDaoTest {
             .map { it.workoutId })
     }
 
+    /**
+     * The backlog is what the cloud has not got, oldest first (PLAN 14.2.4,
+     * 14.2.5).
+     *
+     * Oldest first is not a preference. A backlog drained newest-first leaves
+     * the oldest rides permanently at the back of a queue that keeps being
+     * overtaken by every ride the rider does next — and a rider's first month is
+     * the part they would most miss.
+     */
+    @Test
+    fun theBacklogIsWhatTheCloudHasNotGot_oldestFirst() = runBlocking {
+        workoutDao.insertWorkout(workout("march", timestamp = 3_000))
+        workoutDao.insertWorkout(workout("april", timestamp = 4_000))
+        workoutDao.insertWorkout(workout("may", timestamp = 5_000))
+
+        assertEquals(
+            listOf("march", "april", "may"),
+            workoutDao.unsyncedWorkouts(USER_ID, limit = 10).map { it.id }
+        )
+
+        workoutDao.markSynced("april", 9_999)
+
+        assertEquals(
+            listOf("march", "may"),
+            workoutDao.unsyncedWorkouts(USER_ID, limit = 10).map { it.id }
+        )
+        assertEquals(9_999L, workoutDao.getWorkoutById("april")?.syncedAt)
+    }
+
+    /**
+     * A ride still being written to is not a thing to upload, and neither is a
+     * crashed one — the first is incomplete by definition and the second has no
+     * aggregates until 8.3's recovery has run over it.
+     */
+    @Test
+    fun aRideInProgressIsNotInTheBacklog() = runBlocking {
+        workoutDao.insertWorkout(workout("finished", timestamp = 1_000))
+        workoutDao.insertWorkout(workout("riding-now", isComplete = false, timestamp = 2_000))
+
+        assertEquals(
+            listOf("finished"),
+            workoutDao.unsyncedWorkouts(USER_ID, limit = 10).map { it.id }
+        )
+    }
+
+    /**
+     * One rider's unsynced rides are not another's. The same rule as
+     * `CloudAccess`: an account on one profile grants nothing to a housemate,
+     * and a backlog drain runs for a named rider.
+     */
+    @Test
+    fun aHousematesRidesAreNotInThisRidersBacklog() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", timestamp = 1_000))
+        workoutDao.insertWorkout(workout("theirs", userId = OTHER_USER_ID, timestamp = 2_000))
+
+        assertEquals(
+            listOf("mine"),
+            workoutDao.unsyncedWorkouts(USER_ID, limit = 10).map { it.id }
+        )
+    }
+
+    /**
+     * **An empty backlog has no oldest ride, and that has to be null rather
+     * than zero** (14.2.3).
+     *
+     * `MIN()` over an empty set is NULL in SQL. A caller reading it as 0 would
+     * place the oldest unsynced ride at the epoch and tell the rider their
+     * backup was 56 years behind — on the screen whose entire job is to say
+     * whether their history is safe.
+     */
+    @Test
+    fun anEmptyBacklogHasNoOldestRide() = runBlocking {
+        assertEquals(0, workoutDao.observeBacklog(USER_ID).first().pending)
+        assertNull(workoutDao.observeBacklog(USER_ID).first().oldestTimestamp)
+
+        workoutDao.insertWorkout(workout("march", timestamp = 3_000))
+        workoutDao.insertWorkout(workout("may", timestamp = 5_000))
+
+        val backlog = workoutDao.observeBacklog(USER_ID).first()
+        assertEquals(2, backlog.pending)
+        assertEquals(3_000L, backlog.oldestTimestamp)
+
+        workoutDao.markSynced("march", 9_999)
+        workoutDao.markSynced("may", 9_999)
+
+        val cleared = workoutDao.observeBacklog(USER_ID).first()
+        assertEquals(true, cleared.isClear)
+        assertNull(cleared.oldestTimestamp)
+    }
+
     private companion object {
         const val USER_ID = 1
         const val OTHER_USER_ID = 2

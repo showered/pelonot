@@ -565,6 +565,81 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 9 → 10 adds `workouts.synced_at` (PLAN 14.2.4).
+     *
+     * **Nothing is backfilled, and that is the assertion.** Stamping the
+     * migration's own clock onto every existing row would be one line and would
+     * claim the rider's entire local history was safely in the cloud — the
+     * exact false reassurance the column exists to prevent. Null means "the
+     * cloud has never had this ride", every existing ride is one, and a couple
+     * that genuinely did go up during the seventh sitting went up *anonymously*
+     * under the pre-14.2.1 shape, so re-uploading them attributed to a real
+     * account is the outcome wanted anyway.
+     *
+     * Same family as 6 → 7's `ftp_watts` and 3 → 4's `power_is_measured`: a
+     * backfilled guess is indistinguishable from a recorded fact, and the
+     * indistinguishable part is what makes it dangerous rather than merely
+     * wrong.
+     */
+    @Test
+    fun migrate9To10_claimsNothingAboutWhatTheCloudAlreadyHas() {
+        helper.createDatabase(TEST_DB, 9).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 'auth-uuid-0001', 1)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj, total_distance_km,
+                    avg_cadence, avg_power, avg_hr, intent_modifier, rpe_rating,
+                    is_complete, was_recovered, timestamp, ftp_watts, ftp_proposal_declined
+                ) VALUES ('w1', 1, NULL, 1200, 180.0, 8.0, 85.0, 150.0, 140.0, 1.0, NULL, 1, 0, 1000, 200, 0)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 10, true, AppMigrations.MIGRATION_9_10)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query("SELECT synced_at, total_output_kj FROM workouts WHERE id = 'w1'")
+                .use { cursor ->
+                    assertTrue("the ride that existed before the migration is gone", cursor.moveToFirst())
+                    assertTrue(
+                        "an existing ride must not claim to be backed up",
+                        cursor.isNull(0)
+                    )
+                    assertEquals(180.0, cursor.getDouble(1), 0.001)
+                }
+
+            // And it is therefore in the backlog, which is the point of the
+            // column rather than a separate fact about it.
+            migrated.openHelper.readableDatabase
+                .query(
+                    "SELECT COUNT(*) FROM workouts " +
+                        "WHERE user_id = 1 AND is_complete = 1 AND synced_at IS NULL"
+                )
+                .use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(1, cursor.getInt(0))
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

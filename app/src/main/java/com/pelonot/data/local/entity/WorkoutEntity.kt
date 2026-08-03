@@ -127,5 +127,39 @@ data class WorkoutEntity(
      * nothing about them. It is only a note that the question has been asked.
      */
     @ColumnInfo(name = "ftp_proposal_declined")
-    val ftpProposalDeclined: Boolean = false
+    val ftpProposalDeclined: Boolean = false,
+
+    /**
+     * When this ride was last accepted by the cloud, or null if it never has
+     * been (PLAN 14.2.4).
+     *
+     * **The app has never known what it had not uploaded.** `WorkoutSyncWorker`
+     * fires once at the end of a ride, gets three attempts, and then the
+     * question is closed forever — a ride that failed while the wifi was down
+     * is indistinguishable from one that succeeded, because nothing wrote
+     * either fact anywhere. The only record of an upload was a `Log.i` line on
+     * a tablet whose `log.tag` is `W`.
+     *
+     * That is survivable while the cloud is a curiosity and unacceptable the
+     * moment it is a *backup*. 23.3.1 already tells an offline rider that ten
+     * rides have gone by unprotected; a signed-in rider whose uploads have been
+     * failing silently for a month is in a worse position, because they think
+     * they are covered.
+     *
+     * **Null, not a boolean.** Three reasons, in order of how much they matter:
+     * a backlog needs to be *ordered* to be drained oldest-first (14.2.5); "how
+     * stale is my backup?" is a question a rider will ask and a flag cannot
+     * answer; and the payload format is versioned inside itself (14.4.3), so a
+     * future reader that needs to know which rides went up under the old shape
+     * has a date to compare against. Absent means never, exactly as it does for
+     * `heartRateBpm` and `ftpWatts` — it is not a zero and not a false.
+     *
+     * It is deliberately **not** cleared when a ride is edited. Today nothing
+     * about a ride changes after it ends except `rpeRating` and the FTP
+     * proposal flag, and neither is in the payload. When something in the
+     * payload does become editable, that edit has to null this column or the
+     * cloud keeps a copy the rider has since corrected — see 14.2.4a.
+     */
+    @ColumnInfo(name = "synced_at")
+    val syncedAt: Long? = null
 )

@@ -49,6 +49,22 @@ data class HouseholdRivalRow(
     val durationSec: Int
 )
 
+/**
+ * How far behind a rider's cloud backup is (PLAN 14.2.3, 14.2.4).
+ *
+ * `oldestTimestamp` is **nullable and null means there is no backlog** — it is
+ * `MIN()` over an empty set, which SQL gives as NULL, and that is the honest
+ * shape rather than a sentinel. A caller reading it as 0 would place the
+ * oldest unsynced ride at the epoch and report a backup 56 years behind.
+ */
+data class SyncBacklog(
+    val pending: Int,
+    val oldestTimestamp: Long?
+) {
+    /** Nothing is waiting. Not the same as "backup is off" — see `CloudAccess`. */
+    val isClear: Boolean get() = pending == 0
+}
+
 @Dao
 interface WorkoutDao {
 
@@ -97,6 +113,66 @@ interface WorkoutDao {
      */
     @Query("UPDATE workouts SET user_id = :userId WHERE id = :id")
     suspend fun assignWorkoutToUser(id: String, userId: Int)
+
+    /**
+     * Records that the cloud has this ride (PLAN 14.2.4).
+     *
+     * A targeted `UPDATE` rather than a read-modify-write through
+     * `updateWorkout`, and that is not a micro-optimisation — it is the rule
+     * from 7.9/7.10.3. The sync worker runs on a background thread while the
+     * rider may be sitting on the post-ride summary setting an RPE, and two
+     * coroutines each reading a `WorkoutEntity` and writing back a copy is
+     * exactly how **typing a new FTP and pressing Save left the old one in the
+     * database**. One fact, one column, one statement.
+     */
+    @Query("UPDATE workouts SET synced_at = :syncedAt WHERE id = :id")
+    suspend fun markSynced(id: String, syncedAt: Long)
+
+    /**
+     * The rides belonging to this profile that the cloud has never accepted,
+     * **oldest first** (PLAN 14.2.5, 14.2.6, 15.3.1).
+     *
+     * Oldest first because a backlog drained newest-first leaves the oldest
+     * rides permanently at the back of a queue that keeps being overtaken, and
+     * a rider's first month is exactly the part they would most miss.
+     *
+     * `is_complete = 1` because an unfinished row is a ride in progress or a
+     * crashed one, and neither is a thing to upload — the first is still being
+     * written to, and the second has no aggregates until 8.3's recovery has run
+     * over it.
+     *
+     * This is the query 15.3.1's first-sign-in backfill is made of: a rider who
+     * has just attached an account has a whole history where every row has
+     * `synced_at IS NULL`, which is the same question as "what is in the
+     * backlog" and wants the same answer in the same order.
+     */
+    @Query(
+        """
+        SELECT * FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND synced_at IS NULL
+        ORDER BY timestamp ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun unsyncedWorkouts(userId: Int, limit: Int): List<WorkoutEntity>
+
+    /**
+     * How far behind this rider's backup is — the count, and the date of the
+     * oldest ride the cloud has not got.
+     *
+     * A `Flow` so Settings can say it without polling (14.2.3). The count alone
+     * is not enough to write an honest sentence: "3 rides waiting" reads as a
+     * transient queue whether the oldest is from this morning or from March,
+     * and those are a shrug and an alarm respectively.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) AS pending, MIN(timestamp) AS oldestTimestamp
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND synced_at IS NULL
+        """
+    )
+    fun observeBacklog(userId: Int): Flow<SyncBacklog>
 
     @Query("SELECT * FROM workouts WHERE id = :id")
     suspend fun getWorkoutById(id: String): WorkoutEntity?

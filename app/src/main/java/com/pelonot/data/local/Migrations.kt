@@ -243,9 +243,30 @@ object AppMigrations {
         }
     }
 
+    /**
+     * `workouts.synced_at` — when the cloud last accepted this ride (14.2.4).
+     *
+     * Nullable, and **not backfilled**. Every ride already on a tablet is
+     * therefore "never synced", which is right for almost all of them and
+     * deliberately conservative for the handful that did go up during the
+     * seventh sitting: those were uploaded anonymously, under the pre-14.2.1
+     * shape, with no `user_id` on them, so a re-upload attributed to a real
+     * account is the outcome we want anyway.
+     *
+     * The alternative — stamping `NOW()` on every existing row — would claim
+     * the whole local history was backed up, which is the exact false
+     * reassurance this column exists to prevent. The 7.8 rule again: a
+     * backfilled guess is indistinguishable from a recorded fact.
+     */
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `synced_at` INTEGER DEFAULT NULL")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-        MIGRATION_8_9
+        MIGRATION_8_9, MIGRATION_9_10
     )
 }

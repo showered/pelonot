@@ -7,6 +7,7 @@ import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.local.dao.PreviousBestRow
+import com.pelonot.data.local.dao.SyncBacklog
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.MetricSample
@@ -109,6 +110,25 @@ class WorkoutRepository(
 
     /** The rider said no to a breakthrough off this ride (7.10.5). */
     suspend fun declineFtpProposal(workoutId: String) = workoutDao.declineFtpProposal(workoutId)
+
+    /** The cloud has this ride now (14.2.4). */
+    suspend fun markSynced(workoutId: String, at: Long = System.currentTimeMillis()) =
+        workoutDao.markSynced(workoutId, at)
+
+    /**
+     * Rides this profile has that the cloud has not, oldest first (14.2.5,
+     * 14.2.6).
+     *
+     * Capped rather than unbounded. A first-sign-in backfill over a year of
+     * daily riding is 300-odd rides at ~55 KB each, and loading every entity
+     * before uploading any of them is both a memory spike and an all-or-nothing
+     * unit of work. The drain runs in batches and comes back for the next one.
+     */
+    suspend fun unsyncedWorkouts(userId: Int, limit: Int = SYNC_BATCH): List<WorkoutEntity> =
+        workoutDao.unsyncedWorkouts(userId, limit)
+
+    /** How far behind this rider's backup is, for Settings to say (14.2.3). */
+    fun observeBacklog(userId: Int): Flow<SyncBacklog> = workoutDao.observeBacklog(userId)
 
     /** Moves a guest ride onto a profile once the rider says whose it was. */
     suspend fun assignToUser(workoutId: String, userId: Int) =
@@ -374,9 +394,19 @@ class WorkoutRepository(
         }
     }
 
-    private companion object {
-        const val DURATION_TOLERANCE = 0.10
-        const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+    companion object {
+        /**
+         * Rides drained per pass of the backlog (14.2.5).
+         *
+         * Twenty ~55 KB payloads is around a megabyte of uploads in one waking
+         * of the worker, which is a reasonable ask of household wifi and small
+         * enough that a failure halfway costs little. The drain re-enqueues
+         * itself while anything is left rather than doing a year in one job.
+         */
+        const val SYNC_BATCH = 20
+
+        private const val DURATION_TOLERANCE = 0.10
+        private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
 
         /**
          * How far back a streak is allowed to reach. Long enough that no real
