@@ -137,7 +137,24 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             }
             serviceJobs += viewModelScope.launch {
                 workoutService.rideSnapshot.collect { snapshot ->
-                    _uiState.update { it.copy(snapshot = snapshot) }
+                    _uiState.update {
+                        it.copy(
+                            snapshot = snapshot,
+                            // Once a ride is live the service is the authority
+                            // on the FTP it is being judged against — it is the
+                            // ride's own, off the row (7.8), which the screen
+                            // has no other way of knowing on a resume. Before
+                            // that, `RideSnapshot.IDLE` carries a *default*
+                            // rather than this rider's, so taking it while idle
+                            // would replace a real 200 with a generic 150 and
+                            // draw the whole zone ladder at the wrong watts.
+                            ftpWatts = if (snapshot.state == WorkoutState.Idle) {
+                                it.ftpWatts
+                            } else {
+                                snapshot.ftpWatts
+                            }
+                        )
+                    }
                 }
             }
         }

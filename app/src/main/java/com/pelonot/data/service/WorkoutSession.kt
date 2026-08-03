@@ -45,7 +45,24 @@ data class WorkoutSession(
      * weight each of its samples far too lightly.
      */
     val heartRateSampleCount: Int = 0,
-    val sampleCount: Int = 0
+    val sampleCount: Int = 0,
+    /**
+     * How many times this ride has been interrupted and picked up again, and
+     * for how long in total (8.3d.2).
+     *
+     * **Carried on the session because the session is what writes the row.**
+     * `resumeInterruptedWorkout` stamps these on `workouts` at the moment of
+     * resuming, and `stopWorkout` then finalises the ride by building a *fresh*
+     * entity out of this session — so without them here the finalise writes the
+     * defaults back over the facts, and a ride resumed twice ends up claiming
+     * it was ridden straight through. Measured, not reasoned about: the row
+     * said `resume_count = 0` after two observed resumes.
+     *
+     * It is the same shape as the defect in 7.10.3 — two writers, one row, the
+     * later one carrying a stale copy of a field it does not know about.
+     */
+    val resumeCount: Int = 0,
+    val interruptedSec: Int = 0
 ) {
     /** True for a guest ride, which the user is asked to save or discard. */
     val isGuestRide: Boolean get() = userId == null

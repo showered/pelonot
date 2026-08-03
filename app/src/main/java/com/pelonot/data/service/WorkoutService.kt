@@ -361,7 +361,12 @@ class WorkoutService : Service() {
             classId = workout.classId,
             startedAtEpochMs = workout.timestamp,
             intent = intent,
-            ftpWatts = ftpWatts
+            ftpWatts = ftpWatts,
+            // From the row the repository has just stamped, so the finalise at
+            // the end of this ride writes the interruption back rather than
+            // over (8.3d.2).
+            resumeCount = workout.resumeCount,
+            interruptedSec = workout.interruptedSec
         ).restoredWith(aggregates)
 
         _currentSession.value = session
@@ -809,7 +814,11 @@ class WorkoutService : Service() {
         // the number the ride was actually judged against rather than one
         // reconstructed afterwards from a profile that may have moved.
         ftpWatts = ftpWatts,
-        timestamp = startedAtEpochMs
+        timestamp = startedAtEpochMs,
+        // 8.3d.2. Carried through the session or the finalise silently writes
+        // 0 over a resumed ride's own history of being resumed.
+        resumeCount = resumeCount,
+        interruptedSec = interruptedSec
     )
 
     // ── Notification ────────────────────────────────────────────────

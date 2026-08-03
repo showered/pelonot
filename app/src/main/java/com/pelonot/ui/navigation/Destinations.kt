@@ -40,15 +40,21 @@ sealed class Destination(val route: String) {
         /**
          * Re-entering a ride the app was killed in the middle of (8.3d).
          *
-         * Carries only the workout id. The class, the intent and the FTP are
-         * read back off the `workouts` row by the service rather than passed
-         * through the route, because the route would be carrying the *rider's
-         * current* values and the row holds the ones the ride was actually
-         * ridden at (7.8).
+         * [classId] is carried **for the screen's own titles only** — it comes
+         * off the interrupted row, so it is the class the ride was actually
+         * started with. Everything the ride is *recorded* against — the intent
+         * and the FTP — is read back off that row by the service rather than
+         * passed through here, because a route built now would be carrying the
+         * rider's *current* values and a breakthrough accepted since the crash
+         * would rescore the ride (7.8).
+         *
+         * Without the class id the screen has no `ClassPlan` and calls a
+         * 13-interval class a free ride in its own subtitle, which is how this
+         * argument was found.
          */
-        fun resuming(workoutId: String) = buildString {
+        fun resuming(workoutId: String, classId: String?) = buildString {
             append("ride?")
-            append("$ARG_CLASS_ID=")
+            append("$ARG_CLASS_ID=${classId?.let(Uri::encode).orEmpty()}")
             append("&$ARG_INTENT_ID=${RideIntent.DEFAULT.id}")
             append("&$ARG_RESUME_ID=${Uri.encode(workoutId)}")
         }

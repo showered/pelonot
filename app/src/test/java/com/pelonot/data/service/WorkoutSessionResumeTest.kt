@@ -81,6 +81,32 @@ class WorkoutSessionResumeTest {
     }
 
     @Test
+    fun `restoring does not wipe the interruption the row was stamped with`() {
+        // The defect this pins: `resumeInterruptedWorkout` stamps resume_count
+        // on `workouts`, and `stopWorkout` then finalises the ride by building
+        // a fresh entity out of the session. Anything the session does not
+        // carry is written back as its default — so a ride observed to resume
+        // twice ended up on disk claiming it was ridden straight through.
+        // Found in the database, not on any screen.
+        val aggregates = WorkoutAggregates.from(samples(60, power = 200.0, cadence = 80.0, hr = null))
+
+        val resumed = session()
+            .copy(resumeCount = 2, interruptedSec = 494)
+            .restoredWith(aggregates)
+
+        assertEquals(2, resumed.resumeCount)
+        assertEquals(494, resumed.interruptedSec)
+    }
+
+    @Test
+    fun `a ride that was never interrupted still says so`() {
+        val plain = session()
+
+        assertEquals(0, plain.resumeCount)
+        assertEquals(0, plain.interruptedSec)
+    }
+
+    @Test
     fun `the exact mean survives the round trip rather than being re-rounded`() {
         // Mean of 100 and 101 is 100.5. The Int column would make it 100, and a
         // ride resumed twice would lose half a beat each time.

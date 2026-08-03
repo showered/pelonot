@@ -123,7 +123,9 @@ fun PelonotNavGraph(
                     // riding?", where Dashboard has never been on the stack, so
                     // a later popBackStack to it silently does nothing and
                     // strands the rider.
-                    navController.navigate(Destination.Ride.resuming(workoutId)) {
+                    navController.navigate(
+                        Destination.Ride.resuming(workoutId, interrupted.workout.classId)
+                    ) {
                         popUpTo(Destination.ProfileSelector.route) { inclusive = false }
                     }
                 }
@@ -461,12 +463,16 @@ private fun InterruptedRideDialog(
         dismissButton = {
             // Three answers do not fit the two slots an AlertDialog gives, so
             // keep joins discard on this side when resume takes the confirm
-            // slot. The destructive one stays last, where it was.
+            // slot. Discard goes *first* rather than last: an AlertDialog lays
+            // the dismiss slot out to the left of the confirm one, so leaving
+            // the order as written put the only irreversible answer in the
+            // middle, between two safe ones and a thumb's width from the
+            // primary action. Furthest from the default is where it belongs.
             Row {
+                TextButton(onClick = onDiscard) { Text("Discard") }
                 if (interrupted.canResume) {
                     TextButton(onClick = onKeep) { Text("Keep it") }
                 }
-                TextButton(onClick = onDiscard) { Text("Discard") }
             }
         }
     )
