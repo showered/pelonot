@@ -447,6 +447,13 @@ private fun PairingSection(
     state: AccountUiState,
     onCancel: () -> Unit,
     onRetry: () -> Unit
+) = Column(
+    modifier = Modifier.fillMaxWidth(),
+    // The one screen in the app that is centred, and it earns it: this is not
+    // read, it is *pointed a camera at* from a metre away, and a QR hugging the
+    // left edge of a 1280 dp tablet makes the rider work out where to stand.
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
 ) {
     when (val pairing = state.pairing) {
         PairingState.Idle -> Unit

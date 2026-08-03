@@ -9,6 +9,7 @@ import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.FtpHistoryEntity
+import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.CalibrationState
@@ -54,6 +55,18 @@ data class SettingsUiState(
 
     /** Whether their rides are reaching the cloud, and what if not (14.2.3). */
     val cloudSync: CloudSyncStatus = CloudSyncStatus.Off,
+
+    /**
+     * Whether the session this tablet is holding is **this** rider's (15.2.8).
+     *
+     * Distinct from `profile.hasAccount`, which says only that the rider has
+     * signed in *at some point*. A tablet with no session, or one carrying a
+     * housemate's, has an `auth_user_id` on the row and can send nothing.
+     */
+    val sessionMatchesProfile: Boolean = false,
+
+    /** Rides this profile has that the cloud has not — for the signed-out line. */
+    val ridesWaiting: Int = 0,
 
     /**
      * Whether this *build* has a cloud at all (14.10.3, 23.1.5).
@@ -121,9 +134,17 @@ class SettingsViewModel(
     private val databaseBackup: DatabaseBackup,
     private val workoutRepository: WorkoutRepository,
     private val cloudAccess: CloudAccess,
+    private val accountRepository: AccountRepository,
     /** Whether this build has an endpoint at all — see [SettingsUiState]. */
     private val cloudConfigured: Boolean
 ) : ViewModel() {
+
+    /** The three cloud facts this screen needs, gathered in one place. */
+    private data class CloudState(
+        val status: CloudSyncStatus = CloudSyncStatus.Off,
+        val sessionMatchesProfile: Boolean = false,
+        val ridesWaiting: Int = 0
+    )
 
     /**
      * The rider and their FTP history together, because the state combine is
@@ -159,19 +180,31 @@ class SettingsViewModel(
         .map { it.lastProfileId }
         .flatMapLatest { id ->
             if (id == null) {
-                flowOf(CloudSyncStatus.Off)
+                flowOf(CloudState())
             } else {
                 combine(
                     workoutRepository.observeBacklog(id),
-                    settingsRepository.settings
-                ) { backlog, settings ->
-                    CloudSyncStatus.from(
-                        hasAccount = cloudAccess.isAllowedFor(id),
-                        pending = backlog.pending,
-                        oldestRideAtMs = backlog.oldestTimestamp,
-                        lastSyncAtMs = settings.lastCloudSyncAtMs,
-                        lastError = settings.lastCloudSyncError,
-                        lastErrorAtMs = settings.lastCloudSyncErrorAtMs
+                    settingsRepository.settings,
+                    accountRepository.accountState
+                ) { backlog, settings, session ->
+                    CloudState(
+                        status = CloudSyncStatus.from(
+                            hasAccount = cloudAccess.isAllowedFor(id),
+                            pending = backlog.pending,
+                            oldestRideAtMs = backlog.oldestTimestamp,
+                            lastSyncAtMs = settings.lastCloudSyncAtMs,
+                            lastError = settings.lastCloudSyncError,
+                            lastErrorAtMs = settings.lastCloudSyncErrorAtMs
+                        ),
+                        // 15.2.8, and driving the AVD is what showed this was
+                        // needed: the section read `hasAccount` off the profile
+                        // row, so a tablet holding **no session at all** said
+                        // "Backed up to your account" — with the status line
+                        // below it silently absent, because that one does ask
+                        // the gate. Two surfaces one card apart, disagreeing.
+                        sessionMatchesProfile = session.accountIdOrNull != null &&
+                            session.accountIdOrNull == userRepository.getUser(id)?.authUserId,
+                        ridesWaiting = backlog.pending
                     )
                 }
             }
@@ -211,7 +244,9 @@ class SettingsViewModel(
             mediaVolume = mediaVolume,
             volumeError = volumeError,
             calibration = calibration,
-            cloudSync = cloudSync,
+            cloudSync = cloudSync.status,
+            sessionMatchesProfile = cloudSync.sessionMatchesProfile,
+            ridesWaiting = cloudSync.ridesWaiting,
             cloudConfigured = cloudConfigured,
             highestRecordedHr = highestHr
         )
@@ -446,6 +481,7 @@ class SettingsViewModel(
                 databaseBackup = ServiceLocator.databaseBackup,
                 workoutRepository = ServiceLocator.workoutRepository,
                 cloudAccess = ServiceLocator.cloudAccess,
+                accountRepository = ServiceLocator.accountRepository,
                 cloudConfigured = ServiceLocator.authRepository.cloudConfigured
             )
         }

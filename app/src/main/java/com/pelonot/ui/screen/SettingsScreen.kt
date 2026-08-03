@@ -288,6 +288,8 @@ fun SettingsScreen(
                 onOpenAccount = onOpenAccount,
                 cloudConfigured = state.cloudConfigured,
                 hasAccount = state.profile?.hasAccount == true,
+                signedInHere = state.sessionMatchesProfile,
+                ridesWaiting = state.ridesWaiting,
                 backupEnabled = state.settings.cloudSyncEnabled,
                 onBackupEnabledChange = viewModel::setCloudSyncEnabled,
                 syncStatus = state.cloudSync
@@ -916,6 +918,8 @@ private fun CloudSection(
     onOpenAccount: () -> Unit,
     cloudConfigured: Boolean,
     hasAccount: Boolean,
+    signedInHere: Boolean,
+    ridesWaiting: Int,
     backupEnabled: Boolean,
     onBackupEnabledChange: (Boolean) -> Unit,
     syncStatus: CloudSyncStatus
@@ -936,6 +940,34 @@ private fun CloudSection(
                 Spacer(Modifier.size(MaterialTheme.spacing.medium))
                 OutlinedButton(onClick = onOpenAccount) { Text("Back up my rides") }
             }
+        } else if (!signedInHere) {
+            // 15.2.8, and this state was found by driving the AVD rather than
+            // by reading the diff. The rider has an account — `auth_user_id` is
+            // on their row — but this tablet is not carrying their session, so
+            // nothing can go up. The old copy said "Backed up to your account"
+            // here, which is a claim the app cannot support and the worst
+            // possible one to be wrong about: it is the sentence a rider reads
+            // instead of checking.
+            Text(
+                text = "Signed out on this bike. Your rides are still here and still " +
+                    "yours — they just aren't being copied anywhere until you sign " +
+                    "back in.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (ridesWaiting > 0) {
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                Text(
+                    text = if (ridesWaiting == 1) {
+                        "1 ride is waiting to go up."
+                    } else {
+                        "$ridesWaiting rides are waiting to go up."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            OutlinedButton(onClick = onOpenAccount) { Text("Sign back in") }
         } else {
             Text(
                 text = "Backed up to your account.",
