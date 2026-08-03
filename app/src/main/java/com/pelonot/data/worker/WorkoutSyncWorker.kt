@@ -53,9 +53,13 @@ class WorkoutSyncWorker(
 
         val workoutRepository = ServiceLocator.workoutRepository
         val syncRepository = ServiceLocator.syncRepository
+        val settings = ServiceLocator.settingsRepository
 
         val pending = workoutRepository.unsyncedWorkouts(userId)
         if (pending.isEmpty()) {
+            // The only moment the app can honestly say the rider is up to date,
+            // so it is the only moment the last error is cleared (14.2.3).
+            settings.clearCloudSyncError()
             Log.i(TAG, "Nothing waiting for profile $userId")
             return Result.success()
         }
@@ -72,6 +76,7 @@ class WorkoutSyncWorker(
                     // cannot cost us the fact that this one landed. A batch that
                     // dies halfway has still made progress.
                     workoutRepository.markSynced(workout.id)
+                    settings.recordCloudSync()
                     uploaded++
                     Log.i(TAG, "Synced ${workout.id} (${metrics.size} samples)")
                 }
@@ -90,6 +95,14 @@ class WorkoutSyncWorker(
                 }
 
                 is SyncOutcome.Failed -> {
+                    // Written before deciding whether to retry, so a failure is
+                    // visible in Settings on the first attempt rather than only
+                    // once the retries are exhausted — the rider watching the
+                    // screen is the person best placed to fix a wifi problem.
+                    settings.recordCloudSyncFailure(
+                        outcome.cause.message ?: outcome.cause::class.java.simpleName
+                    )
+
                     // Stop at the first failure rather than pressing on through
                     // the batch. The overwhelming cause is that the network is
                     // gone, and nineteen more attempts at it is nineteen more
@@ -114,11 +127,14 @@ class WorkoutSyncWorker(
             }
         }
 
-        // A full batch probably means there is more behind it.
+        // A full batch probably means there is more behind it; a short one
+        // means the backlog is now empty, which is the claim that clears the
+        // error.
         return if (pending.size >= BATCH_LIMIT) {
             enqueue(applicationContext, userId)
             Result.success()
         } else {
+            settings.clearCloudSyncError()
             Result.success()
         }
     }

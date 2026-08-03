@@ -25,6 +25,9 @@ import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.UnitSystem
 import kotlinx.coroutines.flow.SharingStarted
+import com.pelonot.data.remote.CloudAccess
+import com.pelonot.data.repository.WorkoutRepository
+import com.pelonot.domain.cloud.CloudSyncStatus
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -44,7 +47,10 @@ data class SettingsUiState(
     /** What this bike has learnt about its own power curve (2.2a.6). */
     val calibration: CalibrationState = CalibrationState(),
     /** This rider's FTP over time, oldest first (7.9). */
-    val ftpHistory: List<FtpHistoryEntity> = emptyList()
+    val ftpHistory: List<FtpHistoryEntity> = emptyList(),
+
+    /** Whether their rides are reaching the cloud, and what if not (14.2.3). */
+    val cloudSync: CloudSyncStatus = CloudSyncStatus.Off
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -80,7 +86,9 @@ class SettingsViewModel(
     private val sensorRepository: SensorRepository,
     private val volumeController: VolumeController,
     private val calibrationRepository: CalibrationRepository,
-    private val databaseBackup: DatabaseBackup
+    private val databaseBackup: DatabaseBackup,
+    private val workoutRepository: WorkoutRepository,
+    private val cloudAccess: CloudAccess
 ) : ViewModel() {
 
     /**
@@ -101,10 +109,45 @@ class SettingsViewModel(
             }
         }
 
+    /**
+     * Whether this rider's rides are reaching the cloud (14.2.3).
+     *
+     * Folded in beside the sensor pair rather than added as a sixth flow to the
+     * typed `combine` below, which is already at the width of its overload.
+     *
+     * The account question goes through [CloudAccess] rather than being
+     * recomputed from `authUserId` here — a second implementation of the gate
+     * is how a screen comes to say "backed up" for a rider the gate would
+     * refuse, and `isAllowedFor` already folds in the build's credentials and
+     * the rider's own backup switch.
+     */
+    private val cloudSync = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(CloudSyncStatus.Off)
+            } else {
+                combine(
+                    workoutRepository.observeBacklog(id),
+                    settingsRepository.settings
+                ) { backlog, settings ->
+                    CloudSyncStatus.from(
+                        hasAccount = cloudAccess.isAllowedFor(id),
+                        pending = backlog.pending,
+                        oldestRideAtMs = backlog.oldestTimestamp,
+                        lastSyncAtMs = settings.lastCloudSyncAtMs,
+                        lastError = settings.lastCloudSyncError,
+                        lastErrorAtMs = settings.lastCloudSyncErrorAtMs
+                    )
+                }
+            }
+        }
+
     private val sensors = combine(
         sensorRepository.heartRateStatus,
-        sensorRepository.discoveredHeartRateDevices
-    ) { status, devices -> status to devices }
+        sensorRepository.discoveredHeartRateDevices,
+        cloudSync
+    ) { status, devices, cloud -> Triple(status, devices, cloud) }
 
     private val volume = combine(
         volumeController.mediaVolume,
@@ -117,7 +160,7 @@ class SettingsViewModel(
         sensors,
         volume,
         calibrationRepository.state
-    ) { settings, (user, ftpHistory), (hrStatus, hrDevices), (mediaVolume, volumeError), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -126,7 +169,8 @@ class SettingsViewModel(
             heartRateDevices = hrDevices,
             mediaVolume = mediaVolume,
             volumeError = volumeError,
-            calibration = calibration
+            calibration = calibration,
+            cloudSync = cloudSync
         )
     }.stateIn(
         scope = viewModelScope,
@@ -316,7 +360,9 @@ class SettingsViewModel(
                 sensorRepository = ServiceLocator.sensorRepository,
                 volumeController = ServiceLocator.volumeController,
                 calibrationRepository = ServiceLocator.calibrationRepository,
-                databaseBackup = ServiceLocator.databaseBackup
+                databaseBackup = ServiceLocator.databaseBackup,
+                workoutRepository = ServiceLocator.workoutRepository,
+                cloudAccess = ServiceLocator.cloudAccess
             )
         }
     }

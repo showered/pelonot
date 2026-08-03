@@ -93,6 +93,7 @@ import com.pelonot.ui.viewmodel.SettingsViewModel
 import androidx.compose.ui.unit.dp
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.FtpHistoryEntity
+import com.pelonot.domain.cloud.CloudSyncStatus
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -270,7 +271,8 @@ fun SettingsScreen(
             CloudSection(
                 hasAccount = state.profile?.hasAccount == true,
                 backupEnabled = state.settings.cloudSyncEnabled,
-                onBackupEnabledChange = viewModel::setCloudSyncEnabled
+                onBackupEnabledChange = viewModel::setCloudSyncEnabled,
+                syncStatus = state.cloudSync
             )
 
             BackupSection(
@@ -683,7 +685,8 @@ private fun HeartRateSection(
 private fun CloudSection(
     hasAccount: Boolean,
     backupEnabled: Boolean,
-    onBackupEnabledChange: (Boolean) -> Unit
+    onBackupEnabledChange: (Boolean) -> Unit,
+    syncStatus: CloudSyncStatus
 ) {
     SettingsSection("Your rides") {
         if (!hasAccount) {
@@ -706,8 +709,79 @@ private fun CloudSection(
                 checked = backupEnabled,
                 onCheckedChange = onBackupEnabledChange
             )
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            SyncStatusLine(syncStatus)
         }
     }
+}
+
+/**
+ * Whether the rider's rides are actually reaching the cloud (PLAN 14.2.3).
+ *
+ * **This line is the item.** `SyncOutcome.Failed` has always died in a `Log.w`,
+ * on a tablet whose `log.tag` is `W` device-wide — which is how a missing
+ * `GRANT`, an unparseable timestamp and a decode that threw on every class
+ * fetch all survived the project's entire history without anybody noticing.
+ *
+ * The decision of *what is true* lives in [CloudSyncStatus] and is tested
+ * there; this only chooses words for it. Two rules the words follow:
+ *
+ * - **A failure names the rides it stranded, not just itself.** Three waiting
+ *   since this morning and three waiting since March are the same count and
+ *   completely different news.
+ * - **"Never" is not a date.** A rider who has never synced gets said so,
+ *   rather than being shown a backup from January 1970.
+ */
+@Composable
+private fun SyncStatusLine(status: CloudSyncStatus) {
+    val scheme = MaterialTheme.colorScheme
+
+    fun on(atMs: Long): String =
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(atMs))
+
+    val (text, colour) = when (status) {
+        // The section already says "This bike only" for a rider with no
+        // account, and repeating it as a status would draw the middle rung of
+        // the ladder as a fault.
+        CloudSyncStatus.Off -> return
+
+        is CloudSyncStatus.UpToDate -> {
+            val last = status.lastSyncAtMs
+            if (last == null) {
+                // NOT "no rides have gone up yet", which the app cannot know.
+                // An empty backlog with no recorded sync is also what a rider
+                // sees after restoring a backup file made on another tablet:
+                // the rides arrive already marked, and the DataStore mark does
+                // not travel with them. Saying nothing is waiting is true in
+                // both cases; saying nothing has ever gone up is a guess that
+                // is wrong in one of them. Seen on the tablet AVD.
+                "Nothing is waiting to go up." to scheme.onSurfaceVariant
+            } else {
+                "Everything is backed up \u2014 last on ${on(last)}." to scheme.onSurfaceVariant
+            }
+        }
+
+        is CloudSyncStatus.Pending -> {
+            val rides = if (status.rides == 1) "1 ride" else "${status.rides} rides"
+            val since = status.oldestRideAtMs?.let { " since ${on(it)}" } ?: ""
+            "$rides waiting to go up$since." to scheme.onSurfaceVariant
+        }
+
+        is CloudSyncStatus.Failing -> {
+            val rides = if (status.rides == 1) "1 ride" else "${status.rides} rides"
+            val since = status.oldestRideAtMs?.let { ", oldest from ${on(it)}" } ?: ""
+            (
+                "Backup is failing. $rides waiting$since.\n" +
+                    "Last tried ${on(status.failedAtMs)}: ${status.message}"
+                ) to scheme.error
+        }
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = colour
+    )
 }
 
 /**

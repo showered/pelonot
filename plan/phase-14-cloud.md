@@ -158,7 +158,42 @@ ever synced, confirmed by count rather than inferred.
       Supabase`, eight categories where there were four, and a cloud-sourced
       class rendering its seven intervals on the detail screen.* Four JVM tests
 - [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`. Less urgent now that 14.2.2a makes the app correct either way, and correct against whichever way a self-hoster sets theirs up
-- [ ] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history
+- [x] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history.
+      *Done, and **two of the three states observed on the tablet AVD** —
+      *"3 rides waiting to go up since Jul 23, 2026 12:59 PM"* and *"Nothing is
+      waiting to go up"*. The failing state is covered by
+      `CloudSyncStatusTest` and has **not** been seen rendered, because
+      producing one on the AVD means a real request to the live project and
+      that is not a thing to do casually; it will be seen for free the first
+      time 14.2.1a's endpoint refuses something.*
+
+      *The decision of what is **true** is `domain/cloud/CloudSyncStatus`, pure
+      and JVM-tested, because a `@Composable` cannot be asked "what would you
+      say if the last success were older than the oldest waiting ride?". Four
+      rules came out of writing it, all of them the same rule — **never imply
+      the rider is covered when they are not**:*
+
+      - ***No account is not a failure state.** Most riders live on the middle
+        rung, and drawing it red is how signing in becomes the way to make a
+        warning go away — the opposite of rule 2, where signing in *is* the
+        consent and consent extracted by nagging is not consent*
+      - ***A failure the app has recovered from is not news.** The drain clears
+        the record when it finishes with an empty backlog. A red line with
+        nothing wrong behind it teaches the rider to ignore the line, and then
+        it is worth nothing on the day it matters*
+      - ***A failure names the rides it stranded.** Three waiting since this
+        morning and three waiting since March are the same count and completely
+        different news*
+      - ***"Never" is not a date.** A null last-sync stays null; formatted as 0
+        it puts the rider's backup in January 1970*
+
+      ***The AVD changed one sentence, which is the reason for driving it.***
+      The empty-backlog line first read *"No rides have gone up yet"* — a claim
+      the app cannot support, because an empty backlog with no recorded sync is
+      **also** what a rider sees after restoring a backup file made on another
+      tablet: the rides arrive already marked and the DataStore mark does not
+      travel with them. It says *"Nothing is waiting to go up"* now, which is
+      true in both cases
 - [x] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable.
       *Done and observed — migration 9 → 10, verified on the tablet AVD against
       real SQLite. **Nullable, and not backfilled.** Stamping the migration's

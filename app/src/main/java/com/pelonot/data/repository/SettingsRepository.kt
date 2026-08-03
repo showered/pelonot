@@ -90,7 +90,35 @@ data class AppSettings(
     val backupMarkAtMs: Long? = null,
 
     /** Distinguishes "nothing since your backup" from "no backup at all". */
-    val hasEverBackedUp: Boolean = false
+    val hasEverBackedUp: Boolean = false,
+
+    /**
+     * When the cloud last accepted a ride, or null if it never has (PLAN
+     * 14.2.3).
+     *
+     * Distinct from [backupMarkAtMs], which is about the *local file* backup of
+     * 12.4.4 and is a different promise to the rider: one is "you exported a
+     * copy", the other is "your account has this". A rider can have either
+     * without the other.
+     */
+    val lastCloudSyncAtMs: Long? = null,
+
+    /**
+     * What went wrong the last time an upload was attempted, or null if the
+     * last thing that happened was a success.
+     *
+     * **This is the item's whole point.** `SyncOutcome.Failed` has always died
+     * in a `Log.w` — on a tablet whose `log.tag` is `W` device-wide, so even
+     * the log was mostly theoretical — and that is precisely how three separate
+     * cloud defects survived the entire project: a missing `GRANT`, a timestamp
+     * Postgres could not parse, and a decode that threw on every class fetch.
+     * All three were silent, and all three would have been one glance at this
+     * line.
+     */
+    val lastCloudSyncError: String? = null,
+
+    /** When [lastCloudSyncError] happened. Null exactly when the error is. */
+    val lastCloudSyncErrorAtMs: Long? = null
 ) {
     companion object {
         /**
@@ -136,7 +164,10 @@ class SettingsRepository(context: Context) {
                 unitSystem = UnitSystem.fromName(prefs[Keys.UNIT_SYSTEM])
                     ?: UnitSystem.fromLocale(),
                 backupMarkAtMs = prefs[Keys.BACKUP_MARK_AT],
-                hasEverBackedUp = prefs[Keys.HAS_EVER_BACKED_UP] ?: false
+                hasEverBackedUp = prefs[Keys.HAS_EVER_BACKED_UP] ?: false,
+                lastCloudSyncAtMs = prefs[Keys.LAST_CLOUD_SYNC_AT],
+                lastCloudSyncError = prefs[Keys.LAST_CLOUD_SYNC_ERROR],
+                lastCloudSyncErrorAtMs = prefs[Keys.LAST_CLOUD_SYNC_ERROR_AT]
             )
         }
 
@@ -192,6 +223,43 @@ class SettingsRepository(context: Context) {
         it[Keys.BACKUP_MARK_AT] = atMs
     }
 
+    /**
+     * The cloud took a ride (14.2.3).
+     *
+     * Deliberately does **not** clear the last error. A drain can upload
+     * fifteen rides and fail on the sixteenth, and "it worked" and "it then
+     * stopped working" are both true and both worth saying. The error is
+     * cleared by [clearCloudSyncError] when a drain actually finishes with
+     * nothing left, which is the only moment the app can honestly claim the
+     * rider is up to date.
+     */
+    suspend fun recordCloudSync(atMs: Long = System.currentTimeMillis()) = edit {
+        it[Keys.LAST_CLOUD_SYNC_AT] = atMs
+    }
+
+    /**
+     * An upload failed, and this is what it said.
+     *
+     * Truncated, because a PostgREST error body can be long and the rider needs
+     * the first line of it rather than a wall. It is shown on the rider's own
+     * device about their own account, so the text is not treated as sensitive —
+     * but it is not sent anywhere either, and nothing here should ever start
+     * doing that without an item of its own.
+     */
+    suspend fun recordCloudSyncFailure(
+        message: String,
+        atMs: Long = System.currentTimeMillis()
+    ) = edit {
+        it[Keys.LAST_CLOUD_SYNC_ERROR] = message.take(MAX_ERROR_CHARS)
+        it[Keys.LAST_CLOUD_SYNC_ERROR_AT] = atMs
+    }
+
+    /** The backlog is empty, so whatever went wrong before has stopped. */
+    suspend fun clearCloudSyncError() = edit {
+        it.remove(Keys.LAST_CLOUD_SYNC_ERROR)
+        it.remove(Keys.LAST_CLOUD_SYNC_ERROR_AT)
+    }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         dataStore.edit(block)
     }
@@ -211,5 +279,13 @@ class SettingsRepository(context: Context) {
         val UNIT_SYSTEM = stringPreferencesKey("unit_system")
         val BACKUP_MARK_AT = longPreferencesKey("backup_mark_at")
         val HAS_EVER_BACKED_UP = booleanPreferencesKey("has_ever_backed_up")
+        val LAST_CLOUD_SYNC_AT = longPreferencesKey("last_cloud_sync_at")
+        val LAST_CLOUD_SYNC_ERROR = stringPreferencesKey("last_cloud_sync_error")
+        val LAST_CLOUD_SYNC_ERROR_AT = longPreferencesKey("last_cloud_sync_error_at")
+    }
+
+    private companion object {
+        /** Enough for a PostgREST message and its code, not a whole body. */
+        const val MAX_ERROR_CHARS = 300
     }
 }
