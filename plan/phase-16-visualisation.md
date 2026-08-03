@@ -40,11 +40,35 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
       (Z1, Z2, Z5, Z2, and a sliver of the sixth), 28% of the prescribed time
       inside the band, and a free ride beside it with no blocks, no legend and
       no compliance sentence*
-- [ ] **16.1.5a** The prescribed **cadence** has nowhere to be drawn. An
+- [x] **16.1.5a** The prescribed **cadence** has nowhere to be drawn. An
       interval prescribes a cadence range as well as a zone, and 16.1.3 is a
       *distribution*, not a trace — there is no time axis to lay a target on.
       Either a cadence-over-time chart or nothing; the data is already parsed
       and thrown away by 16.1.5
+
+      *The chart, then — a fifth card, **Cadence over time**, with the class's
+      cadence blocks under the trace exactly as 16.1.5 puts its power blocks
+      there, and the distribution kept beside it as **Cadence spread**. They
+      are the same metric answering two questions and they sit side by side.*
+
+      *Three decisions. The blocks are **absolute rpm**, not scaled by the
+      ride's intent multiplier the way the watts are: riding a class easier
+      means fewer watts, not slower legs. **Zeros are drawn**, unlike the
+      spread, which excludes them — a coast is *measured* and it happened at a
+      moment, which is the line between this chart and the heart-rate one,
+      where a gap is unknown and drawing it would say the rider's heart
+      stopped. And compliance is **counted separately from the power's**,
+      because the whole reason this chart exists is that watts dead on with the
+      legs wrong is a different session from the one that was written.*
+
+      ***Observed on the tablet AVD*** *against a fixture ride of `CLB-01`
+      Torque Repeats: the cyan blocks step down for each torque interval, the
+      trace rides above them throughout, and the sentence says* Inside the
+      class's target cadence for 0 seconds of 19 minutes 59 seconds prescribed
+      — 0% *while the power card beside it says 63%. That is the number the
+      item was asking for: the same ride, obedient in watts and not in legs.
+      Four JVM tests, including that the intent multiplier moves the power band
+      and leaves the cadence alone.*
 - [x] **16.1.6** The power card reads from `workout_metrics.power_is_measured`:
       *Measured by the bike* / *Partly measured — the bike's sensor dropped out
       during this ride* / *Estimated from cadence and resistance*. The mixed
@@ -124,13 +148,81 @@ lives once it is finished. Two columns on the tablet, one anywhere narrower.
 **And the screen they live on now exists.** 16.3.1 was the first of these to
 become buildable and it had nowhere to be drawn, so it brought a screen with it:
 `FtpProgressScreen`, off the dashboard's FTP card. It is *Your FTP* rather than
-*Trends* on purpose — one subject, named after what it is about. Whether
-16.3.2–16.3.5 join it there or get their own is still open, and the deciding
-question is whether they are about the rider (FTP, personal bests) or about the
-riding (volume, the calendar).
+*Trends* on purpose — one subject, named after what it is about. The deciding question — whether a
+trend is about the **rider** or about the **riding** — is now settled, and it
+settled by being used: 16.3.2 and 16.3.5 went together onto a second screen,
+*Your riding*, because volume and consistency are the same subject seen twice.
+By the same rule 16.3.3 belongs with *Your FTP*, since a personal best is a
+claim about the rider.
 
 - [x] **16.3.1** FTP over time, marked with the rides that triggered each change. ~~**Blocked on 7.9**~~ — unblocked by 7.9 and **done and observed**: the stepped line, a mark per change that says whether the app measured it or the rider claimed it, and every change listed newest-first with the ride behind it one tap away. The full write-up, including why the axis runs to *now* and why the first value is not a change, is at **7.10.1**; 7.10.6 is what the line is still not allowed to claim
-- [ ] **16.3.2** Weekly volume and output
+- [x] **16.3.2** Weekly volume and output — **done and observed**, on a screen
+      it shares with 16.3.5. See the note under 16.3.5: they are one subject
+      and one screen, *Your riding*
 - [ ] **16.3.3** Personal bests by duration
-- [ ] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
-- [ ] **16.3.5** A calendar heatmap of ride days. Cheap, and the streak is the thing that gets people on the bike
+- [x] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
+
+      *It went in the picker the housemates are already in (24.3.1), because
+      from the chart's point of view they are the same thing: another ride of
+      this class, on these axes, under the same measured-power rule. One list,
+      one ghost at a time, one alignment rule. The only difference is the
+      label, and it is drawn in the **power colour rather than the second-rider
+      grey** — dimmed, because it is behind rather than on top, but it is still
+      the rider and not somebody else.*
+
+      ***Previous best, not best-ever***, *which is the one real decision. A
+      ride is compared with what the rider had already done when they rode it,
+      so the comparison on a ride from March still says the same thing next
+      year, and a personal best is never quietly drawn against the ride that
+      beat it. `previousBestOfClass` carries `timestamp < :beforeMs` for
+      exactly that, and the same measured-power exclusion `householdRivals`
+      has.*
+
+      ***Observed on the tablet AVD***: *a* Ride against · Your best · 187.3 kJ
+      *chip on a 162.8 kJ ride of the same class, and tapping it draws the
+      stronger ride dashed over the efforts and under the recoveries.*
+- [x] **16.3.5** A calendar heatmap of ride days. Cheap, and the streak is the thing that gets people on the bike
+
+      ***And it brought the screen that answers where 16.3.2–16.3.5 live.***
+      *`RidingScreen` — **Your riding** — named after its one subject the way
+      `FtpProgressScreen` is: that screen is about the **rider**, this one is
+      about the **riding**. Volume (16.3.2) and consistency (16.3.5) are on it
+      together because neither is worth much alone: 200 minutes in a week is a
+      different training week depending on whether it was one ride or five, and
+      a run of ride days says nothing about how hard any of them were. The door
+      is a* This Week *card in the dashboard's progress section — rides, not
+      kilojoules, because "have I been riding" is answered by a count.*
+
+      *Three rules, all of them about not asserting what the data does not say.
+      **The current week is hollow and never in the scale** — a Monday with one
+      ride on it is not a bad week yet, and scaling to include it would make
+      every finished week a stub. **A week with no riding is a bar of nothing,
+      not a missing bar**, because the fortnight off is the information and it
+      should be a fortnight wide. **A day that has not happened is absent, not
+      empty** — nothing about Thursday is drawn on a Wednesday.*
+
+      *Minutes and kJ are **two bar rows, not one chart with two axes**: a
+      second vertical axis can be scaled to make any two series agree or
+      disagree, which is a claim about the rider's training made by the drawing
+      rather than by the data. Stacked on one set of week columns, the
+      comparison is still there and nothing has been asserted.*
+
+      *`RidingHistoryBuilder` is pure, with the clock and the timezone injected
+      — `StreakCalculator`'s argument, and the streak on this screen comes from
+      that same object so the two cannot disagree about what a day is. Nine JVM
+      tests, including one that rides either side of the October clock change:
+      stepping a week on by adding 604,800,000 ms lands an hour inside the
+      wrong day and moves a Sunday ride into the following week, invisibly, for
+      the other fifty-one weeks of the year. The week starts where the
+      **locale** says it does, not on a hard-coded Monday.*
+
+      ***Observed on the tablet AVD*** *against 22 fixture rides spread over
+      three months with a fortnight off in the middle of them: seventeen week
+      columns with the gap visible, a hairline for the week in progress,*
+      Busiest finished week: 70 minutes*, and a calendar whose last column
+      stops at today. **One thing the AVD changed**: the not-ridden tile and
+      the not-yet cell were both invisible at first, so the distinction the
+      code documents existed only in the source — the empty tile is heavier
+      now. The fixtures are hand-seeded and, like `ride-simon` before them,
+      break the simulated-power invariant by construction: they are evidence
+      about drawing and nothing else.*

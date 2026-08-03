@@ -88,7 +88,7 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 2 August 2026 (sixteenth sitting): three quick items, and one of them was a rule about ids
+### Latest session — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 down to one
 
 No bike and no rider, and nothing here needed either: a wire format, a
 workflow file, a class and the build's own hygiene. Closed **14.4.7**,
@@ -96,6 +96,47 @@ workflow file, a class and the build's own hygiene. Closed **14.4.7**,
 **19.1.4** is written but stays unticked until a run is green on GitHub, which
 is the house rule doing its job rather than paperwork. 452 JVM tests, 0
 failures.
+
+**Then Phase 16, which is now one item from done.** Closed **16.1.5a**,
+**16.3.2**, **16.3.4** and **16.3.5**, all four observed on the tablet AVD.
+
+**The cadence the class asked for has somewhere to be drawn (16.1.5a).** An
+interval prescribes a cadence range as well as a zone and the distribution has
+no time axis to lay one on, so the data was parsed and thrown away. There is a
+*Cadence over time* card now with the blocks under the trace, and the old
+histogram beside it as *Cadence spread*. The blocks are **absolute rpm** —
+riding a class easier means fewer watts, not slower legs — and **zeros are
+drawn**, unlike the spread, because a coast is measured and happened at a
+moment. Its compliance is counted separately from the power's, which is the
+whole point: the fixture ride reads *63%* on the power card and *0%* on this
+one, obedient in watts and not in legs.
+
+**Your riding (16.3.2 + 16.3.5), which also settles where a trend lives.** The
+question 16.3.1 left open — do these join *Your FTP* or get their own screen —
+answered by use: that screen is about the **rider**, this one about the
+**riding**, and volume and consistency are the same subject seen twice. Three
+rules, all about not asserting what the data does not say. The **current week is
+hollow and never in the scale**, because a Monday with one ride on it is not a
+bad week yet. **A week with no riding is a bar of nothing, not a missing bar** —
+the fortnight off should be a fortnight wide. **A day that has not happened is
+absent, not empty.** Minutes and kJ are two bar rows rather than one chart with
+two axes: a second axis can be scaled to make any two series agree, which is a
+claim made by the drawing. The week and day arithmetic is `Calendar` with the
+timezone injected and is tested across the October clock change, where adding
+604,800,000 ms moves a Sunday ride into the next week invisibly.
+
+**And this ride against your own previous best (16.3.4).** It went into the
+picker the housemates are in, because from the chart's point of view they are
+the same thing — another ride of this class, on these axes, under the same
+measured-power rule. **Previous best, not best-ever**: a ride is compared with
+what the rider had already done when they rode it, so a ride from March says the
+same thing next year and a personal best is never quietly drawn against the ride
+that beat it.
+
+**One thing the AVD changed, and it is the reason for driving it.** The
+calendar's not-ridden tile and its not-yet cell were both invisible, so
+"absent, not empty" — a distinction the code documents at length — existed only
+in the source. The empty tile is heavier now.
 
 **The payload carries where the watts came from (14.4.7).** The tempting shape
 was a scalar on the row, because `PowerProvenance` reduces a ride's samples to
@@ -235,6 +276,10 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**14.4.7** The payload's last missing field~~ | **Done.** `pm`, per sample rather than a scalar on the row, because `PowerProvenance` reduces the samples to one answer *from* them and `Mixed` is samples disagreeing. `CompactBoolean` writes 1/0, which is what makes a per-sample column affordable: 55,635 bytes a 45-minute ride, budget 56 → 60 KB |
 | ~~**25.4.3** The two near-twin classes~~ | **Done, and as `SWT-13` rather than an edited `SWT-05`** — changing what an id *is* while a ride points at it rewrites what that ride was, which is why 23.2.6 took a new series. Titles now separate them from the library list: *4-5-6* against *4×4* |
 | ~~**14.10 / 14.11.3** What a fresh clone finds~~ | **Done.** `cloud.properties`, checked in and empty; precedence env → `local.properties` → it → offline; `CloudConfigFenceTest` fails the build if a key lands in it or a third `secret()` call appears. 14.10.4 stays open because the *decision* is 15.5's, but it is now fenced rather than remembered |
+| ~~**16.1.5a** The prescribed cadence~~ | **Done and observed.** A cadence trace with the class's rpm blocks under it, and a compliance count of its own — the fixture ride is 63% on power and 0% on cadence, which is the case the item existed for |
+| ~~**16.3.2 / 16.3.5** Weekly volume, and the calendar~~ | **Done and observed**, on one screen — *Your riding*, off a **This Week** card. It also settles where a trend lives: *Your FTP* is about the rider, this is about the riding |
+| ~~**16.3.4** This ride against your previous best~~ | **Done and observed.** In the housemates' own picker, drawn in the power colour because it is still you. Previous best, not best-ever |
+| **16.3.3** Personal bests by duration | **The last item in Phase 16.** By the rule the other three settled it belongs on *Your FTP*, since a best is a claim about the rider — but read the item first: a mean-maximal curve over every ride is a `workout_metrics` scan, and honest caching of it is a schema change |
 | **19.1.4** CI on every PR | **Written, not yet green.** `.github/workflows/ci.yml` — build then the JVM tests, no secret (offline-first is the reason), no instrumented suite (order-dependent). One green run on GitHub ticks it |
 
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
@@ -293,13 +338,13 @@ Two notes worth carrying into the next bike session:
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
-| 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. The other four (16.3.2–16.3.5) remain |
+| 16 | Data visualisation | 🔶 Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Only 16.3.3 remains** |
 | 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
-| 22 | The dashboard | 🔶 **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
+| 22 | The dashboard | 🔶 **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |
 | 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider). **25.4.3 is closed**: the two near-twins the rename exposed are separated by their work as well as their titles, as `SWT-13` rather than an edited `SWT-05` — the id is the foreign key |
