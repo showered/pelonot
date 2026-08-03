@@ -98,7 +98,113 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 finished
+### Latest session — 3 August 2026 (eighteenth sitting): what has to be true before the app goes online
+
+**The owner's question was the assessment one** — what blocks the online tier
+(accounts, friends, a leaderboard, a companion web app), and what ought to be
+done *before* it. The answer turned out to be concrete rather than a list of
+phases: **the cloud had no idea who anything belonged to**, in two separate
+ways, and both are schema decisions that are free today and a
+migration-with-backfill once real histories are up there. That is the 14.4
+argument — change the shape while the cloud is empty — applied to identity.
+
+Closed **14.2.1**, **14.2.4**, **14.2.5** and **14.2.6**; **15.5.1–15.5.3** are
+written but deliberately unticked. The owner's inbox is emptied into **22.4**
+and **20.3**. 477 JVM tests, 0 failures, and 40 instrumented tests green on the
+tablet AVD.
+
+**Hole one: every ride this app has ever uploaded arrived anonymous.**
+`WorkoutDto` carried no `user_id`. The column existed, was nullable, and was
+never sent — so the insert returned 201, the log said `Synced`, and the row
+belonged to nobody. An anonymous ride cannot be restored onto a second bike,
+cannot stand on a leaderboard, and is invisible to any policy written against
+`auth.uid()`. It is **non-null on the DTO** now, so the anonymous shape does not
+compile.
+
+**Hole two, which was worse, and nobody had looked at it.** `profiles` was keyed
+by `local_user_id`, `UNIQUE`, and that was the upsert's `onConflict` target.
+`local_user_id` is a **per-device autoincrement**. Bike A's first profile is
+`1`; bike B's first profile is `1`. The second tablet to sign in would not have
+collided harmlessly — **it would have updated the first rider's row**, name,
+weight and FTP. Not an edge case reachable by an unusual sequence: the first
+thing that happens on the day a second bike appears, which is the day the online
+tier exists at all.
+
+**The fix departs from what 14.2.1 asked for, and the reason is rule 2.** The
+item wanted a generated cloud UUID read back and stored locally — a two-step
+sync that can half-fail and leave a tablet holding a cloud profile whose name it
+does not know. But a profile is in the cloud *if and only if* it has an account,
+so **a cloud profile and an auth user are 1:1 by construction**. So
+`profiles.id` **is** the auth user id: known at the moment of signing in, no
+round trip to learn it, and every RLS policy becomes one line.
+
+**`CloudAccess.accountIdFor` collapses the gate and the identity into one
+lookup**, because "may this rider talk to the cloud?" and "who are they up
+there?" have the same answer. Asking twice means two lookups that can disagree,
+and the shape where they disagree is a call that passes the gate and then writes
+a row belonging to somebody else. The choke point hands the account id *to the
+block*, so a request that does not know whose it is can no longer be written.
+Two new fences hold it — and both scan the source **with comments stripped**,
+because the names they forbid are exactly the ones the KDoc must say out loud to
+explain the rule, and a fence that documenting it breaks teaches the next person
+to delete the explanation rather than keep the rule.
+
+**Then the thing that turns a curiosity into a backup (14.2.4–14.2.6).** The app
+has never known what it had *not* uploaded. The worker fired once at the end of
+a ride, got three attempts, and the question closed forever — a ride that failed
+while the router rebooted was indistinguishable from one that succeeded, because
+neither fact was written anywhere. The only trace was a `Log.i` line on a tablet
+whose `log.tag` is `W`. `workouts.synced_at` (migration 9 → 10) is that fact,
+**nullable and not backfilled**: stamping `NOW()` on every existing row is one
+line and would claim the whole local history was safe, which is the exact false
+reassurance the column exists to prevent. Same family as 6 → 7's `ftp_watts`.
+
+The worker is a **backlog drain keyed by profile** now rather than a post keyed
+by ride, and the property that buys is the one that matters: **a ride that
+exhausts its retries is not lost** — it is still in the backlog and the next
+ride sweeps it up. Nothing is permanently forgotten, which is what lets this be
+called a backup rather than an attempt. Oldest-first, because newest-first
+leaves a rider's first month permanently behind every ride they do next. And it
+**is** 15.3.1: a rider who has just attached an account has a history where
+every row is unsynced, so "backfill on sign-in" and "drain the backlog" are one
+implementation rather than two that drift.
+
+**What is written and deliberately not ticked.** `supabase/003_cloud_identity
+.sql` carries the schema, the RLS rewrite against `auth.uid()` and the grants
+moved from `anon` to `authenticated`. It is **not applied**. Two things in it
+need a decision rather than a run: it **deletes every `profiles` row** (all of
+them were written by the consent defect, belong to riders who never signed in,
+and have `gen_random_uuid()` ids with no auth user behind them), and it
+**revokes `anon` from `profiles` and `workouts` entirely** — which means 14.1.6
+can no longer be driven by hand-setting a column, because the app would still be
+sending an anon key with no session. That is the right trade: a round trip
+proved with a key that bypasses RLS proves the path a real rider does *not*
+take. And **15.5.4 stands unchanged and is now the most important item in
+Phase 15** — two real sessions bouncing off each other's rows. Reading the file
+is not that check and neither is running it successfully.
+
+One thing about the cascade worth carrying, because it is backwards from the
+local rule and getting it wrong either way is serious. **Locally, deleting a
+profile keeps its rides** — a housemate leaving does not erase their history off
+the bike. **In the cloud, deleting the account must take the rows with it**,
+because that is what 15.4.3 means. `SET NULL` up there would leave orphans no
+`auth.uid()` matches: invisible to every policy and therefore undeletable by the
+rider they belonged to, so "delete my cloud data" would not have.
+
+**And the inbox, emptied.** *Max panel width* → **22.4**: `readableWidth` is a
+rule about a **line**, not about the **screen**, and every surface that took the
+token in 22.2.6 chose "cap it" because that was the only answer on offer. The
+rule it lands on is *cap what is read at arm's length, tile what is looked at*,
+and the owner's own example — ride detail's charts in one column — is 22.4.2.
+*Initial FTP* → **20.3**: the field is the third thing the app ever says to a
+rider and nobody can answer it. Two facts constrain the fix and pull against
+each other — the app **cannot** have no number (FTP is the denominator of the
+whole zone system and is written onto the ride at its *start*), and a first-ride
+inference is gated on measured power (7.10.7) so it cannot be the *first* act.
+The owner offered two routes and 20.3.2 is where the choice gets made rather
+than assumed.
+
+### Previously — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 finished
 
 No bike and no rider, and nothing here needed either: a wire format, a
 workflow file, a class and the build's own hygiene. Closed **14.4.7**,
@@ -260,6 +366,36 @@ check whether the bike is holding the answer already.
 
 ### What to do next, in order
 
+**The road to online — settled in the eighteenth sitting.** The owner's stated
+destination is accounts, friends, a leaderboard and a companion web app. Those
+are Phases **15**, **18** and **17**, and they were already in the plan. What
+was *not* written down is the order and what has to be true first, so it is
+here:
+
+| # | What | Why it is where it is |
+|---|------|----------------------|
+| 1 | ~~**14.2.1** identity, **14.2.4–14.2.6** the backlog~~ | **Done.** Both are schema shapes that are free while the cloud is empty and a migration-with-backfill once four riders have a year up there. Everything below writes rows; these decide whose they are and whether losing one is noticed |
+| 2 | **14.2.1a** apply `003`, **15.5.4** verify it from a second account | The only step in this list where being wrong is a **breach** rather than a bug. Nothing else may go online first, and "the SQL looks right" is not the check |
+| 3 | **15.1** auth, **15.2** identity, **15.3** sync both ways | The phase that unlocks everything. 15.3.1 is mostly built already — it is 14.2.6's drain with a sign-in trigger on it |
+| 4 | **14.2.3** sync state in Settings | Small, and it belongs *before* riders trust the thing: `SyncOutcome.Failed` dies in a `Log.w` today, which is exactly why three cloud defects survived the project's whole history |
+| 5 | **20.3** the initial FTP, **22.4** use the width | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders |
+| 6 | **17** the web app, **18** social across bikes | Last, and in that order: the bike's tablet is a bad place to type, so the web app is the natural home for friend requests and display names, and 18 is those features arriving back on the bike. **Read Phase 24 first** — the household half is built, needs no account from anybody, and 18.9 says every screen here is built *on top of* its 24 equivalent rather than beside it |
+
+Two things that are **not** blockers and were checked rather than assumed: the
+payload format is settled and versioned inside itself (14.4, incl. 14.4.7's
+provenance), so 17.3 has something stable to read; and household social (24) is
+complete enough that 18 has a floor to build on.
+
+One thing that **is** a blocker and is the owner's, not a session's:
+**14.10.4** — whether there is a community endpoint at all, who pays for it, or
+whether every self-hoster stands up their own. At ~30 KB a stored ride the free
+tier is about 13,000 rides, so a shared endpoint fills up in its first year and
+then fails for everyone at once, including the riders whose only backup it was.
+`cloud.properties` ships empty and `CloudConfigFenceTest` keeps it that way
+until somebody decides.
+
+---
+
 **Everything below is reordered by the first real ride, 1 August 2026.** The
 triage is the owner's snag list plus what the ride measured.
 
@@ -308,6 +444,8 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**16.3.4** This ride against your previous best~~ | **Done and observed.** In the housemates' own picker, drawn in the power colour because it is still you. Previous best, not best-ever |
 | ~~**16.3.3** Personal bests by duration~~ | **Done and observed — and it finishes Phase 16.** Mean-maximal power on *Your FTP*, measured rides only, and a gap breaks the window. **16.3.3a** carries what is left: the scan is instant now and has a ceiling |
 | **19.1.4** CI on every PR | **Written, not yet green.** `.github/workflows/ci.yml` — build then the JVM tests, no secret (offline-first is the reason), no instrumented suite (order-dependent). One green run on GitHub ticks it |
+| ~~**14.2.1** Who a cloud row belongs to~~ | **Done in the app.** Two holes: every ride ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement so the **second bike to sign in would have overwritten the first rider's profile**. `profiles.id` **is** the auth user id now — 1:1 with an account by construction, so no cloud id has to be read back and stored. **14.2.1a** carries applying the SQL |
+| ~~**14.2.4 / 14.2.5 / 14.2.6** The backlog~~ | **Done and observed on the tablet AVD.** `workouts.synced_at` (migration 9 → 10), not backfilled; the worker drains a profile's backlog oldest-first instead of posting one ride, so **a ride that exhausts its retries is not lost**. It is also 15.3.1's backfill, one implementation rather than two |
 
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
 
@@ -363,13 +501,13 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 Built and now **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
-| 15 | Accounts, login and multi-device sync | ❌ Not started — *the thing that unlocks the cloud tier*, and since the ninth sitting **the only thing that can**: `auth_user_id` exists, is the gate, and nothing sets it |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. What is left is **14.2.1a** — `003_cloud_identity.sql` is written and not applied — and 14.2.3's sync state in Settings. Otherwise: built and **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
+| 15 | Accounts, login and multi-device sync | ❌ Not started, but **no longer starting from nothing** — the eighteenth sitting built the two things underneath it. `profiles.id` **is** the auth user id (14.2.1), so signing in needs no cloud-id round trip; and 15.3.1's first-sign-in backfill is 14.2.6's backlog drain with a trigger on it. **15.5 is written in `supabase/003_cloud_identity.sql` and deliberately unticked**: the policies exist in a file, and 15.5.4 says they are verified from a second account, which reading the SQL is not. `auth_user_id` is still the gate and still nothing sets it |
 | 16 | Data visualisation | ✅ **Complete.** Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Phase 16 is complete**: 16.3.3 is mean-maximal power on *Your FTP*, measured rides only, with a gap breaking the window. What is left is **16.3.3a**, the scan's ceiling |
-| 17 | Companion web application | ❌ Not started — *nice to have*, and account-tier only: a household-only profile does not exist in the cloud and never appears there |
-| 18 | Social **across bikes** — the networked tier | ❌ Not started — *nice to have*, and it sits on 15. Phase 24 is the half that does not |
+| 17 | Companion web application | ❌ Not started, and **now sixth on a written road rather than an undated *nice to have*** — the owner named it as a destination in the eighteenth sitting. Still account-tier only: a household-only profile does not exist in the cloud and never appears there, which is 17.10's copy problem with a data-model cause. It reads `metrics_payload`, which is settled and versioned inside itself since 14.4, so it has something stable to build against |
+| 18 | Social **across bikes** — the networked tier | ❌ Not started, and it sits on 15. **Phase 24 is the half that does not, and it is largely built** — which is 18.9's whole point: every screen here goes *on top of* its 24 equivalent rather than beside it, or one of the two leaderboards drifts and it will be the one nobody rides against |
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
-| 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started |
+| 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started. **20.3 is new and is the owner's**: profile creation asks a rider for their FTP in a text box prefilled with `200`, which by their own words **cannot go into production**. The constraint that makes it interesting is that the app cannot simply stop having a number — FTP is the denominator of the whole zone system and is written onto the ride at its start |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
