@@ -166,13 +166,46 @@ Two shapes to keep straight, because they will otherwise be built twice:
   household one is authoritative — it is the same bike and it is offline —
   and a rider must never see themselves or a housemate twice.
 
+- [x] **18.11** **No friend graph — the owner's note, 3 August 2026.** Verbatim:
+      *"If this application were to scale to millions of users then we would
+      need to add proper follow, unfollow, block, all that kind of stuff. But in
+      this case, for now, there will only be 3 or 4 users! So I think everyone
+      should just have visibility over everyone's scores for now. Leaderboards
+      and ghosts should contain ALL registered users, in addition to ALL
+      household users."*
+
+      **Agreed, and a `friendships` table with a request / accept / block
+      lifecycle had already been written and applied before this note arrived.
+      It is dropped.** It was the right answer to a question nobody had asked:
+      four people who already know each other do not need to send each other
+      requests, and the graph is three tables of ceremony around a fact they all
+      already agree on. 17.5 stays open for the day the answer changes.
+
+      What replaces it is `supabase/007_everyone_leaderboard.sql`: two narrow
+      `SECURITY DEFINER` functions, `class_leaderboard` and `class_ghost`.
+      **The policies on `workouts` and `profiles` are unchanged** — still "your
+      own rows and nobody else's" — because "everyone can see everyone's
+      *scores*" is not the same sentence as "everyone can read everyone's
+      rows", and the difference is ride dates, RPE ratings, the whole sample
+      series and every column those tables grow later. The ghost even strips
+      heart rate: a leaderboard's worth of visibility is what was agreed, and a
+      resting heart rate is a medical-shaped fact rather than a sporting one
+- [ ] **18.11.1** **Turn public sign-up off, and it is a prerequisite rather
+      than a tidy-up.** "Everyone registered" is a safe rule exactly as long as
+      registering is not open to the public, and those are two settings in two
+      places: 18.11 makes every account visible to every other, and Supabase's
+      `disable_signup` decides who can become an account. **Hosting the web app
+      publishes the anon key** — that is what the key is for — so with sign-up
+      open, anyone who finds the URL can create an account and land on the
+      household's leaderboard. Authentication → Providers → Email → *Allow new
+      users to sign up*, off; add the household by invitation
 - [ ] **18.1** Friends list and requests, mirroring 17.5
 - [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
 - [ ] **18.3** Kudos, and nothing that requires typing during or just after a ride
 - [ ] **18.4** Compare a class you both rode — same class, both traces, one chart. This is the version of a leaderboard that is actually motivating
-- [ ] **18.5** Friend leaderboard on the post-ride summary, alongside the rider's own history (11.4.1)
+- [x] **18.5** Friend leaderboard on the post-ride summary, alongside the rider's own history (11.4.1)
 - [ ] **18.6** **The HUD stays social-free.** Nothing on the strip during a ride. It has half a second of attention and it belongs to the interval
-- [ ] **18.7** A comparison across riders is honest when both sides are measured watts off their own boards (2.1a), and misleading when either side is modelled. Carry the caveat on the modelled ones specifically rather than on all of them — a blanket disclaimer nobody reads is the same as none
+- [x] **18.7** A comparison across riders is honest when both sides are measured watts off their own boards (2.1a), and misleading when either side is modelled. Carry the caveat on the modelled ones specifically rather than on all of them — a blanket disclaimer nobody reads is the same as none
 - [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
-- [ ] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
+- [x] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
 - [ ] **18.10** A friend's numbers arrive over the network, so this phase inherits every rule in the *Corrections* table about failures that are caught and shown nowhere. An empty friend leaderboard must say whether it is empty or unreachable

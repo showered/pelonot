@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Sixteen entries have passed through it.** In order: standing and seated
+**Seventeen entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -59,11 +59,13 @@ recommendation is not to move the Gradle root, and the two rules that actually
 keep the apps independent are written down there instead), and one design
 system across native and web (**17.15** — `web/tokens.css`, transcribed from
 `Color.kt` and `Theme.kt`, with 17.15.1 for typography and 17.15.2 for the fact
-that nothing keeps the two in step).
+that nothing keeps the two in step), and finding friends (**18.11** — there is
+no friend graph; everyone registered is on everyone's board, and **18.11.1** is
+the prerequisite that makes that safe: public sign-up has to be off).
 
-### Find friends
+### Owner's inbox
 
-If this application were to scale to millions of users then we would need to add proper follow, unfollow, block, all that kind of stuff. But in this case, for now, there will only be 3 or 4 users! So I think everyone should just have visibility over everyone's scores for now. Leaderboards and ghosts should contain ALL registered users, in addition to ALL household users.
+*Empty.*
 
 ---
 
