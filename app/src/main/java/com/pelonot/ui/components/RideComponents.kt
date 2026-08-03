@@ -445,10 +445,14 @@ fun PowerZoneScale(
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "ZoneScaleColor"
     )
-    val fraction by animateFloatAsState(
-        targetValue = scale.fractionThroughZone,
+    // 11.6.11. One coordinate for the whole ladder, animated once. The
+    // per-zone fraction resets at every boundary, so springing it drove the
+    // fill backwards across a segment on the way into the next zone — the
+    // "elastic bounce". Nothing here is animated per segment.
+    val position by animateFloatAsState(
+        targetValue = scale.ladderPosition,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "ZoneScaleFraction"
+        label = "ZoneLadderPosition"
     )
 
     val onTarget = zone != null && scale.prescribed != null && zone == scale.prescribed
@@ -506,7 +510,7 @@ fun PowerZoneScale(
         Column(modifier = Modifier.weight(1f)) {
             ZoneSegments(
                 scale = scale,
-                fraction = fraction,
+                position = position,
                 height = if (compact) 8.dp else 16.dp
             )
             if (!compact) {
@@ -592,30 +596,43 @@ private fun StableWidthText(
 }
 
 /**
- * The seven segments themselves.
+ * The seven segments themselves — **one bar that happens to be drawn in seven
+ * pieces** (11.6.11).
  *
  * Equal widths rather than widths proportional to watts: Z7 is unbounded and
  * Z1 spans 56% of FTP on its own, so a true scale would draw six zones as
  * slivers beside two slabs. What the rider needs from the geometry is "seven
  * rungs, this one" — the watts underneath carry the real proportions.
+ *
+ * [position] is where the rider stands across the whole ladder, 0..1. Every
+ * rung below them is full and the one they are on is part-filled, so the fill
+ * crosses a boundary without the segment it leaves emptying — which is what the
+ * previous per-segment version did, and what the owner saw as an elastic bounce
+ * at every transition. Each rung fills in its **own** colour, so the ramp is
+ * still legible as seven zones rather than as one long block.
  */
 @Composable
 private fun ZoneSegments(
     scale: ZoneScale,
-    fraction: Float,
+    position: Float,
     height: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     val prescribedOutline = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+    val rungs = scale.segments.size
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        scale.segments.forEach { segment ->
+        scale.segments.forEachIndexed { index, segment ->
             val isCurrent = segment.zone == scale.current
             val isPrescribed = segment.zone == scale.prescribed
             val base = segment.zone.color
+
+            // How much of *this* rung the bar has reached. Full below the
+            // rider, partial where they are, empty above.
+            val fill = (position * rungs - index).coerceIn(0f, 1f)
 
             Box(
                 modifier = Modifier
@@ -633,14 +650,11 @@ private fun ZoneSegments(
                         }
                     )
             ) {
-                if (isCurrent) {
-                    // Filled to where the rider actually is inside the zone,
-                    // with a bright edge at the position itself — the fill
-                    // gives the sense, the edge gives the precision.
+                if (fill > 0f) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(fraction.coerceIn(0.06f, 1f))
+                            .fillMaxWidth(fill)
                             .background(base)
                     )
                 }

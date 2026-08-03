@@ -818,7 +818,10 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
         SmallStat(
             label = "OUTPUT",
             icon = MetricIcons.Output,
-            value = String.format(java.util.Locale.US, "%.1f", snapshot.totalOutputKj),
+            // 11.6.12. Whole kilojoules. This is the tile the owner was looking
+            // at: the tenth is noise, and it is what made a three-digit total
+            // squeeze the "kJ" label beside it off the tile.
+            value = Formatters.kilojoulesValue(snapshot.totalOutputKj),
             unit = "kJ",
             accent = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f)

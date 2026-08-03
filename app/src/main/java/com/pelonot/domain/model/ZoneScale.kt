@@ -42,6 +42,34 @@ data class ZoneScale(
             segments.getOrNull(zone.ordinal + 1)?.startWatts
         }
 
+    /**
+     * Where the rider is standing on the **whole** ladder, 0..1 — the one
+     * coordinate the scale is drawn from (11.6.11).
+     *
+     * [fractionThroughZone] is a position within a rung, so it resets to zero
+     * every time the rider crosses a boundary. Animating *that* is what made
+     * the ladder recoil: the fill was driven backwards across the full width of
+     * a segment before growing again inside the next one, at the exact moment
+     * the rider was looking at it to see that something had changed. The rung
+     * and the fraction are two coordinates for one thing a rider reads as one —
+     * how hard am I going — so the drawing takes one number and a boundary
+     * stops being an event.
+     *
+     * Rungs are drawn at equal width, so this is deliberately **not** linear in
+     * watts: Z6 is twice as wide in watts as Z2 and gets the same span here,
+     * which is the same compression the segments themselves already are. What
+     * it *is* is **monotonic** in power — the property the per-zone fraction
+     * broke twice per boundary, and the one `ZoneScaleTest` holds.
+     *
+     * Zero when there is no reading, which is 2.4.4's rule reaching the
+     * drawing: a bar that stays where it was over a board that has gone quiet
+     * is the frozen-cadence lie in another costume.
+     */
+    val ladderPosition: Float
+        get() = current?.let { zone ->
+            (zone.ordinal + fractionThroughZone) / segments.size.toFloat()
+        } ?: 0f
+
     companion object {
 
         /**

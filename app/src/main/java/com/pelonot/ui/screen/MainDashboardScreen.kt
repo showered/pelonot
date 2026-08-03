@@ -3,6 +3,7 @@ package com.pelonot.ui.screen
 import androidx.compose.ui.graphics.Color
 import java.util.Date
 import java.text.DateFormat
+import com.pelonot.core.Formatters
 import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RidingHistory
@@ -598,7 +599,7 @@ private fun ProgressSection(
 
         ProgressMetricCard(
             label = "Today's Output",
-            value = String.format(java.util.Locale.US, "%.1f", stats.todayOutputKj),
+            value = Formatters.kilojoulesValue(stats.todayOutputKj),
             unit = "kJ",
             icon = Icons.AutoMirrored.Filled.TrendingUp,
             accentColor = MaterialTheme.colorScheme.primary
@@ -609,7 +610,7 @@ private fun ProgressSection(
         stats.lastRide?.let { lastRide ->
             ProgressMetricCard(
                 label = "Recent Ride",
-                value = String.format(java.util.Locale.US, "%.1f", lastRide.totalOutputKj),
+                value = Formatters.kilojoulesValue(lastRide.totalOutputKj),
                 unit = "kJ",
                 icon = Icons.AutoMirrored.Filled.DirectionsBike,
                 accentColor = MaterialTheme.colorScheme.tertiary

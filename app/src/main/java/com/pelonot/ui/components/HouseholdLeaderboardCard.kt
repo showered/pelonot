@@ -83,6 +83,11 @@ private fun LeaderboardRow(entry: HouseholdLeaderboard.Entry) {
     // will want (24.1.3). Nothing here is ranked on anything FTP-relative —
     // FTP is self-reported and auto-FTP moves it underneath a comparison
     // (7.8 is what that costs).
+    //
+    // The one deliberate exception to 11.6.12's no-decimals rule, and it is
+    // not really an exception: kJ/kg is a different quantity, it lands between
+    // roughly 1 and 6, and rounded to whole numbers two housemates who are
+    // genuinely apart would tie.
     val perKg = entry.outputPerKg?.let {
         String.format(Locale.US, "%.2f kJ/kg", it)
     }

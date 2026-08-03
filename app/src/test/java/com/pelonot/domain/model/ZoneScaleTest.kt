@@ -2,6 +2,7 @@ package com.pelonot.domain.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ZoneScaleTest {
@@ -105,6 +106,75 @@ class ZoneScaleTest {
         assertEquals(0f, scale.fractionThroughZone, 0f)
         // The ladder itself still draws — the boundaries do not depend on a reading.
         assertEquals(152, scale.segments[2].startWatts)
+    }
+
+    // ── The ladder's single coordinate (11.6.11) ────────────────────
+    //
+    // The defect these hold the line against: the scale used to be drawn from
+    // `fractionThroughZone`, which resets to zero at every boundary, so the
+    // animated fill was driven *backwards* across a whole segment on the way
+    // into the next zone. Monotonicity is the property that says a rider
+    // pushing harder never sees the bar go back.
+
+    @Test
+    fun `the ladder position never goes backwards as the rider pushes harder`() {
+        // Every watt from a standstill to well past Z7's floor, which crosses
+        // all six boundaries. Not a sampled few: the recoil lived exactly at
+        // the boundaries and a coarse sweep steps over it.
+        var previous = -1f
+        for (watts in 1..400) {
+            val scale = ZoneScale.forReading(
+                ftp = ftp,
+                powerWatts = watts.toDouble(),
+                telemetryLive = true
+            )
+            val position = scale.ladderPosition
+            assertTrue(
+                "$watts W moved the ladder backwards: $previous -> $position",
+                position >= previous
+            )
+            previous = position
+        }
+    }
+
+    @Test
+    fun `crossing a boundary moves the ladder by a sliver, not by a rung`() {
+        // Z2 on a 200 W FTP ends at 152. One watt either side of it is one
+        // watt of effort and must be one watt of movement — under the old
+        // per-zone fraction these two differed by the full width of a segment.
+        val below = ZoneScale.forReading(ftp, 151.0, telemetryLive = true)
+        val above = ZoneScale.forReading(ftp, 153.0, telemetryLive = true)
+
+        assertEquals(PowerZone.Z2, below.current)
+        assertEquals(PowerZone.Z3, above.current)
+
+        val step = above.ladderPosition - below.ladderPosition
+        assertTrue("the boundary should be invisible, moved $step", step in 0f..0.02f)
+    }
+
+    @Test
+    fun `the ladder spans the whole scale`() {
+        // Nothing lit at the bottom of Z1, and the top rung full at 2x FTP,
+        // where Z7's own range is capped.
+        assertEquals(0f, ZoneScale.forReading(ftp, 0.5, telemetryLive = true).ladderPosition, 0.01f)
+        assertEquals(1f, ZoneScale.forReading(ftp, 500.0, telemetryLive = true).ladderPosition, 0.001f)
+        // And the rung boundaries land where the segments are drawn: seven
+        // equal widths, so Z4 starts three sevenths along.
+        assertEquals(
+            3f / 7f,
+            ZoneScale.forReading(ftp, 182.0, telemetryLive = true).ladderPosition,
+            0.005f
+        )
+    }
+
+    @Test
+    fun `no reading empties the ladder rather than leaving it where it was`() {
+        // 2.4.4 reaching the drawing: a bar holding its place over a board that
+        // has gone quiet is the frozen-cadence lie in another costume.
+        val dead = ZoneScale.forReading(ftp, powerWatts = 240.0, telemetryLive = false)
+
+        assertNull(dead.current)
+        assertEquals(0f, dead.ladderPosition, 0f)
     }
 
     @Test

@@ -57,7 +57,18 @@ class FormattersTest {
         assertEquals("214 W", Formatters.watts(213.6))
         assertEquals("92 RPM", Formatters.rpm(91.8))
         assertEquals("135 BPM", Formatters.bpm(135))
-        assertEquals("12.5 kJ", Formatters.kilojoules(12.45))
+        assertEquals("12 kJ", Formatters.kilojoules(12.45))
+    }
+
+    @Test
+    fun nothingInTheWattFamilyEverShowsADecimalPlace() {
+        // 11.6.12, the owner's call. The stored value keeps its fraction —
+        // the board's power really is measured in tenths (14.4.6) — but a
+        // rider is never shown one.
+        assertEquals("214 W", Formatters.watts(213.6))
+        assertEquals("13 kJ", Formatters.kilojoules(12.5))
+        assertEquals("255", Formatters.kilojoulesValue(254.9))
+        assertEquals("0", Formatters.kilojoulesValue(0.4))
     }
 
     @Test
@@ -72,7 +83,7 @@ class FormattersTest {
 
         assertEquals("40.00 km", Formatters.distance(40.0, UnitSystem.METRIC))
         assertEquals("24.85 mi", Formatters.distance(40.0, UnitSystem.IMPERIAL))
-        assertEquals("12.5 kJ", Formatters.kilojoules(12.45))
+        assertEquals("12 kJ", Formatters.kilojoules(12.45))
         assertEquals("1:00:00", Formatters.duration(3600))
     }
 

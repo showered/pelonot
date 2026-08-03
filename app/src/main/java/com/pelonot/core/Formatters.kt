@@ -42,7 +42,20 @@ object Formatters {
         else -> "$bytes bytes"
     }
 
-    fun kilojoules(value: Double): String = String.format(Locale.US, "%.1f kJ", value)
+    /**
+     * Whole kilojoules — **11.6.12, the owner's call**: nothing in the watt
+     * family shows a rider a decimal place.
+     *
+     * A tenth of a kilojoule is 0.04% of a class and no rider has ever acted
+     * on one; what it cost was real, because the tenth is what pushed the ride
+     * screen's OUTPUT tile wide enough to clip its own unit label once the
+     * total reached three digits. Display only — the stored value keeps its
+     * fraction, the same way the board's fractional watts do (14.4.6).
+     */
+    fun kilojoules(value: Double): String = "${kilojoulesValue(value)} kJ"
+
+    /** Kilojoules without the unit, for a tile that labels itself. */
+    fun kilojoulesValue(value: Double): String = String.format(Locale.US, "%.0f", value)
 
     fun bpm(value: Int?): String = value?.let { "$it BPM" } ?: "--"
 
