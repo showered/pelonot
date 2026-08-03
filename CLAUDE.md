@@ -173,6 +173,18 @@ Two consequences to know before you are surprised by them:
   two identical changes twenty-three seconds apart, which is the technique as
   much as the rule — build the feature that reads the data, then look at the
   data. PLAN.md 7.9, 7.10.3.
+- **Anything written to `workouts` *during* a ride must also live on
+  `WorkoutSession`, or the finalise will quietly revert it.** `stopWorkout`
+  ends a ride by building a **fresh** `WorkoutEntity` out of the session, so
+  every column the session does not carry goes back as its default. 8.3d's
+  `resume_count` was stamped on the row at the moment of resuming and then
+  overwritten with `0` when the ride ended twenty minutes later: a ride
+  observed to resume twice sat on disk claiming it had been ridden straight
+  through, with nothing wrong on any screen. `rpe_rating`,
+  `ftp_proposal_declined` and `synced_at` escape this only because all three
+  are written *after* the ride ends. Same family as the read-modify-write
+  defect below — two writers, one row, the later one carrying a stale copy of
+  a field it does not know exists. PLAN.md 8.3d.4.
 - **`workout_metrics` has a foreign key onto `workouts`.** The workout row must
   be inserted (with `is_complete = 0`) *before* any metric is written. This
   ordering is why metric recording was silently broken for the whole project

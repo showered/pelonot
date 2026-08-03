@@ -125,312 +125,89 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 3 August 2026 (eighteenth sitting): what has to be true before the app goes online
+### Latest session — 3 August 2026 (nineteenth sitting): a crash is a pause nobody got to press
 
-**The owner's question was the assessment one** — what blocks the online tier
-(accounts, friends, a leaderboard, a companion web app), and what ought to be
-done *before* it. The answer turned out to be concrete rather than a list of
-phases: **the cloud had no idea who anything belonged to**, in two separate
-ways, and both are schema decisions that are free today and a
-migration-with-backfill once real histories are up there. That is the 14.4
-argument — change the shape while the cloud is empty — applied to identity.
+**The owner left two notes in the inbox and went for a ride**, which set the
+session: no rider to ask, and the bike itself off limits because they were on
+it. Both notes are written up, the inbox is empty, and one of the two is built
+and observed on the tablet AVD. 498 JVM tests, 0 failures.
 
-Closed **14.2.1**, **14.2.4**, **14.2.5** and **14.2.6**; **15.5.1–15.5.3** are
-written but deliberately unticked. The owner's inbox is emptied into **22.4**
-and **20.3**. 477 JVM tests, 0 failures, and 40 instrumented tests green on the
-tablet AVD.
+**The one that got built was the one that argued with the plan.** The owner
+wants an interrupted ride *resumed*, not merely kept — and **8.3a had already
+decided against exactly that**, in writing: offering resume would "splice a gap
+of unknown length into the record". A note from the owner outranks the
+ordering, but it does not outrank a reason, so the reason had to be checked
+rather than waved past. It did not survive, in two independent ways.
 
-**Hole one: every ride this app has ever uploaded arrived anonymous.**
-`WorkoutDto` carried no `user_id`. The column existed, was nullable, and was
-never sent — so the insert returned 201, the log said `Synced`, and the row
-belonged to nobody. An anonymous ride cannot be restored onto a second bike,
-cannot stand on a leaderboard, and is invisible to any policy written against
-`auth.uid()`. It is **non-null on the DTO** now, so the anonymous shape does not
-compile.
+The gap is **not of unknown length**. It is `(now − workouts.timestamp) − the
+last recorded second`, three numbers the app already has, and an app that can
+measure a thing is not entitled to call it unknown. That is `RideInterruption`,
+which is pure and tested so the judgement in it can be argued with in a test
+rather than on a bike.
 
-**Hole two, which was worse, and nobody had looked at it.** `profiles` was keyed
-by `local_user_id`, `UNIQUE`, and that was the upsert's `onConflict` target.
-`local_user_id` is a **per-device autoincrement**. Bike A's first profile is
-`1`; bike B's first profile is `1`. The second tablet to sign in would not have
-collided harmlessly — **it would have updated the first rider's row**, name,
-weight and FTP. Not an edge case reachable by an unusual sequence: the first
-thing that happens on the day a second bike appears, which is the day the online
-tier exists at all.
+And the deeper one: **`elapsedSeconds()` has subtracted paused time since Phase
+3.** `workout_metrics.timestamp_sec` has therefore never meant *seconds since
+the ride started* — it means **seconds of riding**. A rider who pauses for five
+minutes already leaves no hole in the series and nobody has ever called that
+dishonest. **A crash is a pause nobody got to press.** Resuming at the last
+recorded second is not a new claim about the record; it is the claim the record
+has been making all along.
 
-**The fix departs from what 14.2.1 asked for, and the reason is rule 2.** The
-item wanted a generated cloud UUID read back and stored locally — a two-step
-sync that can half-fail and leave a tablet holding a cloud profile whose name it
-does not know. But a profile is in the cloud *if and only if* it has an account,
-so **a cloud profile and an auth user are 1:1 by construction**. So
-`profiles.id` **is** the auth user id: known at the moment of signing in, no
-round trip to learn it, and every RLS policy becomes one line.
+What 8.3a was *right* about survives rather than being discarded. Because the
+series comes back contiguous, nothing in it can show that anything happened, so
+the break becomes a fact on the row — `resume_count` and `interrupted_sec`,
+migration 10 → 11. Both `NOT NULL DEFAULT 0`, and the contrast with 9 → 10 is
+the whole reasoning: `synced_at` was left null because a default would have
+**claimed** something untrue, and zero here claims only what is certain — no
+ride already on a tablet was ever resumed, because resuming did not exist. **A
+default is safe exactly when it states a fact rather than a guess.**
 
-**`CloudAccess.accountIdFor` collapses the gate and the identity into one
-lookup**, because "may this rider talk to the cloud?" and "who are they up
-there?" have the same answer. Asking twice means two lookups that can disagree,
-and the shape where they disagree is a call that passes the gate and then writes
-a row belonging to somebody else. The choke point hands the account id *to the
-block*, so a request that does not know whose it is can no longer be written.
-Two new fences hold it — and both scan the source **with comments stripped**,
-because the names they forbid are exactly the ones the KDoc must say out loud to
-explain the rule, and a fence that documenting it breaks teaches the next person
-to delete the explanation rather than keep the rule.
+**Three defects came out of driving it that reading the diff had not found, and
+the third is the one worth carrying.** A resumed class called itself a free ride
+in its own subtitle; the zone ladder drew every boundary at 0 W. Both were
+visible in a screenshot. The third was not visible anywhere: **`stopWorkout`
+finalises a ride by building a fresh `WorkoutEntity` out of `WorkoutSession`**,
+so every column the session does not carry goes back as its default — and the
+resume that had been stamped on the row correctly was **overwritten with zero
+when the ride ended twenty minutes later**. A ride observed to resume twice sat
+on disk claiming it had been ridden straight through, with nothing wrong on any
+screen. It is 7.10.3 again: two writers, one row, the later one holding a stale
+copy of a field it does not know exists. Found the way that one was — build the
+feature that records the data, then **look at the data**. The rule it leaves
+behind is now in CLAUDE.md.
 
-**Then the thing that turns a curiosity into a backup (14.2.4–14.2.6).** The app
-has never known what it had *not* uploaded. The worker fired once at the end of
-a ride, got three attempts, and the question closed forever — a ride that failed
-while the router rebooted was indistinguishable from one that succeeded, because
-neither fact was written anywhere. The only trace was a `Log.i` line on a tablet
-whose `log.tag` is `W`. `workouts.synced_at` (migration 9 → 10) is that fact,
-**nullable and not backfilled**: stamping `NOW()` on every existing row is one
-line and would claim the whole local history was safe, which is the exact false
-reassurance the column exists to prevent. Same family as 6 → 7's `ftp_watts`.
+The database is what closed it, not the screenshots: **332 samples, 332 distinct
+seconds, 1 to 332, no gaps and no duplicates** across two resumes, and
+`avg_power` on the row agreeing with `AVG(power)` over that ride's own samples
+to two decimal places **across a resume boundary** — which is what proves the
+running means were carried forward at the sample counts they were built at.
 
-The worker is a **backlog drain keyed by profile** now rather than a post keyed
-by ride, and the property that buys is the one that matters: **a ride that
-exhausts its retries is not lost** — it is still in the backlog and the next
-ride sweeps it up. Nothing is permanently forgotten, which is what lets this be
-called a backup rather than an attempt. Oldest-first, because newest-first
-leaves a rider's first month permanently behind every ride they do next. And it
-**is** 15.3.1: a rider who has just attached an account has a history where
-every row is unsynced, so "backfill on sign-in" and "drain the backlog" are one
-implementation rather than two that drift.
+**The second note is a design question and is deliberately not built** — the
+owner asked for a suggestion, and there was no one to give it to. *"What do I
+do? Do I focus on zone, cadence, or resistance?"* It is **11.7**, and measuring
+the library moved most of it off opinion: all **1071** intervals in the 72
+bundled classes prescribe both a zone and a cadence band, so nothing today can
+tell a cadence *instruction* from a cadence *suggestion* — while **574** blocks
+sit in the neutral 75–85 / 80–90 bands and **231** are out in the tails at
+50–70 or 105–125, where cadence plainly *is* the exercise. **The catalogue
+already knows and has no field to say it in.** The framing that follows: these
+are not three targets but one **outcome** (power) and the two **controls** that
+produce it, drawn at equal weight — and the third of them, resistance, is not
+prescribed by any class at all. It is inverted out of `PowerModel`, whose
+shipped curve is **66% out at the median**. The least trustworthy number on the
+screen is presented with the most authority.
 
-**What is written and deliberately not ticked.** `supabase/003_cloud_identity
-.sql` carries the schema, the RLS rewrite against `auth.uid()` and the grants
-moved from `anon` to `authenticated`. It is **not applied**. Two things in it
-need a decision rather than a run: it **deletes every `profiles` row** (all of
-them were written by the consent defect, belong to riders who never signed in,
-and have `gen_random_uuid()` ids with no auth user behind them), and it
-**revokes `anon` from `profiles` and `workouts` entirely** — which means 14.1.6
-can no longer be driven by hand-setting a column, because the app would still be
-sending an anon key with no session. That is the right trade: a round trip
-proved with a key that bypasses RLS proves the path a real rider does *not*
-take. And **15.5.4 stands unchanged and is now the most important item in
-Phase 15** — two real sessions bouncing off each other's rows. Reading the file
-is not that check and neither is running it successfully.
+**11.7.2 is the owner's to decide** and the recommendation is written down:
+name the governing metric in the catalogue rather than infer it from the band,
+because deriving intent from a number is the shape that has cost this plan the
+most, and because a heuristic cannot express the case the owner explicitly
+asked about — a block that genuinely wants both. **11.7.1a is a defect found on
+the way and worth fixing whichever way that goes**, and it was seen live during
+this session's own test ride: amber fires on every metric equally, so an
+endurance block told a rider spinning a perfectly good 92 rpm that they were
+wrong about something the class was not asking for.
 
-One thing about the cascade worth carrying, because it is backwards from the
-local rule and getting it wrong either way is serious. **Locally, deleting a
-profile keeps its rides** — a housemate leaving does not erase their history off
-the bike. **In the cloud, deleting the account must take the rows with it**,
-because that is what 15.4.3 means. `SET NULL` up there would leave orphans no
-`auth.uid()` matches: invisible to every policy and therefore undeletable by the
-rider they belonged to, so "delete my cloud data" would not have.
-
-**Two answers from the owner closed the sitting's open questions.**
-
-*On the endpoint (**14.10.4**, now closed):* this build points, **through
-environment variables**, at a Supabase project used by the owner's household
-and *"one or two friends"*, and *"data is not an issue"*. So **there is no
-community endpoint to fund and there never was going to be one** — the bill
-argument was sized for a published default serving strangers, and four riders
-is ~6 MB a year against 500 MB. Nothing about the shipped configuration
-changes, which is the point of writing it down: `cloud.properties` stays
-checked in and **empty**, now for the *stronger* reason rather than the
-speculative one — the endpoint is the owner's household's, so checking it in
-would hand a private project to every clone of a public repository. The env
-layer is exactly what 14.10.2's precedence was built for. **One thing the
-answer deliberately does not settle**: volume is not isolation, and *"one or
-two friends"* means real people's rides sharing one project, which makes
-**15.5.4** more load-bearing rather than less.
-
-*On applying `003` (**14.2.1a**):* authorised — *"I'm happy for you to delete
-all data on new installs of the APK. We are still building the app."* Not run,
-because the session was asked to update the plan and stop. Two things are still
-to decide when it is: **run it before 15.1 rather than after**, accepting a
-window where the cloud is unreachable by anything (it already is — no profile
-has an `auth_user_id`), because the alternative is a window where a real
-session exists and `USING (true)` is still live; and the single `workouts` row
-stays, because 14.4.5 wants to `pg_column_size()` the pre-14.4 shape and it is
-the only specimen.
-
-*And a third thing that is new work rather than an answer:* **auto-cleanup**,
-in the owner's words *"old rides condensed to just basic information rather
-than full tick-by-tick record"*. That is **23.4.2** exactly, and it lifts
-23.4's *"do not build this yet"*. The design was already right; what this
-sitting changed is what has to happen first. **16.3.3a is now a hard
-prerequisite** — `personalBests` re-scans every measured ride's samples on
-every load, so trimming would **silently make a rider's five-second and
-twenty-minute bests worse**, unannounced, on the screen that exists to show
-their training is working. Calibration is *not* affected (the grid is
-accumulated live and stored serialised — checked, not assumed). And the
-model does something interesting to it: for a signed-in rider a local trim is a
-**cache eviction** with the cloud holding the original, and for a rider on the
-middle rung it is **deletion** — two features wearing one name, and one
-confirmation dialog must not mean both.
-
-**And the inbox, emptied.** *Max panel width* → **22.4**: `readableWidth` is a
-rule about a **line**, not about the **screen**, and every surface that took the
-token in 22.2.6 chose "cap it" because that was the only answer on offer. The
-rule it lands on is *cap what is read at arm's length, tile what is looked at*,
-and the owner's own example — ride detail's charts in one column — is 22.4.2.
-*Initial FTP* → **20.3**: the field is the third thing the app ever says to a
-rider and nobody can answer it. Two facts constrain the fix and pull against
-each other — the app **cannot** have no number (FTP is the denominator of the
-whole zone system and is written onto the ride at its *start*), and a first-ride
-inference is gated on measured power (7.10.7) so it cannot be the *first* act.
-The owner offered two routes and 20.3.2 is where the choice gets made rather
-than assumed.
-
-### Previously — 3 August 2026 (seventeenth sitting): three quick items, then Phase 16 finished
-
-No bike and no rider, and nothing here needed either: a wire format, a
-workflow file, a class and the build's own hygiene. Closed **14.4.7**,
-**25.4.3**, **14.10.1 / 14.10.2 / 14.10.3 / 14.10.5** and **14.11.3**;
-**19.1.4** is written but stays unticked until a run is green on GitHub, which
-is the house rule doing its job rather than paperwork. 452 JVM tests, 0
-failures.
-
-**Then Phase 16, which is finished.** Closed **16.1.5a**, **16.3.2**,
-**16.3.3**, **16.3.4** and **16.3.5**, all five observed on the tablet AVD.
-471 JVM tests, 0 failures.
-
-**The cadence the class asked for has somewhere to be drawn (16.1.5a).** An
-interval prescribes a cadence range as well as a zone and the distribution has
-no time axis to lay one on, so the data was parsed and thrown away. There is a
-*Cadence over time* card now with the blocks under the trace, and the old
-histogram beside it as *Cadence spread*. The blocks are **absolute rpm** —
-riding a class easier means fewer watts, not slower legs — and **zeros are
-drawn**, unlike the spread, because a coast is measured and happened at a
-moment. Its compliance is counted separately from the power's, which is the
-whole point: the fixture ride reads *63%* on the power card and *0%* on this
-one, obedient in watts and not in legs.
-
-**Your riding (16.3.2 + 16.3.5), which also settles where a trend lives.** The
-question 16.3.1 left open — do these join *Your FTP* or get their own screen —
-answered by use: that screen is about the **rider**, this one about the
-**riding**, and volume and consistency are the same subject seen twice. Three
-rules, all about not asserting what the data does not say. The **current week is
-hollow and never in the scale**, because a Monday with one ride on it is not a
-bad week yet. **A week with no riding is a bar of nothing, not a missing bar** —
-the fortnight off should be a fortnight wide. **A day that has not happened is
-absent, not empty.** Minutes and kJ are two bar rows rather than one chart with
-two axes: a second axis can be scaled to make any two series agree, which is a
-claim made by the drawing. The week and day arithmetic is `Calendar` with the
-timezone injected and is tested across the October clock change, where adding
-604,800,000 ms moves a Sunday ride into the next week invisibly.
-
-**And this ride against your own previous best (16.3.4).** It went into the
-picker the housemates are in, because from the chart's point of view they are
-the same thing — another ride of this class, on these axes, under the same
-measured-power rule. **Previous best, not best-ever**: a ride is compared with
-what the rider had already done when they rode it, so a ride from March says the
-same thing next year and a personal best is never quietly drawn against the ride
-that beat it.
-
-**Personal bests by duration (16.3.3), which is mean-maximal power.** Not "best
-output for a 45-minute ride" — that mostly measures how long the class was — but
-the best average watts held for 5 seconds, a minute, 5, 20 and 60, which are
-comparable across every ride the rider has done. It lives on *Your FTP* by the
-rule the other three settled (a best is a claim about the **rider**), and beside
-the FTP for a plainer reason: the twenty-minute row is what every FTP protocol
-is built on. **A gap breaks the window** — averaging across seconds nobody
-recorded would award a twenty-minute best to a ride that stopped for four of
-them, so a ride with a bottle stop has two shorter efforts rather than one long
-one. **Measured rides only**, with the skipped count travelling alongside, so an
-empty list can say why it is empty instead of implying the rider has never
-ridden. A window never held is absent, not zero. **16.3.3a** is opened against
-it: the scan reads every measured ride, which is instant at 22 rides and is a
-year of daily riding away from not being — the fix is per-ride bests computed
-once at recording, and it is not a schema change to make on a guess.
-
-**One thing the AVD changed, and it is the reason for driving it.** The
-calendar's not-ridden tile and its not-yet cell were both invisible, so
-"absent, not empty" — a distinction the code documents at length — existed only
-in the source. The empty tile is heavier now.
-
-**The payload carries where the watts came from (14.4.7).** The tempting shape
-was a scalar on the row, because `PowerProvenance` reduces a ride's samples to
-one answer anyway — but it reduces it *from* the samples, and `Mixed` exists
-precisely because a board that drops out mid-ride leaves them disagreeing. A
-scalar has to pick a side, which is the fabrication `t` already refuses to
-commit when it declines to imply the second from the array index. So `pm`, per
-sample, absent meaning every sample unknown exactly as `hr` does. The 13 KB
-that made the row look attractive turned out to be 5 KB: `CompactBoolean`
-writes `1` and `0` rather than `true` and `false`, three characters a sample
-across 2,700 of them, so the **cheap encoding buys the honest shape**. A
-45-minute ride measures 55,635 bytes and the budget moves 56 → 60 KB to keep
-its headroom. Without the column every restored ride comes back `Unknown`,
-which fails `isTrustworthyAsMeasured` — a cloud copy of a real bike ride could
-not propose an FTP or stand on a leaderboard the original qualified for.
-
-**CI (19.1.4).** `assembleDebug` then `testDebugUnitTest` on every PR, with the
-HTML report kept as an artifact on failure so a contributor sees *which* test.
-Two deliberate omissions: **no secret and no `local.properties`**, because the
-cloud credentials are optional by design and the day this workflow needs one is
-the day offline-first broke; and **not `connectedDebugAndroidTest`**, whose
-suite is order-dependent — a red run that means "re-run it" trains everyone to
-ignore the whole thing.
-
-**And the near-twin classes (25.4.3), where the interesting part is not the
-class.** `SWT-05` was 4×4 at Z4 over the gear, which is `THR-06` block for
-block; they differed only in the recovery. The fix is both halves of what the
-item offered — a different work interval *and* titles that say so: *Low Cadence
-Sweet Spot **4-5-6*** against *Low Cadence Threshold **4×4***, distinguishable
-from the library list without opening either. **But it is `SWT-13`, not a
-rewritten `SWT-05`.** `workouts.class_id` is a foreign key and the library's own
-non-negotiable is that changing what an id *is* while a ride points at it
-rewrites what that ride was — the argument 23.2.6 took a whole new id series
-for, and editing in place would have been that rule broken at one class instead
-of seventy-two. 25.4.2's renames last sitting were **not** this: a title is not
-the foreign key. `SWT-05` leaves the bundle and the seeder retires it if
-anyone rode it.
-
-Two smaller things worth carrying. **R4 refused the obvious 3×6** — 120 s after
-a 360 s Z4 effort is under the half it demands, and 180 s rests make it a
-32-minute class — which is the generator doing what it was built for. And the
-library is down to **50 distinct zone sequences from 51**, because `SWT-13`
-shares one with `SWT-12`: right, and recorded in `classlibrary/README.md`,
-because that count measures variety and is not a target to defend.
-
-**And what a fresh clone finds (14.10, 14.11.3).** `local.properties` is
-git-ignored, so an open-source project's only record of its own endpoint was in
-a file nobody receives. `cloud.properties` is checked in and **empty**, which is
-14.10.4's answer moved to where a contributor meets it: every RLS policy is
-still `USING (true)`, and a shared endpoint is a bill — about 13,000 rides of
-free tier before it fails for everyone at once, including the riders whose only
-backup it was. Precedence is env → `local.properties` → `cloud.properties` →
-offline, with a blank counting as absent at every level so an exported-but-empty
-variable falls through rather than blanking the build.
-
-The fence is the part worth keeping. Two mistakes here are one line each and
-invisible in review: a key committed to `cloud.properties`, and a third
-`secret()` call — `local.properties` holds an `sbp_` token that can delete every
-project on the account, one `buildConfigField` from an APK. `CloudConfigFence
-Test` asserts the checked-in values are blank and that the `secret()` calls are
-exactly the URL and the anon key, in that order. Same idea as the `CloudAccess`
-and `PowerModel` fences: **the danger is the line nobody has written yet.**
-
-### Still needing a rider on the bike
-
-- ~~**2.7.1b / 2.7.1c**~~ — **done, 1 August 2026.** Root cause found and the
-  fix verified on the bike; see 2.7c. Two things worth carrying from how it
-  went: the whole diagnosis needed **90 seconds of pedalling in total**,
-  because the decisive captures were all taken with the rider stationary
-  (resistance polls regardless, and a non-zero cadence with nobody pedalling is
-  unmistakable evidence); and **this tablet has `log.tag=W` set globally**, so
-  three attempts produced no output at all until per-tag levels were raised.
-- **10.6** — a full-length ride (battery, thermals, memory, dropped samples).
-- **2.2a.1** — watch a Hardware-mode ride actually land in the calibration
-  grid. Everything downstream of it is written and tested; nothing has seen the
-  accumulation happen. Settings → *This bike's power curve* reports it.
-- **11.5.2** — whether the coach volume slider audibly does anything.
-  `com.onepeloton.tts` is the only engine this ever runs against.
-- **11.5.8** — ten seconds of `getevent -l` to settle whether the tablet has
-  volume keys at all.
-- **25.3.4** — how the stand/sit cue reads over a *playing film*. The AVD shows
-  everything except that, because `screencap` returns black over DRM.
-- **14.1.6 / 14.4.5** — neither needs the bike; both need one query against the
-  cloud. Note 14.4.5 now measures the *old* payload shape, since the single row
-  up there predates 14.4.
-
-**One came off this list without a rider, and it is worth remembering why.**
-14.4.6 sat here as a hardware question for a fortnight. It was a question about
-data the bike had *already recorded* — 1,661 rows, answerable by pulling the
-database over adb while nobody was near the bike. Before adding something here,
-check whether the bike is holding the answer already.
-
+Nothing was installed on the bike. The owner was riding it.
 ---
 
 ### What to do next, in order
@@ -520,10 +297,15 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | ~~**7.10.4 / 7.10.5** The two halves of not editing the rider's record behind them~~ | **Both done and observed.** A declined breakthrough is written down on the ride (migration 8→9) instead of forgotten when the screen closes, and an accepted one can be put back in one action that **appends** a row — `AutoBreakthroughReverted`, its own source, because "I set this" and "the app was wrong" are different events |
 
-One of the owner's own is still open and unchanged:
+| ~~**8.3d** Resume an interrupted ride~~ | **Done and observed over two resumes of one ride.** The owner's, and it contested 8.3a — whose reasoning did not survive: the gap it called unknown is arithmetic, and `elapsedSeconds()` has excluded paused time since Phase 3, so **a crash is a pause nobody got to press**. 8.3a's concern is kept as 8.3d.2 rather than discarded. It also turned up the rule now in CLAUDE.md: **the finalise writes defaults over any column `WorkoutSession` does not carry** |
+
+**Three of the owner's own are open, and all three want them rather than a
+session:**
 
 | Next | Why now |
 |------|---------|
+| **11.7.2** Which metric governs a block | **The nineteenth sitting's write-up of the owner's own question**, with the recommendation made and the measurements behind it (1071 intervals, 574 neutral, 231 in the tails). Derive it or name it in the catalogue — naming it is recommended, and the argument is 25.4.2's. Read 11.7.1 first; it reframes the question |
+| **11.7.1a** Amber on a metric nobody asked for | **Not blocked on 11.7.2 and worth doing either way.** `MetricStatus.isOffTarget` fires on every tile equally, so an endurance block tells a rider spinning a good 92 rpm that they are wrong. Seen live in the nineteenth sitting's own test ride. Small, and it removes most of the felt confusion on its own |
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
 
 Then the table below, which was written before the fifth sitting and is kept
@@ -566,7 +348,7 @@ Two notes worth carrying into the next bike session:
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | ✅ **Complete and observed.** Detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and now both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted one can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all (7.10.7). Open only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
-| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains — **plus 8.3b, newly opened: the recovery prompt cannot tell a crashed ride from a live one** |
+| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |

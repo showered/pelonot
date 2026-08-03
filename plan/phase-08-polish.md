@@ -53,7 +53,7 @@
       nobody has said who is riding, so the honest destination is the profile
       selector. **Observed on the tablet AVD**: recover, keep, and the summary
       returns to "Who's riding?"*
-- [ ] **8.3d** **Resume an interrupted ride, not merely keep it.** The owner,
+- [x] **8.3d** **Resume an interrupted ride, not merely keep it.** The owner,
       verbatim from the inbox: *"I recently had a crash (it's beng fixed right
       now in a worktree) but this made me think — in addition to just 'saving'
       an interrupted ride, we should be able to RESUME it."*
@@ -79,7 +79,15 @@
         recorded second is therefore not a new claim about the record; it is the
         claim the record has been making since Phase 3.
       That is what makes this safe to build, and it also fixes what to build:
-- [ ] **8.3d.1** **The ride clock resumes at the last recorded second, not at
+      *Built and observed on the tablet AVD. A 20-minute class ridden to 02:37,
+      force-stopped, relaunched, resumed — and then crashed and resumed a
+      **second** time, because a ride that can be picked up once should survive
+      being picked up twice. `Workout resumed: 1b5c8fb5 at 150s after 147s not
+      riding`, then `at 270s after 347s not riding`, same workout id both times.
+      Three defects came out of driving it that no amount of reading the diff
+      had found; they are written up under 8.3d.4 because that is the item that
+      predicted the shape of them.*
+- [x] **8.3d.1** **The ride clock resumes at the last recorded second, not at
       wall-clock elapsed.** The alternative — advancing the clock by however
       long the app was dead — punishes the rider for a crash by running the
       class on without them: a rider who goes down at minute 5 and is back
@@ -89,7 +97,18 @@
       seconds, so resuming the clock resumes the intervals correctly for free.
       `durationSec` stays honest without special-casing because
       `WorkoutAggregates` rebuilds it from the samples that actually landed.
-- [ ] **8.3d.2** **The interruption is written down rather than smoothed over.**
+      *Observed. The ride came back at **02:41** on a clock that had read 02:37
+      when the process died, still on **interval 2 of 13** with 01:19 of it
+      left, and the second resume came back on interval 3. The totals came with
+      it — 21.6 kJ, 0.2 mi, 135 W average — rather than restarting at zero.
+      The check that matters most is in the database rather than on the screen:
+      **`avg_power` on the row is 82.36 and `AVG(power)` over that ride's own
+      `workout_metrics` is 82.36**, across a resume boundary, which is what
+      proves `restoredWith` carries the running means at the sample counts they
+      were built at. `avg_cadence` agrees to the same two places. That is the
+      technique the `avg_hr` defect taught (CLAUDE.md), applied to the thing
+      most likely to be wrong here.*
+- [x] **8.3d.2** **The interruption is written down rather than smoothed over.**
       This is the part that keeps 8.3a's *concern* even though its conclusion
       goes. Because the series resumes contiguously (8.3d.1), a reader of
       `workout_metrics` afterwards cannot see that anything happened — and a
@@ -101,7 +120,16 @@
       family as `power_is_measured` being nullable and `target_position` being
       absent, where the honest design has always been that these are *different
       claims* rather than one flag doing two jobs.
-- [ ] **8.3d.3** **The prompt now asks a three-way question, and the wording is
+      *Done as `workouts.resume_count` and `workouts.interrupted_sec`
+      (migration 10 → 11), both `NOT NULL DEFAULT 0`. The contrast with 9 → 10
+      is the reasoning and is worth keeping: `synced_at` was left null because a
+      default would have **claimed** something untrue about rides nobody had
+      checked, and zero here claims only what is certainly the case — no ride
+      already on a tablet was ever resumed, because resuming did not exist. **A
+      default is safe exactly when it states a fact rather than a guess.**
+      Observed: `rc = 1, int_sec = 65` on a ride resumed once, and the migration
+      ran clean over an existing database with real rides in it.*
+- [x] **8.3d.3** **The prompt now asks a three-way question, and the wording is
       the hard part.** Today it is *keep* or *discard* (8.3a, 8.3b). It becomes
       *resume*, *keep*, *discard* — and the rider has to be able to tell the
       first two apart at a glance, on a tablet, having just had a crash. Three
@@ -115,7 +143,23 @@
       breakthrough accepted in between silently rescores the ride (7.8); and
       **discard still must not be able to reach the live ride** (8.3b), which
       is `RideInProgress`' job and stays.
-- [ ] **8.3d.4** **Where it must not regress.** `WorkoutService.startWorkout`
+      *Done: **Discard · Keep it · Carry on riding**, and the prompt says how
+      much was ridden — "You had ridden 02:30" — because that is the number the
+      rider does not have in their head and it is what makes *carry on* a
+      different offer from *keep it* rather than two words for one thing.
+      Resume is withheld past `RideInterruption.MAX_RESUMABLE_BREAK_SEC`, where
+      the original two answers come back.
+      Two things worth recording. **The button order was wrong when first
+      built** and only looked wrong on the device: an `AlertDialog` lays its
+      dismiss slot to the **left** of its confirm slot, so putting keep beside
+      discard left the one irreversible answer in the *middle*, between two safe
+      ones and a thumb's width from the primary. Discard goes first now.
+      And **"You had ridden 02:30" against a screen that read 02:37 is correct
+      rather than a rounding slip** — metrics are written in batches of fifteen,
+      so the last few seconds were still in memory when the process died. The
+      dialog reports what reached the disk, which is the only thing it can
+      honestly offer to give back.*
+- [x] **8.3d.4** **Where it must not regress.** `WorkoutService.startWorkout`
       returns early unless the state is `Idle` and mints a fresh
       `UUID.randomUUID()`; resuming has to adopt an **existing** workout id
       instead, which means the row must not be re-inserted (`beginWorkout` on an
@@ -125,6 +169,30 @@
       per-second insert also has to continue past the highest existing
       `timestamp_sec` rather than restart at 1, or the primary-key/ordering
       assumptions in the chart code meet two samples claiming the same second.
+      *All three held, and the series proves it: **332 samples, 332 distinct
+      seconds, 1 to 332, no gaps and no duplicates** across two resumes. The
+      ticker takes the highest second already written instead of starting at
+      `-1`, `RideInProgress.begin` is told the adopted id, and the row is
+      updated rather than re-inserted — deliberately not an upsert, because
+      `workout_metrics` points at it and REPLACE is a delete plus an insert that
+      fires foreign-key actions (the trap that has already cost this project
+      three tables).*
+      ***But the item did not predict the one that actually bit, and the shape
+      of it is worth more than the fix.*** `stopWorkout` finalises a ride by
+      building a **fresh** `WorkoutEntity` out of `WorkoutSession` — so every
+      column the session does not carry is written back as its default. The
+      resume was stamped on `workouts` correctly and then **overwritten with
+      zero by the finalise twenty minutes later**, and a ride observed to resume
+      twice sat on disk claiming it had been ridden straight through. Nothing on
+      any screen was wrong; the ride looked perfect. It is exactly 7.10.3's
+      defect — two writers, one row, the later one holding a stale copy of a
+      field it does not know about — and it was found the way that one was, by
+      building the feature that records the data and then **looking at the
+      data**. The session carries both columns now, with a JVM test on it.
+      The rule this leaves behind: **anything written to `workouts` during a
+      ride must also be on `WorkoutSession`, or the finalise will quietly
+      revert it.** `rpe_rating`, `ftp_proposal_declined` and `synced_at` are
+      safe only because they are all written *after* the ride ends.*
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them
