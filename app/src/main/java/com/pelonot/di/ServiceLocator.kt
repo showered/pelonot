@@ -52,6 +52,13 @@ object ServiceLocator {
         }
 
     /**
+     * The application context, for the few callers that genuinely need one and
+     * have no other route to it — `WorkManager.getInstance` in particular,
+     * asked for from a ViewModel that has no Activity and must not hold one.
+     */
+    val appContext: Context get() = context
+
+    /**
      * Work that has to finish even though the thing that asked for it is gone.
      *
      * The case that needs it is the held-back delete in `HistoryViewModel`: the

@@ -67,6 +67,16 @@ sealed class Destination(val route: String) {
     data object History : Destination("history")
 
     /**
+     * Backing up a rider's rides (15.1). Reached from Settings and never as a
+     * gate on launch or on starting a class (15.1.4) — a signed-out app is not
+     * a degraded app.
+     *
+     * No argument: it always acts for the selected profile, because an account
+     * attaches to *one* rider (15.2.1) and there is no view of somebody else's.
+     */
+    data object Account : Destination("account")
+
+    /**
      * The FTP trend, reached from the dashboard's FTP card (16.3.1). No
      * argument: it is always the selected profile's, because FTP is a statement
      * about a person and there is no view of somebody else's.

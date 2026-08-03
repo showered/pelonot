@@ -56,6 +56,18 @@ data class SettingsUiState(
     val cloudSync: CloudSyncStatus = CloudSyncStatus.Off,
 
     /**
+     * Whether this *build* has a cloud at all (14.10.3, 23.1.5).
+     *
+     * The one place the app is allowed to consult the build rather than the
+     * rider, and only to decide whether to draw an offer: there is no point
+     * showing *Back up my rides* in a clone with no endpoint compiled into it.
+     * It must never stand in for consent — that is `CloudAccess`'s job and
+     * confusing the two is what put two requests on the wire for a rider who
+     * had agreed to nothing.
+     */
+    val cloudConfigured: Boolean = false,
+
+    /**
      * The highest heart rate this rider has ever recorded, offered as a
      * starting point rather than written for them (21.1.3). Null until it is
      * looked up, and null for a rider who has never worn a strap.
@@ -108,7 +120,9 @@ class SettingsViewModel(
     private val calibrationRepository: CalibrationRepository,
     private val databaseBackup: DatabaseBackup,
     private val workoutRepository: WorkoutRepository,
-    private val cloudAccess: CloudAccess
+    private val cloudAccess: CloudAccess,
+    /** Whether this build has an endpoint at all — see [SettingsUiState]. */
+    private val cloudConfigured: Boolean
 ) : ViewModel() {
 
     /**
@@ -198,12 +212,13 @@ class SettingsViewModel(
             volumeError = volumeError,
             calibration = calibration,
             cloudSync = cloudSync,
+            cloudConfigured = cloudConfigured,
             highestRecordedHr = highestHr
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
-        initialValue = SettingsUiState()
+        initialValue = SettingsUiState(cloudConfigured = cloudConfigured)
     )
 
     /**
@@ -430,7 +445,8 @@ class SettingsViewModel(
                 calibrationRepository = ServiceLocator.calibrationRepository,
                 databaseBackup = ServiceLocator.databaseBackup,
                 workoutRepository = ServiceLocator.workoutRepository,
-                cloudAccess = ServiceLocator.cloudAccess
+                cloudAccess = ServiceLocator.cloudAccess,
+                cloudConfigured = ServiceLocator.authRepository.cloudConfigured
             )
         }
     }

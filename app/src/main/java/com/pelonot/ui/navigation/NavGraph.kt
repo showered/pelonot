@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.ui.screen.AccountScreen
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
 import com.pelonot.ui.screen.FtpProgressScreen
@@ -237,6 +238,10 @@ fun PelonotNavGraph(
             )
         }
 
+        composable(Destination.Account.route) {
+            AccountScreen(onBack = navController::popBackStack)
+        }
+
         composable(Destination.History.route) {
             HistoryScreen(
                 onBack = navController::popBackStack,
@@ -356,7 +361,10 @@ fun PelonotNavGraph(
 
         // (Settings and the post-ride summary follow.)
         composable(Destination.Settings.route) {
-            SettingsScreen(onBack = navController::popBackStack)
+            SettingsScreen(
+                onBack = navController::popBackStack,
+                onOpenAccount = { navController.navigate(Destination.Account.route) }
+            )
         }
 
         composable(

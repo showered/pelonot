@@ -116,6 +116,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenAccount: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
@@ -284,6 +285,8 @@ fun SettingsScreen(
             )
 
             CloudSection(
+                onOpenAccount = onOpenAccount,
+                cloudConfigured = state.cloudConfigured,
                 hasAccount = state.profile?.hasAccount == true,
                 backupEnabled = state.settings.cloudSyncEnabled,
                 onBackupEnabledChange = viewModel::setCloudSyncEnabled,
@@ -910,6 +913,8 @@ private fun HeartRateZoneLadder(max: MaxHeartRate?) {
  */
 @Composable
 private fun CloudSection(
+    onOpenAccount: () -> Unit,
+    cloudConfigured: Boolean,
     hasAccount: Boolean,
     backupEnabled: Boolean,
     onBackupEnabledChange: (Boolean) -> Unit,
@@ -923,6 +928,14 @@ private fun CloudSection(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            // 23.1.5 and 15.1.4. The offer appears only in a build that has a
+            // cloud to offer, and it is an offer rather than a prompt — a rider
+            // who wants the local tier sees one line of plain fact above it and
+            // is never asked again anywhere else in the app.
+            if (cloudConfigured) {
+                Spacer(Modifier.size(MaterialTheme.spacing.medium))
+                OutlinedButton(onClick = onOpenAccount) { Text("Back up my rides") }
+            }
         } else {
             Text(
                 text = "Backed up to your account.",
@@ -938,6 +951,8 @@ private fun CloudSection(
             )
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
             SyncStatusLine(syncStatus)
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            OutlinedButton(onClick = onOpenAccount) { Text("Manage account") }
         }
     }
 }
