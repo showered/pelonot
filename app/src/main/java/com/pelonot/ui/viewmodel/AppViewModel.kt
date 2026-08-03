@@ -13,6 +13,7 @@ import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.social.HouseholdRiderWeek
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
@@ -58,6 +59,8 @@ data class AppUiState(
      * which draw no trend.
      */
     val ftpTrend: FtpTrend = FtpTrend(),
+    /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
+    val ridingHistory: RidingHistory = RidingHistory(),
     /**
      * How much riding a backup would be protecting (PLAN 23.3.1). Only *due*
      * once ten rides have gone by unprotected, and the dashboard draws nothing
@@ -149,6 +152,16 @@ class AppViewModel(
             }
         }
 
+    /** The selected rider's weeks (16.3.2, 16.3.5), for the same card-then-screen pair. */
+    private val ridingHistory = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            // A guest's ride is not filed against anybody, so there is no
+            // "their riding" to draw — the same reason the FTP trend is empty.
+            if (profileId == null) flowOf(RidingHistory())
+            else workoutRepository.observeRidingHistory(profileId)
+        }
+
     /**
      * How many rides have been recorded since the last backup — or since the
      * last "not now", whichever is later (23.3.1).
@@ -170,8 +183,11 @@ class AppViewModel(
         dashboardStats,
         workoutRepository.observeHouseholdWeek(),
         ftpTrend,
-        backupReminder
-    ) { stats, household, ftp, backup -> DashboardState(stats, household, ftp, backup) }
+        backupReminder,
+        ridingHistory
+    ) { stats, household, ftp, backup, riding ->
+        DashboardState(stats, household, ftp, backup, riding)
+    }
 
     /**
      * The dashboard-shaped flows, travelling together for the same reason
@@ -184,7 +200,8 @@ class AppViewModel(
         val stats: DashboardStats,
         val household: List<HouseholdRiderWeek>,
         val ftpTrend: FtpTrend,
-        val backupReminder: BackupReminder
+        val backupReminder: BackupReminder,
+        val ridingHistory: RidingHistory
     )
 
     val uiState: StateFlow<AppUiState> = combine(
@@ -202,6 +219,7 @@ class AppViewModel(
             householdWeek = dashboard.household,
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
+            ridingHistory = dashboard.ridingHistory,
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active

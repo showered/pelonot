@@ -356,6 +356,26 @@ interface WorkoutDao {
     )
     suspend fun rideTimestampsSince(userId: Int, sinceMs: Long): List<Long>
 
+    /**
+     * The three columns a volume trend needs, per ride (16.3.2, 16.3.5).
+     *
+     * Deliberately not `SELECT *` and deliberately nowhere near
+     * `workout_metrics`: four months of daily riding is ~120 rows here and
+     * ~320,000 samples there, and *how much and how often* is answerable from
+     * the summary columns alone.
+     *
+     * A `Flow`, so finishing a ride redraws the screen — the query mentions only
+     * `workouts`, which is the table that changes when it does.
+     */
+    @Query(
+        """
+        SELECT timestamp, duration_sec, total_output_kj FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND timestamp >= :sinceMs
+        ORDER BY timestamp
+        """
+    )
+    fun observeRideRecords(userId: Int, sinceMs: Long): Flow<List<RideRecordRow>>
+
     @Query(
         """
         SELECT * FROM workouts

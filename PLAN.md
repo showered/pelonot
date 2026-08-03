@@ -34,6 +34,10 @@ an idea that has moved has.
 The owner's answer on 25.4.2, left in the phase file rather than here, was
 acted on in the fifteenth sitting and is written up there.*
 
+###
+
+One of the plan items, my suggestion, was to restrict the width of the UI, given that Peloton tablet is large and I didn't want things stretching the whole width (it doesn't look good). But just because i don't want one piece of UI to stretch the full width, doesn't mean we can't actually use the full width! Please update plan so that when we are reviewing the layout of screens, we are utilising full width _when it makes sense_ (for example ride statistics screen is currently a bunch of charts in one single column, this should be a grid layout instead).
+
 ---
 
 ## Where the rest of this plan lives

@@ -5,6 +5,8 @@ import java.util.Date
 import java.text.DateFormat
 import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.domain.progress.RidingHistory
+import com.pelonot.domain.progress.RidingWeek
 import com.pelonot.data.local.entity.FtpChangeSource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
@@ -97,8 +100,11 @@ fun MainDashboardScreen(
     onBeginClass: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    /** How much and how often (16.3.2, 16.3.5), for the card that opens *Your riding*. */
+    ridingHistory: RidingHistory = RidingHistory(),
     /** The full-size trend behind the card's sparkline (16.3.1). */
     onFtpProgress: () -> Unit = {},
+    onRiding: () -> Unit = {},
     onDismissBackupReminder: () -> Unit = {}
 ) {
     // The whole screen fades in when first composed.
@@ -202,7 +208,7 @@ fun MainDashboardScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
                 // ── 5️⃣ Progress Section ─────────────────────────────────
-                ProgressSection(stats = stats)
+                ProgressSection(stats = stats, riding = ridingHistory, onRiding = onRiding)
 
                 // ── 6️⃣ The household ───────────────────────────────────
                 // Below the rider's own numbers and never above them: 18.2's
@@ -545,7 +551,11 @@ private fun BackupReminderCard(
 // Progress Section
 // =========================================================================
 @Composable
-private fun ProgressSection(stats: DashboardStats) {
+private fun ProgressSection(
+    stats: DashboardStats,
+    riding: RidingHistory,
+    onRiding: () -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Your Progress",
@@ -575,6 +585,17 @@ private fun ProgressSection(stats: DashboardStats) {
             return@Column
         }
 
+        // How much and how often, and the door to the screen that draws it
+        // (16.3.2, 16.3.5). Above the two output cards deliberately: the first
+        // thing a rider wants from a progress section is whether they have been
+        // riding, and 22.1.2 has been saying so since the sixth sitting. This is
+        // not that item — the kJ cards below are still what they were — but it
+        // is the number that item asked for, in the place it asked for it.
+        riding.currentWeek?.let { week ->
+            ThisWeekCard(week = week, streakDays = riding.streakDays, onClick = onRiding)
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        }
+
         ProgressMetricCard(
             label = "Today's Output",
             value = String.format(java.util.Locale.US, "%.1f", stats.todayOutputKj),
@@ -592,6 +613,81 @@ private fun ProgressSection(stats: DashboardStats) {
                 unit = "kJ",
                 icon = Icons.AutoMirrored.Filled.DirectionsBike,
                 accentColor = MaterialTheme.colorScheme.tertiary
+            )
+        }
+    }
+}
+
+/**
+ * This week, and the way through to every other one (16.3.2, 16.3.5).
+ *
+ * Rides rather than kilojoules, because "have I been riding" is answered by a
+ * count and not by a total — a rider who did one enormous session and then
+ * nothing for ten days has a good kJ number and a bad fortnight.
+ *
+ * The streak is only mentioned once there is one. A "1-day streak" is a ride,
+ * and calling it a streak is flattery, which is how the rest of the numbers on
+ * this screen stop being believed.
+ */
+@Composable
+private fun ThisWeekCard(week: RidingWeek, streakDays: Int, onClick: () -> Unit) {
+    val detail = buildList {
+        add(if (week.rides == 1) "1 ride" else "${week.rides} rides")
+        if (week.rides > 0) add("${week.minutes} min")
+        if (streakDays >= 2) add("$streakDays days in a row")
+    }.joinToString(" · ")
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "This week: $detail. Opens your riding." },
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.size(MaterialTheme.spacing.large))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "This Week",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

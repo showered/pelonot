@@ -48,6 +48,14 @@ sealed class Destination(val route: String) {
     data object FtpProgress : Destination("ftp_progress")
 
     /**
+     * How much and how often (16.3.2, 16.3.5), reached from the dashboard's
+     * progress section. No argument, for the same reason [FtpProgress] has
+     * none: it is the selected rider's riding and there is no view of anybody
+     * else's.
+     */
+    data object Riding : Destination("riding")
+
+    /**
      * A finished ride, opened from history — distinct from [PostRide], which is
      * the same figures wrapped in the RPE prompt, the FTP breakthrough dialog
      * and the guest-filing flow. None of those belong on a ride from March.

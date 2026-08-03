@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.domain.progress.RideRecord
+import com.pelonot.domain.progress.RidingHistory
+import com.pelonot.domain.progress.RidingHistoryBuilder
 import com.pelonot.domain.social.StreakCalculator
 import java.util.Calendar
 
@@ -253,6 +256,43 @@ class WorkoutRepository(
     /** Completed rides on this tablet since a moment, for the backup reminder (23.3.1). */
     fun observeCompletedSince(sinceEpochMs: Long): Flow<Int> =
         workoutDao.observeCompletedSince(sinceEpochMs)
+
+    /**
+     * How much and how often, over whole weeks (PLAN 16.3.2, 16.3.5).
+     *
+     * The window is a few days wider than the weeks asked for, because the
+     * first week on the chart starts before the day the window is counted from
+     * — a ride on the Monday of the earliest week would otherwise be dropped by
+     * SQL and leave a bar that is short for no visible reason.
+     *
+     * The streak comes from the same place the household panel's does, so the
+     * two cannot disagree about what a day is.
+     */
+    fun observeRidingHistory(
+        userId: Int,
+        weeks: Int = RidingHistoryBuilder.DEFAULT_WEEKS,
+        now: () -> Long = { System.currentTimeMillis() }
+    ): Flow<RidingHistory> {
+        val since = now() - (weeks + 1) * WEEK_MS
+        return workoutDao.observeRideRecords(userId, since).map { rows ->
+            val at = now()
+            RidingHistoryBuilder.build(
+                rides = rows.map {
+                    RideRecord(
+                        atEpochMs = it.timestamp,
+                        durationSec = it.durationSec,
+                        outputKj = it.totalOutputKj
+                    )
+                },
+                now = at,
+                weeks = weeks,
+                streakDays = StreakCalculator.currentStreak(
+                    rideTimestamps = rows.map { it.timestamp },
+                    now = at
+                )
+            )
+        }
+    }
 
     fun observeHouseholdWeek(): Flow<List<HouseholdRiderWeek>> =
         workoutDao.observeAnyCompletedCount().map { householdWeek() }

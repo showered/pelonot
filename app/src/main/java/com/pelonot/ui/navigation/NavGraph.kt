@@ -37,6 +37,7 @@ import com.pelonot.ui.screen.ProfileCreationDialog
 import com.pelonot.ui.screen.ProfileSelectorScreen
 import com.pelonot.ui.screen.RideDetailScreen
 import com.pelonot.ui.screen.RideScreen
+import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.ui.viewmodel.AppUiState
@@ -191,7 +192,9 @@ fun PelonotNavGraph(
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
                 onHistory = { navController.navigate(Destination.History.route) },
                 onSettings = { navController.navigate(Destination.Settings.route) },
-                onFtpProgress = { navController.navigate(Destination.FtpProgress.route) }
+                ridingHistory = uiState.ridingHistory,
+                onFtpProgress = { navController.navigate(Destination.FtpProgress.route) },
+                onRiding = { navController.navigate(Destination.Riding.route) }
             )
         }
 
@@ -205,6 +208,13 @@ fun PelonotNavGraph(
                     navController.navigate(Destination.RideDetail.of(workoutId))
                 },
                 onRevert = { change -> onRevertFtpChange(change.from) }
+            )
+        }
+
+        composable(Destination.Riding.route) {
+            RidingScreen(
+                history = uiState.ridingHistory,
+                onBack = navController::popBackStack
             )
         }
 
