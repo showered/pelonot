@@ -82,9 +82,52 @@ asks less about the person, which is a rare combination and worth taking.
 
 ### 21.3 Seeing it during the ride
 
+> **The owner asked for both halves of this from the inbox, and one of them
+> revealed what the phase costs.** Verbatim: *"Heart rate zones — pretty sure
+> this is already covered but let's make this really 'expressive' too with
+> colour changes between heart rate zones."* It is **not** covered: the ride
+> screen draws bpm in one fixed green whatever the rider's heart is doing, and
+> the reason is 21.1 — the app has no maximum heart rate for anybody, so it has
+> no boundaries to colour between. That is the honest answer to give back: the
+> colour is 21.3.1 and it is cheap, but it is gated on asking the rider one
+> question first (21.1.3), and inventing a number rather than asking is exactly
+> what 21.1 exists to refuse.
+
+- [ ] **21.3.4** **The heart beats.** The owner, verbatim: *"Would be kinda neat
+      and 'material expressive' if there was a heart beating on screen, in time
+      with actual heart beat (well, simulating it… if it's 180bpm then it should
+      pulse 3x per second)."*
+
+      **This one needs nothing from the rest of the phase** — it is driven by
+      the bpm the app already has, not by zones — so it is the half of the
+      owner's heart-rate note that can land immediately, and it should not wait
+      behind 21.1.
+
+      It earns its place rather than being decoration: a pulse is the one
+      encoding of heart rate a rider reads **without looking at it**, in
+      peripheral vision, mid-effort — the number needs focus and the rhythm does
+      not. Two rules make it honest rather than ambient. The period comes from
+      the **live bpm** (60/bpm seconds, so 180 bpm is three beats a second and
+      the owner's example is the specification); and **it stops when the reading
+      does** — a heart still beating on screen over a strap that has dropped out
+      is precisely the frozen-88-rpm lie of 2.4.4, in the one place a rider
+      would find it most alarming to learn afterwards. Null bpm draws no heart
+      at all, the way the tile already draws no number.
+
+      Watch the cost: this animates at up to 3 Hz for 45 minutes on a tablet
+      that also has a film playing. Scale one small glyph, do not recompose the
+      tile
+
 - [ ] **21.3.1** Current HR zone on the ride screen beside the live bpm — the
       same job 11.6.2 does for power, and worth designing as one thing so the
-      screen does not end up with two unrelated zone treatments
+      screen does not end up with two unrelated zone treatments. **The owner's
+      ask above lands here**: the bpm itself takes the zone's colour, which is
+      the cheapest possible version and the one that needs no extra room on a
+      full screen. Note it collides with `MetricReadout`'s amber — a value
+      already recolours when it is off target — so the tile cannot carry both
+      signals in the same channel; heart rate has no target band today (11.7.1a
+      is the same collision seen from the other side), which is what makes the
+      colour free here and not free on cadence
 - [ ] **21.3.2** On the HUD only if it earns its half-second (11.5.5, 18.6). A
       zone number is arguably a better use of strip space than raw bpm, since
       the rider cannot act on "148" without doing arithmetic first

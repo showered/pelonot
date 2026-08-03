@@ -22,12 +22,19 @@ handing over a thought at the moment of having it rather than at the moment of
 being able to act on it: an idea does not have to wait for a prompt, and it does
 not have to interrupt work already in flight. One heading per idea.
 
-**How a session handles it.** Read this section before picking work. What is in
-it is the owner speaking, and it outranks the *What to do next* ordering below.
-Take an entry, decide where in the plan it belongs, write it up as numbered
-items with the reasoning kept rather than summarised — and then **empty the
-entry out of this section**. An idea still sitting here has not been dealt with;
-an idea that has moved has.
+**How a session handles it.** Read this section before picking work. Take an
+entry, decide where in the plan it belongs, write it up as numbered items with
+the reasoning kept rather than summarised — and then **empty the entry out of
+this section**. An idea still sitting here has not been dealt with; an idea that
+has moved has.
+
+**Emptying it is urgent; building it is not.** The owner set this rule directly,
+in the twentieth sitting: *"don't necessarily action them first. They should
+have plan entries created and then triaged with just the same weighting as any
+other plan items."* So an inbox entry jumps the queue **into the plan** and then
+takes its place in it — what it buys is a written-down item with the reasoning
+attached, not a promotion past work that matters more. (This replaces the older
+line that said the inbox outranks *What to do next*.)
 
 *Empty. Five entries have passed through it. Standing and seated riding is now
 **Phase 25**, built but for one judgement that needs a rider (25.3.4). The two
@@ -74,6 +81,36 @@ kept verbatim at the head of each:*
   nobody got to press.** 8.3a's concern is kept rather than discarded, as
   8.3d.2: the break becomes a fact on the row, because a contiguous series
   cannot show it and `was_recovered` means the other thing.*
+
+*The twentieth sitting's five ride-screen snags are written up and the entries
+are out. **The owner also set the rule for this section itself** — verbatim:
+"even though you read my comments as one of the first things you do, don't
+necessarily action them first. They should have plan entries created and then
+triaged with just the same weighting as any other plan items." That is now how
+CLAUDE.md reads: the inbox is emptied first, the **ordering** is argued
+afterwards on the merits. Where the five went, with the owner's words kept
+verbatim at the head of each:*
+
+- ***Powerzone indicator** → **11.6.11**. The bounce is not the animation, it is
+  the quantity: `fractionThroughZone` is per-zone, so crossing a boundary drives
+  the fill backwards across a whole segment before it grows again. One
+  continuous coordinate across all seven rungs, monotonic in power, and the
+  boundary stops being an event.*
+- ***Output in watts** → **11.6.12**. The call is the owner's and stands. The
+  live tiles already round; the number with the tenth on it is **OUTPUT**, and
+  it is the one that clips its own unit label as the kilojoules reach three
+  digits.*
+- ***Heart rate pulse** → **21.3.4**, and it needs nothing else in Phase 21, so
+  it is the half of the heart-rate note that can land now. Two rules make it
+  honest: the period is the live bpm, and it stops when the reading does.*
+- ***Heart rate zones** → **21.3.1**, and the honest answer is that it is **not**
+  already covered: the app has no maximum heart rate for anybody, so it has no
+  boundaries to colour between. Cheap once 21.1 asks the question; inventing the
+  number instead of asking is what 21.1 exists to refuse.*
+- ***Beginning of ride countdown** → **11.6.13**. Ten seconds, skippable. The
+  thing to get right is that it sits **before** `startRide` — a curtain over a
+  ride that has already begun moves the defect rather than fixing it, because
+  the clock, the first interval and the recorder are all behind it.*
 
 ---
 

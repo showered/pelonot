@@ -69,9 +69,12 @@ an AVD at the right resolution but the wrong density hides half of them.
   overlay: those are deliberately full-bleed and read at two metres. PLAN.md
   22.2.6.
 - **The owner leaves notes in PLAN.md's *owner's inbox*** without opening a
-  session. Read it before picking work; it outranks *What to do next*. Write
-  each entry up as numbered plan items and then **empty it** — an entry still
-  sitting there has not been dealt with.
+  session. Read it before picking work, write each entry up as numbered plan
+  items and then **empty it** — an entry still sitting there has not been dealt
+  with. **Emptying it is urgent; building it is not**: the owner's own rule is
+  that entries "should have plan entries created and then triaged with just the
+  same weighting as any other plan items", so an entry jumps the queue into the
+  plan and then takes its place in it.
 - Comments explain *why*, not *what*. Match the density of surrounding code.
 
 ---

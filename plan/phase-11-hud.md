@@ -560,6 +560,92 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       Keep riding returns to a still-running ride; on the strip, one tap leaves
       the service up, the button reverts on its own, and two taps end it*
 
+- [ ] **11.6.11** **The zone ladder recoils at every boundary.** The owner,
+      verbatim: *"It looks really good but the transition between zones is still
+      not right. There is an elastic bounce on each zone which makes it erratic.
+      The flow from 3 to 4 and then back to 3 should be seamless, almost like
+      there is just one progress bar that smoothly goes from zone 1 to 7. It's
+      almost there!"*
+
+      **The diagnosis is not the animation, it is the quantity being animated.**
+      `ZoneScale.fractionThroughZone` is a *per-zone* number — how far through
+      *this* rung the rider is — and it is what `PowerZoneScale` springs. So
+      crossing out of Z3 takes it from ~1.0 to ~0.0 and the spring drives the
+      fill **backwards across the full width of a segment** before growing again
+      inside the next one. The rider gets a recoil at the exact moment they
+      wanted confirmation they had arrived. Nothing about the value is wrong;
+      the ladder is holding **two coordinates** (which rung, how far up it)
+      where the rider reads **one** — how hard am I going.
+
+      **The fix is a single continuous coordinate.** Position on the whole
+      ladder, 0..1 across all seven rungs, put on `ZoneScale` so it is pure and
+      JVM-tested rather than argued about from a screenshot; the segments are
+      drawn at equal weight, so it is `(zone.ordinal + fractionThroughZone) / 7`
+      and each segment fills by `position × 7 − ordinal` clamped to 0..1.
+      Animate **that** and a boundary stops being an event at all: the fill
+      leaves one rung and enters the next at the same speed it was already
+      travelling. The invariant worth holding in a test is that it is
+      **monotonic in power** — more watts never moves the bar backwards — which
+      is exactly the property the current build violates twice per boundary.
+
+      Two things it must not break. It becomes one bar filled from the bottom,
+      so the rungs *below* the rider fill in their own colour and the ladder
+      reads as a ramp — which is what the owner is describing. And **absence
+      still lights nothing**: `current == null` is 2.4.4's rule (a dead board or
+      a rider who has stopped is not Active Recovery), so the bar drains to zero
+      rather than freezing where it was
+
+- [ ] **11.6.12** **Watts are whole numbers, everywhere in the UI.** The owner,
+      verbatim: *"On the ride screen it has a decimal place but gets cut off.
+      I'm making a call — make this number an integer! Well, not in the
+      database, but in the UI. The user never (across the app) wants to see
+      decimal places for watts."*
+
+      **The call is made and is not to be re-derived.** Note what it does *not*
+      touch: 14.4.6 settled that the board's fractional power is real data and
+      worth keeping, so this is a display rule and must not reach the recorder,
+      the payload or `PowerModel`.
+
+      The live tiles already round — cadence, resistance, power and avg power
+      are all `.toInt()` on both surfaces, checked. **The number the owner is
+      looking at is OUTPUT**, the first of the three totals under the clock: it
+      is drawn `"%.1f"` and labelled kJ, and it is the one thing on the ride
+      screen in the watt family carrying a tenth. It is also the one that
+      clips — `SmallStat` weights the value `fill = false`, so at 2.7 kJ it fits
+      and at 254.9 kJ it eats the "kJ" beside it, which is the *same* defect the
+      distance tile already has a comment about ("0.20" clipping "mi" to "m").
+      A tenth of a kilojoule is 0.04% of a class and nobody has ever acted on
+      it. Drop it, and take the rule across the app rather than patching one
+      screen: whatever formats a watt or a kilojoule for a rider rounds it
+
+- [ ] **11.6.13** **A countdown before the ride starts.** The owner, verbatim:
+      *"After clicking 'Start ride' you're straight into it. For some reason it
+      feels wrong. Please add a countdown. Could be 5 or 10 seconds, whatever
+      you feel is best. Could even have a 'skip' button for the impatient among
+      us (your call)."*
+
+      **The feeling is right and it has a cause the plan can name.** A class
+      starts its first interval and its clock on the same tick as the tap, so
+      the rider is already *behind* a Z1 target while still reaching for the
+      handlebars — and the first ten seconds of every recorded ride are
+      therefore a rider getting on a bike, filed as riding. It is small, but it
+      is the same family as everything else here: the record says a thing the
+      rider did not do.
+
+      **Ten seconds, skippable, and the ride starts when it ends.** Ten rather
+      than five because the job is getting feet into cages and a film started,
+      which five does not cover; skippable because the second ride of the day
+      does not need it and a countdown nobody can escape is a worse feeling than
+      the one being fixed. The thing to get right is **where it sits**: it must
+      be *before* `startRide`, not a curtain over a ride already running, or the
+      clock, the first interval and the recorder all start behind it and the
+      countdown has simply moved the defect. That makes it the last step of the
+      pre-ride prompt rather than the first frame of `RideScreen`.
+
+      It is also the natural home for what the rider needs before the pedals
+      turn — the class title, the first target — but that is a second item if it
+      earns one; this one is the beat itself
+
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 
 > The owner, verbatim, from the inbox: *"UX-wise it's difficult to know what to
