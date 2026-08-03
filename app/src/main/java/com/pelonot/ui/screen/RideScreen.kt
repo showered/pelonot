@@ -123,19 +123,28 @@ fun RideScreen(
     intent: RideIntent,
     ftp: Int,
     userId: Int? = null,
+    /** Non-null re-enters an interrupted ride instead of starting a new one (8.3d). */
+    resumeWorkoutId: String? = null,
     onEndRide: (workoutId: String?) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RideViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(plan?.id, intent, ftp) {
-        viewModel.startRide(
-            userId = userId,
-            classId = plan?.id,
-            intent = intent,
-            ftpWatts = ftp
-        )
+    LaunchedEffect(plan?.id, intent, ftp, resumeWorkoutId) {
+        // A resume must never fall through to startRide: that would mint a
+        // second ride while the first is still sitting incomplete, which is the
+        // orphan this whole flow exists to clear up.
+        if (resumeWorkoutId != null) {
+            viewModel.resumeRide(resumeWorkoutId)
+        } else {
+            viewModel.startRide(
+                userId = userId,
+                classId = plan?.id,
+                intent = intent,
+                ftpWatts = ftp
+            )
+        }
     }
 
     // The overlay stands down while this screen is on top and comes back the

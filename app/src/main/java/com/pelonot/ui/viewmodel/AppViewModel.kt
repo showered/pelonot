@@ -22,6 +22,7 @@ import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.RideInterruption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,25 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/**
+ * An orphaned ride and how long it has been one (8.3d).
+ *
+ * The two travel together because the second decides what may be offered for
+ * the first: *resume* is only an honest answer while picking the ride up is
+ * still the same ride, which is a question about elapsed time rather than about
+ * the row.
+ *
+ * [interruption] is nullable because the row can go between the two reads that
+ * produce this, and an absent answer must not read as a resumable one.
+ */
+data class InterruptedRide(
+    val workout: WorkoutEntity,
+    val interruption: RideInterruption?
+) {
+    /** Whether *resume* is one of the answers the rider may give. */
+    val canResume: Boolean get() = interruption?.isResumable == true
+}
 
 /**
  * Everything the navigation graph needs, sourced from Room and DataStore.
@@ -72,7 +92,7 @@ data class AppUiState(
      * A ride the app was killed in the middle of. Non-null means the rider is
      * about to be asked what to do with it.
      */
-    val recoverableWorkout: WorkoutEntity? = null,
+    val recoverableWorkout: InterruptedRide? = null,
     /**
      * A ride recording right now (11.1a.5). Non-null on a cold start means the
      * app was opened while a class was already running — from the notification,
@@ -104,11 +124,28 @@ class AppViewModel(
      * which is exactly the case a crash leaves behind — so the prompt would
      * never have appeared.
      */
-    private val _recoverableWorkout = MutableStateFlow<WorkoutEntity?>(null)
+    private val _recoverableWorkout = MutableStateFlow<InterruptedRide?>(null)
 
     init {
-        viewModelScope.launch {
-            _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
+        viewModelScope.launch { refreshRecoverableWorkout() }
+    }
+
+    /**
+     * Re-reads the orphan, if any, together with how long it has been sitting
+     * there (8.3d).
+     *
+     * The two are read at the same moment and kept together because the second
+     * decides what the rider may be offered for the first: *resume* is only an
+     * honest option while picking the ride up is still the same ride, and that
+     * is a question about elapsed time, not about the row.
+     */
+    private suspend fun refreshRecoverableWorkout() {
+        val workout = workoutRepository.findRecoverableWorkout()
+        _recoverableWorkout.value = workout?.let {
+            InterruptedRide(
+                workout = it,
+                interruption = workoutRepository.interruptionFor(it.id)
+            )
         }
     }
 
@@ -286,14 +323,32 @@ class AppViewModel(
      * were written before the process died.
      */
     fun recoverWorkout(onRecovered: (String) -> Unit) {
-        val workoutId = _recoverableWorkout.value?.id ?: return
+        val workoutId = _recoverableWorkout.value?.workout?.id ?: return
         viewModelScope.launch {
             val recovered = workoutRepository.recoverWorkout(workoutId)
             // Re-query rather than clearing: a device that has crashed twice has
             // two orphaned rides, and answering for one should not silently
             // abandon the other.
-            _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
+            refreshRecoverableWorkout()
             if (recovered != null) onRecovered(recovered.id)
+        }
+    }
+
+    /**
+     * Carries on riding the interrupted ride (8.3d).
+     *
+     * The prompt is dismissed here rather than after the service has confirmed,
+     * because the service's own answer arrives asynchronously and a dialog that
+     * outlives the tap it answered is worse than one that closes optimistically:
+     * the ride the rider has just chosen to resume is excluded from the recovery
+     * query the moment `RideInProgress` knows about it (8.3d.4), so re-querying
+     * would race that and could offer the same ride back.
+     */
+    fun resumeWorkout(onResuming: (String) -> Unit) {
+        val interrupted = _recoverableWorkout.value ?: return
+        if (interrupted.canResume) {
+            _recoverableWorkout.value = null
+            onResuming(interrupted.workout.id)
         }
     }
 
@@ -303,6 +358,7 @@ class AppViewModel(
             _recoverableWorkout.value = null
         }
     }
+
 
     /**
      * Puts back the value an auto-FTP change replaced (7.10.4).

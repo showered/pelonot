@@ -182,6 +182,34 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Picks a ride back up where it was interrupted (8.3d).
+     *
+     * The counterpart of [startRide] and not a parameter on it, because the two
+     * carry opposite things: starting a ride tells the service everything about
+     * it, and resuming tells it only which ride — the class, the intent and the
+     * FTP come off the row the service already has (7.8).
+     *
+     * `ftpWatts` is therefore left as it is here rather than being set from the
+     * rider's profile; the service publishes the ride's own FTP in its snapshot
+     * as soon as the bind lands.
+     */
+    fun resumeRide(workoutId: String) {
+        if (bound) return
+
+        val context = getApplication<Application>()
+        val serviceIntent = WorkoutService.resumeIntent(context, workoutId)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+        context.bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+
+        checkOverlayPermission()
+    }
+
+    /**
      * Asks once, at ride start, rather than letting the rider discover
      * mid-class that the HUD they were promised is simply not there.
      */

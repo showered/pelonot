@@ -3,6 +3,7 @@ package com.pelonot.ui.navigation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
@@ -40,7 +41,9 @@ import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.core.Formatters
 import com.pelonot.ui.viewmodel.AppUiState
+import com.pelonot.ui.viewmodel.InterruptedRide
 import java.text.DateFormat
 import java.util.Date
 
@@ -62,6 +65,8 @@ fun PelonotNavGraph(
     onCreateProfile: (name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) -> Unit,
     onSelectProfile: (Int?) -> Unit,
     onRecoverWorkout: (onRecovered: (String) -> Unit) -> Unit = {},
+    /** 8.3d — carry on riding the interrupted ride rather than filing it. */
+    onResumeWorkout: (onResuming: (String) -> Unit) -> Unit = {},
     onDiscardRecoverableWorkout: () -> Unit = {},
     onRenameProfile: (com.pelonot.data.local.entity.UserEntity, String) -> Unit = { _, _ -> },
     onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
@@ -110,7 +115,19 @@ fun PelonotNavGraph(
     // row sitting incomplete forever.
     uiState.recoverableWorkout?.let { interrupted ->
         InterruptedRideDialog(
-            workout = interrupted,
+            interrupted = interrupted,
+            onResume = {
+                onResumeWorkout { workoutId ->
+                    // Dashboard underneath, for the reason 8.3c and 11.1a.5
+                    // both found the hard way: this door opens from "Who's
+                    // riding?", where Dashboard has never been on the stack, so
+                    // a later popBackStack to it silently does nothing and
+                    // strands the rider.
+                    navController.navigate(Destination.Ride.resuming(workoutId)) {
+                        popUpTo(Destination.ProfileSelector.route) { inclusive = false }
+                    }
+                }
+            },
             onKeep = {
                 onRecoverWorkout { workoutId ->
                     navController.navigate(Destination.PostRide.of(workoutId))
@@ -293,6 +310,11 @@ fun PelonotNavGraph(
                 navArgument(Destination.ARG_INTENT_ID) {
                     type = NavType.StringType
                     defaultValue = RideIntent.DEFAULT.id
+                },
+                navArgument(Destination.ARG_RESUME_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
@@ -302,6 +324,9 @@ fun PelonotNavGraph(
             val intent = RideIntent.fromId(
                 backStackEntry.arguments?.getString(Destination.ARG_INTENT_ID)
             )
+            val resumeWorkoutId = backStackEntry.arguments
+                ?.getString(Destination.ARG_RESUME_ID)
+                ?.takeIf { it.isNotBlank() }
             val plan = remember(classId, uiState.classes) {
                 uiState.classes.firstOrNull { it.id == classId }
             }
@@ -312,6 +337,7 @@ fun PelonotNavGraph(
                 ftp = uiState.selectedProfile?.ftpWatts
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 userId = uiState.selectedProfile?.localUserId,
+                resumeWorkoutId = resumeWorkoutId,
                 onEndRide = { workoutId ->
                     if (workoutId != null) {
                         navController.navigate(Destination.PostRide.of(workoutId)) {
@@ -375,18 +401,28 @@ fun PelonotNavGraph(
 /**
  * Offered when the app finds a ride it never finished.
  *
- * It does not offer to *resume*. The rider stopped pedalling when the app went
- * away, and restarting the clock would splice a gap of unknown length into the
- * middle of the record. What it offers instead is to keep what was actually
- * measured — the per-second series survived, because it is written as the ride
- * happens rather than at the end — with the totals rebuilt from those samples.
+ * **It offers to resume as well as to keep (8.3d).** 8.3a deliberately did not,
+ * on the grounds that restarting the clock would splice a gap of unknown length
+ * into the record — but the gap is arithmetic rather than unknown
+ * (`RideInterruption`), and `elapsedSeconds()` has excluded paused time since
+ * Phase 3, so the series has never meant *seconds since the ride started*. A
+ * crash is a pause nobody got to press. What 8.3a was right about survives as
+ * `workouts.resume_count` / `interrupted_sec`: the break is written down rather
+ * than smoothed over.
+ *
+ * Resume is offered *only* while it is still the same ride — see
+ * [InterruptedRide.canResume]. A ride abandoned yesterday gets the original two
+ * answers, because picking that class back up would be a new workout wearing an
+ * old one's interval clock.
  */
 @Composable
 private fun InterruptedRideDialog(
-    workout: WorkoutEntity,
+    interrupted: InterruptedRide,
+    onResume: () -> Unit,
     onKeep: () -> Unit,
     onDiscard: () -> Unit
 ) {
+    val workout = interrupted.workout
     val started = remember(workout.timestamp) {
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
             .format(Date(workout.timestamp))
@@ -397,12 +433,41 @@ private fun InterruptedRideDialog(
         title = { Text("You have an unfinished ride") },
         text = {
             Text(
-                "Pelonot was closed part-way through a ride started on $started. " +
-                    "Everything recorded up to that point is still here — keep it as a " +
-                    "completed ride, or throw it away."
+                if (interrupted.canResume) {
+                    // The elapsed figure is the one the rider does not have in
+                    // their head, and it is what makes "carry on" a different
+                    // offer from "keep it" rather than two words for one thing.
+                    val ridden = Formatters.duration(
+                        interrupted.interruption?.lastRecordedSec ?: 0
+                    )
+                    "Pelonot closed part-way through a ride started on $started. " +
+                        "You had ridden $ridden, and all of it is still here — carry " +
+                        "on from where you stopped, keep it as a finished ride, or " +
+                        "throw it away."
+                } else {
+                    "Pelonot was closed part-way through a ride started on $started. " +
+                        "Everything recorded up to that point is still here — keep it " +
+                        "as a completed ride, or throw it away."
+                }
             )
         },
-        confirmButton = { TextButton(onClick = onKeep) { Text("Keep it") } },
-        dismissButton = { TextButton(onClick = onDiscard) { Text("Discard") } }
+        confirmButton = {
+            if (interrupted.canResume) {
+                TextButton(onClick = onResume) { Text("Carry on riding") }
+            } else {
+                TextButton(onClick = onKeep) { Text("Keep it") }
+            }
+        },
+        dismissButton = {
+            // Three answers do not fit the two slots an AlertDialog gives, so
+            // keep joins discard on this side when resume takes the confirm
+            // slot. The destructive one stays last, where it was.
+            Row {
+                if (interrupted.canResume) {
+                    TextButton(onClick = onKeep) { Text("Keep it") }
+                }
+                TextButton(onClick = onDiscard) { Text("Discard") }
+            }
+        }
     )
 }

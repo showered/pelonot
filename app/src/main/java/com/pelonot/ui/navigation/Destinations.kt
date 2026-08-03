@@ -1,6 +1,7 @@
 package com.pelonot.ui.navigation
 
 import android.net.Uri
+import com.pelonot.domain.model.RideIntent
 
 /**
  * Every navigation destination, with its route pattern and a builder for
@@ -26,11 +27,30 @@ sealed class Destination(val route: String) {
         fun of(classId: String) = "class_detail/${Uri.encode(classId)}"
     }
 
-    data object Ride : Destination("ride?$ARG_CLASS_ID={$ARG_CLASS_ID}&$ARG_INTENT_ID={$ARG_INTENT_ID}") {
+    data object Ride : Destination(
+        "ride?$ARG_CLASS_ID={$ARG_CLASS_ID}&$ARG_INTENT_ID={$ARG_INTENT_ID}" +
+            "&$ARG_RESUME_ID={$ARG_RESUME_ID}"
+    ) {
         fun of(classId: String?, intentId: String) = buildString {
             append("ride?")
             append("$ARG_CLASS_ID=${classId?.let(Uri::encode).orEmpty()}")
             append("&$ARG_INTENT_ID=$intentId")
+        }
+
+        /**
+         * Re-entering a ride the app was killed in the middle of (8.3d).
+         *
+         * Carries only the workout id. The class, the intent and the FTP are
+         * read back off the `workouts` row by the service rather than passed
+         * through the route, because the route would be carrying the *rider's
+         * current* values and the row holds the ones the ride was actually
+         * ridden at (7.8).
+         */
+        fun resuming(workoutId: String) = buildString {
+            append("ride?")
+            append("$ARG_CLASS_ID=")
+            append("&$ARG_INTENT_ID=${RideIntent.DEFAULT.id}")
+            append("&$ARG_RESUME_ID=${Uri.encode(workoutId)}")
         }
     }
 
@@ -68,5 +88,8 @@ sealed class Destination(val route: String) {
         const val ARG_CLASS_ID = "classId"
         const val ARG_INTENT_ID = "intentId"
         const val ARG_WORKOUT_ID = "workoutId"
+
+        /** 8.3d — set only when re-entering a ride rather than starting one. */
+        const val ARG_RESUME_ID = "resumeId"
     }
 }
