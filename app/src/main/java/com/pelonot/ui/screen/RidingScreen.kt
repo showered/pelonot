@@ -160,7 +160,11 @@ private fun ThisWeek(history: RidingHistory) {
     }
 
     val detail = buildList {
-        if (week.rides > 0) add("${week.minutes} minutes, ${week.outputKj.roundToInt()} kJ")
+        if (week.rides > 0) {
+            val minutes = week.minutes
+            add("$minutes ${if (minutes == 1) "minute" else "minutes"}, " +
+                "${week.outputKj.roundToInt()} kJ")
+        }
         // A streak is only worth saying once it is one. "1 day" is a ride, and
         // calling it a streak is the kind of encouragement that reads as
         // flattery — which is how a rider stops believing the other numbers.
@@ -300,7 +304,11 @@ private fun RideDaysCard(history: RidingHistory) {
     val peak = maxOf(history.busiestDayMinutes, 1)
     val ridden = history.weeks.flatMap { it.days }.count { it?.ridden == true }
     val accent = MaterialTheme.colorScheme.primary
-    val empty = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+    // A day that happened and had no riding in it is a **visible** tile; a day
+    // that has not happened is nothing at all. If those two read the same the
+    // distinction is only in the source, and the rest of the week looks like
+    // days the rider missed.
+    val empty = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
 
     TrendCard(
         title = "Ride days",
