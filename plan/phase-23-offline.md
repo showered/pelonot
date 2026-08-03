@@ -227,13 +227,26 @@ no cloud dependency**, which is the good news in this phase.
 
 ### 23.4 Retention and trimming — the local database is the one that fills
 
-**Do not build this yet.** The numbers are in *What a workout costs* and they
-say the cloud is not the constraint: four riders at a ride a week is ~6 MB of
-Supabase a year against a 500 MB allowance. What the same measurement *did*
-show is that the local database fills seven to ten times faster, and that the
-12.4.4 backup file is a full copy of it. So this is a local feature with a
-cloud counterpart, and the trigger to build it is a real tablet getting full,
-not a projection.
+***The owner asked for this on 3 August 2026, so the "not yet" below is
+lifted*** — in their words, alongside the endpoint decision (14.10.4):
+*"we will implement auto-cleanup where old rides are condensed to just basic
+information rather than full tick-by-tick record."* That is 23.4.2 exactly, and
+the items under it were already the right ones. What follows is the original
+framing, kept, plus what the eighteenth sitting's work changed about the
+prerequisites (23.4.8–23.4.11).
+
+**The original framing, still correct about where the pressure is.** The
+numbers are in *What a workout costs* and they say the cloud is not the
+constraint: four riders at a ride a week is ~6 MB of Supabase a year against a
+500 MB allowance. What the same measurement *did* show is that the local
+database fills seven to ten times faster, and that the 12.4.4 backup file is a
+full copy of it. So this is a local feature with a cloud counterpart.
+
+**What the owner's answer changes is the *reason*, not the design.** It is no
+longer "the tablet is getting full" — it is that a household endpoint should
+not accumulate tick-by-tick records forever when nothing reads most of them.
+23.4.1 still stands: measure the real thing first, because everything below is
+sized off a model that a real bike can contradict.
 
 - [ ] **23.4.1** **Measure the real thing before building any of it.** On the
       bike: `SELECT COUNT(*) FROM workout_metrics`, the file size of
@@ -260,8 +273,57 @@ not a projection.
       warning
 - [ ] **23.4.6** Never trim a ride that has not reached the cloud, for a rider
       who has an account. Needs 14.2.4's `synced_at` to be knowable at all
-- [ ] **23.4.7** The cloud counterpart is the same policy applied server-side
-      and is **not** needed at household scale (see 14.10.4 for the scale at
-      which it is). If it is ever built, it trims the *payload*, never the
-      workout row: the aggregates are what the history, the trends and the
-      leaderboards read
+- [ ] **23.4.7** The cloud counterpart is the same policy applied server-side.
+      **The owner has now asked for it** (14.10.4), so it is wanted rather than
+      hypothetical — but the rule it was written with is unchanged and is the
+      important half: it trims the ***payload*, never the workout row.** The
+      aggregates are what the history, the trends and the leaderboards read, and
+      a workout row costs a few hundred bytes against the payload's ~30 KB, so
+      deleting it saves nothing and destroys everything
+
+---
+
+**What the eighteenth sitting changed about the prerequisites.** Trimming is
+the one feature in this project that *destroys* data on purpose, so the
+question is not "can we drop the rows" but "what silently reads them". Four
+things do, and three of them are wrong afterwards in ways nobody would notice.
+
+- [ ] **23.4.8** **16.3.3a is now a hard prerequisite, not an optimisation.**
+      `WorkoutRepository.personalBests` re-scans **every measured ride's
+      samples** on every load of *Your FTP* — that is how mean-maximal power is
+      computed today. Trim a rider's older rides and their five-second and
+      twenty-minute bests **silently get worse**, because the rides that set
+      them no longer have the seconds in them. The rider is not told; the number
+      simply drops, and it drops on the screen that exists to show that their
+      training is working. 16.3.3a's fix — per-ride bests computed once at
+      recording and stored on the row — is what makes trimming survivable, and
+      it has to land **first**, because a best that was never computed cannot be
+      recovered from a trimmed ride
+- [ ] **23.4.9** **Audit the other three readers and say what each does with a
+      trimmed ride**, rather than finding out from a chart. They are:
+      `RideDetailViewModel` (the ride's own charts — 16.1, and the 24.3.1
+      housemate trace and 16.3.4 previous-best comparison drawn behind it),
+      `PostRideViewModel` (the post-ride analysis, which only ever reads a ride
+      minutes old and is therefore safe by construction), and
+      `WorkoutSyncWorker` (which uploads the payload — see 23.4.6, and note the
+      ordering is now enforceable because `synced_at` exists). **Calibration is
+      *not* one**: `CalibrationRepository` accumulates its grid live and stores
+      it serialised, so it never re-reads `workout_metrics` and trimming cannot
+      touch this bike's power curve. Checked rather than assumed
+- [ ] **23.4.10** **A signed-in rider's cloud copy makes trimming reversible,
+      and an offline rider's does not.** That is the most interesting thing the
+      connectivity model does to this feature and it must not be papered over:
+      for a rider with an account, local trimming is a **cache eviction** and
+      the full series can be pulled back on demand; for a rider on the middle
+      rung it is **deletion**, full stop. Two different features wearing one
+      name. Either build only the offline-safe half and say so plainly, or build
+      rehydration as its own item — but do not offer one confirmation dialog
+      that means different things to two riders on the same tablet
+- [ ] **23.4.11** **Retention on a shared household endpoint is a policy about
+      other people's data.** 23.4.7 applies server-side, and the endpoint now
+      has *"one or two friends"* on it (14.10.4). A server-side trim decided by
+      whoever runs the project deletes a friend's record without asking them,
+      which is a different act from a rider trimming their own tablet. Decide
+      whether it is per rider and rider-controlled — and note this is the first
+      item in the project where one person's setting reaches another person's
+      history

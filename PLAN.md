@@ -48,6 +48,14 @@ verbatim at the head of each:*
   power (7.10.7), so it cannot be the **first** act. The owner's two routes are
   a real choice and 20.3.2 is where it gets made rather than assumed.*
 
+### In-ride targets
+
+UX-wise it's difficult to know what to focus on. It says Zone 2, but then it also prescribes cadence and resistance. I think it needs to be one or the other. Please have a think about best UX and provide me a HITL suggestion. I love Power Zones and it means it scales to a person's fitness. However there is a time and place for prescribing cadence, because spin-ups and climbs are very different exercises. Perhaps there's a way we can use both? But overall the impression I get when i'm riding is: "what do i do? do i focus on zone, cadence, or resistance?"
+
+### Resume session
+
+I recently had a crash (it's beng fixed right now in a worktree) but this made me think -- in addition to just "saving" an interrupted ride, we should be able to RESUME it.
+
 ---
 
 ## Where the rest of this plan lives

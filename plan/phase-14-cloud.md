@@ -135,7 +135,31 @@ ever synced, confirmed by count rather than inferred.
       driven by hand-setting `auth_user_id` on the tablet: the app would still
       be sending an anon key with no session behind it. That is the right trade
       and worth stating — a round trip proved with a key that bypasses RLS
-      proves the path a real rider does *not* take
+      proves the path a real rider does *not* take.
+
+      ***Authorised by the owner, 3 August 2026:*** *"I'm happy for you to
+      delete all data on new installs of the APK. We are still building the
+      app."* So the `DELETE FROM public.profiles` is agreed rather than
+      outstanding, and the same licence covers a local wipe if one is ever
+      needed — the app is pre-release and there is no rider history to protect
+      yet. **It was not applied in the eighteenth sitting** only because the
+      owner asked for the plan to be updated and the session to stop.
+
+      Two things still to decide *when* it is run, neither of which the
+      authorisation covers:
+
+      - **Run `003` before or after 15.1?** After is easier — `003` makes the
+        anon key unable to reach `profiles` or `workouts`, so between running it
+        and having `auth-kt` installed the cloud is unreachable by anything.
+        Before is *safer* — it means no window in which a session exists and
+        `USING (true)` is still live. **Prefer before**, and accept the dead
+        window: nothing reaches the cloud today anyway (no profile has
+        `auth_user_id`), so the window costs nothing real.
+      - **The one `workouts` row is kept deliberately**, because 14.4.5 wants to
+        `pg_column_size()` the pre-14.4 payload shape and that row is the only
+        specimen. It has `user_id` NULL, so it breaks no new constraint; it
+        simply becomes invisible to PostgREST, which is correct for an
+        unattributed ride and still readable through the Management API
 - [ ] **14.2.4a** **Nothing nulls `synced_at` when a ride is edited**, because
       nothing in the payload is editable today — `rpeRating` and the FTP
       proposal flag are the only things that change after a ride ends and
@@ -333,7 +357,43 @@ a screen.
 - [x] **14.10.1** A checked-in `cloud.properties` (or `CloudConfig.kt`) holding the default endpoint and publishable key, overridable by `local.properties` and then by env vars. Today the only source is `local.properties`, which is **gitignored** — so a fresh clone of an open-source project has no cloud at all and no in-repo record of what the community endpoint even is
 - [x] **14.10.2** Precedence documented in the README: env → `local.properties` → checked-in default → offline
 - [x] **14.10.3** Keep `SupabaseModule.client == null` and `SyncOutcome.Disabled` as the behaviour when nothing is configured. **Offline-first is not negotiable**; the cloud stays a mirror
-- [ ] **14.10.4** Only publish a default key **after 15.5**. A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it.
+- [x] **14.10.4** Only publish a default key **after 15.5**.
+
+      ***Answered by the owner, 3 August 2026, and the answer closes the item
+      by removing the thing it was worried about.*** In the owner's words: this
+      build points, **through environment variables**, at a Supabase endpoint
+      used by *"my household and one or two friends"*, and *"data is not an
+      issue"*.
+
+      **So there is no community endpoint to fund, and there never was going to
+      be one.** The bill argument below was sized for a published default
+      serving strangers; a household endpoint at four riders is ~6 MB of
+      Supabase a year against a 500 MB allowance (*What a workout costs*), which
+      is three orders of magnitude of headroom. The owner also intends
+      **retention** on top of that — old rides condensed to their aggregates
+      rather than kept sample by sample — which is **23.4**, now wanted rather
+      than deferred.
+
+      **Nothing about the shipped configuration changes, and that is the point
+      of recording it here.** `cloud.properties` stays checked in and **empty**,
+      and `CloudConfigFenceTest` keeps failing the build if it stops being. The
+      reason is now the stronger one rather than the speculative one: the
+      endpoint is the **owner's household's**, so checking it in would hand a
+      private project to every clone of a public repository. Precedence is
+      unchanged — env → `local.properties` → `cloud.properties` → offline — and
+      the env layer is exactly the one the owner is using, which is what it was
+      built for (14.10.2). A self-hoster still stands up their own (14.10.5).
+
+      **One thing the answer does not change, and it is worth separating.**
+      *Volume* is settled; *isolation* is not. "One or two friends" means real
+      people's rides sharing one project, which makes **15.5.4** more load-
+      bearing rather than less — every policy is `USING (true)` until `003` is
+      applied, and on a shared endpoint that is every rider able to read every
+      other rider. The two questions were only ever adjacent, and the owner
+      answered the first.
+
+      *The original reasoning, kept because it is still the right answer for
+      anyone who does publish a default:* A publishable key is safe to check in exactly when RLS is correct, and right now it is `USING (true)` — publishing it today would publish everyone's data with it.
       **A second reason, added 1 August 2026 and less obvious than the first:
       a published endpoint is a bill.** At the measured ~30 KB a stored ride
       (*What a workout costs*), Supabase's 500 MB free tier is about 13,000
