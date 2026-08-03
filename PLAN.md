@@ -199,6 +199,48 @@ because that is what 15.4.3 means. `SET NULL` up there would leave orphans no
 `auth.uid()` matches: invisible to every policy and therefore undeletable by the
 rider they belonged to, so "delete my cloud data" would not have.
 
+**Two answers from the owner closed the sitting's open questions.**
+
+*On the endpoint (**14.10.4**, now closed):* this build points, **through
+environment variables**, at a Supabase project used by the owner's household
+and *"one or two friends"*, and *"data is not an issue"*. So **there is no
+community endpoint to fund and there never was going to be one** — the bill
+argument was sized for a published default serving strangers, and four riders
+is ~6 MB a year against 500 MB. Nothing about the shipped configuration
+changes, which is the point of writing it down: `cloud.properties` stays
+checked in and **empty**, now for the *stronger* reason rather than the
+speculative one — the endpoint is the owner's household's, so checking it in
+would hand a private project to every clone of a public repository. The env
+layer is exactly what 14.10.2's precedence was built for. **One thing the
+answer deliberately does not settle**: volume is not isolation, and *"one or
+two friends"* means real people's rides sharing one project, which makes
+**15.5.4** more load-bearing rather than less.
+
+*On applying `003` (**14.2.1a**):* authorised — *"I'm happy for you to delete
+all data on new installs of the APK. We are still building the app."* Not run,
+because the session was asked to update the plan and stop. Two things are still
+to decide when it is: **run it before 15.1 rather than after**, accepting a
+window where the cloud is unreachable by anything (it already is — no profile
+has an `auth_user_id`), because the alternative is a window where a real
+session exists and `USING (true)` is still live; and the single `workouts` row
+stays, because 14.4.5 wants to `pg_column_size()` the pre-14.4 shape and it is
+the only specimen.
+
+*And a third thing that is new work rather than an answer:* **auto-cleanup**,
+in the owner's words *"old rides condensed to just basic information rather
+than full tick-by-tick record"*. That is **23.4.2** exactly, and it lifts
+23.4's *"do not build this yet"*. The design was already right; what this
+sitting changed is what has to happen first. **16.3.3a is now a hard
+prerequisite** — `personalBests` re-scans every measured ride's samples on
+every load, so trimming would **silently make a rider's five-second and
+twenty-minute bests worse**, unannounced, on the screen that exists to show
+their training is working. Calibration is *not* affected (the grid is
+accumulated live and stored serialised — checked, not assumed). And the
+model does something interesting to it: for a signed-in rider a local trim is a
+**cache eviction** with the cloud holding the original, and for a rider on the
+middle rung it is **deletion** — two features wearing one name, and one
+confirmation dialog must not mean both.
+
 **And the inbox, emptied.** *Max panel width* → **22.4**: `readableWidth` is a
 rule about a **line**, not about the **screen**, and every surface that took the
 token in 22.2.6 chose "cap it" because that was the only answer on offer. The
@@ -383,7 +425,7 @@ here:
 | # | What | Why it is where it is |
 |---|------|----------------------|
 | 1 | ~~**14.2.1** identity, **14.2.4–14.2.6** the backlog~~ | **Done.** Both are schema shapes that are free while the cloud is empty and a migration-with-backfill once four riders have a year up there. Everything below writes rows; these decide whose they are and whether losing one is noticed |
-| 2 | **14.2.1a** apply `003`, **15.5.4** verify it from a second account | The only step in this list where being wrong is a **breach** rather than a bug. Nothing else may go online first, and "the SQL looks right" is not the check |
+| 2 | **14.2.1a** apply `003`, **15.5.4** verify it from a second account | The only step in this list where being wrong is a **breach** rather than a bug. Nothing else may go online first, and "the SQL looks right" is not the check. **The wipe is authorised** (owner, 3 Aug); run `003` *before* 15.1, not after. And the endpoint now has friends on it, so this is other people's data |
 | 3 | **15.1** auth, **15.2** identity, **15.3** sync both ways | The phase that unlocks everything. 15.3.1 is mostly built already — it is 14.2.6's drain with a sign-in trigger on it |
 | 4 | ~~**14.2.3** sync state in Settings~~ | **Done in the same sitting**, because it belongs before riders trust the thing rather than after. Two of three states seen on the AVD; the failing one is tested and will be seen for free the first time 14.2.1a's endpoint refuses something |
 | 5 | **20.3** the initial FTP, **22.4** use the width | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders |
@@ -394,13 +436,14 @@ payload format is settled and versioned inside itself (14.4, incl. 14.4.7's
 provenance), so 17.3 has something stable to read; and household social (24) is
 complete enough that 18 has a floor to build on.
 
-One thing that **is** a blocker and is the owner's, not a session's:
-**14.10.4** — whether there is a community endpoint at all, who pays for it, or
-whether every self-hoster stands up their own. At ~30 KB a stored ride the free
-tier is about 13,000 rides, so a shared endpoint fills up in its first year and
-then fails for everyone at once, including the riders whose only backup it was.
-`cloud.properties` ships empty and `CloudConfigFenceTest` keeps it that way
-until somebody decides.
+**14.10.4 was that list's one owner-blocker and it is now answered.** There is
+no community endpoint: this build points at the owner's household project
+through env vars, with one or two friends on it, and volume is not a concern at
+that scale. `cloud.properties` still ships empty and `CloudConfigFenceTest`
+still keeps it that way — the reason is now that the endpoint is *private*
+rather than that the decision is *pending*. **Retention (23.4) came with the
+answer** and is real work now rather than deferred; read 23.4.8 before starting
+it, because trimming silently degrades personal bests until 16.3.3a lands.
 
 ---
 
@@ -510,7 +553,7 @@ Two notes worth carrying into the next bike session:
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
-| 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. What is left is **14.2.1a** — `003_cloud_identity.sql` is written and not applied — — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. Otherwise: built and **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
+| 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. What is left is **14.2.1a** — `003_cloud_identity.sql` is written and not applied — — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: built and **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | ❌ Not started, but **no longer starting from nothing** — the eighteenth sitting built the two things underneath it. `profiles.id` **is** the auth user id (14.2.1), so signing in needs no cloud-id round trip; and 15.3.1's first-sign-in backfill is 14.2.6's backlog drain with a trigger on it. **15.5 is written in `supabase/003_cloud_identity.sql` and deliberately unticked**: the policies exist in a file, and 15.5.4 says they are verified from a second account, which reading the SQL is not. `auth_user_id` is still the gate and still nothing sets it |
 | 16 | Data visualisation | ✅ **Complete.** Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Phase 16 is complete**: 16.3.3 is mean-maximal power on *Your FTP*, measured rides only, with a gap breaking the window. What is left is **16.3.3a**, the scan's ceiling |
 | 17 | Companion web application | ❌ Not started, and **now sixth on a written road rather than an undated *nice to have*** — the owner named it as a destination in the eighteenth sitting. Still account-tier only: a household-only profile does not exist in the cloud and never appears there, which is 17.10's copy problem with a data-model cause. It reads `metrics_payload`, which is settled and versioned inside itself since 14.4, so it has something stable to build against |
@@ -519,6 +562,6 @@ Two notes worth carrying into the next bike session:
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started. **20.3 is new and is the owner's**: profile creation asks a rider for their FTP in a text box prefilled with `200`, which by their own words **cannot go into production**. The constraint that makes it interesting is that the app cannot simply stop having a number — FTP is the denominator of the whole zone system and is written onto the ride at its start |
 | 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
 | 22 | The dashboard | 🔶 **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
-| 23 | Offline by default — making the ungated tier complete | 🔶 **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
+| 23 | Offline by default — making the ungated tier complete | 🔶 **Retention (23.4) is no longer deferred** — the owner asked for old rides condensed to their aggregates rather than kept sample by sample, which is 23.4.2 as written. The design was already right; what is new is **23.4.8**, a hard prerequisite: personal bests are re-scanned from every measured ride's samples on every load, so trimming would silently make a rider's bests worse until 16.3.3a stores them per ride. Calibration is unaffected — checked, not assumed. **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |
 | 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider). **25.4.3 is closed**: the two near-twins the rename exposed are separated by their work as well as their titles, as `SWT-13` rather than an edited `SWT-05` — the id is the foreign key |
