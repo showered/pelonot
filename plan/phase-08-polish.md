@@ -53,6 +53,78 @@
       nobody has said who is riding, so the honest destination is the profile
       selector. **Observed on the tablet AVD**: recover, keep, and the summary
       returns to "Who's riding?"*
+- [ ] **8.3d** **Resume an interrupted ride, not merely keep it.** The owner,
+      verbatim from the inbox: *"I recently had a crash (it's beng fixed right
+      now in a worktree) but this made me think — in addition to just 'saving'
+      an interrupted ride, we should be able to RESUME it."*
+      **This contests 8.3a, which decided the opposite, so the reason 8.3a gave
+      has to be answered rather than overruled.** It reads: *"It offers to keep
+      the ride, not resume it: the rider stopped pedalling when the app went
+      away, and restarting the clock would splice a gap of unknown length into
+      the record."*
+      **The objection does not survive contact with the code, in two separate
+      ways.**
+      - **The gap's length is not unknown; it is arithmetic.** `workouts
+        .timestamp` is the wall-clock start (`startedAtEpochMs`), the last
+        `workout_metrics.timestamp_sec` is the last second that recorded, and
+        `System.currentTimeMillis()` is now. The break is
+        `(now − timestamp)/1000 − lastSecond`, to within the sample period. An
+        app that can measure a thing is not entitled to call it unknown.
+      - **And the app already does exactly this, deliberately, for pauses.**
+        `WorkoutService.elapsedSeconds()` subtracts `accumulatedPausedMs`, so
+        `timestamp_sec` has never been *seconds since the ride started* — it is
+        **seconds of actual riding**. A rider who pauses for five minutes leaves
+        no hole in the series and nobody has ever thought that dishonest. **A
+        crash is a pause that nobody got to press.** Resuming at the last
+        recorded second is therefore not a new claim about the record; it is the
+        claim the record has been making since Phase 3.
+      That is what makes this safe to build, and it also fixes what to build:
+- [ ] **8.3d.1** **The ride clock resumes at the last recorded second, not at
+      wall-clock elapsed.** The alternative — advancing the clock by however
+      long the app was dead — punishes the rider for a crash by running the
+      class on without them: a rider who goes down at minute 5 and is back
+      ninety seconds later would return to minute 6:30 of a class they have
+      ridden five minutes of. **A class is a prescription of work, not an
+      appointment**, and `ClassIntervalEngine` is a pure function of elapsed
+      seconds, so resuming the clock resumes the intervals correctly for free.
+      `durationSec` stays honest without special-casing because
+      `WorkoutAggregates` rebuilds it from the samples that actually landed.
+- [ ] **8.3d.2** **The interruption is written down rather than smoothed over.**
+      This is the part that keeps 8.3a's *concern* even though its conclusion
+      goes. Because the series resumes contiguously (8.3d.1), a reader of
+      `workout_metrics` afterwards cannot see that anything happened — and a
+      45-minute ride that was actually ridden across two hours with a crash in
+      the middle is a different ride from one ridden straight through, whatever
+      the totals say. So the break becomes a fact on the row. `was_recovered`
+      (12.5.5) will not do: it means *"rebuilt from its samples after a crash"*,
+      which is the **keep** path, and a resumed ride is a third state — same
+      family as `power_is_measured` being nullable and `target_position` being
+      absent, where the honest design has always been that these are *different
+      claims* rather than one flag doing two jobs.
+- [ ] **8.3d.3** **The prompt now asks a three-way question, and the wording is
+      the hard part.** Today it is *keep* or *discard* (8.3a, 8.3b). It becomes
+      *resume*, *keep*, *discard* — and the rider has to be able to tell the
+      first two apart at a glance, on a tablet, having just had a crash. Three
+      things to get right rather than assume: **resume is only offerable while
+      resuming is meaningful** (a ride interrupted yesterday should not offer to
+      pick the class back up, and the break length from 8.3d is exactly the
+      number that decides it); **the interrupted ride's class, intent and FTP
+      have to come back with it**, which is what `ActiveRide` already carries
+      for the live case (11.1a.5) and what the `workouts` row carries for this
+      one — note **`ftp_watts` must come from the row, not the profile**, or a
+      breakthrough accepted in between silently rescores the ride (7.8); and
+      **discard still must not be able to reach the live ride** (8.3b), which
+      is `RideInProgress`' job and stays.
+- [ ] **8.3d.4** **Where it must not regress.** `WorkoutService.startWorkout`
+      returns early unless the state is `Idle` and mints a fresh
+      `UUID.randomUUID()`; resuming has to adopt an **existing** workout id
+      instead, which means the row must not be re-inserted (`beginWorkout` on an
+      existing id) and `RideInProgress.begin` must be told the resumed id so
+      8.3b's exclusion keeps working — otherwise the app offers to recover the
+      ride it has just resumed, which is 8.3b again by a new route. The
+      per-second insert also has to continue past the highest existing
+      `timestamp_sec` rather than restart at 1, or the primary-key/ordering
+      assumptions in the chart code meet two samples claiming the same second.
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them

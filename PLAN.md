@@ -29,10 +29,10 @@ items with the reasoning kept rather than summarised — and then **empty the
 entry out of this section**. An idea still sitting here has not been dealt with;
 an idea that has moved has.
 
-*Empty. Three entries have passed through it. Standing and seated riding is now
+*Empty. Five entries have passed through it. Standing and seated riding is now
 **Phase 25**, built but for one judgement that needs a rider (25.3.4). The two
-left in the eighteenth sitting are written up with the owner's words kept
-verbatim at the head of each:*
+left in the eighteenth sitting, and the two left in the nineteenth, are written
+up with the owner's words kept verbatim at the head of each:*
 
 - ***Max panel width** → **22.4**. The point is that `readableWidth` is a rule
   about a **line**, not about the **screen**, and every surface that took the
@@ -48,13 +48,32 @@ verbatim at the head of each:*
   power (7.10.7), so it cannot be the **first** act. The owner's two routes are
   a real choice and 20.3.2 is where it gets made rather than assumed.*
 
-### In-ride targets
+*Both of the nineteenth sitting's entries are written up, with the owner's words
+kept verbatim at the head of each:*
 
-UX-wise it's difficult to know what to focus on. It says Zone 2, but then it also prescribes cadence and resistance. I think it needs to be one or the other. Please have a think about best UX and provide me a HITL suggestion. I love Power Zones and it means it scales to a person's fitness. However there is a time and place for prescribing cadence, because spin-ups and climbs are very different exercises. Perhaps there's a way we can use both? But overall the impression I get when i'm riding is: "what do i do? do i focus on zone, cadence, or resistance?"
-
-### Resume session
-
-I recently had a crash (it's beng fixed right now in a worktree) but this made me think -- in addition to just "saving" an interrupted ride, we should be able to RESUME it.
+- ***In-ride targets** → **11.7**. The owner's question — "do i focus on zone,
+  cadence, or resistance?" — is the right one, and the screen does not answer
+  it. It is not three targets: it is one **outcome** (power) and the two
+  **controls** that produce it, drawn as three tiles of equal weight.
+  Measuring the library moved most of the question: all 1071 intervals
+  prescribe both a zone and a cadence band, so nothing today can tell a cadence
+  **instruction** from a cadence **suggestion** — but the catalogue already
+  knows the difference and cannot say it, with 574 blocks in the two neutral
+  bands and 231 out in the tails where cadence plainly is the exercise. **11.7.2 is
+  the owner's decision** (derive it, or name it in the catalogue — the
+  recommendation is to name it, and the argument is 25.4.2's). **11.7.1a is a
+  defect found on the way and worth fixing whichever way that goes**: amber
+  fires on every metric equally, so a threshold block tells a rider spinning a
+  perfectly good 92 rpm that they are wrong.*
+- ***Resume session** → **8.3d**. The owner wants an interrupted ride resumed,
+  not merely kept — which **contests 8.3a**, so its reasoning had to be
+  answered rather than overruled. It does not survive: the gap it calls "of
+  unknown length" is arithmetic off the row and the last sample, and
+  `elapsedSeconds()` has excluded paused time since Phase 3, so `timestamp_sec`
+  was never seconds-since-start but **seconds of riding**. **A crash is a pause
+  nobody got to press.** 8.3a's concern is kept rather than discarded, as
+  8.3d.2: the break becomes a fact on the row, because a contiguous series
+  cannot show it and `was_recovered` means the other thing.*
 
 ---
 

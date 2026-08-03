@@ -559,3 +559,136 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       button rather than restyling the icon one. **Observed on the tablet AVD**:
       Keep riding returns to a still-running ride; on the strip, one tap leaves
       the service up, the button reverts on its own, and two taps end it*
+
+### 11.7 One instruction at a time — what the rider is actually being asked to do
+
+> The owner, verbatim, from the inbox: *"UX-wise it's difficult to know what to
+> focus on. It says Zone 2, but then it also prescribes cadence and resistance.
+> I think it needs to be one or the other. Please have a think about best UX and
+> provide me a HITL suggestion. I love Power Zones and it means it scales to a
+> person's fitness. However there is a time and place for prescribing cadence,
+> because spin-ups and climbs are very different exercises. Perhaps there's a
+> way we can use both? But overall the impression I get when i'm riding is:
+> 'what do i do? do i focus on zone, cadence, or resistance?'"*
+
+This is a design question with a decision in it that is the owner's (11.7.2),
+so the items below are written to be *read* before anything is built. But three
+of the facts underneath it are measurable rather than matters of taste, and
+measuring them moves most of the question.
+
+- [ ] **11.7.1** **The diagnosis: it is not three targets, it is one outcome
+      and two inputs — and the app gives all three the same weight.** Power is
+      not something a rider *does*. It is what happens when you turn the pedals
+      at some cadence against some resistance: `power = f(cadence, resistance)`,
+      which is literally `PowerModel`. So "zone, cadence or resistance" is not a
+      choice between three instructions of the same kind. It is one *result*
+      and the two *controls* that produce it, drawn as three tiles of equal
+      size with equal off-target signalling. The rider's question — "what do I
+      do?" — is the correct question and the screen genuinely does not answer
+      it.
+      Three things were measured across the 72 bundled classes (1071 intervals)
+      rather than assumed, and each one narrows the design:
+      - **Every interval prescribes both a zone and a cadence band. All 1071.**
+        `Interval.cadenceMin` / `cadenceMax` / `powerZoneNumber` are all
+        non-null and required by the asset schema. So there is no such thing
+        today as a block that asks only for power — the app *cannot* tell a
+        cadence instruction from a cadence suggestion, because the data does
+        not distinguish them. That is the root of it.
+      - **But the catalogue already knows the difference; it just cannot say
+        so.** The bands are not uniformly spread. **574 of 1071 blocks sit in
+        the two neutral bands** — 461 at 75–85 and 113 at 80–90, a comfortable
+        seated cadence that is plainly *not* the exercise — while **231 are out
+        in the tails, where they unmistakably are**: 77 at 50–70 (torque and
+        climbing; `CLB-01`'s Z4 repeats are 50–60) and 154 at 105–125 (spin-ups
+        and sprints). The 15-rpm-wide band exists exactly 99 times and **every
+        one of them is a 110–125 sprint**; every other band in the library is
+        10 wide. The owner's "time and place for prescribing cadence" is
+        already in the data as a *shape*. It is simply not a field.
+      - **Resistance is not a prescription at all, and it is the least
+        trustworthy number on the screen.** No class prescribes resistance —
+        there is no such field. The band comes from inverting `PowerModel` at
+        the middle of the cadence target (11.2.1), and `PowerModel`'s shipped
+        curve scores **RMSE 137 W and 66% median absolute error** against 310
+        measured samples (`calibration/`, 2.2.4). On real hardware the watts are
+        *measured* and the cadence is *measured*, so of the three numbers
+        competing for the rider's attention mid-effort, **the derived guess is
+        the one presented with equal authority**. 11.2.1a is already a
+        symptom of this — the band vanishes on Zone 1 for a low-FTP rider
+        because the model says the unloaded bike already exceeds the zone.
+- [ ] **11.7.1a** **A defect falls out of 11.7.1 and is worth fixing whatever
+      is decided above.** `MetricStatus.isOffTarget` drives the amber treatment
+      in `RideComponents` uniformly across every tile. So during a threshold
+      block — where the class wants the watts and the 75–85 band is the
+      library's neutral default — a rider spinning a perfectly good 92 rpm is
+      shown **amber cadence**: the app telling them they are wrong about
+      something it was never really asking for. Amber is the app's strongest
+      glanceable signal (8.11.82) and it is currently spent on all three
+      metrics equally. Whatever governs, **only the governing metric should be
+      able to go amber**; the others are context and should stay in the accent
+      colour. This is a small change and it removes most of the felt confusion
+      on its own.
+- [ ] **11.7.2** **The decision that is the owner's: how a block says which
+      metric governs it.** The recommendation below is one instruction per
+      block, chosen by the block rather than by the rider — because the owner's
+      own sentence contains the answer ("a time and place", "spin-ups and
+      climbs are very different exercises"), and a global preference would
+      throw away exactly the thing they value. What is genuinely open is *how
+      the block says it*, and the two routes differ in more than effort:
+      - **(a) Derive it.** No schema change: infer the governing metric from the
+        cadence band the class already carries — a band at the 80 rpm default
+        means power governs, a band in the tails (≤70 or ≥105) or a 15-wide
+        sprint band means cadence governs. The measurements in 11.7.1 say this
+        would be right most of the time, and it costs nothing to ship.
+      - **(b) Name it.** An optional `governed_by` on the interval —
+        `"power"` or `"cadence"`, absent meaning power — written in
+        `classlibrary/catalogue.py`, emitted by `build.py`, checked by
+        `ClassLibraryAssetsTest`.
+      **The recommendation is (b), and the reason is this project's own
+      history rather than tidiness.** Deriving an intent from a number band is
+      exactly the shape that has cost this plan the most: the `avg_*` columns
+      derived on read from a source that had since moved, the ride detail chart
+      drawing every past ride against the rider's *current* FTP (7.8), the
+      zone bands that silently redrew when a breakthrough was accepted. A
+      heuristic over cadence has the same failure mode — it is right until a
+      class is written that means something the rule does not encode, and then
+      it is confidently wrong with nothing to point at. It also cannot express
+      the case the owner explicitly asked about, *"perhaps there's a way we can
+      use both"*: a block where the class genuinely wants a specific cadence
+      **and** a specific zone (a sweet-spot block at 60 rpm is both), which a
+      band-width rule can only guess at. And 25.4.2 settled the general form of
+      this argument already — **a class must say what it means rather than let
+      the reader infer it from a number**.
+      The cost of (b) is low and bounded: the field is **optional and
+      additive**, so every class written before it decodes unchanged (same
+      shape as `target_position` in 25.1), and no id changes — which is the one
+      thing 23.2.6 and 25.4.3 say must not happen while a ride points at it.
+      Route (a) is not wasted if (b) is chosen: it is the right way to *seed*
+      the catalogue field in bulk, then correct by hand.
+- [ ] **11.7.3** **What the ride screen does with the answer.** Sketched, not
+      settled — it depends on 11.7.2. The shape that follows from "one outcome,
+      two controls":
+      - The **governing** metric keeps the full target treatment — the gauge,
+        the numeric band (11.6.4), the amber, and the spoken cue.
+      - The **other** metrics stay on screen and stay live, because a rider
+        does want to know their cadence; they lose the target band and the
+        amber and become plain readings.
+      - **Resistance loses its band by default**, on the 11.7.1 argument that
+        it is a modelled guess dressed as an instruction. It is the natural
+        thing to show only when it is the governing control — i.e. on a climb —
+        and even then it is a suggestion, which the wording should admit.
+        Note this becomes *more* defensible after 2.2a: a bike on its own
+        calibrated curve has a resistance band worth reading.
+      - `PowerZoneScale` (11.6.2a) stays exactly as it is either way. It is a
+        reading of where the rider *is* against the whole ladder, not a
+        competing instruction, and it is the thing that makes power scale to
+        fitness — which is the property the owner said they love.
+- [ ] **11.7.4** **And what the overlay does**, which is the harder half and
+      why 11.7.3 should not be built without thinking about it. The strip has
+      room for one instruction and the ride screen has room for three, so the
+      strip is where "one instruction at a time" either works or does not —
+      it is the surface the rider actually watches for forty minutes (11.1).
+      If 11.7.2 lands, the strip shows the governing metric's target and
+      nothing else's, which is the first time it has had a principled answer to
+      what it drops when it runs out of width. Read 11.1b.8 and 11.6.2a's
+      closing note first: the honest answer there was "numbers on the ride
+      screen, segments only on the overlay", and this is the same conversation.
