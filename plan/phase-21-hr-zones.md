@@ -42,8 +42,10 @@ asks less about the person, which is a rare combination and worth taking.
       default maximum heart rate is a **guess about a rider's body**, and it
       would silently prescribe zones off a number nobody gave. So every existing
       profile comes out of the migration with no zones at all, which is the
-      correct answer until they are asked. Observed on the AVD against a database
-      that already had rides in it.*
+      correct answer until they are asked. **Observed on the bike's own database
+      as well as the AVD's**: `PRAGMA user_version` is 12, the profile and all
+      six rides are intact, and `max_hr_bpm` and `birth_date` are both null —
+      the migration invented nothing.*
 - [ ] **21.1.1a** **Sync the year, not the date** (14, 15). On the tablet a date
       of birth is a fitness input; in a cloud row beside a display name it is an
       identity field, and that boundary — not the collecting of it — is where
@@ -74,7 +76,10 @@ asks less about the person, which is a rare combination and worth taking.
       figure from a `LaunchedEffect(Unit)` on first composition, when `uiState`
       is still the default and the profile is still null, so a rider with 382
       recorded samples was shown no offer at all with nothing looking broken. It
-      resolves the id from the settings flow now.*
+      resolves the id from the settings flow now. **Confirmed on the bike
+      itself**, which is where it stops being a demo: the tablet's own Settings
+      offers *"Use 170 — the highest you've recorded"*, off the owner's real
+      strap data across their real rides.*
 - [ ] **21.1.4** Resting heart rate, if and only if the model chosen in 21.2
       needs it. Do not collect a field nothing reads
 - [ ] **21.1.5** Threshold heart rate (LTHR) as the best-quality basis, optional

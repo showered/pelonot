@@ -244,8 +244,15 @@ recorded samples was offered nothing**, with nothing on screen looking broken.
 The same shape as 8.3d.4 and 7.10.3: the code is right about what it wants and
 wrong about when it can have it.
 
-Nothing was installed on the bike beyond the build itself; every observation
-above is from the tablet AVD, which is the matching 1920 × 1080 at 240 dpi.
+**It was checked on the bike, not only on the AVD.** The owner switched the
+tablet on mid-session and gave permission to install on it. Migration 11 → 12
+ran against the bike's own database: `user_version` 12, the profile and all six
+rides intact, and both new columns null — it invented nothing. And Settings
+there offers *"Use 170 — the highest you've recorded"*, off the owner's real
+strap data, which is the point at which 21.1.3 stops being a demo.
+
+One stale note corrected while there: **the bike does have a profile now**, so
+the line under *What to do next* saying it has none is no longer true.
 
 ---
 
@@ -379,9 +386,9 @@ Two notes worth carrying into the next bike session:
   different reason — 22.2.1 — which does not contradict it: 11.3.1 is about
   dead space and 22.2.1 is about a card being too wide to read.)
 - **Every ride is now a guest ride no longer**: the emulator has real profiles
-  and the sync path runs for them. The tablet still has none, and a guest ride
-  never syncs by design, so make a profile on the bike before expecting 14 to
-  do anything there.
+  and the sync path runs for them, and **so does the bike — it has a `Simon`
+  profile with six rides on it** as of the twentieth sitting, which corrects the
+  older note here saying it had none. A guest ride still never syncs by design.
 
 ---
 
