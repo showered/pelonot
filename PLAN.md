@@ -29,14 +29,24 @@ items with the reasoning kept rather than summarised — and then **empty the
 entry out of this section**. An idea still sitting here has not been dealt with;
 an idea that has moved has.
 
-*Empty. The one entry it has held so far — standing and seated riding — is now
-**Phase 25**, which is built but for one judgement that needs a rider (25.3.4).
-The owner's answer on 25.4.2, left in the phase file rather than here, was
-acted on in the fifteenth sitting and is written up there.*
+*Empty. Three entries have passed through it. Standing and seated riding is now
+**Phase 25**, built but for one judgement that needs a rider (25.3.4). The two
+left in the eighteenth sitting are written up with the owner's words kept
+verbatim at the head of each:*
 
-###
-
-One of the plan items, my suggestion, was to restrict the width of the UI, given that Peloton tablet is large and I didn't want things stretching the whole width (it doesn't look good). But just because i don't want one piece of UI to stretch the full width, doesn't mean we can't actually use the full width! Please update plan so that when we are reviewing the layout of screens, we are utilising full width _when it makes sense_ (for example ride statistics screen is currently a bunch of charts in one single column, this should be a grid layout instead).
+- ***Max panel width** → **22.4**. The point is that `readableWidth` is a rule
+  about a **line**, not about the **screen**, and every surface that took the
+  token in 22.2.6 chose "cap it" by default because that was the only answer on
+  offer. The rule it lands on: **cap what is read at arm's length, tile what is
+  looked at.** The owner's own example — ride detail's charts in one column — is
+  22.4.2.*
+- ***Initial FTP** → **20.3**. "Nobody in their right mind would know this",
+  and the field is the third thing the app ever says to a rider. Two facts
+  constrain it and pull against each other: the app **cannot** have no number
+  (FTP is the denominator of the whole zone system and is written onto the ride
+  at its start), and inferring one from the first ride is gated on measured
+  power (7.10.7), so it cannot be the **first** act. The owner's two routes are
+  a real choice and 20.3.2 is where it gets made rather than assumed.*
 
 ---
 

@@ -112,3 +112,61 @@ time.
       morning. Read once per composition rather than from a flow: nobody's
       evening turns into night while they look at this screen. *Observed on the
       tablet AVD at 23:42: "Good evening,"*
+
+---
+
+### 22.4 The width cap is not a width *budget* — the owner's note, 3 August 2026
+
+**The owner's words, kept because the distinction is the whole item:** *"just
+because I don't want one piece of UI to stretch the full width, doesn't mean we
+can't actually use the full width!"*
+
+22.2.6 is being read as a rule about the **screen** when it is a rule about the
+**line**. `readableWidth` exists because 1280 dp of body text is hard to read —
+that is a fact about a paragraph, not a licence to leave 520 dp of tablet empty
+on every screen in the app. The two answers to a wide screen are *cap the
+column* and *use the width*, and 22.2.6 only ever supplied the first, so every
+screen that got the token quietly chose it by default.
+
+The named example is the right one to start from: **ride detail is a stack of
+charts in one 760 dp column**, so a rider scrolls past four cards to compare two
+of them, on a screen with room to show all four at once. A chart is not a
+paragraph. Nothing about `readableWidth` was ever meant to apply to it.
+
+The rule this phase should end up with, in one line: **cap what is read at arm's
+length, tile what is looked at.**
+
+- [ ] **22.4.1** **Write the two-answer rule down where the token lives.**
+      `Modifier.readableColumn()`'s KDoc currently says what it does and why
+      the number exists; it must also say what it is *not* for, and name the
+      alternative. Wanted beside it: a companion for the other answer — a
+      `Modifier.wideGrid()` or an adaptive-columns helper — so "use the width"
+      is as cheap to reach for as "cap it" and does not get re-invented per
+      screen. One token each, not a number per screen (the 22.2.6 argument,
+      applied to the case it missed)
+- [ ] **22.4.2** **Ride detail becomes a grid.** The charts are the case the
+      owner named. Two columns at 1280 dp, one below the breakpoint, and the
+      **order must survive the fold** — a reader going down column one and back
+      up column two is reading the cards in a different order than the phone
+      does, so decide whether these cards have a narrative order (power then
+      cadence then heart rate) or are a set, and lay them out as whichever they
+      are. Note 16.3.4's housemate picker and the ride's own header stay full
+      width: they are controls and context, not cards in the set
+- [ ] **22.4.3** **Audit every screen that took the token in 22.2.6** and say,
+      per screen, which answer it wants — cap, tile, or a capped column *inside*
+      a wider frame. Settings and the class library are probably genuinely
+      capped (form fields and a list of titles). History is a list of rides and
+      may well want two columns. The audit is the deliverable: a screen that was
+      capped because the token was handy is the failure this item exists to
+      find
+- [ ] **22.4.4** **A rail is not a grid, and 22.2.2/22.2.3 are still the harder
+      question.** This item is about surfaces that have *one kind of thing* and
+      too much room for it, which is a layout with an obvious answer. The
+      dashboard has three kinds of thing and no obvious answer, and filling its
+      rails card by card is what 22.2.3 already warns against. Do 22.4.2 first
+      and see whether the grid helper it produces is any use to the dashboard
+      before deciding
+- [ ] **22.4.5** **Measured on the 1280 × 720 dp AVD, never on a phone**
+      (`HARDWARE.md`, and the same condition as every other item in 22.2). A
+      grid that looks right on a phone AVD is a single column, which is the
+      thing being replaced

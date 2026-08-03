@@ -78,3 +78,99 @@ right one — same device shape, same distance, same job.
 - [ ] **20.2.8** Change your avatar from the companion web app — **much later**,
       and strictly after 17 exists. Listed here so it is not re-invented as a
       separate feature when it is the same field
+
+---
+
+### 20.3 The first question the app asks is one nobody can answer — the owner's note, 3 August 2026
+
+**The owner's words:** *"the way it is right now can't go into production. When
+a user first creates a profile they are asked for their FTP. Nobody in their
+right mind would know this. We should make the UX beautiful. Either they don't
+get one at all and we infer their FTP from their first ride. Or we try and infer
+their FTP via their user profile — e.g. age, weight, self-assessed fitness
+rating. Priority is GREAT UX."*
+
+**What is there today.** `ProfileCreationDialog` is an `AlertDialog` with three
+fields, and the third is `OutlinedTextField(label = "FTP (Watts)")` prefilled
+with the string `"200"`. There is no explanation of what FTP is, no way to say
+"I don't know", and no consequence stated for getting it wrong. It is the third
+thing the app has ever said to a rider.
+
+**Two facts that constrain the answer, and they pull against each other:**
+
+- **The app cannot have no number.** FTP is the denominator of the whole zone
+  system — the ride screen's zone ladder and FTP percentage, the overlay, the
+  prescribed resistance band (11.2.1), every chart's zone bands, and
+  `workouts.ftp_watts` which is written at ride *start* (7.8). "They don't get
+  one at all" cannot mean the column is null on the first ride; it has to mean
+  the rider is never *asked*, and something else supplies it.
+- **Inferring it from the first ride is slower than it sounds.** Auto-FTP only
+  proposes off a ride whose power is `Measured` all the way through (7.10.7), so
+  on the emulator — and on any bike where the board drops out — the first ride
+  proposes nothing. A first-ride inference is a good second act and cannot be
+  the first one.
+
+So the shape is: **a number the app is willing to defend, arrived at without
+asking the rider a question they cannot answer, corrected by their riding as
+soon as it has evidence.** Which of the owner's two routes that is depends on
+20.3.2.
+
+- [ ] **20.3.1** **Take the watt field off profile creation.** Whatever replaces
+      it, the literal question "FTP (Watts)" with a text box does not survive
+      this item. Nothing else about the dialog is in scope here — name and
+      weight are answerable questions and 13.8 already fixed the one that
+      wasn't
+- [ ] **20.3.2** **Decide between the two routes, and write down which and
+      why.** Route A: no question at all — seed a default and let the first
+      rides move it. Route B: two or three *answerable* questions (age, and a
+      self-assessed "how would you describe your riding?") feeding a published
+      estimate. The owner offered both and the choice is a real one, so it gets
+      an item rather than an assumption:
+      - **Route A is honest and starts wrong for everyone.** A single default is
+        150 W for a 25-year-old racer and for a 70-year-old starting out, and
+        their first ride is drawn in the wrong zones for both. `UserEntity
+        .DEFAULT_FTP` is 150 and the dialog's fallback is 200, which is the same
+        problem twice with two different answers — see 20.3.6
+      - **Route B is a guess with a method.** Weight is already collected, and
+        W/kg by self-described category is a published, defensible mapping. It
+        costs two more questions on the first screen and it is *materially*
+        better than one number for everybody
+      - **A likely synthesis, and the reason not to prejudge it:** Route B's
+        questions with a prominent *Skip* that lands on Route A's default. But
+        "skippable" is the design decision that makes the questions feel
+        optional and therefore ignorable, and whether that is right depends on
+        how the screen reads, which is 20.3.3's job to find out
+- [ ] **20.3.3** **Design it as a screen, not a dialog.** "Priority is GREAT UX"
+      is the owner's emphasis and an `AlertDialog` with three stacked
+      `OutlinedTextField`s on a 1280 × 720 dp tablet is the opposite of it. This
+      is the first thing a rider sees and it is currently the least designed
+      surface in the app. Full-bleed, readable at the distance a bike is set up
+      from, and it may well be more than one step
+- [ ] **20.3.4** **Whatever number it lands on, say where it came from.** The
+      rider must be able to see that this is an estimate and not something they
+      told the app. It matters directly: an estimated FTP that is too high draws
+      every early ride in Zone 2 and makes the app feel like it is not working,
+      and a rider who knows the number is a guess will change it. This is the
+      same rule as 16.1.6's power caption and 7.10.1's measured-vs-claimed mark
+      — **and it needs a source on `ftp_history`**, which today has
+      `AutoBreakthrough`, `AutoBreakthroughReverted` and the rider's own. An
+      estimate is a fourth thing and must not be filed as a claim the rider made
+- [ ] **20.3.5** **Then let the riding correct it, and say that it will.** The
+      estimate's whole defence is that it is temporary. Auto-FTP (7) already
+      does the correcting; what is missing is that the rider is never told the
+      app is going to do it. A line at signup — *"we'll work this out properly
+      from your first few rides"* — is most of what makes an estimate
+      acceptable rather than an error
+- [ ] **20.3.6** **One default, in one place.** `UserEntity.DEFAULT_FTP` is 150
+      and `ProfileCreationDialog`'s `?: 200` fallback disagrees with it, so a
+      rider who clears the field gets a different number than one created any
+      other way. Whatever 20.3.2 decides, exactly one constant expresses it
+- [ ] **20.3.7** **Route B needs columns, so it needs a migration** (12.5) —
+      age or year of birth, and the self-assessed category, both nullable
+      because every existing profile has neither and a backfilled guess is
+      indistinguishable from an answer. Do not add them until 20.3.2 is decided;
+      Route A needs none of it
+- [ ] **20.3.8** **Guests skip all of this.** A guest ride has no profile and no
+      FTP, and adding an onboarding flow in front of "just let me ride" would
+      break the one thing the guest rung is for. Check what a guest ride's zone
+      display does today before changing anything here
