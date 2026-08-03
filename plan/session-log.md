@@ -8,6 +8,92 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 3 August 2026 (nineteenth sitting): a crash is a pause nobody got to press
+
+**The owner left two notes in the inbox and went for a ride**, which set the
+session: no rider to ask, and the bike itself off limits because they were on
+it. Both notes are written up, the inbox is empty, and one of the two is built
+and observed on the tablet AVD. 498 JVM tests, 0 failures.
+
+**The one that got built was the one that argued with the plan.** The owner
+wants an interrupted ride *resumed*, not merely kept — and **8.3a had already
+decided against exactly that**, in writing: offering resume would "splice a gap
+of unknown length into the record". A note from the owner outranks the
+ordering, but it does not outrank a reason, so the reason had to be checked
+rather than waved past. It did not survive, in two independent ways.
+
+The gap is **not of unknown length**. It is `(now − workouts.timestamp) − the
+last recorded second`, three numbers the app already has, and an app that can
+measure a thing is not entitled to call it unknown. That is `RideInterruption`,
+which is pure and tested so the judgement in it can be argued with in a test
+rather than on a bike.
+
+And the deeper one: **`elapsedSeconds()` has subtracted paused time since Phase
+3.** `workout_metrics.timestamp_sec` has therefore never meant *seconds since
+the ride started* — it means **seconds of riding**. A rider who pauses for five
+minutes already leaves no hole in the series and nobody has ever called that
+dishonest. **A crash is a pause nobody got to press.** Resuming at the last
+recorded second is not a new claim about the record; it is the claim the record
+has been making all along.
+
+What 8.3a was *right* about survives rather than being discarded. Because the
+series comes back contiguous, nothing in it can show that anything happened, so
+the break becomes a fact on the row — `resume_count` and `interrupted_sec`,
+migration 10 → 11. Both `NOT NULL DEFAULT 0`, and the contrast with 9 → 10 is
+the whole reasoning: `synced_at` was left null because a default would have
+**claimed** something untrue, and zero here claims only what is certain — no
+ride already on a tablet was ever resumed, because resuming did not exist. **A
+default is safe exactly when it states a fact rather than a guess.**
+
+**Three defects came out of driving it that reading the diff had not found, and
+the third is the one worth carrying.** A resumed class called itself a free ride
+in its own subtitle; the zone ladder drew every boundary at 0 W. Both were
+visible in a screenshot. The third was not visible anywhere: **`stopWorkout`
+finalises a ride by building a fresh `WorkoutEntity` out of `WorkoutSession`**,
+so every column the session does not carry goes back as its default — and the
+resume that had been stamped on the row correctly was **overwritten with zero
+when the ride ended twenty minutes later**. A ride observed to resume twice sat
+on disk claiming it had been ridden straight through, with nothing wrong on any
+screen. It is 7.10.3 again: two writers, one row, the later one holding a stale
+copy of a field it does not know exists. Found the way that one was — build the
+feature that records the data, then **look at the data**. The rule it leaves
+behind is now in CLAUDE.md.
+
+The database is what closed it, not the screenshots: **332 samples, 332 distinct
+seconds, 1 to 332, no gaps and no duplicates** across two resumes, and
+`avg_power` on the row agreeing with `AVG(power)` over that ride's own samples
+to two decimal places **across a resume boundary** — which is what proves the
+running means were carried forward at the sample counts they were built at.
+
+**The second note is a design question and is deliberately not built** — the
+owner asked for a suggestion, and there was no one to give it to. *"What do I
+do? Do I focus on zone, cadence, or resistance?"* It is **11.7**, and measuring
+the library moved most of it off opinion: all **1071** intervals in the 72
+bundled classes prescribe both a zone and a cadence band, so nothing today can
+tell a cadence *instruction* from a cadence *suggestion* — while **574** blocks
+sit in the neutral 75–85 / 80–90 bands and **231** are out in the tails at
+50–70 or 105–125, where cadence plainly *is* the exercise. **The catalogue
+already knows and has no field to say it in.** The framing that follows: these
+are not three targets but one **outcome** (power) and the two **controls** that
+produce it, drawn at equal weight — and the third of them, resistance, is not
+prescribed by any class at all. It is inverted out of `PowerModel`, whose
+shipped curve is **66% out at the median**. The least trustworthy number on the
+screen is presented with the most authority.
+
+**11.7.2 is the owner's to decide** and the recommendation is written down:
+name the governing metric in the catalogue rather than infer it from the band,
+because deriving intent from a number is the shape that has cost this plan the
+most, and because a heuristic cannot express the case the owner explicitly
+asked about — a block that genuinely wants both. **11.7.1a is a defect found on
+the way and worth fixing whichever way that goes**, and it was seen live during
+this session's own test ride: amber fires on every metric equally, so an
+endurance block told a rider spinning a perfectly good 92 rpm that they were
+wrong about something the class was not asking for.
+
+Nothing was installed on the bike. The owner was riding it.
+
+---
+
 ### 3 August 2026 (eighteenth sitting): what has to be true before the app goes online
 
 **The owner's question was the assessment one** — what blocks the online tier

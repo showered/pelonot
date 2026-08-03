@@ -112,6 +112,14 @@ verbatim at the head of each:*
   ride that has already begun moves the defect rather than fixing it, because
   the clock, the first interval and the recorder are all behind it.*
 
+### Owner's inbox
+
+It's still getting larger after each session. Shouldn't we clear it out? Or is everything ok?
+
+### Infer max bpm
+
+It's better UX to ask people their age and weight than to ask max bpm. No normal person knows their max bpm! Let's infer it. This whole app needs to be great UX for normal people who just want to crack on and ride.
+
 ---
 
 ## Where the rest of this plan lives
@@ -162,89 +170,83 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 3 August 2026 (nineteenth sitting): a crash is a pause nobody got to press
+### Latest session — 3 August 2026 (twentieth sitting): the owner's five snags, and the phase one of them opened
 
-**The owner left two notes in the inbox and went for a ride**, which set the
-session: no rider to ask, and the bike itself off limits because they were on
-it. Both notes are written up, the inbox is empty, and one of the two is built
-and observed on the tablet AVD. 498 JVM tests, 0 failures.
+**Five notes in the inbox, and a sixth about the inbox itself.** The owner's
+rule, verbatim: *"even though you read my comments as one of the first things
+you do, don't necessarily action them first. They should have plan entries
+created and then triaged with just the same weighting as any other plan
+items."* That is now how CLAUDE.md and the inbox's own heading read — **emptying
+it is urgent, building it is not** — and it replaces the older line saying the
+inbox outranks *What to do next*. All five are written up; four are built and
+observed; the fifth turned out to be a whole phase. 516 JVM tests, 0 failures.
 
-**The one that got built was the one that argued with the plan.** The owner
-wants an interrupted ride *resumed*, not merely kept — and **8.3a had already
-decided against exactly that**, in writing: offering resume would "splice a gap
-of unknown length into the record". A note from the owner outranks the
-ordering, but it does not outrank a reason, so the reason had to be checked
-rather than waved past. It did not survive, in two independent ways.
+**The zone ladder's bounce was not the animation, it was the quantity being
+animated.** `fractionThroughZone` is a position *within* a rung, so crossing a
+boundary reset it from ~1.0 to ~0.0 and the spring drove the fill **backwards
+across a whole segment** before growing again in the next one — a recoil at the
+exact moment the rider looked down to see that something had changed. The
+ladder was holding two coordinates where a rider reads one. `ZoneScale` now
+carries `ladderPosition`, one number across all seven rungs, and the drawing
+animates that alone. The property that says it is right is **monotonic in
+power**, swept at every watt from 1 to 400 — a coarse sweep steps straight over
+this defect, because it lived only at the boundaries.
 
-The gap is **not of unknown length**. It is `(now − workouts.timestamp) − the
-last recorded second`, three numbers the app already has, and an app that can
-measure a thing is not entitled to call it unknown. That is `RideInterruption`,
-which is pure and tested so the judgement in it can be argued with in a test
-rather than on a bike.
+**Two of them were confirmed by looking rather than by reasoning, and one of
+those was the owner's own.** *"Output in watts … has a decimal place but gets
+cut off"* — the ride screen's OUTPUT tile was rendering **`63.`**, two digits, a
+decimal point, and the tenth clipped clean off. Whole kilojoules everywhere now,
+which is 11.6.12 and the owner's call to make.
 
-And the deeper one: **`elapsedSeconds()` has subtracted paused time since Phase
-3.** `workout_metrics.timestamp_sec` has therefore never meant *seconds since
-the ride started* — it means **seconds of riding**. A rider who pauses for five
-minutes already leaves no hole in the series and nobody has ever called that
-dishonest. **A crash is a pause nobody got to press.** Resuming at the last
-recorded second is not a new claim about the record; it is the claim the record
-has been making all along.
+**The countdown had to be a gate, not a curtain.** A class used to start its
+first interval and its clock on the same tick as the tap, so the rider was
+already behind a Z1 target while reaching for the handlebars — and the opening
+seconds of every ride on disk are somebody getting onto a bike, filed as riding.
+Drawing a countdown *over* a running ride would have moved that defect rather
+than fixed it, so `RideScreen` returns early and `startRide` is genuinely not
+reached. Ten seconds, skippable, and a resume skips it outright — 8.3d's whole
+argument is that the ride never really stopped.
 
-What 8.3a was *right* about survives rather than being discarded. Because the
-series comes back contiguous, nothing in it can show that anything happened, so
-the break becomes a fact on the row — `resume_count` and `interrupted_sec`,
-migration 10 → 11. Both `NOT NULL DEFAULT 0`, and the contrast with 9 → 10 is
-the whole reasoning: `synced_at` was left null because a default would have
-**claimed** something untrue, and zero here claims only what is certain — no
-ride already on a tablet was ever resumed, because resuming did not exist. **A
-default is safe exactly when it states a fact rather than a guess.**
+**The heart beats, and the interesting part is what stops it.** The period is
+the live bpm, so 180 is three beats a second and the owner's example is the
+specification — but it is re-read at the *top of each beat* rather than keyed on
+bpm, because keyed, the animation restarts mid-contraction every time the 2 Hz
+display reading moves. And it stops dead when the reading does: a heart still
+beating over a strap that has dropped out is 2.4.4's frozen cadence in the one
+place a rider would be most alarmed to find it afterwards. Screenshots cannot
+show motion, so it was **measured**: across a burst of captures the glyph swells
+110 → 132 px and its green roughly doubles, resting between beats.
 
-**Three defects came out of driving it that reading the diff had not found, and
-the third is the one worth carrying.** A resumed class called itself a free ride
-in its own subtitle; the zone ladder drew every boundary at 0 W. Both were
-visible in a screenshot. The third was not visible anywhere: **`stopWorkout`
-finalises a ride by building a fresh `WorkoutEntity` out of `WorkoutSession`**,
-so every column the session does not carry goes back as its default — and the
-resume that had been stamped on the row correctly was **overwritten with zero
-when the ride ended twenty minutes later**. A ride observed to resume twice sat
-on disk claiming it had been ridden straight through, with nothing wrong on any
-screen. It is 7.10.3 again: two writers, one row, the later one holding a stale
-copy of a field it does not know exists. Found the way that one was — build the
-feature that records the data, then **look at the data**. The rule it leaves
-behind is now in CLAUDE.md.
+**The fifth note was the one worth arguing with, and the honest answer was
+no.** *"Heart rate zones — pretty sure this is already covered."* It was not,
+and the reason is the phase: **the app had no maximum heart rate for anybody**,
+so it had no boundaries to colour between. Phase 21 opens rather than the colour
+being faked. The order of the two inputs is the whole design — the rider's own
+number is asked for first and date of birth is the fallback — because every age
+formula has a 10–12 bpm spread between individuals, which is **wider than a
+zone**, so an estimate gives a meaningful fraction of riders the wrong zones
+outright. Asking for the real number is both more accurate and asks less about
+the person, which is a rare combination. The estimate is Tanaka, not the folk
+220 − age, and every screen showing it says it is one.
 
-The database is what closed it, not the screenshots: **332 samples, 332 distinct
-seconds, 1 to 332, no gaps and no duplicates** across two resumes, and
-`avg_power` on the row agreeing with `AVG(power)` over that ride's own samples
-to two decimal places **across a resume boundary** — which is what proves the
-running means were carried forward at the sample counts they were built at.
+**Migration 11 → 12 is the mirror of 10 → 11 and lands on the other side of
+it.** `resume_count` took `NOT NULL DEFAULT 0` because zero stated a *fact*.
+There is no equivalent fact about a rider's heart: any default maximum is a
+**guess about a body**, silently prescribing zones off a number nobody gave. So
+both columns are nullable and every profile already on a tablet comes out with
+no zones at all — which is correct until they are asked, and is the same rule as
+a null heart rate.
 
-**The second note is a design question and is deliberately not built** — the
-owner asked for a suggestion, and there was no one to give it to. *"What do I
-do? Do I focus on zone, cadence, or resistance?"* It is **11.7**, and measuring
-the library moved most of it off opinion: all **1071** intervals in the 72
-bundled classes prescribe both a zone and a cadence band, so nothing today can
-tell a cadence *instruction* from a cadence *suggestion* — while **574** blocks
-sit in the neutral 75–85 / 80–90 bands and **231** are out in the tails at
-50–70 or 105–125, where cadence plainly *is* the exercise. **The catalogue
-already knows and has no field to say it in.** The framing that follows: these
-are not three targets but one **outcome** (power) and the two **controls** that
-produce it, drawn at equal weight — and the third of them, resistance, is not
-prescribed by any class at all. It is inverted out of `PowerModel`, whose
-shipped curve is **66% out at the median**. The least trustworthy number on the
-screen is presented with the most authority.
+**And driving it found a defect reading the diff would not have.** The *"use the
+highest you've recorded"* offer read the rider's id from `uiState.value.profile`
+— still null during the section's first composition — so a rider with **382
+recorded samples was offered nothing**, with nothing on screen looking broken.
+The same shape as 8.3d.4 and 7.10.3: the code is right about what it wants and
+wrong about when it can have it.
 
-**11.7.2 is the owner's to decide** and the recommendation is written down:
-name the governing metric in the catalogue rather than infer it from the band,
-because deriving intent from a number is the shape that has cost this plan the
-most, and because a heuristic cannot express the case the owner explicitly
-asked about — a block that genuinely wants both. **11.7.1a is a defect found on
-the way and worth fixing whichever way that goes**, and it was seen live during
-this session's own test ride: amber fires on every metric equally, so an
-endurance block told a rider spinning a perfectly good 92 rpm that they were
-wrong about something the class was not asking for.
+Nothing was installed on the bike beyond the build itself; every observation
+above is from the tablet AVD, which is the matching 1920 × 1080 at 240 dpi.
 
-Nothing was installed on the bike. The owner was riding it.
 ---
 
 ### What to do next, in order
@@ -336,6 +338,16 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | ~~**8.3d** Resume an interrupted ride~~ | **Done and observed over two resumes of one ride.** The owner's, and it contested 8.3a — whose reasoning did not survive: the gap it called unknown is arithmetic, and `elapsedSeconds()` has excluded paused time since Phase 3, so **a crash is a pause nobody got to press**. 8.3a's concern is kept as 8.3d.2 rather than discarded. It also turned up the rule now in CLAUDE.md: **the finalise writes defaults over any column `WorkoutSession` does not carry** |
 
+**The twentieth sitting's own, four closed and one opened into a phase:**
+
+| Next | Why now |
+|------|---------|
+| ~~**11.6.11** The zone ladder's elastic bounce~~ | **Done and observed.** The bug was the quantity being animated, not the animation: one continuous `ladderPosition` across all seven rungs, monotonic in power, swept at every watt from 1 to 400 |
+| ~~**11.6.12** Whole watts and kilojoules~~ | **Done, and the snag was measured**: the OUTPUT tile was rendering `63.` with the tenth clipped off. The one decimal left is kJ/kg, where rounding would tie two housemates |
+| ~~**11.6.13** A countdown before the ride~~ | **Done and observed.** A gate in front of `startRide`, not a curtain over a running ride — otherwise it moves the defect rather than fixing it. Ten seconds, skippable, and a resume skips it |
+| ~~**21.3.4** The heart beats~~ | **Done and measured** — the glyph swells 110 → 132 px and rests between beats. The period is re-read at the top of each beat, and it stops dead when the reading does |
+| ~~**21.1 / 21.2 / 21.3.1** Heart-rate zones~~ | **Phase 21 opens, and the owner's colour ask lands.** The honest answer to *"pretty sure this is already covered"* was no: the app had no maximum heart rate for anybody. Measured number first, Tanaka as the fallback, migration 11 → 12 with both columns nullable — a default maximum is a guess about a body. **21.2.3 is the one to read before 21.4.2**: nothing yet draws an HR zone for a *past* ride, which is the only reason the 7.8 trap has not bitten |
+
 **Three of the owner's own are open, and all three want the owner rather than a
 session:**
 
@@ -388,7 +400,7 @@ Two notes worth carrying into the next bike session:
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
-| 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain |
+| 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. What is left is **14.2.1a** — `003_cloud_identity.sql` is written and not applied — — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: built and **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
@@ -398,7 +410,7 @@ Two notes worth carrying into the next bike session:
 | 18 | Social **across bikes** — the networked tier | ❌ Not started, and it sits on 15. **Phase 24 is the half that does not, and it is largely built** — which is 18.9's whole point: every screen here goes *on top of* its 24 equivalent rather than beside it, or one of the two leaderboards drifts and it will be the one nobody rides against |
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started. **20.3 is new and is the owner's**: profile creation asks a rider for their FTP in a text box prefilled with `200`, which by their own words **cannot go into production**. The constraint that makes it interesting is that the app cannot simply stop having a number — FTP is the denominator of the whole zone system and is written onto the ride at its start |
-| 21 | Heart-rate zones | ❌ Not started — *the one metric that is measured for every rider whatever the power model does* |
+| 21 | Heart-rate zones | 🔶 **Open and useful, from the owner's inbox note.** The honest answer to *"pretty sure this is already covered"* was no — the app had no maximum heart rate for anybody, so it had no boundaries to colour between. Now: `max_hr_bpm` asked for **first** and `birth_date` as the fallback (migration 11 → 12, both nullable, because a default maximum is a guess about a rider's body); Tanaka rather than 220 − age, labelled an estimate wherever it shows; `HeartRateZone`, five zones on its own palette because HR zone 4 and power zone 4 are not the same claim; the ride screen's bpm and its beating heart both take the zone's colour, observed live at the 114 bpm boundary. **21.2.3 is the gate on going further**: nothing draws a zone for a *past* ride yet, which is the only reason 7.8's trap has not bitten, and 21.4.2 must not land before it |
 | 22 | The dashboard | 🔶 **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **Retention (23.4) is no longer deferred** — the owner asked for old rides condensed to their aggregates rather than kept sample by sample, which is 23.4.2 as written. The design was already right; what is new is **23.4.8**, a hard prerequisite: personal bests are re-scanned from every measured ride's samples on every load, so trimming would silently make a rider's bests worse until 16.3.3a stores them per ride. Calibration is unaffected — checked, not assumed. **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |

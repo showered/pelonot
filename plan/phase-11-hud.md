@@ -560,7 +560,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       Keep riding returns to a still-running ride; on the strip, one tap leaves
       the service up, the button reverts on its own, and two taps end it*
 
-- [ ] **11.6.11** **The zone ladder recoils at every boundary.** The owner,
+- [x] **11.6.11** **The zone ladder recoils at every boundary.** The owner,
       verbatim: *"It looks really good but the transition between zones is still
       not right. There is an elastic bounce on each zone which makes it erratic.
       The flow from 3 to 4 and then back to 3 should be seamless, almost like
@@ -595,7 +595,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       a rider who has stopped is not Active Recovery), so the bar drains to zero
       rather than freezing where it was
 
-- [ ] **11.6.12** **Watts are whole numbers, everywhere in the UI.** The owner,
+- [x] **11.6.12** **Watts are whole numbers, everywhere in the UI.** The owner,
       verbatim: *"On the ride screen it has a decimal place but gets cut off.
       I'm making a call — make this number an integer! Well, not in the
       database, but in the UI. The user never (across the app) wants to see
@@ -618,7 +618,15 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       it. Drop it, and take the rule across the app rather than patching one
       screen: whatever formats a watt or a kilojoule for a rider rounds it
 
-- [ ] **11.6.13** **A countdown before the ride starts.** The owner, verbatim:
+      *Done, and the snag was **measured rather than reasoned about**: the tile
+      was rendering `63.` on the AVD — two digits, a decimal point, and the tenth
+      clipped clean off — which is the owner's sentence exactly.
+      `Formatters.kilojoules` rounds, `kilojoulesValue` is the unit-less form the
+      ride screen and the two dashboard cards use, and `FormattersTest` states
+      the rule. One decimal survives on purpose: kJ/kg on the household board,
+      where whole numbers would tie two housemates who are genuinely apart.*
+
+- [x] **11.6.13** **A countdown before the ride starts.** The owner, verbatim:
       *"After clicking 'Start ride' you're straight into it. For some reason it
       feels wrong. Please add a countdown. Could be 5 or 10 seconds, whatever
       you feel is best. Could even have a 'skip' button for the impatient among
@@ -645,6 +653,17 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       It is also the natural home for what the rider needs before the pedals
       turn — the class title, the first target — but that is a second item if it
       earns one; this one is the beat itself
+
+      *Done, and it earned the second half straight away: the screen carries the
+      class title, a draining arc around the count, and **FIRST UP · Z1 · Active
+      Recovery · 75–85 rpm**, which is the one thing worth knowing before the
+      pedals turn and had nowhere else to be said at that size. `RideScreen`
+      returns early until the countdown clears, so `startRide` is genuinely not
+      reached — **observed on the AVD**: the ride came up at interval 1 of 13
+      with 01:36 left of a 2:00 block twenty-four seconds in, so the countdown
+      cost the record nothing. A resume skips it outright. `Start now` sets the
+      count to zero and the effect is keyed on the count, so it cancels the
+      second already in flight rather than waiting for it.*
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 
