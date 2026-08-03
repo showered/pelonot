@@ -5,11 +5,15 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.remote.dto.ClassTemplateDto
+import com.pelonot.data.remote.dto.LeaderboardRowDto
 import com.pelonot.data.remote.dto.ProfileDto
 import com.pelonot.data.remote.dto.WorkoutDto
 import com.pelonot.domain.cloud.SyncFailure
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Pushes completed rides and profiles to Supabase and pulls the shared class
@@ -96,6 +100,37 @@ class SupabaseSyncRepository(
             supabase.from(TABLE_CLASS_TEMPLATES)
                 .select()
                 .decodeList<ClassTemplateDto>()
+        }
+
+    /**
+     * Everyone registered's best measured effort at one class (PLAN 18.5).
+     *
+     * **No friend graph**, on the owner's instruction: three or four riders who
+     * already know each other do not need to send each other requests. The
+     * rule that makes that safe is not in this file — it is that public sign-up
+     * is off (18.11.1), so "everyone registered" is the household and nobody
+     * else.
+     *
+     * It is an RPC rather than a `select`, and that is the important part: the
+     * function returns five columns for a board, while a policy widened to let
+     * riders read each other's `workouts` rows would hand over ride dates, RPE
+     * ratings, the full sample series, and every column the table grows later.
+     * `workouts` and `profiles` keep "your own rows and nobody else's".
+     *
+     * Failure is an **empty board, not an exception**: this is drawn beside a
+     * household board that came from Room and works offline, and a network
+     * problem must not take that down with it (18.10 asks the screen to say
+     * which it is, and `SyncOutcome` carries that distinction to it).
+     */
+    suspend fun classLeaderboard(
+        classId: String,
+        forProfileId: Int?
+    ): SyncOutcome<List<LeaderboardRowDto>> =
+        executeReturning("classLeaderboard", forProfileId) { supabase, _ ->
+            supabase.postgrest.rpc(
+                function = "class_leaderboard",
+                parameters = buildJsonObject { put("p_class_id", classId) }
+            ).decodeList<LeaderboardRowDto>()
         }
 
     private suspend inline fun execute(

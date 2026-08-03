@@ -41,7 +41,7 @@ import com.pelonot.ui.screen.RideDetailScreen
 import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.core.Formatters
 import com.pelonot.ui.viewmodel.AppUiState
 import com.pelonot.ui.viewmodel.InterruptedRide
@@ -76,8 +76,8 @@ fun PelonotNavGraph(
     /** Put back the FTP an auto change replaced (7.10.4). */
     onRevertFtpChange: (Int) -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
-    onLoadLeaderboard: suspend (classId: String, youId: Int?) -> HouseholdLeaderboard =
-        { classId, _ -> HouseholdLeaderboard(classId) }
+    onLoadLeaderboard: suspend (classId: String, youId: Int?) -> ClassLeaderboard =
+        { classId, _ -> ClassLeaderboard(classId) }
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -289,7 +289,7 @@ fun PelonotNavGraph(
             // 24.1.2. Read once per class rather than held in AppUiState:
             // it belongs to the class on screen, not to the app.
             val youId = uiState.selectedProfile?.localUserId
-            val leaderboard by produceState<HouseholdLeaderboard?>(null, classId, youId) {
+            val leaderboard by produceState<ClassLeaderboard?>(null, classId, youId) {
                 value = classId?.let { onLoadLeaderboard(it, youId) }
             }
 

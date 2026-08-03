@@ -85,11 +85,16 @@ class WorkoutDtoTest {
             .let { it as kotlinx.serialization.json.JsonObject }.keys
 
         // Every key here must exist as a column, or PostgREST rejects the whole
-        // insert. Verified against the live schema after migration 002.
+        // insert — and it rejects the *whole* insert, so one wrong name loses
+        // the ride rather than the field. Verified against the live schema
+        // after migration 007.
         val columns = setOf(
             "id", "user_id", "class_id", "duration_sec", "total_output_kj",
             "total_distance_km", "avg_cadence", "avg_power", "avg_hr",
-            "intent_modifier", "rpe_rating", "recorded_at", "metrics_payload"
+            "intent_modifier", "rpe_rating", "recorded_at", "metrics_payload",
+            // 18.5. Added by `007_everyone_leaderboard.sql`, which is what a
+            // failure here means: the DTO grew a field and the schema did not.
+            "power_provenance"
         )
         assertEquals(emptySet<String>(), keys - columns)
     }

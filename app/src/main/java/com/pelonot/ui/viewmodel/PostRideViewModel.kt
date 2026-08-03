@@ -12,7 +12,7 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +35,7 @@ data class PostRideUiState(
      * 11.4.1 became). Empty for a free ride, which is not a class anyone else
      * can have ridden.
      */
-    val leaderboard: HouseholdLeaderboard? = null
+    val leaderboard: ClassLeaderboard? = null
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
 }

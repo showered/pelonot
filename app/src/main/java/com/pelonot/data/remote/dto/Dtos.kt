@@ -4,6 +4,7 @@ import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
@@ -96,6 +97,20 @@ data class WorkoutDto(
     @SerialName("intent_modifier") val intentModifier: Double,
     @SerialName("rpe_rating") val rpeRating: Int? = null,
     @SerialName("recorded_at") val recordedAt: String,
+    /**
+     * Where this ride's watts came from, reduced to one word (PLAN 18.5).
+     *
+     * The per-sample `pm` column inside the payload stays and is still the
+     * truth (14.4.7); this is the answer `PowerProvenance` already computes
+     * *from* it, stored beside the row so a leaderboard can be a query rather
+     * than 47 KB of JSON per rider. A cross-bike comparison is only honest
+     * between measured rides — `PowerModel` scores RMSE 137 W against the real
+     * board — so this is what 18.7 and 24.4.2 filter on.
+     *
+     * Nullable on the wire because every row uploaded before it existed has no
+     * answer, and `Unknown` is a claim those rows cannot support either.
+     */
+    @SerialName("power_provenance") val powerProvenance: String? = null,
     /** Columnar since 14.4 — see [MetricsPayload] for why, and for what `v` is. */
     @SerialName("metrics_payload") val metrics: MetricsPayload
 ) {
@@ -124,10 +139,37 @@ data class WorkoutDto(
             intentModifier = workout.intentModifier,
             rpeRating = workout.rpeRating,
             recordedAt = workout.timestamp.toIso8601Utc(),
+            // Reduced from the samples rather than read off the row, because
+            // the row does not carry it: `PowerProvenance` *is* the reduction,
+            // and computing it here means the wire value and the app's own
+            // answer cannot disagree.
+            powerProvenance = PowerProvenance.of(
+                measured = metrics.count { it.powerIsMeasured == true },
+                modelled = metrics.count { it.powerIsMeasured == false },
+                unknown = metrics.count { it.powerIsMeasured == null }
+            ).name,
             metrics = MetricsPayload.from(metrics)
         )
     }
 }
+
+/**
+ * One rider's place on a cross-bike leaderboard (PLAN 18.5).
+ *
+ * The whole of what `class_leaderboard` returns, and deliberately not one field
+ * more — see `supabase/007_everyone_leaderboard.sql` for why the visibility is
+ * a function rather than a policy. If this type ever grows a `recorded_at` or a
+ * `workout_id`, the migration has been widened and that is a decision somebody
+ * should have had to make on purpose.
+ */
+@Serializable
+data class LeaderboardRowDto(
+    @SerialName("account_id") val accountId: String,
+    val name: String,
+    @SerialName("output_kj") val outputKj: Double,
+    @SerialName("weight_kg") val weightKg: Double,
+    @SerialName("is_you") val isYou: Boolean
+)
 
 /**
  * A rider's cloud profile, keyed by their **auth user id** (PLAN 14.2.1).

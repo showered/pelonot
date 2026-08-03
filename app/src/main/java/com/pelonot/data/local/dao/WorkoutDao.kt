@@ -19,11 +19,19 @@ data class HouseholdWeekRow(
 )
 
 /** One rider's place on a class's household board — see [WorkoutDao.householdLeaderboard]. */
-data class HouseholdLeaderboardRow(
+data class ClassLeaderboardRow(
     val localUserId: Int,
     val name: String,
     val weightKg: Double,
-    val bestOutputKj: Double
+    val bestOutputKj: Double,
+    /**
+     * Their cloud account, or null for a housemate who has never signed in.
+     *
+     * Carried purely so a rider who is on **both** boards can be recognised and
+     * shown once (18.9). Nothing displays it, and it never leaves the tablet by
+     * this route — the cloud already knows its own ids.
+     */
+    val authUserId: String?
 )
 
 /** A housemate's ride of the same class, ready to draw behind yours (24.3.1). */
@@ -307,6 +315,7 @@ interface WorkoutDao {
         SELECT p.local_user_id AS localUserId,
                p.name AS name,
                p.weight_kg AS weightKg,
+               p.auth_user_id AS authUserId,
                MAX(w.total_output_kj) AS bestOutputKj
         FROM workouts w
         JOIN profiles p ON p.local_user_id = w.user_id
@@ -323,7 +332,7 @@ interface WorkoutDao {
         ORDER BY bestOutputKj DESC
         """
     )
-    suspend fun householdLeaderboard(classId: String): List<HouseholdLeaderboardRow>
+    suspend fun householdLeaderboard(classId: String): List<ClassLeaderboardRow>
 
     /**
      * The same riders and the same rules, but carrying the **ride** rather than

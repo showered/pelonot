@@ -9,7 +9,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.local.dao.PreviousBestRow
 import com.pelonot.data.local.dao.SyncBacklog
 import com.pelonot.data.service.RideInProgress
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
@@ -321,22 +321,57 @@ class WorkoutRepository(
      *
      * Room does the exclusions — guests, rides with no samples, rides whose
      * watts were not measured — and the ranking rule lives on
-     * [HouseholdLeaderboard] rather than in the `ORDER BY`, so it can be
+     * [ClassLeaderboard] rather than in the `ORDER BY`, so it can be
      * tested without a database.
      */
-    suspend fun householdLeaderboard(classId: String, youId: Int?): HouseholdLeaderboard =
-        HouseholdLeaderboard.of(
+    suspend fun householdLeaderboard(classId: String, youId: Int?): ClassLeaderboard =
+        ClassLeaderboard.of(
             classId = classId,
-            standings = workoutDao.householdLeaderboard(classId).map { row ->
-                HouseholdLeaderboard.Standing(
-                    localUserId = row.localUserId,
-                    name = row.name,
-                    outputKj = row.bestOutputKj,
-                    weightKg = row.weightKg
-                )
-            },
+            standings = householdStandings(classId),
             youId = youId
         )
+
+    /**
+     * The household **and** everyone else registered, on one board (PLAN 18.5,
+     * 18.9).
+     *
+     * 18.9's rule, applied rather than quoted: this is the household board with
+     * more rows, not a second leaderboard beside it. One type, one ranking, one
+     * renderer — because two implementations of a leaderboard drift, and it is
+     * always the one nobody rides against that gets left behind.
+     *
+     * **The household half never touches the network.** It is the same Room
+     * query as before and it answers on a tablet in a garage with no wifi;
+     * the cloud half is added when it can be. So the failure mode is a board
+     * that is *shorter* than it could be, never a board that is missing.
+     *
+     * @param yourAccountId lets a cloud row be recognised as the rider's own,
+     *   which matters on a second bike where their local profile id is
+     *   different (14.2.1's whole argument).
+     */
+    suspend fun classLeaderboard(
+        classId: String,
+        youId: Int?,
+        yourAccountId: String?,
+        cloudStandings: suspend () -> List<ClassLeaderboard.Standing>
+    ): ClassLeaderboard = ClassLeaderboard.of(
+        classId = classId,
+        standings = householdStandings(classId) + cloudStandings(),
+        youId = youId,
+        yourAccountId = yourAccountId
+    )
+
+    private suspend fun householdStandings(classId: String) =
+        workoutDao.householdLeaderboard(classId).map { row ->
+            ClassLeaderboard.Standing(
+                localUserId = row.localUserId,
+                accountId = row.authUserId,
+                name = row.name,
+                outputKj = row.bestOutputKj,
+                weightKg = row.weightKg,
+                source = ClassLeaderboard.Source.Household
+            )
+        }
 
     /**
      * The housemates whose ride of this class can be drawn behind yours

@@ -21,7 +21,8 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.RideInterruption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -114,7 +115,8 @@ class AppViewModel(
     private val settingsRepository: SettingsRepository,
     private val userRepository: UserRepository,
     classRepository: ClassRepository,
-    private val workoutRepository: WorkoutRepository
+    private val workoutRepository: WorkoutRepository,
+    private val syncRepository: SupabaseSyncRepository
 ) : ViewModel() {
 
     /**
@@ -276,8 +278,37 @@ class AppViewModel(
      * whichever class is on screen, not to the app, and the state combine is
      * already at the width of its typed overload.
      */
-    suspend fun householdLeaderboard(classId: String, youId: Int?): HouseholdLeaderboard =
-        workoutRepository.householdLeaderboard(classId, youId)
+    /**
+     * The board for one class: everyone on this bike, plus everyone registered
+     * (PLAN 24.1, 18.5).
+     *
+     * The cloud half is a lambda the repository calls, so the repository can
+     * stay free of the network and the gate stays where it belongs. A rider
+     * with no account, or no wifi, gets the household board and no delay worth
+     * noticing — `SyncOutcome.Disabled` returns without a request.
+     */
+    suspend fun householdLeaderboard(classId: String, youId: Int?): ClassLeaderboard =
+        workoutRepository.classLeaderboard(
+            classId = classId,
+            youId = youId,
+            yourAccountId = ServiceLocator.authRepository.currentAccountId(),
+            cloudStandings = {
+                syncRepository.classLeaderboard(classId, youId).valueOrNull().orEmpty()
+                    .map { row ->
+                        ClassLeaderboard.Standing(
+                            // A cloud rider has no local profile, and saying so
+                            // with null is what lets the merge in
+                            // `ClassLeaderboard.of` recognise the overlap.
+                            localUserId = null,
+                            accountId = row.accountId,
+                            name = row.name,
+                            outputKj = row.outputKj,
+                            weightKg = row.weightKg,
+                            source = ClassLeaderboard.Source.Cloud
+                        )
+                    }
+            }
+        )
 
     fun createProfile(name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) {
         viewModelScope.launch {
@@ -403,7 +434,8 @@ class AppViewModel(
                 settingsRepository = ServiceLocator.settingsRepository,
                 userRepository = ServiceLocator.userRepository,
                 classRepository = ServiceLocator.classRepository,
-                workoutRepository = ServiceLocator.workoutRepository
+                workoutRepository = ServiceLocator.workoutRepository,
+                syncRepository = ServiceLocator.syncRepository
             )
         }
     }

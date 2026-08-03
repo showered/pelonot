@@ -38,11 +38,11 @@ import androidx.compose.ui.unit.dp
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
-import com.pelonot.ui.components.HouseholdLeaderboardCard
+import com.pelonot.ui.components.ClassLeaderboardCard
 import com.pelonot.ui.components.PositionChip
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
@@ -70,7 +70,7 @@ fun ClassDetailScreen(
      * Who on this bike has ridden this class (24.1.2). Null while it is being
      * read, and drawn as nothing when there is nothing worth drawing.
      */
-    leaderboard: HouseholdLeaderboard? = null
+    leaderboard: ClassLeaderboard? = null
 ) {
     Scaffold(
         modifier = modifier,
@@ -124,7 +124,7 @@ fun ClassDetailScreen(
             // 214 kJ on this one" is the reason to pick it. The interval
             // breakdown is what they read once they already have.
             leaderboard?.let {
-                HouseholdLeaderboardCard(
+                ClassLeaderboardCard(
                     leaderboard = it,
                     modifier = Modifier.padding(
                         horizontal = MaterialTheme.spacing.large,

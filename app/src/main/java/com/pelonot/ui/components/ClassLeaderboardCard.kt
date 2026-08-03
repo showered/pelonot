@@ -23,7 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pelonot.core.Formatters
-import com.pelonot.domain.model.HouseholdLeaderboard
+import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import java.util.Locale
@@ -33,7 +33,7 @@ import java.util.Locale
  *
  * Draws nothing at all when there is nothing worth drawing — a household of
  * one, or a household whose rides were all simulated. That is
- * [HouseholdLeaderboard.isWorthShowing]'s rule and the caller does not repeat
+ * [ClassLeaderboard.isWorthShowing]'s rule and the caller does not repeat
  * it.
  *
  * **No caveat, deliberately** (24.4.1). Every ride on here came off the same
@@ -42,8 +42,8 @@ import java.util.Locale
  * cross-bike version of this (18.7) is the one that needs the sentence.
  */
 @Composable
-fun HouseholdLeaderboardCard(
-    leaderboard: HouseholdLeaderboard,
+fun ClassLeaderboardCard(
+    leaderboard: ClassLeaderboard,
     modifier: Modifier = Modifier
 ) {
     if (!leaderboard.isWorthShowing) return
@@ -56,14 +56,22 @@ fun HouseholdLeaderboardCard(
         )
     ) {
         Column(Modifier.padding(MaterialTheme.spacing.large)) {
+            // The heading follows the rows rather than the feature: a rider
+            // with no account, or with wifi down, gets exactly the card they
+            // got before, still saying "On this bike" — which is true, and is
+            // the whole reason the household half never touches the network.
             Text(
-                text = "On this bike",
+                text = if (leaderboard.crossesBikes) "Everyone riding this" else "On this bike",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Everyone here who has ridden this class, best ride first",
+                text = if (leaderboard.crossesBikes) {
+                    "Everyone who has ridden this class, best ride first"
+                } else {
+                    "Everyone here who has ridden this class, best ride first"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -72,12 +80,28 @@ fun HouseholdLeaderboardCard(
             for (entry in leaderboard.entries) {
                 LeaderboardRow(entry)
             }
+
+            // 18.7, and the reason it is one line rather than a paragraph: the
+            // comparison **is** honest — every row on this board is measured
+            // watts off the rider's own board, enforced in the query rather
+            // than hoped for — so this says where somebody rode, not that the
+            // number is doubtful. A blanket disclaimer nobody reads is the
+            // same as none.
+            if (leaderboard.marksAnyRider) {
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                Text(
+                    text = "\u25CB rode a different bike. Only measured watts are ranked, " +
+                        "on either bike.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun LeaderboardRow(entry: HouseholdLeaderboard.Entry) {
+private fun LeaderboardRow(entry: ClassLeaderboard.Entry) {
     // Output per kilogram is offered beside the ranking, never as it: raw
     // output is the work actually done, and w/kg is the number a lighter rider
     // will want (24.1.3). Nothing here is ranked on anything FTP-relative —
@@ -100,6 +124,9 @@ private fun LeaderboardRow(entry: HouseholdLeaderboard.Entry) {
                 contentDescription = buildString {
                     append("${entry.rank}. ${entry.name}")
                     if (entry.isYou) append(", you")
+                    if (entry.source == ClassLeaderboard.Source.Cloud && !entry.isYou) {
+                        append(", on another bike")
+                    }
                     append(", ${Formatters.kilojoules(entry.outputKj)}")
                     perKg?.let { append(", $it") }
                 }
@@ -133,7 +160,21 @@ private fun LeaderboardRow(entry: HouseholdLeaderboard.Entry) {
         Spacer(Modifier.width(MaterialTheme.spacing.medium))
 
         Text(
-            text = entry.name,
+            // A small ring after the name marks a rider on another bike, and
+            // the caption under the card says what it means. A glyph rather
+            // than the word "cloud": the rider does not care where the row was
+            // stored, only that it is not somebody standing next to them.
+            // Never on your own row. Seen on the AVD: the rider's only ranked
+            // ride was the cloud copy — their local ones were simulated, so the
+            // household query excluded them (24.4.2) — and the board told them
+            // *they* had ridden a different bike. The mark answers "who is this
+            // stranger?", which is not a question anybody asks about
+            // themselves.
+            text = if (entry.source == ClassLeaderboard.Source.Cloud && !entry.isYou) {
+                "${entry.name} \u25CB"
+            } else {
+                entry.name
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = if (entry.isYou) FontWeight.Bold else FontWeight.Normal,
