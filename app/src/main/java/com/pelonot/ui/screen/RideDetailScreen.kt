@@ -67,12 +67,14 @@ import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.components.CadenceDistributionChart
 import com.pelonot.ui.components.CadenceTraceChart
 import com.pelonot.ui.components.ChartCard
+import com.pelonot.ui.components.GhostTraceColor
 import com.pelonot.ui.components.HeartRateTraceChart
 import com.pelonot.ui.components.PowerTraceChart
 import com.pelonot.ui.components.RideSummaryCard
 import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableColumn
+import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailUiState
 import com.pelonot.ui.viewmodel.RideDetailViewModel
@@ -502,8 +504,13 @@ private fun PowerCard(
         // 16.2.4: the canvas is inert to a screen reader, so a second trace
         // that is not in this sentence does not exist for the rider using one.
         ghost?.let {
-            "${it.name}'s ride of this class is drawn behind it, dashed, " +
-                "at ${Formatters.kilojoules(it.outputKj)} total."
+            if (it.you) {
+                "Your previous best at this class is drawn behind it, dashed, " +
+                    "at ${Formatters.kilojoules(it.outputKj)} total."
+            } else {
+                "${it.name}'s ride of this class is drawn behind it, dashed, " +
+                    "at ${Formatters.kilojoules(it.outputKj)} total."
+            }
         }.orEmpty()
     ).filter { it.isNotEmpty() }.joinToString(" "),
     modifier = modifier
@@ -513,7 +520,16 @@ private fun PowerCard(
             trace = charts.power,
             ftpWatts = charts.ftpWatts,
             prescribed = charts.prescribed,
-            ghost = ghost?.trace
+            ghost = ghost?.trace,
+            // The rider's own earlier ride is *them*, so it is drawn in the
+            // power colour rather than in the grey that means "a second rider"
+            // — dimmed, because it is still the thing behind rather than the
+            // record on top (16.3.4).
+            ghostColor = if (ghost?.you == true) {
+                MetricPowerCoral.copy(alpha = 0.55f)
+            } else {
+                GhostTraceColor
+            }
         )
         RivalPicker(rivals, ghost, onPickRival)
     }
@@ -558,10 +574,11 @@ private fun RivalPicker(
                     Text("${rival.name} · ${Formatters.kilojoules(rival.outputKj)}")
                 },
                 modifier = Modifier.semantics {
-                    contentDescription = if (on) {
-                        "Hide ${rival.name}'s ride"
-                    } else {
-                        "Draw ${rival.name}'s ride behind yours"
+                    contentDescription = when {
+                        rival.you && on -> "Hide your previous best"
+                        rival.you -> "Draw your previous best at this class behind this ride"
+                        on -> "Hide ${rival.name}'s ride"
+                        else -> "Draw ${rival.name}'s ride behind yours"
                     }
                 }
             )

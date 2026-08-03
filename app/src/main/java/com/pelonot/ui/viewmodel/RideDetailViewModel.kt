@@ -48,15 +48,29 @@ data class RideDetailUiState(
 ) {
     val displayTitle: String get() = classTitle ?: "Just Ride"
 
-    /** A housemate's ride of this class, offered as a comparison. */
-    data class Rival(val workoutId: String, val name: String, val outputKj: Double)
+    /**
+     * A ride of this class that can be drawn behind this one — a housemate's
+     * (24.3.1), or **the rider's own previous best** (16.3.4).
+     *
+     * One list rather than two, because from the chart's point of view they are
+     * the same thing: another ride of the same class, on the same axes, under
+     * the same measured-power rule. [you] is the only difference, and it exists
+     * because "Alex" and "your best" read very differently under a trace.
+     */
+    data class Rival(
+        val workoutId: String,
+        val name: String,
+        val outputKj: Double,
+        val you: Boolean = false
+    )
 
     /** That ride, fetched and reduced, ready to draw. */
     data class GhostRide(
         val workoutId: String,
         val name: String,
         val outputKj: Double,
-        val trace: com.pelonot.domain.chart.RideTrace
+        val trace: com.pelonot.domain.chart.RideTrace,
+        val you: Boolean = false
     )
 }
 
@@ -167,7 +181,9 @@ class RideDetailViewModel(
     }
 
     /**
-     * Who else on this bike has ridden this class (24.3.1).
+     * What else there is to draw this ride against — the rider's own previous
+     * best at this class (16.3.4), then whoever else on this bike has ridden it
+     * (24.3.1).
      *
      * **Gated on *this* ride's provenance as well as theirs.** The query
      * already refuses a rival whose watts were not measured, for 24.4.2's
@@ -184,10 +200,29 @@ class RideDetailViewModel(
         val userId = workout.userId ?: return
         if (!charts.powerProvenance.isTrustworthyAsMeasured) return
 
+        // The rider's own previous best at this class, first in the list
+        // (16.3.4). **Before this ride, not best-ever**: a ride is measured
+        // against what the rider had already done when they rode it, so the
+        // comparison on a ride from March says the same thing next year, and a
+        // personal best is never quietly drawn against the ride that beat it.
+        val yourBest = workoutRepository.previousBestOfClass(
+            classId = classId,
+            userId = userId,
+            excludingWorkoutId = workout.id,
+            beforeMs = workout.timestamp
+        )?.let {
+            RideDetailUiState.Rival(
+                workoutId = it.workoutId,
+                name = "Your best",
+                outputKj = it.outputKj,
+                you = true
+            )
+        }
+
         val rivals = workoutRepository
             .householdRivals(classId, excludingWorkoutId = workout.id, excludingUserId = userId)
             .map { RideDetailUiState.Rival(it.workoutId, it.name, it.outputKj) }
-        _uiState.update { it.copy(rivals = rivals) }
+        _uiState.update { it.copy(rivals = listOfNotNull(yourBest) + rivals) }
     }
 
     /**
@@ -229,7 +264,8 @@ class RideDetailViewModel(
                         workoutId = rival.workoutId,
                         name = rival.name,
                         outputKj = rival.outputKj,
-                        trace = trace
+                        trace = trace,
+                        you = rival.you
                     )
                 )
             }

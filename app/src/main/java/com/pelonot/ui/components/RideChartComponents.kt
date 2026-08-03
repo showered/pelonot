@@ -729,6 +729,6 @@ private fun EmptyChart(
  * the coral power line at every zone colour without ever being mistaken for
  * one of them.
  */
-private val GhostTraceColor = Color(0xFF9FB4C7)
+val GhostTraceColor = Color(0xFF9FB4C7)
 
 private val CHART_HEIGHT = 140.dp

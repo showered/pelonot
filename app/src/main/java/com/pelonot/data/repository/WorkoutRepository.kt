@@ -6,6 +6,7 @@ import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.local.dao.PreviousBestRow
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.MetricSample
@@ -235,6 +236,15 @@ class WorkoutRepository(
         excludingUserId: Int
     ): List<HouseholdRivalRow> =
         workoutDao.householdRivals(classId, excludingWorkoutId, excludingUserId)
+
+    /** The rider's own best earlier ride of this class (16.3.4). */
+    suspend fun previousBestOfClass(
+        classId: String,
+        userId: Int,
+        excludingWorkoutId: String,
+        beforeMs: Long
+    ): PreviousBestRow? =
+        workoutDao.previousBestOfClass(classId, userId, excludingWorkoutId, beforeMs)
 
     /**
      * Who on this bike has ridden in the last week, with their streaks

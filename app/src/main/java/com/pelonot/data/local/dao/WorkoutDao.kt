@@ -27,6 +27,13 @@ data class HouseholdLeaderboardRow(
 )
 
 /** A housemate's ride of the same class, ready to draw behind yours (24.3.1). */
+/** The rider's own best earlier ride of a class (16.3.4). */
+data class PreviousBestRow(
+    val workoutId: String,
+    val outputKj: Double,
+    val recordedAt: Long
+)
+
 data class HouseholdRivalRow(
     val localUserId: Int,
     val name: String,
@@ -260,6 +267,47 @@ interface WorkoutDao {
         excludingWorkoutId: String,
         excludingUserId: Int
     ): List<HouseholdRivalRow>
+
+    /**
+     * The rider's own best ride of this class **before** the one being looked
+     * at (16.3.4).
+     *
+     * Before, not best-ever, and that is the whole decision in this query. A
+     * ride is compared with what the rider had already done when they rode it —
+     * so the comparison on a ride from March is the same comparison next year,
+     * and a personal best is not quietly measured against the ride that beat it.
+     *
+     * The same measured-power exclusion as [householdRivals], for the same
+     * reason and now facing the rider's own history: a modelled trace drawn to
+     * scale against a measured one is a fiction that looks exact.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.total_output_kj AS outputKj,
+               w.timestamp AS recordedAt
+        FROM workouts w
+        WHERE w.class_id = :classId
+          AND w.user_id = :userId
+          AND w.id != :excludingWorkoutId
+          AND w.timestamp < :beforeMs
+          AND w.is_complete = 1
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        ORDER BY w.total_output_kj DESC
+        LIMIT 1
+        """
+    )
+    suspend fun previousBestOfClass(
+        classId: String,
+        userId: Int,
+        excludingWorkoutId: String,
+        beforeMs: Long
+    ): PreviousBestRow?
 
     /**
      * Who has ridden since [sinceMs], one row per rider (PLAN 24.2.1).
