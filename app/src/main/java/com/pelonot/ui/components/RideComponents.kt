@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.core.Formatters
+import kotlinx.coroutines.delay
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.TargetBand
@@ -140,6 +142,77 @@ fun rememberPulse(periodMs: Int = 900, from: Float = 0.55f, to: Float = 1f): Flo
         label = "PulseValue"
     )
     return value
+}
+
+/**
+ * A heart that beats at the rider's own heart rate (21.3.4).
+ *
+ * It earns its space rather than decorating: a rhythm is the one encoding of
+ * heart rate a rider takes in **without looking at it**, in peripheral vision
+ * mid-effort, where the number needs focus. 180 bpm is three beats a second and
+ * that is the whole specification.
+ *
+ * Two rules keep it honest rather than ambient.
+ *
+ * **The period is the live reading**, `60000 / bpm`, and it is re-read at the
+ * top of every beat rather than driving the animation as a key — so a heart
+ * rate that moves does not restart or stall the beat mid-contraction, which is
+ * what an `InfiniteTransition` keyed on bpm would do at the 2 Hz the display
+ * runs at (11.6.7).
+ *
+ * **And it stops when the reading does.** [bpm] is null for a strap that is
+ * absent *or* has dropped out, and this draws nothing at all — a heart still
+ * beating over a rider the app cannot see is 2.4.4's frozen cadence in the one
+ * place a rider would be most alarmed to discover it afterwards.
+ *
+ * The shape is a real cardiac cycle rather than a sine breath: a fast systolic
+ * squeeze, a smaller second beat, and then rest for whatever is left of the
+ * period — which is what makes a slow heart look slow rather than merely
+ * smaller. Only the glyph is scaled, via `graphicsLayer`, so nothing around it
+ * re-measures at 3 Hz for forty-five minutes.
+ */
+@Composable
+fun BeatingHeart(
+    bpm: Int?,
+    color: Color,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 88.dp
+) {
+    if (bpm == null) return
+
+    val latestBpm by rememberUpdatedState(bpm)
+    val scale = remember { Animatable(1f) }
+
+    // Keyed on presence, not on the value: the loop below picks the current
+    // rate up by itself, and re-keying here is exactly the stutter to avoid.
+    LaunchedEffect(Unit) {
+        while (true) {
+            val period = (60_000.0 / latestBpm.coerceIn(30, 220)).toLong()
+            scale.animateTo(1.26f, tween((period * 0.09).toInt().coerceAtLeast(16)))
+            scale.animateTo(1.02f, tween((period * 0.16).toInt().coerceAtLeast(16)))
+            scale.animateTo(1.13f, tween((period * 0.07).toInt().coerceAtLeast(12)))
+            scale.animateTo(1.00f, tween((period * 0.16).toInt().coerceAtLeast(16)))
+            delay((period * 0.52).toLong().coerceAtLeast(0))
+        }
+    }
+
+    Icon(
+        imageVector = MetricIcons.HeartRate,
+        // The tile already carries one description and the number in it is the
+        // reading; this is the same fact drawn again.
+        contentDescription = null,
+        tint = color,
+        modifier = modifier
+            .size(size)
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                // Bright at the squeeze, settled at rest — the same signal in
+                // a second channel, for anyone who reads brightness before
+                // motion.
+                alpha = 0.18f + (scale.value - 1f) * 0.9f
+            }
+    )
 }
 
 // ==========================================================================

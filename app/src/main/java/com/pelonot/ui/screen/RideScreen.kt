@@ -79,6 +79,7 @@ import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.ui.components.BeatingHeart
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.RidePositionCall
@@ -130,6 +131,23 @@ fun RideScreen(
     viewModel: RideViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 11.6.13. The countdown is a gate in front of the ride, not a curtain over
+    // one: nothing below runs until it clears, so the clock, the first interval
+    // and the recorder all start when the rider is actually on the bike.
+    //
+    // A resume skips it. Somebody re-entering a ride they were thrown out of is
+    // already on the bike, and 8.3d's whole argument is that the ride never
+    // really stopped.
+    var countdownCleared by rememberSaveable { mutableStateOf(resumeWorkoutId != null) }
+    if (!countdownCleared) {
+        RideCountdownScreen(
+            plan = plan,
+            onStart = { countdownCleared = true },
+            modifier = modifier
+        )
+        return
+    }
 
     LaunchedEffect(plan?.id, intent, ftp, resumeWorkoutId) {
         // A resume must never fall through to startRide: that would mint a
@@ -801,6 +819,9 @@ private fun MetricGrid(
                 // that does not end the ride (11.6.10).
                 onClick = if (noStrap) onPairHeartRate else null,
                 footnote = if (noStrap) "Tap to pair a heart-rate strap" else null,
+                // 21.3.4. The owner's, and the one metric on this screen with a
+                // rhythm of its own. Null draws nothing — see BeatingHeart.
+                pulseBpm = state.reading.heartRateBpm,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -858,7 +879,9 @@ private fun RideMetricTile(
     valueSize: androidx.compose.ui.unit.TextUnit = 104.sp,
     /** Non-null makes the whole tile a target — see the heart-rate tile. */
     onClick: (() -> Unit)? = null,
-    footnote: String? = null
+    footnote: String? = null,
+    /** Non-null beats a heart in the tile's empty half at that rate (21.3.4). */
+    pulseBpm: Int? = null
 ) {
     Card(
         modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
@@ -873,6 +896,15 @@ private fun RideMetricTile(
                 .padding(MaterialTheme.spacing.large),
             contentAlignment = Alignment.CenterStart
         ) {
+            // Behind the number rather than beside it: the tile's right-hand
+            // half is empty, and a heart the rider catches in peripheral vision
+            // must not push the digits around when it swells.
+            BeatingHeart(
+                bpm = pulseBpm,
+                color = accent,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+
             MetricReadout(
                 label = label,
                 value = value,
