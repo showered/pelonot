@@ -38,6 +38,19 @@ class CloudAccessFenceTest {
         File(sourceRoot, "data/remote/SupabaseSyncRepository.kt").readText()
 
     /**
+     * The same file with its comments removed.
+     *
+     * The fences below assert that certain names do **not** appear, and the
+     * names they forbid are exactly the ones the KDoc has to say out loud in
+     * order to explain why they are forbidden. Scanning the raw text makes
+     * documenting a rule break it, which teaches the next person to delete the
+     * explanation rather than keep the rule.
+     */
+    private val repositoryCode = repositorySource
+        .replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
+        .replace(Regex("""//[^\n]*"""), "")
+
+    /**
      * Anything that imports the SDK can talk to the cloud without asking
      * anybody. Keeping that ability inside `data/remote` is what makes points 2
      * and 3 below worth checking at all.
@@ -63,7 +76,7 @@ class CloudAccessFenceTest {
      */
     @Test
     fun `the client is resolved once, after the gate is consulted`() {
-        val gateAt = repositorySource.indexOf("cloudAccess.isAllowedFor")
+        val gateAt = repositorySource.indexOf("cloudAccess.accountIdFor")
         val clientAt = repositorySource.indexOf("val supabase = client")
 
         assertTrue("the gate is not consulted at all", gateAt >= 0)
@@ -122,6 +135,58 @@ class CloudAccessFenceTest {
         assertTrue(
             "these cloud calls do not say which rider they are for: $unfenced",
             unfenced.isEmpty()
+        )
+    }
+
+    /**
+     * **A row cannot be written under an identity the gate did not just
+     * approve** (PLAN 14.2.1).
+     *
+     * The fence above makes a call name the rider it is *acting for*; this one
+     * makes the row it writes say so. The failure it exists to catch is not
+     * hypothetical — `WorkoutDto` had no `user_id` field at all for the whole
+     * project, so every ride that ever left a tablet arrived in the cloud
+     * anonymous, and nothing anywhere noticed because the column was nullable
+     * and the insert succeeded.
+     *
+     * The structural guarantee is that the account id arrives *from the gate*,
+     * as a parameter of the block, rather than being read off an entity a
+     * caller happened to be holding. Reading `authUserId` inside this file
+     * would re-open the two-lookups-that-can-disagree shape.
+     */
+    @Test
+    fun `the account id comes from the gate, not from an entity`() {
+        assertTrue(
+            "SupabaseSyncRepository reads authUserId directly; it must use the id the gate returned",
+            !repositoryCode.contains("authUserId")
+        )
+        assertTrue(
+            "the gate's answer is no longer threaded to the calls that write rows",
+            repositoryCode.contains("accountId")
+        )
+    }
+
+    /**
+     * `local_user_id` is a per-device autoincrement — every bike's first
+     * profile is `1`. It was the cloud's `UNIQUE` natural key and the upsert
+     * target, which means the second tablet to sync would have overwritten the
+     * first rider's row rather than creating its own. It must not travel.
+     */
+    @Test
+    fun `the local profile id never leaves the tablet`() {
+        val dtoSource = File(sourceRoot, "data/remote/dto/Dtos.kt").readText()
+        val wireNames = Regex("""@SerialName\("([^"]+)"\)""")
+            .findAll(dtoSource)
+            .map { it.groupValues[1] }
+            .toList()
+
+        assertTrue(
+            "a DTO is sending local_user_id: $wireNames",
+            "local_user_id" !in wireNames
+        )
+        assertTrue(
+            "SupabaseSyncRepository is upserting on local_user_id again",
+            !repositoryCode.contains("local_user_id")
         )
     }
 }

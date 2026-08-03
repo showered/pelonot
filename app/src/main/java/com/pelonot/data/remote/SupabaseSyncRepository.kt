@@ -30,26 +30,39 @@ class SupabaseSyncRepository(
 
     private val client get() = SupabaseModule.client
 
-    /** Uploads a workout with its full metric time series. */
+    /**
+     * Uploads a workout with its full metric time series, **attributed to the
+     * rider who rode it** (PLAN 14.2.1).
+     *
+     * The owner's account id comes out of the gate itself rather than being
+     * looked up separately — see [CloudAccess.accountIdFor] for why those are
+     * one question. Before this, `WorkoutDto` carried no owner at all and every
+     * ride that ever left a tablet arrived anonymous.
+     */
     suspend fun syncWorkout(
         workout: WorkoutEntity,
         metrics: List<WorkoutMetricEntity>
-    ): SyncOutcome<Unit> = execute("syncWorkout", workout.userId) { supabase ->
-        supabase.from(TABLE_WORKOUTS).insert(WorkoutDto.from(workout, metrics))
+    ): SyncOutcome<Unit> = execute("syncWorkout", workout.userId) { supabase, accountId ->
+        supabase.from(TABLE_WORKOUTS).insert(WorkoutDto.from(workout, metrics, accountId))
     }
 
     /**
      * Creates or updates the rider's cloud profile.
      *
-     * `onConflict` is not optional. Without it the upsert conflicts on the
-     * primary key `id` — a UUID the DTO does not send — so every call inserted
-     * a fresh row instead of updating the rider's. `local_user_id` is the
-     * natural key and is `UNIQUE` in the schema.
+     * `onConflict` is not optional — without it the upsert conflicts on the
+     * primary key and every call inserts a fresh row. It targets `id`, which is
+     * now the auth user id the DTO does send; it used to target `local_user_id`,
+     * a per-device autoincrement that is `1` on every bike in the world. See
+     * [ProfileDto] for what that would have done on the second tablet.
+     *
+     * The DTO is built from the account id the gate resolved rather than from
+     * `user.authUserId` directly, so the row cannot be written under an identity
+     * the gate did not just approve.
      */
     suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> =
-        execute("syncProfile", user.localUserId) { supabase ->
-            supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user)) {
-                onConflict = "local_user_id"
+        execute("syncProfile", user.localUserId) { supabase, accountId ->
+            supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user, accountId)) {
+                onConflict = "id"
             }
         }
 
@@ -62,7 +75,10 @@ class SupabaseSyncRepository(
      * ask, and there is no such thing as fetching on behalf of nobody.
      */
     suspend fun fetchClassTemplates(forProfileId: Int?): SyncOutcome<List<ClassTemplateDto>> =
-        executeReturning("fetchClassTemplates", forProfileId) { supabase ->
+        executeReturning("fetchClassTemplates", forProfileId) { supabase, _ ->
+            // The only call that ignores the account id: `class_templates` is
+            // public data (15.5.3) and the same 72 rows for everybody. It still
+            // takes a rider, because *asking at all* is what rule 1 gates.
             supabase.from(TABLE_CLASS_TEMPLATES)
                 .select()
                 .decodeList<ClassTemplateDto>()
@@ -71,22 +87,28 @@ class SupabaseSyncRepository(
     private suspend inline fun execute(
         operation: String,
         localUserId: Int?,
-        crossinline block: suspend (io.github.jan.supabase.SupabaseClient) -> Unit
-    ): SyncOutcome<Unit> = executeReturning(operation, localUserId) { block(it) }
+        crossinline block: suspend (io.github.jan.supabase.SupabaseClient, String) -> Unit
+    ): SyncOutcome<Unit> = executeReturning(operation, localUserId) { c, id -> block(c, id) }
 
     /**
      * The one door out to the network. The gate is checked here, before the
      * client is even resolved, so a new method cannot forget to ask.
+     *
+     * It now hands the block **who the rider is up there** as well as letting it
+     * through, because the gate's answer already contains that (see
+     * [CloudAccess.accountIdFor]). The block cannot reach the network without an
+     * account id in scope, which is the structural version of 14.2.1: a request
+     * that does not know whose it is can no longer be written.
      */
     private suspend inline fun <T> executeReturning(
         operation: String,
         localUserId: Int?,
-        crossinline block: suspend (io.github.jan.supabase.SupabaseClient) -> T
+        crossinline block: suspend (io.github.jan.supabase.SupabaseClient, String) -> T
     ): SyncOutcome<T> {
-        if (!cloudAccess.isAllowedFor(localUserId)) return SyncOutcome.Disabled
+        val accountId = cloudAccess.accountIdFor(localUserId) ?: return SyncOutcome.Disabled
         val supabase = client ?: return SyncOutcome.Disabled
         return try {
-            SyncOutcome.Success(block(supabase))
+            SyncOutcome.Success(block(supabase, accountId))
         } catch (e: Exception) {
             Log.w(TAG, "Supabase $operation failed", e)
             SyncOutcome.Failed(e)

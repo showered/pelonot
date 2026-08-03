@@ -69,6 +69,23 @@ data class ClassTemplateDto(
 @Serializable
 data class WorkoutDto(
     val id: String,
+    /**
+     * **The rider this ride belongs to, and it is not optional** (PLAN 14.2.1).
+     *
+     * It holds the *auth user id*, because that is what `profiles.id` is in the
+     * cloud — see `supabase/003_cloud_identity.sql`. The local `Int`
+     * `local_user_id` never leaves the tablet: it is a per-device autoincrement
+     * and every bike's first profile is `1`.
+     *
+     * Non-null rather than nullable, which is the whole point of the change.
+     * The column existed and the DTO simply never sent it, so **every ride this
+     * app ever uploaded arrived with `user_id` NULL** — unattributable, never
+     * restorable onto a second bike, never on a leaderboard, and invisible to
+     * any RLS policy written against `auth.uid()`. A nullable field here would
+     * leave that shape representable; this way an anonymous ride does not
+     * compile.
+     */
+    @SerialName("user_id") val userId: String,
     @SerialName("class_id") val classId: String? = null,
     @SerialName("duration_sec") val durationSec: Int,
     @SerialName("total_output_kj") val totalOutputKj: Double,
@@ -83,8 +100,20 @@ data class WorkoutDto(
     @SerialName("metrics_payload") val metrics: MetricsPayload
 ) {
     companion object {
-        fun from(workout: WorkoutEntity, metrics: List<WorkoutMetricEntity>) = WorkoutDto(
+        /**
+         * @param ownerAuthUserId the auth user id of the profile that rode it,
+         *   resolved by [com.pelonot.data.remote.CloudAccess.accountIdFor]. It
+         *   is a parameter rather than something read off the entity because
+         *   `WorkoutEntity` holds the *local* profile id and the mapping to an
+         *   account lives one table away.
+         */
+        fun from(
+            workout: WorkoutEntity,
+            metrics: List<WorkoutMetricEntity>,
+            ownerAuthUserId: String
+        ) = WorkoutDto(
             id = workout.id,
+            userId = ownerAuthUserId,
             classId = workout.classId,
             durationSec = workout.durationSec,
             totalOutputKj = workout.totalOutputKj,
@@ -100,16 +129,44 @@ data class WorkoutDto(
     }
 }
 
+/**
+ * A rider's cloud profile, keyed by their **auth user id** (PLAN 14.2.1).
+ *
+ * It used to be keyed by `local_user_id`, with the cloud column `UNIQUE` and
+ * the upsert's `onConflict` pointing at it. That was correct for exactly as
+ * long as there was one tablet in the world. `local_user_id` is a per-device
+ * autoincrement, so **bike A's first profile and bike B's first profile are
+ * both `1`** — and the second one to sync would not have collided harmlessly,
+ * it would have *updated the first rider's row*, overwriting their name, weight
+ * and FTP. The failure needs no malice and no unusual sequence: it is the first
+ * thing that happens on the day a second bike signs in.
+ *
+ * The auth user id is the right key because, under rule 2 of the connectivity
+ * model, a cloud profile and an account are 1:1 by construction — there is no
+ * such thing as a cloud profile without an account. So `profiles.id` **is** the
+ * auth uid rather than a `gen_random_uuid()` that has to be read back and
+ * stored locally (which is what 14.2.1 originally asked for, and is a two-step
+ * sync that can half-fail).
+ */
 @Serializable
 data class ProfileDto(
-    @SerialName("local_user_id") val localUserId: Int,
+    /** The auth user id. Also the cloud primary key, and the upsert target. */
+    val id: String,
     val name: String,
     @SerialName("ftp_watts") val ftpWatts: Int,
     @SerialName("weight_kg") val weightKg: Double
 ) {
     companion object {
-        fun from(user: UserEntity) = ProfileDto(
-            localUserId = user.localUserId,
+        /**
+         * @param ownerAuthUserId the account id the gate just approved, passed
+         *   in rather than read off `user.authUserId` for the same reason
+         *   [WorkoutDto.from] takes one: a profile with no account is not a
+         *   degraded cloud profile, it is **not a cloud profile at all**, and
+         *   requiring the caller to have an id in hand means that row cannot be
+         *   built by a path that never asked.
+         */
+        fun from(user: UserEntity, ownerAuthUserId: String) = ProfileDto(
+            id = ownerAuthUserId,
             name = user.name,
             ftpWatts = user.ftpWatts,
             weightKg = user.weightKg

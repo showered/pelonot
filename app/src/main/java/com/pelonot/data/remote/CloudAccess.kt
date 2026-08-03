@@ -39,18 +39,43 @@ class CloudAccess(
 ) {
 
     /**
+     * **Who this rider is in the cloud, or null if they have no business being
+     * there** (PLAN 14.2.1).
+     *
+     * The gate and the identity are one lookup because they are one question.
+     * "May this profile talk to the cloud?" is answered by `auth_user_id` being
+     * non-null, and `auth_user_id` is *also* the only name the rider has up
+     * there — the cloud's `profiles.id` **is** the auth user id and nothing
+     * else (`supabase/003_cloud_identity.sql`). Asking twice would mean two
+     * lookups that can disagree, and the shape where they disagree is a call
+     * that passed the gate and then wrote a row belonging to nobody. That is
+     * what every ride uploaded before this method existed did.
+     *
+     * Null for all three reasons in the class doc, undifferentiated on purpose
+     * (23.1.6): no account, no credentials in the build, or backup switched
+     * off. A caller that wants to behave differently for one of them is a
+     * caller about to leak which one, and the rider cannot tell the difference
+     * either way.
+     *
      * @param localUserId the profile being acted for. **Null is a guest**, who
      *   has no owner by definition and therefore no cloud (15.2.3), and it is
      *   also what `workouts.user_id` holds for a ride whose profile was later
      *   deleted.
      */
-    suspend fun isAllowedFor(localUserId: Int?): Boolean {
-        val id = localUserId ?: return false
-        if (!credentialsPresent()) return false
-        val user = userDao.getUserById(id) ?: return false
-        if (!user.hasAccount) return false
-        return backupPreference()
+    suspend fun accountIdFor(localUserId: Int?): String? {
+        val id = localUserId ?: return null
+        if (!credentialsPresent()) return null
+        val user = userDao.getUserById(id) ?: return null
+        val authUserId = user.authUserId ?: return null
+        return if (backupPreference()) authUserId else null
     }
+
+    /**
+     * The same question with the answer thrown away, for callers that only need
+     * to decide whether to *start* something — `WorkoutSyncWorker.enqueueIfAllowed`
+     * has no row to write yet and no use for the id.
+     */
+    suspend fun isAllowedFor(localUserId: Int?): Boolean = accountIdFor(localUserId) != null
 
     /**
      * Whether *anyone* on this tablet is signed in.

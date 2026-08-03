@@ -5,7 +5,10 @@ import com.pelonot.data.local.entity.UserEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -85,6 +88,47 @@ class CloudAccessTest {
     @Test
     fun `a signed-in rider who turned backup off is refused`() = runBlocking {
         assertFalse(gate(signedInRider, backup = false).isAllowedFor(signedInRider.localUserId))
+    }
+
+    /**
+     * **The gate names the rider as well as admitting them** (PLAN 14.2.1).
+     *
+     * The cloud's `profiles.id` *is* the auth user id, so the answer to "may
+     * this profile talk to the cloud?" and the answer to "who are they up
+     * there?" are the same string. Splitting them into two lookups is how a
+     * call comes to pass the gate and then write a row belonging to somebody
+     * else — or, as the app actually did for its whole history, to nobody.
+     */
+    @Test
+    fun `an admitted rider is admitted by name`() = runBlocking {
+        assertEquals("auth-uuid-0001", gate(signedInRider).accountIdFor(signedInRider.localUserId))
+    }
+
+    /**
+     * All three reasons to be offline collapse to the same null (23.1.6). A
+     * caller that could tell them apart is a caller that will eventually show
+     * the rider which one, and "your build has no credentials" is not a
+     * sentence anyone on a bike should read.
+     */
+    @Test
+    fun `every reason to be offline gives the same answer, and it carries no name`() = runBlocking {
+        assertNull(gate(offlineRider).accountIdFor(offlineRider.localUserId))
+        assertNull(gate(signedInRider, credentials = false).accountIdFor(signedInRider.localUserId))
+        assertNull(gate(signedInRider, backup = false).accountIdFor(signedInRider.localUserId))
+        assertNull(gate(signedInRider).accountIdFor(null))
+        assertNull(gate(signedInRider).accountIdFor(404))
+    }
+
+    /**
+     * The local profile id is a per-device autoincrement — the rider is `2` on
+     * this tablet and would be `1` on the next one. It is never what the cloud
+     * is told.
+     */
+    @Test
+    fun `the name it gives is the account, never the local profile number`() = runBlocking {
+        val name = gate(signedInRider).accountIdFor(signedInRider.localUserId)
+        assertEquals("auth-uuid-0001", name)
+        assertNotEquals(signedInRider.localUserId.toString(), name)
     }
 
     @Test

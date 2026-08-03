@@ -23,6 +23,9 @@ class WorkoutDtoTest {
 
     private val json = Json { encodeDefaults = true }
 
+    /** An auth user id — what `profiles.id` is in the cloud (14.2.1). */
+    private val ACCOUNT_ID = "9f8e7d6c-5b4a-3210-9876-543210fedcba"
+
     private fun workout(timestamp: Long = 1_753_900_000_000L) = WorkoutEntity(
         id = "11111111-2222-3333-4444-555555555555",
         userId = 1,
@@ -40,7 +43,7 @@ class WorkoutDtoTest {
 
     @Test
     fun `recorded_at is ISO-8601 UTC, not epoch millis`() {
-        val dto = WorkoutDto.from(workout(), emptyList())
+        val dto = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID)
 
         // A bare Long here is rejected by TIMESTAMPTZ with
         // "22008 date/time field value out of range".
@@ -52,9 +55,9 @@ class WorkoutDtoTest {
         val original = TimeZone.getDefault()
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Kiritimati")) // UTC+14
-            val plusFourteen = WorkoutDto.from(workout(), emptyList()).recordedAt
+            val plusFourteen = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID).recordedAt
             TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Midway"))     // UTC-11
-            val minusEleven = WorkoutDto.from(workout(), emptyList()).recordedAt
+            val minusEleven = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID).recordedAt
 
             assertEquals(plusFourteen, minusEleven)
         } finally {
@@ -69,7 +72,7 @@ class WorkoutDtoTest {
             // A locale with a non-Gregorian default calendar formats the year
             // differently unless the formatter pins its locale.
             Locale.setDefault(Locale.forLanguageTag("th-TH-u-ca-buddhist"))
-            assertEquals("2025-07-30T18:26:40Z", WorkoutDto.from(workout(), emptyList()).recordedAt)
+            assertEquals("2025-07-30T18:26:40Z", WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID).recordedAt)
         } finally {
             Locale.setDefault(original)
         }
@@ -77,18 +80,43 @@ class WorkoutDtoTest {
 
     @Test
     fun `serialises exactly the column names the workouts table has`() {
-        val dto = WorkoutDto.from(workout(), emptyList())
+        val dto = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID)
         val keys = json.encodeToJsonElement(WorkoutDto.serializer(), dto)
             .let { it as kotlinx.serialization.json.JsonObject }.keys
 
         // Every key here must exist as a column, or PostgREST rejects the whole
         // insert. Verified against the live schema after migration 002.
         val columns = setOf(
-            "id", "class_id", "duration_sec", "total_output_kj", "total_distance_km",
-            "avg_cadence", "avg_power", "avg_hr", "intent_modifier", "rpe_rating",
-            "recorded_at", "metrics_payload"
+            "id", "user_id", "class_id", "duration_sec", "total_output_kj",
+            "total_distance_km", "avg_cadence", "avg_power", "avg_hr",
+            "intent_modifier", "rpe_rating", "recorded_at", "metrics_payload"
         )
         assertEquals(emptySet<String>(), keys - columns)
+    }
+
+    /**
+     * **A ride arrives owned** (14.2.1).
+     *
+     * `user_id` was a column on the table and never a field on the DTO, so
+     * every ride this app has ever uploaded landed with it NULL: unattributable,
+     * unrestorable onto a second bike, and invisible to any RLS policy written
+     * against `auth.uid()`. Nothing failed — the column is nullable and the
+     * insert returned 201 — which is why it survived a whole phase of work on
+     * this exact path.
+     *
+     * It carries the **auth user id**, not `local_user_id`. The local one is a
+     * per-device autoincrement and every bike's first profile is `1`.
+     */
+    @Test
+    fun `a ride is attributed to its rider's account, not to a local profile number`() {
+        val dto = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID)
+        val encoded = json.encodeToJsonElement(WorkoutDto.serializer(), dto)
+            .let { it as kotlinx.serialization.json.JsonObject }
+
+        assertEquals(ACCOUNT_ID, encoded["user_id"]?.jsonPrimitive?.content)
+        // The entity's own userId is 1 — the number that must not travel.
+        assertEquals(1, workout().userId)
+        assertTrue("local_user_id reached the wire", "local_user_id" !in encoded.keys)
     }
 
     @Test
@@ -101,7 +129,7 @@ class WorkoutDtoTest {
             power = 110.0,
             heartRate = null
         )
-        val dto = WorkoutDto.from(workout(), listOf(metric))
+        val dto = WorkoutDto.from(workout(), listOf(metric), ACCOUNT_ID)
 
         // Columnar since 14.4: a ride nobody wore a strap for has no `hr`
         // column at all, which is the same claim as a column of nulls and not
