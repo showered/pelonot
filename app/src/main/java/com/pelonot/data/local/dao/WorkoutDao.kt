@@ -27,6 +27,13 @@ data class HouseholdLeaderboardRow(
 )
 
 /** A housemate's ride of the same class, ready to draw behind yours (24.3.1). */
+/** A ride whose power came off the board, for the personal-best scan (16.3.3). */
+data class MeasuredRideRow(
+    val workoutId: String,
+    val recordedAt: Long,
+    val classTitle: String?
+)
+
 /** The rider's own best earlier ride of a class (16.3.4). */
 data class PreviousBestRow(
     val workoutId: String,
@@ -308,6 +315,49 @@ interface WorkoutDao {
         excludingWorkoutId: String,
         beforeMs: Long
     ): PreviousBestRow?
+
+    /**
+     * Every ride of this rider's whose watts the **bike measured** (16.3.3).
+     *
+     * The gate is not decoration: a personal best derived from `PowerModel` —
+     * RMSE 137 W — is a fiction filed as a record, and it would sit in the same
+     * list as real ones. Same clause as [householdRivals], pointed at one
+     * rider's own history.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.timestamp AS recordedAt,
+               c.title AS classTitle
+        FROM workouts w
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        ORDER BY w.timestamp DESC
+        """
+    )
+    suspend fun measuredRides(userId: Int): List<MeasuredRideRow>
+
+    /** The rides that gate excludes, so an empty list of bests can say why. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts w
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        """
+    )
+    suspend fun unmeasuredRideCount(userId: Int): Int
 
     /**
      * Who has ridden since [sinceMs], one row per rider (PLAN 24.2.1).

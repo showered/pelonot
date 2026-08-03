@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.domain.progress.MeanMaximalPower
+import com.pelonot.domain.progress.PersonalBest
+import com.pelonot.domain.progress.PersonalBests
+import com.pelonot.domain.progress.PowerSample
 import com.pelonot.domain.progress.RideRecord
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
@@ -236,6 +240,49 @@ class WorkoutRepository(
         excludingUserId: Int
     ): List<HouseholdRivalRow> =
         workoutDao.householdRivals(classId, excludingWorkoutId, excludingUserId)
+
+    /**
+     * The rider's personal bests by duration (16.3.3).
+     *
+     * One ride at a time, and only the power column of it: the alternative is
+     * every sample of every ride in memory at once, which for a year of daily
+     * riding is about a million rows. Each ride's series is walked and dropped.
+     *
+     * **Measured rides only**, and the count of the others comes back with them
+     * — an empty list has to be able to say *why* it is empty rather than
+     * implying the rider has never ridden.
+     *
+     * Not cached anywhere yet, and that is a deliberate not-yet: caching means
+     * a column or a table, and a schema change made before anybody has felt it
+     * be slow is a guess. The ceiling is written down in 16.3.3.
+     */
+    suspend fun personalBests(userId: Int): PersonalBests {
+        val rides = workoutDao.measuredRides(userId)
+        val best = mutableMapOf<Int, PersonalBest>()
+
+        rides.forEach { ride ->
+            val samples = metricDao.getMetricsForWorkout(ride.workoutId)
+                .map { PowerSample(it.timestampSec, it.power) }
+            MeanMaximalPower.bests(samples).forEach { (window, watts) ->
+                val standing = best[window]
+                if (standing == null || watts > standing.watts) {
+                    best[window] = PersonalBest(
+                        windowSec = window,
+                        watts = watts,
+                        workoutId = ride.workoutId,
+                        atEpochMs = ride.recordedAt,
+                        classTitle = ride.classTitle
+                    )
+                }
+            }
+        }
+
+        return PersonalBests(
+            efforts = MeanMaximalPower.WINDOWS.mapNotNull { best[it] },
+            ridesCounted = rides.size,
+            ridesSkipped = workoutDao.unmeasuredRideCount(userId)
+        )
+    }
 
     /** The rider's own best earlier ride of this class (16.3.4). */
     suspend fun previousBestOfClass(

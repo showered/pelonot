@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -29,9 +30,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -44,11 +47,17 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.roundToInt
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.domain.chart.ChartScale
 import com.pelonot.domain.progress.FtpChange
 import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.domain.progress.PersonalBest
+import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.ui.components.ChartFrame
+import com.pelonot.ui.viewmodel.PersonalBestsViewModel
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
@@ -88,8 +97,10 @@ fun FtpProgressScreen(
     onOpenRide: (String) -> Unit,
     /** Put back the value an auto change replaced (7.10.4). */
     onRevert: (FtpChange) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bestsViewModel: PersonalBestsViewModel = viewModel(factory = PersonalBestsViewModel.Factory)
 ) {
+    val bests by bestsViewModel.bests.collectAsStateWithLifecycle()
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -131,6 +142,10 @@ fun FtpProgressScreen(
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
             FtpTrendChart(trend)
+
+            Spacer(Modifier.size(MaterialTheme.spacing.large))
+
+            PersonalBestsCard(bests, onOpenRide)
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
@@ -498,3 +513,144 @@ private fun mediumDate(atEpochMs: Long): String = remember(atEpochMs) {
 
 private val CHART_HEIGHT = 220.dp
 private val MARK_RADIUS = 5.dp
+
+/**
+ * Personal bests by duration (16.3.3).
+ *
+ * On this screen rather than on *Your riding*, by the rule the other three
+ * trends settled: that screen is about the **riding** and this one is about the
+ * **rider**, and a best is a claim about a person. It also belongs beside the
+ * FTP for a plainer reason — the twenty-minute row is the number every FTP
+ * protocol is built on, and having them a thumb apart is the comparison a rider
+ * would otherwise do on paper.
+ *
+ * **Measured rides only**, said out loud rather than filtered silently. A best
+ * derived from `PowerModel` is a fiction filed as a record, and a rider whose
+ * rides were all simulated must be told that is why the list is empty rather
+ * than left to conclude they have never ridden.
+ */
+@Composable
+private fun PersonalBestsCard(bests: PersonalBests, onOpenRide: (String) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(Modifier.padding(MaterialTheme.spacing.large)) {
+            Text(
+                text = "Your best efforts",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
+            )
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+            when {
+                bests.isLoading -> Text(
+                    text = "Reading every ride…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                !bests.hasAny -> Text(
+                    text = if (bests.ridesSkipped > 0) {
+                        // The honest empty state, and the only one that stops a
+                        // rider concluding the feature is broken.
+                        "Nothing here yet. Best efforts are only counted from rides " +
+                            "where the bike measured the watts, and " +
+                            "${bests.ridesSkipped} " +
+                            (if (bests.ridesSkipped == 1) "ride was" else "rides were") +
+                            " estimated."
+                    } else {
+                        "Nothing here yet — ride the bike and your bests appear."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                else -> {
+                    val peak = bests.efforts.maxOf { it.watts }
+                    bests.efforts.forEach { effort ->
+                        BestRow(effort, peak, onOpenRide)
+                    }
+                    Spacer(Modifier.size(MaterialTheme.spacing.small))
+                    Text(
+                        text = buildString {
+                            append("From ${bests.ridesCounted} ")
+                            append(if (bests.ridesCounted == 1) "ride" else "rides")
+                            append(" the bike measured")
+                            if (bests.ridesSkipped > 0) {
+                                append(", of ${bests.ridesCounted + bests.ridesSkipped}")
+                            }
+                            append(". An effort has to be unbroken to count, ")
+                            append("so a ride you stopped in the middle of has two ")
+                            append("shorter ones rather than one long one.")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BestRow(effort: PersonalBest, peakWatts: Double, onOpenRide: (String) -> Unit) {
+    val when_ = mediumDate(effort.atEpochMs)
+    val what = effort.classTitle ?: "Just Ride"
+    val spoken = "${effort.label}: ${effort.watts.roundToInt()} watts, " +
+        "$what on $when_. Opens that ride."
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenRide(effort.workoutId) }
+            .padding(vertical = MaterialTheme.spacing.small)
+            .semantics { contentDescription = spoken }
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = effort.label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "${effort.watts.roundToInt()} W",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Spacer(Modifier.size(4.dp))
+        // A bar rather than a chart: five rows read against each other is the
+        // whole comparison, and it needs no axis to say that five seconds is
+        // twice an hour.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(MaterialTheme.expressiveShapes.pill)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth((effort.watts / peakWatts).toFloat().coerceIn(0.02f, 1f))
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        }
+        Spacer(Modifier.size(2.dp))
+        Text(
+            text = "$what · $when_",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clearAndSetSemantics { }
+        )
+    }
+}
