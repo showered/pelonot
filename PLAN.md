@@ -61,9 +61,9 @@ system across native and web (**17.15** — `web/tokens.css`, transcribed from
 `Color.kt` and `Theme.kt`, with 17.15.1 for typography and 17.15.2 for the fact
 that nothing keeps the two in step).
 
-### Owner's inbox
+### Find friends
 
-*Empty.*
+If this application were to scale to millions of users then we would need to add proper follow, unfollow, block, all that kind of stuff. But in this case, for now, there will only be 3 or 4 users! So I think everyone should just have visibility over everyone's scores for now. Leaderboards and ghosts should contain ALL registered users, in addition to ALL household users.
 
 ---
 

@@ -61,7 +61,31 @@ object SupabaseModule {
 sealed interface SyncOutcome<out T> {
     data class Success<T>(val value: T) : SyncOutcome<T>
     data object Disabled : SyncOutcome<Nothing>
+
+    /**
+     * Something went wrong and **trying again might work** — the network is
+     * down, the endpoint is briefly unwell, a timeout. The overwhelming
+     * majority of failures, and the reason the worker stops the batch rather
+     * than hammering the radio nineteen more times for the same answer.
+     */
     data class Failed(val cause: Throwable) : SyncOutcome<Nothing>
+
+    /**
+     * **The cloud understood the request and refused it, and will refuse it
+     * again for ever** (PLAN 14.2.7).
+     *
+     * A different thing from [Failed] and separated the day it first happened:
+     * the first-sign-in backfill hit a ride whose id was not a UUID (a seeded
+     * fixture, `r1`), Postgres said `invalid input syntax for type uuid`, the
+     * worker treated it as "the network is having a moment" and stopped the
+     * batch — **so every ride behind it was stuck permanently**, and Settings
+     * told the rider their backup was failing with no action available to them
+     * that could ever fix it. Five good rides held hostage by one bad one.
+     *
+     * @param reason a sentence for the rider, already trimmed of the URL and
+     *   headers the SDK's own message carries.
+     */
+    data class Rejected(val reason: String) : SyncOutcome<Nothing>
 
     val isSuccess: Boolean get() = this is Success
 

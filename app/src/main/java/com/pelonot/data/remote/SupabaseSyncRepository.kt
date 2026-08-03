@@ -7,6 +7,8 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.remote.dto.ClassTemplateDto
 import com.pelonot.data.remote.dto.ProfileDto
 import com.pelonot.data.remote.dto.WorkoutDto
+import com.pelonot.domain.cloud.SyncFailure
+import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 
 /**
@@ -122,8 +124,27 @@ class SupabaseSyncRepository(
         return try {
             SyncOutcome.Success(block(supabase, accountId))
         } catch (e: Exception) {
-            Log.w(TAG, "Supabase $operation failed", e)
-            SyncOutcome.Failed(e)
+            // **The message, never the exception** (PLAN 14.2.8a).
+            //
+            // `Log.w(tag, msg, e)` prints the SDK's own message, and for a
+            // Postgrest failure that message is the whole request: the URL, the
+            // header list, and inside it `Authorization: Bearer eyJ…` — the
+            // rider's live access token — plus the apikey. Measured on the
+            // tablet AVD, not theorised: it is right there in `logcat`.
+            //
+            // `Log.w` is also the one level that gets through on the bike,
+            // where `log.tag` is `W` device-wide, so this is the *most* visible
+            // line the app writes rather than the least.
+            Log.w(TAG, "Supabase $operation failed: ${SyncFailure.riderFacing(e.message)}")
+            // 14.2.7. "It failed" and "it will always fail" want opposite
+            // responses, and treating the second as the first is what let one
+            // unacceptable row hold five good ones hostage for ever.
+            val status = (e as? RestException)?.statusCode
+            if (SyncFailure.isPermanent(status)) {
+                SyncOutcome.Rejected(SyncFailure.riderFacing(e.message))
+            } else {
+                SyncOutcome.Failed(e)
+            }
         }
     }
 

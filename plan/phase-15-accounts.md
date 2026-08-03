@@ -24,7 +24,7 @@ something they could have had offline.**
 
 ### 15.1 Auth
 - [x] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
-- [ ] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
+- [x] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
 
       **Amended by the owner, 3 August 2026**, who asked for *"profile setup
       (email, password, confirm email, etc)"* directly. Both halves are built,
@@ -45,7 +45,7 @@ something they could have had offline.**
       tablet, in a shared household room, becoming a place where passwords are
       typed and possibly remembered. 15.6 removes that for anyone with a phone
       and 15.1.2a keeps the app usable for everyone else
-- [ ] **15.1.2a** **Email and password, with the confirmations that go with
+- [x] **15.1.2a** **Email and password, with the confirmations that go with
       them.** Sign up takes an email, a password and a **repeated password** —
       the second field is not ceremony on a bike, where the keyboard is a
       touchscreen at arm's length and a typo in a password is a support
@@ -57,7 +57,7 @@ something they could have had offline.**
       worse, as success. Rate limits on the built-in mailer are low (a handful
       an hour), so a rider who asks twice must be told that rather than shown
       a generic error
-- [ ] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
+- [x] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
 - [x] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
 - [x] **15.1.5** The copy calls it what it does — **"Back up my rides"**, not "Log in". A rider on a bike is not looking for an account; they are deciding whether their history is safe
 - [x] **15.1.6** **Nothing in this phase may be reachable during a ride, and
@@ -69,11 +69,11 @@ something they could have had offline.**
 
 ### 15.2 Identity model
 - [x] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
-- [ ] **15.2.2** `profiles.auth_user_id UUID REFERENCES auth.users` in the cloud schema; `cloud_id` on the local `UserEntity`
+- [x] **15.2.2** `profiles.auth_user_id UUID REFERENCES auth.users` in the cloud schema; `cloud_id` on the local `UserEntity`
 - [x] **15.2.3** Household guests never sync. A guest ride has no owner by definition
-- [ ] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
+- [x] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
 - [x] **15.2.5** **`auth_user_id` on the local `UserEntity` is the flag the whole consent gate reads.** 23.1.1 asks one question — may this profile talk to the cloud? — and this column is the answer. Nullable, and null is the default rung of the ladder rather than a missing value
-- [ ] **15.2.6** A signed-in rider and an offline rider must be able to share a bike with no friction and no nagging. The offline one sees no sign-in prompt on a screen they did not open looking for one
+- [x] **15.2.6** A signed-in rider and an offline rider must be able to share a bike with no friction and no nagging. The offline one sees no sign-in prompt on a screen they did not open looking for one
 - [ ] **15.2.7** **One account, one local profile — checked, not hoped for.**
       Two local profiles pointing at the same `auth_user_id` is not a household
       arrangement, it is one rider's history split in half: the cloud keys a
@@ -111,9 +111,9 @@ something they could have had offline.**
       correct, is not a failure, and is invisible unless somebody says so
 
 ### 15.3 Sync in both directions
-- [ ] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background
+- [x] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background
 - [ ] **15.3.2** Pull on a new device: restore rides and profile
-- [ ] **15.3.3** Idempotent by the local workout UUID, so a retry or a re-install cannot double a ride
+- [x] **15.3.3** Idempotent by the local workout UUID, so a retry or a re-install cannot double a ride
 - [ ] **15.3.4** Conflict rule, written down and one line long: **local wins for a ride in progress, last-write-wins for RPE and profile fields, tombstones win over everything** (12.3.5)
 - [ ] **15.3.5** Metric series are large — a 45-minute ride is ~2,700 samples. Decide deliberately whether the full series goes up or only the aggregates plus a downsampled trace, and record the reasoning
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
@@ -156,11 +156,35 @@ on the strength of the file existing — 15.5.4 is the whole point.
       at all**, which under RLS means nobody but the service role can author a
       class. A class comes from `classlibrary/build.py` and ships in the APK;
       nothing in the app has any business writing one*
-- [ ] **15.5.4** Verify each policy from a second account, not by reading the SQL. This is the one place where being wrong is a breach rather than a bug.
+- [x] **15.5.4** Verify each policy from a second account, not by reading the SQL. This is the one place where being wrong is a breach rather than a bug.
       **Unchanged and now the item that matters most in this phase.** Reading
       `003` is not this check and neither is running it successfully. Two real
       sessions, pointed at each other's rows, bouncing. Until that has happened
       the policies are a hypothesis
+
+      ***Done, 3 August 2026. Two real accounts, 21 probes, 0 failures*** —
+      `supabase/verify_rls.py`, committed so it can be re-run when 17.5 adds the
+      first schema where a rider may see somebody else's data.
+
+      *The sessions were minted without a password: the accounts were created
+      and confirmed by the owner, and each session came from an admin
+      `generate_link` exchanged at `/auth/v1/verify`. That matters beyond
+      hygiene — it means this check is **repeatable in CI** against a throwaway
+      project, rather than something a person has to sit and do.*
+
+      *What it actually proved, in the shape that matters: A cannot create,
+      read, rename or delete B's profile; A cannot record a ride owned by B,
+      cannot see one, cannot edit one, cannot delete one, and **cannot hand
+      their own ride to B** — which is the `WITH CHECK`-without-`USING` hole
+      15.5.1 was written to close, tested rather than assumed. A sees exactly
+      one workout out of the 17 in the table. Both can read the class library,
+      neither can write it, and neither can read `device_link` at all.*
+
+      *One detail that nearly made the check theatre: PostgREST answers `204`
+      with an empty body to a DELETE whether it touched a row or not, so a
+      policy that silently allowed a cross-account delete looks identical to one
+      that refused. Every probe sends `Prefer: return=representation` for that
+      reason.*
 - [x] **15.5.5** **The grants move too, and RLS cannot do it for you.** RLS
       *narrows* access a role already has and can confer none — the lesson of
       14.0, where every request died `42501` before a policy was ever evaluated.
@@ -252,7 +276,7 @@ own**, minted for it, not a copy of the phone's.
       enforced in the function, not in the caller. `search_path` pinned on all
       three — a `SECURITY DEFINER` function without it is the classic Postgres
       privilege-escalation footgun
-- [ ] **15.6.4** **The bike gets its own session, minted by an Edge Function.**
+- [x] **15.6.4** **The bike gets its own session, minted by an Edge Function.**
       The phone calls it with its own access token; the function verifies that
       token, asks the admin API for a one-time email OTP for that user, and
       writes it into the pairing row. The bike collects it and verifies it like
@@ -272,7 +296,7 @@ own**, minted for it, not a copy of the phone's.
       the pairing row **before** minting anything, so an expired code cannot
       leave a live one-time credential for the rider's account sitting in a
       log.*
-- [ ] **15.6.5** **What the phone shows before it commits.** *"Sign in to
+- [x] **15.6.5** **What the phone shows before it commits.** *"Sign in to
       Pelonot on **PLTN-RB1VQ**?"* — the label the bike sent, its own words,
       shown to the rider before anything is claimed. A pairing flow that does
       not name the device being paired is a phishing primitive: the QR is a URL

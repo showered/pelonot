@@ -1,5 +1,6 @@
 package com.pelonot.data.remote
 
+import android.util.Log
 import com.pelonot.data.local.dao.UserDao
 
 /**
@@ -91,10 +92,27 @@ class CloudAccess(
         if (!credentialsPresent()) return null
         val user = userDao.getUserById(id) ?: return null
         val authUserId = user.authUserId ?: return null
-        if (!backupPreference()) return null
+        if (!backupPreference()) {
+            Log.i(TAG, "Profile $id has an account but backup is switched off")
+            return null
+        }
         // 15.2.8. Having an account and being signed in on this tablet are two
         // facts, and only the second one can send a request.
-        return if (sessionAccountId() == authUserId) authUserId else null
+        val session = sessionAccountId()
+        if (session == authUserId) return authUserId
+
+        // Only for a rider who *has* an account and is being refused anyway —
+        // so it is quiet on the tier most riders are on, and says the one thing
+        // that is genuinely hard to work out from outside. Without it, "no
+        // account on profile 1" is the same sentence whether the rider never
+        // signed in, signed out, or is on a tablet holding a housemate's
+        // session, and those want three different answers.
+        Log.i(
+            TAG,
+            "Profile $id is attached to ${authUserId.take(8)}… but this tablet holds " +
+                (session?.let { "${it.take(8)}…" } ?: "no session")
+        )
+        return null
     }
 
     /**
@@ -112,4 +130,8 @@ class CloudAccess(
      * grants nothing to another.
      */
     suspend fun anyProfileHasAccount(): Boolean = userDao.getAccountProfileCount() > 0
+
+    private companion object {
+        const val TAG = "CloudAccess"
+    }
 }

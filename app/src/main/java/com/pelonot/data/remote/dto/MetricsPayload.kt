@@ -62,7 +62,26 @@ import kotlin.math.floor
  */
 @Serializable
 data class MetricsPayload(
-    @SerialName("v") val version: Int = VERSION,
+    /**
+     * The payload's shape (PLAN 14.4.3).
+     *
+     * **It deliberately has no default, and that is the fix rather than the
+     * style.** It used to be `= VERSION`, and the result was measured in the
+     * cloud rather than reasoned about: every ride uploaded arrived with **no
+     * `v` at all**. kotlinx.serialization omits a property whose value equals
+     * its default unless `encodeDefaults` is on, and Postgrest serialises with
+     * its own `Json` — not `SupabaseModule.json`, where this project does set
+     * it. So the one field whose entire job is to survive into an unknown
+     * future was the one field that never travelled.
+     *
+     * Removing the default makes it structurally impossible: there is no value
+     * for the encoder to consider redundant, and a caller cannot forget to set
+     * it because it will not compile.
+     *
+     * The reader's rule is unchanged and now matters: **an absent `v` means the
+     * pre-14.4 array-of-objects**, which is what one row in the cloud still is.
+     */
+    @SerialName("v") val version: Int,
     /** Elapsed seconds. Explicit, and never implied from the index. */
     @SerialName("t") val timestampSec: List<Int> = emptyList(),
     @SerialName("c") val cadence: List<@Serializable(CompactDouble::class) Double> = emptyList(),
@@ -209,6 +228,7 @@ data class MetricsPayload(
         const val FORTY_FIVE_MINUTE_BUDGET_BYTES = 60 * 1024
 
         fun from(metrics: List<WorkoutMetricEntity>) = MetricsPayload(
+            version = VERSION,
             timestampSec = metrics.map { it.timestampSec },
             cadence = metrics.map { it.cadence },
             resistance = metrics.map { it.resistance },

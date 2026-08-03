@@ -12,3 +12,5 @@ local.properties
 
 # The web app's endpoint and key — same rule as local.properties (PLAN 17.14).
 /web/config.js
+# A short-lived test session, never committed.
+/web/_session.json

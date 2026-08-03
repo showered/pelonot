@@ -5,11 +5,16 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.cloud.AccountState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -33,6 +38,60 @@ class PelonotApp : Application() {
         }
 
         applyTelemetrySource()
+        drainAnyBacklog()
+    }
+
+    /**
+     * Sends up whatever is still waiting, once, on launch (PLAN 14.2.10).
+     *
+     * **Nothing did this before, and the gap is worse than it sounds.** The
+     * backlog had exactly two triggers — finishing a ride, and signing in — so
+     * 14.2.6's promise that "the next ride the rider finishes sweeps it up"
+     * was the *only* way a stranded ride ever moved. That is precisely wrong at
+     * the one moment it matters most: the first sign-in backfill is both the
+     * largest batch the app will ever send and the one most likely to meet a
+     * flat network, and if it fails the rider's whole history then sits there
+     * until they ride again. A rider who signs in on the sofa and rides on
+     * Saturday has four days of believing they are backed up.
+     *
+     * Found by driving it rather than by reading it: the backfill failed on a
+     * bad row, the row was fixed, and **nothing on earth would have retried**.
+     *
+     * It is cheap and it is not a network call. `enqueueIfAllowed` asks the
+     * gate first, so an offline rider schedules nothing at all (rule 1); the
+     * job it does schedule is network-constrained and unique per profile, so
+     * launching the app four times does not queue four drains.
+     */
+    private fun drainAnyBacklog() {
+        appScope.launch {
+            runCatching {
+                // **Waits for the session rather than racing it**, and the
+                // first version of this did race it: enqueuing straight from
+                // `onCreate` asked the gate before the SDK had finished reading
+                // the stored session off disk, so it answered "no account on
+                // profile 1" — correctly, for that instant — and the launch
+                // drain never ran at all. It is the same shape as the defect in
+                // 21.1.3 and 8.3d.4: the code is right about what it wants and
+                // wrong about when it can have it.
+                //
+                // Driving it off the session flow fixes the race and buys the
+                // other half for free: a rider who signs in *later* in the
+                // session gets their backfill from the same collector, so
+                // there is one trigger rather than two that drift.
+                ServiceLocator.accountRepository.accountState
+                    .filterIsInstance<AccountState.SignedIn>()
+                    .distinctUntilChangedBy { it.accountId }
+                    .collect {
+                        val profileId =
+                            ServiceLocator.settingsRepository.settings.first().lastProfileId
+                        WorkoutSyncWorker.enqueueIfAllowed(
+                            context = this@PelonotApp,
+                            workoutId = "session",
+                            userId = profileId
+                        )
+                    }
+            }
+        }
     }
 
     /**

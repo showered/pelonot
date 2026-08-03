@@ -52,7 +52,7 @@ ever synced, confirmed by count rather than inferred.
 - [x] **14.1.4** `WorkoutDto` emits ISO-8601 UTC, with JVM tests covering the timezone drift and locale (`th-TH-u-ca-buddhist`) cases that would silently corrupt it
 - [x] **14.1.5** A test asserting the serialised keys are a subset of the real column list — the failure mode that started all of this
 
-- [ ] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works".
+- [x] **14.1.6** **The round trip from the app itself.** Everything above was driven by `curl` with a hand-built payload; it proves the schema, the grants and the wire format, and it proves *nothing* about `WorkoutSyncWorker` enqueueing, running and posting. Install, ride, and see the row appear. **Per the house rule this phase is not complete until this box is ticked** — the whole point of the Corrections table is that "the pieces are right" has repeatedly not meant "it works".
 
       **Half done, 31 July 2026 (third sitting).** Driven from the app on the
       tablet AVD: a profile ride against the live project, `WorkoutSyncWorker`
@@ -72,6 +72,23 @@ ever synced, confirmed by count rather than inferred.
 
       Expect that workout id with 135 samples. It is the only thing still
       standing between Phase 14 and done.
+
+      ***Done, 3 August 2026 (twenty-first sitting), and it took Phase 15 to do
+      it.*** *The sighting was never going to come from the anon key — `003`
+      revokes its access entirely — so it waited for a real session. A tablet
+      signed in by QR, the launch drain fired, and three rides arrived:
+      `1b5c8fb5…` with 332 samples, `1a5cbc28…` with 50, `ff321faf…` with 1185,
+      all attributed to `2e9fe2db…`, all `class_id = CLB-01`, all
+      `metrics_payload->>'v' = '1'`, 47,890 bytes stored for the twenty-minute
+      one. **Then read back in the web app**, which is the version of this
+      sighting that a person can have rather than a query.*
+
+      *Getting there cost four defects, none of which any test could have
+      caught: **14.2.9** (the cloud's class library was a different library),
+      **14.2.7** (one unacceptable row blocked every ride behind it),
+      **14.2.10** (nothing drained the backlog on launch), and **14.4.3a** (the
+      payload version never travelled). Every one was found by looking at what
+      arrived.*
 
       One thing this half **did** prove, and it is not small: the app's *read*
       path to the cloud works. `ClassTemplateSeeder` now logs `Seeded 72 class
@@ -182,6 +199,81 @@ ever synced, confirmed by count rather than inferred.
       `USING (true)`, and `005_revoke_truncate.sql` puts it down. **The habit is
       the lesson**: what a migration granted and what a table ends up holding
       are different questions.*
+- [x] **14.2.7** **"It failed" and "it will always fail" want opposite
+      responses.** The worker stopped the whole batch at the first failure, on
+      the reasoning that the overwhelming cause is a dead network and nineteen
+      more attempts is nineteen more radio wakeups for the same answer. That
+      reasoning is right about *transient* failures and exactly wrong about
+      permanent ones — and the day it first mattered it cost five rides.
+
+      The first-sign-in backfill met a seeded fixture whose id was not a UUID
+      (`r1`), Postgres said `invalid input syntax for type uuid`, and the worker
+      filed it as "the network is having a moment" and stopped. **Every ride
+      behind it was stuck for ever**, with Settings telling the rider their
+      backup was failing and no action available to them that could fix it.
+
+      `SyncOutcome.Rejected` is now a third answer, decided by
+      `SyncFailure.isPermanent` — a 4xx that is not 401, 403, 408 or 429. A
+      rejected ride is **skipped, counted, reported, and never marked synced**:
+      it is not in the cloud and saying otherwise would be the `avg_hr` mistake
+      again, writing a plausible lie where a gap belongs. The two 4xx codes
+      that are *not* permanent both matter here — an expired session is fixed by
+      a refresh, and a policy refusal is what 15.2.8's mismatch looks like from
+      the wire.
+
+      *Observed: `Drained 3, refused 3 for profile 1`, with the three real rides
+      in the cloud and the three fixtures still in the backlog.*
+- [ ] **14.2.7a** **A refused ride is retried on every drain, for ever.** It is
+      cheap (a handful of rows, one request each) and it is honest — nothing
+      claims they are backed up. But *"3 rides waiting to go up"* implies they
+      will, and for these it never will. A `sync_refused_at` column would let
+      the app say the true thing — *"3 rides this cloud will not accept"* — and
+      stop asking. Deliberately not built yet: it is a migration for a state no
+      real ride has ever been in, and the fixtures that caused it are not real
+      rides
+- [x] **14.2.8a** **The rider's access token was going into logcat.**
+      `Log.w(tag, msg, e)` prints the SDK's own message, and for a Postgrest
+      failure that message is the entire request — URL, header list, and inside
+      it `Authorization: Bearer eyJ…` plus the apikey. Measured on the tablet
+      AVD rather than theorised: it was right there in `adb logcat`. `Log.w` is
+      also the one level that survives on the bike, where `log.tag` is `W`
+      device-wide, so this was the *most* visible line the app wrote rather than
+      the least. It logs the trimmed message now
+- [x] **14.2.9** **The cloud's class library and the bundled one had become two
+      different libraries.** 23.2.6 rebuilt the catalogue with a new id series
+      (`CLB-01`, `END-01`, …) and the cloud still held the pre-rebuild one
+      (`HC-01`, `PZE-02`, …). `workouts.class_id` has a foreign key onto
+      `class_templates`, so the consequence was total and silent: **no ride
+      against any bundled class could ever be backed up**, for any rider, for
+      ever, reported as "backup is failing".
+
+      Invisible to `assembleDebug` and to 532 passing tests, because the local
+      database is perfectly consistent with itself. It took signing a tablet in
+      and watching the backlog drain.
+
+      `supabase/publish_class_library.py` is the fix and the tool a self-hoster
+      needs: it reads the 72 shipped classes and upserts them, **additively** —
+      a ride already in the cloud points at `HC-02`, and 23.2.3's rule that
+      deleting a class takes a rider's history link with it has teeth here. The
+      cloud now holds 144 rows, which is correct and costs less than one ride's
+      samples
+- [x] **14.2.10** **Nothing drained the backlog on launch**, and the gap is
+      worse than it sounds. There were exactly two triggers — finishing a ride
+      and signing in — so 14.2.6's "the next ride sweeps it up" was the *only*
+      way a stranded ride ever moved. That is wrong at the one moment it matters
+      most: the first-sign-in backfill is both the largest batch the app will
+      ever send and the likeliest to meet a flat network, and a rider who signs
+      in on the sofa and rides on Saturday spends four days believing they are
+      backed up.
+
+      **The first version of the fix raced the session and lost**, which is the
+      part worth remembering: enqueuing from `Application.onCreate` asked the
+      gate before the SDK had read the stored session off disk, so it answered
+      *"no account on profile 1"* — correctly, for that instant — and the drain
+      never ran. Same shape as 21.1.3 and 8.3d.4: right about what it wants,
+      wrong about when it can have it. It is driven off the session flow now,
+      which fixes the race and makes "signed in later" the same trigger rather
+      than a second one that drifts
 - [ ] **14.2.4a** **Nothing nulls `synced_at` when a ride is edited**, because
       nothing in the payload is editable today — `rpeRating` and the FTP
       proposal flag are the only things that change after a ride ends and
@@ -323,6 +415,24 @@ once four riders have a year of history up there.
       and **columns of unequal length are rejected rather than repaired**,
       because past that point sample 900's power lines up with sample 900's
       cadence only by luck. Same argument as the telemetry fence*
+- [x] **14.4.3a** **The version never travelled.** 14.4.3 put `v` inside the
+      payload so that a future reader can tell what shape it is looking at, and
+      17.12 says not to start the web app against an unversioned payload. Three
+      rides then arrived in the cloud with `metrics_payload->>'v'` **NULL**.
+
+      The cause is one character of Kotlin: `@SerialName("v") val version: Int
+      = VERSION`. kotlinx.serialization omits a property equal to its default
+      unless `encodeDefaults` is on, and **Postgrest serialises with its own
+      `Json`**, not `SupabaseModule.json` where this project does set it. So the
+      one field whose entire job is to survive into an unknown future was the
+      only field that never left.
+
+      Invisible to every test, and for a reason worth keeping: `MetricsPayloadTest`
+      encodes with `Json { encodeDefaults = true }`, so the tests and production
+      used different encoders and only one of them was ever checked. The default
+      is gone now — there is nothing for the encoder to consider redundant and a
+      caller cannot forget to set it, because it will not compile — and a test
+      encodes with a bare `Json { }` to hold the line
 - [ ] **14.4.5** Confirm the stored size with `pg_column_size()` rather than trusting the model in *What a workout costs*. Same trip as 14.1.6; the query is in that section. **Still open and still needs the trip** — and note it now measures the *old* shape, since the one row up there predates 14.4
 - [x] **14.4.6** Settle the `getFloat().toDouble()` question first — finding 3 in that section. If the board reports fractional values, the noise digits are in the payload, in the exports, in the charts and in the calibration grid, and they are a bigger problem than the format.
       **Settled on the bike's own database, and it needed no rider** — one

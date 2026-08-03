@@ -23,6 +23,48 @@ class MetricsPayloadTest {
 
     private val json = Json { encodeDefaults = true }
 
+    /**
+     * **How the payload is actually encoded on the wire**, which is not the
+     * same thing as how this test file encodes it.
+     *
+     * `encodeDefaults` is off by default in kotlinx.serialization, and
+     * Postgrest serialises with its own `Json` rather than
+     * `SupabaseModule.json` — so production has always encoded with it off
+     * while every test above encoded with it on. That gap is not academic: it
+     * is exactly how `v` came to be missing from every ride in the cloud
+     * (14.4.3), invisible to 158 passing tests and visible in one
+     * `select metrics_payload->>'v'`.
+     */
+    private val wireJson = Json { }
+
+    /**
+     * **The version has to survive the encoder the SDK actually uses** (14.4.3,
+     * and 17.12 depends on it).
+     *
+     * Measured in the cloud rather than reasoned about: three rides uploaded
+     * with `metrics_payload->>'v'` NULL. The cause was a default value —
+     * `version: Int = VERSION` — which the encoder is entitled to omit as
+     * redundant. The fix is that there is no default any more, so there is
+     * nothing for it to consider redundant, and this test fails if one ever
+     * comes back.
+     */
+    @Test
+    fun `the version survives an encoder that omits defaults`() {
+        val encoded = wireJson.encodeToString(
+            MetricsPayload.serializer(),
+            MetricsPayload.from(
+                listOf(
+                    WorkoutMetricEntity(
+                        workoutId = "ride-1", timestampSec = 0,
+                        cadence = 80.0, resistance = 30.0, power = 100.0
+                    )
+                )
+            )
+        )
+
+        assertTrue("the payload went out with no version: $encoded", "\"v\":1" in encoded)
+    }
+
     private fun sample(
         second: Int,
         cadence: Double = 80.0,
@@ -143,6 +185,7 @@ class MetricsPayloadTest {
     @Test
     fun `a short provenance column is rejected too`() {
         val broken = MetricsPayload(
+            version = MetricsPayload.VERSION,
             timestampSec = listOf(0, 1, 2),
             cadence = listOf(80.0, 81.0, 82.0),
             resistance = listOf(30.0, 30.0, 30.0),
@@ -210,6 +253,7 @@ class MetricsPayloadTest {
         // and a half-record is worse than none — the same argument as the
         // telemetry fence.
         val broken = MetricsPayload(
+            version = MetricsPayload.VERSION,
             timestampSec = listOf(0, 1, 2),
             cadence = listOf(80.0, 81.0, 82.0),
             resistance = listOf(30.0, 30.0),
@@ -224,6 +268,7 @@ class MetricsPayloadTest {
     @Test
     fun `a short heart rate column is rejected too`() {
         val broken = MetricsPayload(
+            version = MetricsPayload.VERSION,
             timestampSec = listOf(0, 1, 2),
             cadence = listOf(80.0, 81.0, 82.0),
             resistance = listOf(30.0, 30.0, 30.0),

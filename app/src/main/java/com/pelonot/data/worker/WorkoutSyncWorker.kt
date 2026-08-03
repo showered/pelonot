@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.cloud.SyncFailure
 import java.util.concurrent.TimeUnit
 
 /**
@@ -67,6 +68,7 @@ class WorkoutSyncWorker(
         Log.i(TAG, "Draining ${pending.size} ride(s) for profile $userId")
 
         var uploaded = 0
+        var refused = 0
         for (workout in pending) {
             val metrics = workoutRepository.getMetrics(workout.id)
 
@@ -94,13 +96,41 @@ class WorkoutSyncWorker(
                     return Result.success()
                 }
 
+                is SyncOutcome.Rejected -> {
+                    // 14.2.7. The cloud understood this row and refused it, and
+                    // will refuse it identically next week. Two things follow,
+                    // and the first is the one that cost five rides:
+                    //
+                    // **Carry on with the batch.** Stopping here is what makes
+                    // one unacceptable ride block every ride behind it for
+                    // ever, which is how a first-sign-in backfill met a seeded
+                    // fixture whose id was not a UUID and stranded the rider's
+                    // real history behind it.
+                    //
+                    // **Do not mark it synced.** It is not in the cloud and
+                    // saying otherwise would be the `avg_hr` mistake again —
+                    // writing a plausible lie where a gap belongs. It stays in
+                    // the backlog, counted and reported, so the rider is told
+                    // the truth: most of it went up and this one will not.
+                    refused++
+                    settings.recordCloudSyncFailure(outcome.reason)
+                    Log.w(TAG, "Cloud refused ${workout.id} permanently: ${outcome.reason}")
+                }
+
                 is SyncOutcome.Failed -> {
                     // Written before deciding whether to retry, so a failure is
                     // visible in Settings on the first attempt rather than only
                     // once the retries are exhausted — the rider watching the
                     // screen is the person best placed to fix a wifi problem.
+                    // Trimmed, because the SDK's message carries the whole
+                    // request URL and header list. On the tablet that rendered
+                    // as eight lines of red containing
+                    // `columns=id%2Cuser_id%2Cduration_sec…` and pushed the
+                    // button that fixes it off the bottom of the card.
                     settings.recordCloudSyncFailure(
-                        outcome.cause.message ?: outcome.cause::class.java.simpleName
+                        SyncFailure.riderFacing(
+                            outcome.cause.message ?: outcome.cause::class.java.simpleName
+                        )
                     )
 
                     // Stop at the first failure rather than pressing on through
@@ -134,7 +164,13 @@ class WorkoutSyncWorker(
             enqueue(applicationContext, userId)
             Result.success()
         } else {
-            settings.clearCloudSyncError()
+            // The error is cleared only when the backlog is genuinely empty.
+            // A batch that finished with rides the cloud refused has **not**
+            // finished cleanly, and clearing here would replace a true red line
+            // with a false calm one — which is worse than the red line, because
+            // the rider stops looking.
+            if (refused == 0) settings.clearCloudSyncError()
+            Log.i(TAG, "Drained $uploaded, refused $refused for profile $userId")
             Result.success()
         }
     }
