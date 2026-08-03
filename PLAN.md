@@ -299,7 +299,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 
 | ~~**8.3d** Resume an interrupted ride~~ | **Done and observed over two resumes of one ride.** The owner's, and it contested 8.3a — whose reasoning did not survive: the gap it called unknown is arithmetic, and `elapsedSeconds()` has excluded paused time since Phase 3, so **a crash is a pause nobody got to press**. 8.3a's concern is kept as 8.3d.2 rather than discarded. It also turned up the rule now in CLAUDE.md: **the finalise writes defaults over any column `WorkoutSession` does not carry** |
 
-**Three of the owner's own are open, and all three want them rather than a
+**Three of the owner's own are open, and all three want the owner rather than a
 session:**
 
 | Next | Why now |
