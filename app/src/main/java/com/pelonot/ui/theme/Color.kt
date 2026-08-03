@@ -2,6 +2,7 @@ package com.pelonot.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.PowerZone
 
@@ -123,6 +124,18 @@ val PowerZone5VO2Max = Color(0xFFEF5350)
 val PowerZone6Anaerobic = Color(0xFFAB47BC)
 val PowerZone7Neuromuscular = Color(0xFFD81B60)
 
+// --- Heart-rate zone colours (5-zone, %HRmax) ---
+// 21.2.1: deliberately **not** the power ramp. Power runs grey → indigo → teal
+// → amber → red → purple → pink; this runs green → lime → yellow → orange →
+// red, anchored on the heart-rate accent so the family is obvious at a glance.
+// Sharing the palette would tell a rider that HR zone 4 and power zone 4 are
+// the same statement about them, which is false.
+val HeartRateZone1Recovery = Color(0xFF00E676)
+val HeartRateZone2Aerobic = Color(0xFF76FF03)
+val HeartRateZone3Tempo = Color(0xFFFFD600)
+val HeartRateZone4Threshold = Color(0xFFFF6D00)
+val HeartRateZone5Maximum = Color(0xFFFF1744)
+
 /** Gradients for hero surfaces, kept as pairs so they stay two-stop and calm. */
 object PelonotGradients {
     val TealFlow = listOf(Color(0xFF00695C), Color(0xFF00897B))
@@ -147,6 +160,16 @@ val PowerZone.color: Color
         PowerZone.Z5 -> PowerZone5VO2Max
         PowerZone.Z6 -> PowerZone6Anaerobic
         PowerZone.Z7 -> PowerZone7Neuromuscular
+    }
+
+/** The colour for a [HeartRateZone] — its own ramp, never the power one. */
+val HeartRateZone.color: Color
+    get() = when (this) {
+        HeartRateZone.H1 -> HeartRateZone1Recovery
+        HeartRateZone.H2 -> HeartRateZone2Aerobic
+        HeartRateZone.H3 -> HeartRateZone3Tempo
+        HeartRateZone.H4 -> HeartRateZone4Threshold
+        HeartRateZone.H5 -> HeartRateZone5Maximum
     }
 
 /**

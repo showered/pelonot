@@ -713,6 +713,53 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 11 → 12: `max_hr_bpm` and `birth_date` (21.1.1, 21.1.3).
+     *
+     * The third case in the pair above, and it lands on the other side from
+     * 10 → 11. There is no fact to state here: a default maximum heart rate is
+     * a guess about a rider's body, and it would silently prescribe zones off a
+     * number nobody gave. So every profile that already exists comes out with
+     * both columns null and **no heart-rate zones at all**, which is the honest
+     * answer until the rider is asked.
+     */
+    @Test
+    fun migrate11To12_leavesExistingRidersWithNoMaximumRatherThanAGuess() {
+        helper.createDatabase(TEST_DB, 11).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 12, true, AppMigrations.MIGRATION_11_12)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query("SELECT max_hr_bpm, birth_date, ftp_watts FROM profiles WHERE local_user_id = 1")
+                .use { cursor ->
+                    assertTrue("the profile that existed before the migration is gone", cursor.moveToFirst())
+                    assertTrue("a maximum heart rate was invented", cursor.isNull(0))
+                    assertTrue("a date of birth was invented", cursor.isNull(1))
+                    // The rider is otherwise untouched, which is the other half
+                    // of what an ADD COLUMN has to leave true.
+                    assertEquals(210, cursor.getInt(2))
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

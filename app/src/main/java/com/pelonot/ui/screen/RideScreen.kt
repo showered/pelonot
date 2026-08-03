@@ -801,14 +801,35 @@ private fun MetricGrid(
                 modifier = Modifier.weight(1f)
             )
             val noStrap = state.reading.heartRateBpm == null
+
+            // 21.3.1. The number itself takes the zone's colour — the cheapest
+            // form of "which zone am I in", and the one that needs no extra
+            // room on a screen that has none to spare. It falls back to the
+            // metric's own green rather than to grey, because a rider with no
+            // maximum recorded must not be shown a *duller* heart rate than one
+            // who has: absent zones are absent, not worse.
+            //
+            // This is the one tile where colouring by zone is free, and the
+            // reason is worth knowing before copying it: `MetricReadout`
+            // already recolours a value amber when it is off target, and heart
+            // rate is the only live metric with no target band. On cadence the
+            // two signals would fight, which is 11.7.1a seen from the far side.
+            val hrZone = state.heartRateZone
+            val hrAccent by animateColorAsState(
+                targetValue = hrZone?.color ?: MetricHeartRateGreen,
+                animationSpec = spring(stiffness = Spring.StiffnessLow),
+                label = "HeartRateZoneColour"
+            )
+
             RideMetricTile(
-                label = "HEART RATE",
+                label = hrZone?.let { "HEART RATE · H${it.number} ${it.displayName.uppercase()}" }
+                    ?: "HEART RATE",
                 icon = MetricIcons.HeartRate,
                 // Null means no strap, never a measured zero. The strap is its
                 // own radio, so it is not silenced by the bike going quiet.
                 value = state.reading.heartRateBpm?.toString() ?: NO_READING,
                 unit = "bpm",
-                accent = MetricHeartRateGreen,
+                accent = hrAccent,
                 band = TargetBand.NONE,
                 rawValue = (state.reading.heartRateBpm ?: 0).toDouble(),
                 valueSize = 76.sp,

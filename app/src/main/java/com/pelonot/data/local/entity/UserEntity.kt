@@ -60,7 +60,43 @@ data class UserEntity(
      * the thing to avoid.
      */
     @ColumnInfo(name = "household_visible")
-    val householdVisible: Boolean = true
+    val householdVisible: Boolean = true,
+
+    /**
+     * The rider's own maximum heart rate, if they know it (21.1.3).
+     *
+     * **This is the primary input and the date below is the fallback**, not
+     * the other way round: any age formula has a 10–12 bpm spread between
+     * individuals at the same age, which is wider than a zone, so for a
+     * meaningful fraction of riders an estimate produces the wrong zones
+     * outright.
+     *
+     * Nullable, and null means *not given* — never a default. A rider with
+     * neither this nor a date of birth gets **no** heart-rate zones, which is
+     * an honest state with a screen of its own (21.3.3), and it is what stops
+     * the app inventing a denominator the way it must not invent a heart rate.
+     */
+    @ColumnInfo(name = "max_hr_bpm")
+    val maxHrBpm: Int? = null,
+
+    /**
+     * Date of birth, epoch milliseconds UTC — the fallback input for zones
+     * (21.1.1, 21.1.2).
+     *
+     * A **full date stored as a date**, not an age: an age integer goes
+     * silently stale on the rider's birthday, and a date picker is a control
+     * everyone already knows where "what year were you born" is a field people
+     * stop and think about.
+     *
+     * The app does not want anybody's birthday; it wants a maximum heart rate,
+     * and age is only a proxy for one. Nullable for the rider who would rather
+     * not say — and with [maxHrBpm] asked first, many riders are never asked
+     * for it at all. Only the **year** may ever leave the tablet (21.1.1a): on
+     * a bike this is a fitness input, and in a cloud row beside a display name
+     * it is an identity field.
+     */
+    @ColumnInfo(name = "birth_date")
+    val birthDate: Long? = null
 ) {
 
     /** True when this rider has an account, and therefore a cloud. */

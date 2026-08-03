@@ -107,6 +107,16 @@ class WorkoutRepository(
         metricDao.getMetricsForWorkout(workoutId)
 
     /**
+     * The highest heart rate this rider has ever recorded, or null (21.1.3).
+     *
+     * Offered as an opening guess when Settings asks for their maximum. It is a
+     * **floor, not a maximum** — the hardest thirty seconds they have ridden so
+     * far — which is why it is offered and never written for them.
+     */
+    suspend fun highestHeartRate(userId: Int): Int? =
+        metricDao.getHighestHeartRate(userId)
+
+    /**
      * Writes the workout row at the *start* of a ride so that per-second
      * metrics have a parent to reference. See [WorkoutEntity.isComplete].
      */

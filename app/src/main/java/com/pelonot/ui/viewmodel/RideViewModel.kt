@@ -16,6 +16,8 @@ import com.pelonot.data.service.WorkoutService
 import com.pelonot.data.service.WorkoutSession
 import com.pelonot.data.service.WorkoutState
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.model.HeartRateZone
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.ZoneScale
@@ -25,6 +27,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -46,7 +51,13 @@ data class RideUiState(
      * Offering "back to the HUD" when the overlay is off or ungranted would
      * drop the rider onto their home screen with nothing.
      */
-    val hudAvailable: Boolean = false
+    val hudAvailable: Boolean = false,
+    /**
+     * The rider's maximum heart rate, or null when the app has not been given
+     * one (21.1). Null is a real state and means **no heart-rate zone is drawn
+     * at all** — not a default maximum, which would be inventing a denominator.
+     */
+    val maxHeartRate: MaxHeartRate? = null
 ) {
     val elapsedSeconds: Int get() = snapshot.elapsedSeconds
     val isPaused: Boolean get() = workoutState == WorkoutState.Paused
@@ -70,6 +81,16 @@ data class RideUiState(
             telemetryLive = snapshot.telemetryLive,
             prescribed = if (snapshot.interval.hasClass) snapshot.interval.targetZone else null
         )
+
+    /**
+     * The heart-rate zone the rider is in, or null (21.3.1).
+     *
+     * Null for a missing strap and null for a rider with no maximum, and the
+     * rule lives on [HeartRateZone] so no second surface can answer it
+     * differently — the same reason [currentZone] goes through [ZoneScale].
+     */
+    val heartRateZone: HeartRateZone?
+        get() = HeartRateZone.forHeartRate(reading.heartRateBpm, maxHeartRate?.bpm)
 
     /** True when telemetry is fabricated, so the UI can say so plainly. */
     val isSimulated: Boolean
@@ -100,10 +121,12 @@ data class RideUiState(
  * screen, and so must its overlay. All this does is tell the service whether
  * the screen is currently on top, so the two never draw at once.
  */
+@Suppress("OPT_IN_USAGE") // flatMapLatest
 class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sensorRepository = ServiceLocator.sensorRepository
     private val settingsRepository = ServiceLocator.settingsRepository
+    private val userRepository = ServiceLocator.userRepository
 
     private val _uiState = MutableStateFlow(RideUiState())
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
@@ -177,6 +200,20 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             sensorRepository.status.collect { status ->
                 _uiState.update { it.copy(sensorStatus = status) }
             }
+        }
+        // 21.3.1. Observed rather than read once, so a rider who sets their
+        // maximum from the ride screen's own settings sheet (11.6.10) sees the
+        // zones appear without leaving the class.
+        viewModelScope.launch {
+            settingsRepository.settings
+                .map { it.lastProfileId }
+                .flatMapLatest { id ->
+                    if (id == null) flowOf(null) else userRepository.observeUser(id)
+                }
+                .collect { user ->
+                    val max = MaxHeartRate.resolve(user?.maxHrBpm, user?.birthDate)
+                    _uiState.update { it.copy(maxHeartRate = max) }
+                }
         }
     }
 

@@ -28,8 +28,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.domain.cloud.CloudSyncStatus
+import com.pelonot.domain.model.MaxHeartRate
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -50,7 +53,14 @@ data class SettingsUiState(
     val ftpHistory: List<FtpHistoryEntity> = emptyList(),
 
     /** Whether their rides are reaching the cloud, and what if not (14.2.3). */
-    val cloudSync: CloudSyncStatus = CloudSyncStatus.Off
+    val cloudSync: CloudSyncStatus = CloudSyncStatus.Off,
+
+    /**
+     * The highest heart rate this rider has ever recorded, offered as a
+     * starting point rather than written for them (21.1.3). Null until it is
+     * looked up, and null for a rider who has never worn a strap.
+     */
+    val highestRecordedHr: Int? = null
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -65,6 +75,16 @@ data class SettingsUiState(
      * possible moment to be wrong about their record.
      */
     val lastFtpChange: FtpHistoryEntity? get() = ftpHistory.takeIf { it.size > 1 }?.last()
+
+    /**
+     * The maximum heart rate zones are computed from, and where it came from —
+     * or **null, which is a real state** (21.1, 21.3.3).
+     *
+     * Resolved here rather than stored, so it follows a rider correcting their
+     * date of birth without anything having to be recomputed and written back.
+     */
+    val maxHeartRate: MaxHeartRate? get() =
+        MaxHeartRate.resolve(profile?.maxHrBpm, profile?.birthDate)
 
     /** What it moved from, for the direction. */
     val previousFtpWatts: Int? get() =
@@ -149,10 +169,17 @@ class SettingsViewModel(
         cloudSync
     ) { status, devices, cloud -> Triple(status, devices, cloud) }
 
+    /**
+     * 21.1.3. Looked up on demand rather than observed: it is a one-off opening
+     * guess offered while the rider is typing, not a number any screen shows.
+     */
+    private val _highestRecordedHr = MutableStateFlow<Int?>(null)
+
     private val volume = combine(
         volumeController.mediaVolume,
-        volumeController.lastError
-    ) { level, error -> level to error }
+        volumeController.lastError,
+        _highestRecordedHr
+    ) { level, error, highestHr -> Triple(level, error, highestHr) }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
@@ -160,7 +187,7 @@ class SettingsViewModel(
         sensors,
         volume,
         calibrationRepository.state
-    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -170,7 +197,8 @@ class SettingsViewModel(
             mediaVolume = mediaVolume,
             volumeError = volumeError,
             calibration = calibration,
-            cloudSync = cloudSync
+            cloudSync = cloudSync,
+            highestRecordedHr = highestHr
         )
     }.stateIn(
         scope = viewModelScope,
@@ -211,6 +239,46 @@ class SettingsViewModel(
                 // not a save.
                 ftpSource = FtpChangeSource.ManualEdit
             )
+        }
+    }
+
+    /**
+     * What heart-rate zones are computed from (21.1.1, 21.1.3).
+     *
+     * **One tap is one write**, both columns together, for exactly the reason
+     * `saveRider` above carries at length: two coroutines doing read-modify-
+     * write on one row eat each other's field, and it took 7.9's own history to
+     * notice the last time.
+     *
+     * Null here means **clear it**, not "unchanged" — the opposite of
+     * `saveRider`'s convention, and deliberately so. These two fields are the
+     * only ones on the profile a rider can legitimately want to *remove*: the
+     * app asked for personal data and taking it back has to be possible, so
+     * "leave the box empty" cannot be the one instruction it ignores.
+     */
+    fun saveHeartRateBasis(maxHrBpm: Int?, birthDate: Long?) {
+        val profile = uiState.value.profile ?: return
+        viewModelScope.launch {
+            userRepository.save(profile.copy(maxHrBpm = maxHrBpm, birthDate = birthDate))
+        }
+    }
+
+    /**
+     * 21.1.3. The best opening guess the app can make, from its own samples.
+     *
+     * The rider is resolved from the settings flow rather than from
+     * `uiState.value.profile`, and that is not a stylistic choice — it is a
+     * defect found by driving the screen. The section asks for this from a
+     * `LaunchedEffect(Unit)` on its first composition, which happens while
+     * `uiState` is still the default and the profile is still null, so the
+     * offer read the id as absent and silently never appeared. A rider with 382
+     * recorded samples was shown no suggestion at all, with nothing looking
+     * broken.
+     */
+    fun loadHighestRecordedHeartRate() {
+        viewModelScope.launch {
+            val userId = settingsRepository.settings.first().lastProfileId ?: return@launch
+            _highestRecordedHr.value = workoutRepository.highestHeartRate(userId)
         }
     }
 

@@ -291,9 +291,32 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 11 → 12: what heart-rate zones are computed from (21.1.1, 21.1.3).
+     *
+     * Two nullable columns on `profiles`, and **nullable is the decision**, not
+     * an oversight. The contrast with 10 → 11 is the whole reasoning: there,
+     * `resume_count` took `NOT NULL DEFAULT 0` because zero stated a *fact* —
+     * no ride already on a tablet had been resumed, since resuming did not
+     * exist. There is no equivalent fact here. Any default maximum heart rate
+     * would be a **guess about a rider's body**, silently prescribing zones off
+     * a number nobody gave, which is the same family of mistake as defaulting
+     * an absent heart rate to zero. A default is safe exactly when it states a
+     * fact rather than a guess.
+     *
+     * So every existing profile comes out of this migration with no heart-rate
+     * zones at all, and that is the correct answer until they are asked.
+     */
+    val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `profiles` ADD COLUMN `max_hr_bpm` INTEGER")
+            db.execSQL("ALTER TABLE `profiles` ADD COLUMN `birth_date` INTEGER")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
+        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12
     )
 }

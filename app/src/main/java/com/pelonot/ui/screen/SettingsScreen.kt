@@ -30,6 +30,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -77,7 +80,9 @@ import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.HudDock
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.domain.model.UnitSystem
@@ -85,6 +90,7 @@ import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.DarkSurfaceContainerLowest
 import com.pelonot.ui.theme.DarkTextPrimary
 import com.pelonot.ui.theme.HudMinimumOpacity
+import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
@@ -268,6 +274,15 @@ fun SettingsScreen(
                 onForget = { viewModel.selectHeartRateDevice(null) }
             )
 
+            HeartRateZonesSection(
+                maxHrBpm = state.profile?.maxHrBpm,
+                birthDate = state.profile?.birthDate,
+                highestRecorded = state.highestRecordedHr,
+                resolved = state.maxHeartRate,
+                onAskForHighest = viewModel::loadHighestRecordedHeartRate,
+                onSave = viewModel::saveHeartRateBasis
+            )
+
             CloudSection(
                 hasAccount = state.profile?.hasAccount == true,
                 backupEnabled = state.settings.cloudSyncEnabled,
@@ -368,6 +383,15 @@ fun RideSettingsSheet(
                 selectedAddress = state.settings.heartRateDeviceAddress,
                 onScan = scanForHeartRate,
                 onForget = { viewModel.selectHeartRateDevice(null) }
+            )
+
+            HeartRateZonesSection(
+                maxHrBpm = state.profile?.maxHrBpm,
+                birthDate = state.profile?.birthDate,
+                highestRecorded = state.highestRecordedHr,
+                resolved = state.maxHeartRate,
+                onAskForHighest = viewModel::loadHighestRecordedHeartRate,
+                onSave = viewModel::saveHeartRateBasis
             )
 
             VolumeSection(
@@ -667,6 +691,209 @@ private fun HeartRateSection(
                     Text("Forget")
                 }
             }
+        }
+    }
+}
+
+/**
+ * What heart-rate zones are computed from (21.1, 21.2.2, 21.3.3).
+ *
+ * **The order of the two fields is the design.** The app does not want
+ * anybody's date of birth; it wants a maximum heart rate, and age is only a
+ * proxy for one — a poor proxy, with a 10–12 bpm spread between individuals at
+ * the same age, which is wider than a zone. So the rider's own number is asked
+ * for first and the date is the fallback, which is both more accurate and asks
+ * less about the person.
+ *
+ * Three states, and the third is the one worth getting right: a rider who
+ * gives neither gets **no heart-rate zones**, said plainly, rather than zones
+ * computed off a number the app made up. Same rule as a null heart rate.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HeartRateZonesSection(
+    maxHrBpm: Int?,
+    birthDate: Long?,
+    highestRecorded: Int?,
+    resolved: MaxHeartRate?,
+    onAskForHighest: () -> Unit,
+    /** One call, not two — the same rule `saveRider` carries. */
+    onSave: (maxHrBpm: Int?, birthDate: Long?) -> Unit
+) {
+    var maxText by remember(maxHrBpm) { mutableStateOf(maxHrBpm?.toString().orEmpty()) }
+    var date by remember(birthDate) { mutableStateOf(birthDate) }
+    var picking by remember { mutableStateOf(false) }
+
+    // Asked for once, while the section is on screen, so the offer below is
+    // ready before the rider starts typing.
+    LaunchedEffect(Unit) { onAskForHighest() }
+
+    val typed = maxText.toIntOrNull()
+    val maxError = maxText.isNotBlank() && (typed == null || !MaxHeartRate.isPlausible(typed))
+
+    // What the rider *would* get if they saved right now, so the estimate is
+    // visibly a fitness calculation rather than a form harvesting a birthday.
+    val preview = MaxHeartRate.resolve(typed?.takeIf { !maxError }, date)
+
+    if (picking) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = date)
+        DatePickerDialog(
+            onDismissRequest = { picking = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    date = state.selectedDateMillis
+                    picking = false
+                }) { Text("Use this date") }
+            },
+            dismissButton = {
+                TextButton(onClick = { picking = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = state, title = { Text("Date of birth") })
+        }
+    }
+
+    SettingsSection("Heart-rate zones") {
+        OutlinedTextField(
+            value = maxText,
+            onValueChange = { maxText = it.filter(Char::isDigit) },
+            label = { Text("Maximum heart rate (bpm)") },
+            supportingText = {
+                Text(
+                    if (maxError) {
+                        "Enter a value between ${MaxHeartRate.MIN_BPM} and ${MaxHeartRate.MAX_BPM}"
+                    } else {
+                        "If you know your own number, this is the one to use — " +
+                            "an estimate can be a whole zone out."
+                    }
+                )
+            },
+            isError = maxError,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // 21.1.3. The app already holds every sample the rider has ever
+        // recorded, so it can make a far better opening guess than a formula.
+        // Offered, never written for them: the hardest thirty seconds they have
+        // ridden so far is a floor, not a maximum, and only they can say which.
+        if (highestRecorded != null) {
+            TextButton(onClick = { maxText = highestRecorded.toString() }) {
+                Text("Use $highestRecorded — the highest you've recorded")
+            }
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        Text(
+            text = "Don't know it?",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Pelonot can estimate one from your age — Tanaka's 208 − 0.7 × age. " +
+                "It is only an estimate: two riders the same age can be 12 bpm apart.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(onClick = { picking = true }, shape = MaterialTheme.expressiveShapes.pill) {
+                Text(
+                    date?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) }
+                        ?: "Set date of birth"
+                )
+            }
+            if (date != null) {
+                TextButton(onClick = { date = null }) { Text("Clear") }
+            }
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        Button(
+            onClick = { onSave(typed?.takeIf { MaxHeartRate.isPlausible(it) }, date) },
+            enabled = !maxError,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.expressiveShapes.pill
+        ) {
+            Text("Save heart-rate settings")
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        // The zones themselves, drawn from whatever is saved — and from the
+        // *preview* while the rider is editing, so the estimate visibly moves
+        // as they fill the date in.
+        HeartRateZoneLadder(preview ?: resolved)
+    }
+}
+
+/** The five zones with their bpm, or the honest empty state (21.3.3). */
+@Composable
+private fun HeartRateZoneLadder(max: MaxHeartRate?) {
+    if (max == null) {
+        Text(
+            text = "No heart-rate zones yet. Pelonot won't guess a maximum — " +
+                "give it your own number or a date of birth and the zones appear here.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    Text(
+        text = if (max.isEstimate) {
+            "Zones from ${max.bpm} bpm — estimated from your date of birth"
+        } else {
+            "Zones from ${max.bpm} bpm — your own number"
+        },
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    // 21.2.2: say which basis, wherever the zones are shown.
+    Text(
+        text = "As a percentage of maximum heart rate",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+    HeartRateZone.entries.forEach { zone ->
+        val range = zone.bpmRange(max.bpm)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(MaterialTheme.expressiveShapes.pill)
+                        .background(zone.color)
+                )
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                Text(
+                    text = "H${zone.number} · ${zone.displayName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(
+                text = "${range.first}–${range.last} bpm",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
