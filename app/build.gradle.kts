@@ -41,6 +41,32 @@ fun secret(key: String, envKey: String): String =
 val supabaseUrl = secret("supabase.url", "SUPABASE_URL")
 val supabaseAnonKey = secret("supabase.anonKey", "SUPABASE_ANON_KEY")
 
+/**
+ * A value that is **not** a credential, resolved the same three ways.
+ *
+ * Deliberately a different function from [secret] rather than a third call to
+ * it, because `CloudConfigFenceTest` counts `secret()` calls and that count is
+ * the fence: `local.properties` also holds an `sbp_` personal access token that
+ * can delete every project on the account, and it is one `buildConfigField`
+ * away from an APK. Widening the fence to "three secrets now" would give up
+ * the property that makes it useful.
+ *
+ * What goes here instead is public by nature. `pelonot.webUrl` is where the
+ * companion web app is served from (PLAN 15.6, 17.14) — it is printed on the
+ * bike's own screen as part of a QR code, so it is not merely non-secret, it is
+ * *published by the feature that uses it*. It stays configurable rather than
+ * hard-coded for the same reason the endpoint does: a self-hoster's is not
+ * ours.
+ */
+fun publicConfig(key: String, envKey: String): String =
+    listOf(
+        System.getenv(envKey),
+        localProperties.getProperty(key),
+        cloudDefaults.getProperty(key)
+    ).firstOrNull { !it.isNullOrBlank() } ?: ""
+
+val pelonotWebUrl = publicConfig("pelonot.webUrl", "PELONOT_WEB_URL")
+
 android {
     namespace = "com.pelonot"
     compileSdk = 34
@@ -56,6 +82,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "PELONOT_WEB_URL", "\"$pelonotWebUrl\"")
 
         ksp {
             // Export Room schemas so migrations can be written and verified.
@@ -152,6 +179,10 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
     implementation(libs.ktor.client.android)
+
+    // Drawing a QR code for the sign-in hand-off (15.6.6). Pure Java, no
+    // Android dependency, and nothing in the app ever scans one.
+    implementation(libs.zxing.core)
 
     // Debug
     debugImplementation(libs.compose.ui.tooling)

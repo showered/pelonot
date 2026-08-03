@@ -7,6 +7,7 @@ import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
 import com.pelonot.data.remote.AuthRepository
 import com.pelonot.data.remote.CloudAccess
+import com.pelonot.data.remote.DeviceLinkRepository
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.CalibrationRepository
@@ -105,6 +106,18 @@ object ServiceLocator {
      * about having one place the SDK is reached from.
      */
     val authRepository: AuthRepository by lazy { AuthRepository() }
+
+    /**
+     * Signing in by showing a code on the bike and scanning it (15.6).
+     *
+     * It holds the device secret for the pairing currently on screen, so there
+     * is one instance rather than one per screen — two pairings in flight would
+     * each be able to collect only their own, but the second would silently
+     * orphan the first's row until it expired.
+     */
+    val deviceLinkRepository: DeviceLinkRepository by lazy {
+        DeviceLinkRepository(authRepository)
+    }
 
     val cloudAccess: CloudAccess by lazy {
         CloudAccess(

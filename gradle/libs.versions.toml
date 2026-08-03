@@ -20,6 +20,8 @@ serialization = "1.7.3"
 supabase = "3.0.2"
 ktor = "3.0.2"
 
+zxing = "3.5.3"
+
 junit = "4.13.2"
 androidxTestJunit = "1.2.1"
 androidxTestCore = "1.6.1"
@@ -69,6 +71,10 @@ supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "s
 supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+
+# QR encoding for the sign-in hand-off (PLAN 15.6.6). `core` only — the
+# `android` artifact pulls in a camera and this app never scans, it only draws.
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 # Test
 junit = { module = "junit:junit", version.ref = "junit" }

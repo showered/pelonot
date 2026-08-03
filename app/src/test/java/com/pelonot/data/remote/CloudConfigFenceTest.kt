@@ -63,6 +63,35 @@ class CloudConfigFenceTest {
         )
     }
 
+    /**
+     * **The fence is the count, so a non-credential gets its own door.**
+     *
+     * `pelonot.webUrl` (15.6, 17.14) genuinely is not a secret — the bike draws
+     * it on screen inside a QR code, which is the opposite of keeping it — and
+     * it still has to be configurable, because a self-hoster's web app is not
+     * ours. Widening `secret()` to admit it would have cost the property that
+     * makes the test above worth having: that **any** third value in that list
+     * is a mistake, since the file it is read from also holds an `sbp_` token
+     * that can delete every project on the account.
+     *
+     * So this is the other half of the same fence rather than a hole in it.
+     * Adding a fourth public value is still a decision somebody has to come
+     * here and make.
+     */
+    @Test
+    fun `the only non-credential built into the app is where the web app lives`() {
+        val public = Regex("""publicConfig\(\s*"([^"]+)"""").findAll(buildScript)
+            .map { it.groupValues[1] }
+            .toList()
+
+        assertEquals(
+            "publicConfig() also reaches BuildConfig; a value that belongs in it " +
+                "must be one the app is willing to print on the bike's screen",
+            listOf("pelonot.webUrl"),
+            public
+        )
+    }
+
     @Test
     fun `the access token is named nowhere in the build`() {
         assertTrue(

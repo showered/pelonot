@@ -3,6 +3,7 @@ package com.pelonot.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.data.remote.DeviceLinkRepository
 import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
@@ -12,6 +13,10 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.AuthAttempt
 import com.pelonot.domain.cloud.CredentialCheck
+import com.pelonot.domain.cloud.PairingState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +51,12 @@ data class AccountUiState(
     val awaitingConfirmationFor: String? = null,
     val cloudConfigured: Boolean = true,
     /** How many of this profile's rides would go up on signing in (15.3.1). */
-    val ridesWaiting: Int = 0
+    val ridesWaiting: Int = 0,
+    /** Signing in by scanning a code, if this build has a page to point at. */
+    val pairing: PairingState = PairingState.Idle,
+    val pairingAvailable: Boolean = false,
+    /** Redrawn once a second while a code is up, for the countdown alone. */
+    val nowMs: Long = 0L
 ) {
     val isGuest: Boolean get() = profile == null
 
@@ -92,10 +102,24 @@ class AccountViewModel(
     private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
-    private val workoutRepository: WorkoutRepository
+    private val workoutRepository: WorkoutRepository,
+    private val deviceLinkRepository: DeviceLinkRepository
 ) : ViewModel() {
 
     private val form = MutableStateFlow(FormState())
+
+    private val pairing = MutableStateFlow<PairingState>(PairingState.Idle)
+
+    /**
+     * A clock, running only while a code is on screen.
+     *
+     * It exists for the countdown and for nothing else, and it stops the moment
+     * the pairing does — a ViewModel ticking once a second for the life of the
+     * process is a battery cost on a tablet that spends its life awake.
+     */
+    private val now = MutableStateFlow(0L)
+
+    private var pollJob: Job? = null
 
     private val profile = settingsRepository.settings
         .map { it.lastProfileId }
@@ -109,12 +133,15 @@ class AccountViewModel(
             if (id == null) flowOf(0) else workoutRepository.observeBacklog(id).map { it.pending }
         }
 
+    private val pairingState = combine(pairing, now) { state, tick -> state to tick }
+
     val uiState: StateFlow<AccountUiState> = combine(
         profile,
         accountRepository.accountState,
         form,
-        backlog
-    ) { profile, session, form, waiting ->
+        backlog,
+        pairingState
+    ) { profile, session, form, waiting, (pairing, tick) ->
         AccountUiState(
             profile = profile,
             session = session,
@@ -126,7 +153,10 @@ class AccountViewModel(
             problem = form.problem,
             awaitingConfirmationFor = form.awaitingConfirmationFor,
             cloudConfigured = accountRepository.cloudConfigured,
-            ridesWaiting = waiting
+            ridesWaiting = waiting,
+            pairing = pairing,
+            pairingAvailable = deviceLinkRepository.pairingAvailable,
+            nowMs = tick
         )
     }.stateIn(
         scope = viewModelScope,
@@ -192,6 +222,65 @@ class AccountViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Asks for a code and starts watching for the phone (15.6.6).
+     *
+     * The loop it starts owns three responsibilities and they are deliberately
+     * in one place: tick the countdown, poll, and **stop**. A pairing that
+     * outlives its code is a screen inviting a rider to scan something the
+     * server has already forgotten.
+     */
+    fun startPairing(onSignedIn: () -> Unit) {
+        val localUserId = uiState.value.profile?.localUserId ?: return
+        pollJob?.cancel()
+        pairing.value = PairingState.Starting
+
+        pollJob = viewModelScope.launch {
+            val started = deviceLinkRepository.begin()
+            pairing.value = started
+            val waiting = started as? PairingState.Waiting ?: return@launch
+
+            while (isActive) {
+                now.value = System.currentTimeMillis()
+
+                if (waiting.hasExpired(now.value)) {
+                    deviceLinkRepository.forget()
+                    pairing.value = PairingState.Expired
+                    return@launch
+                }
+
+                val handover = deviceLinkRepository.poll(waiting.code)
+                if (handover != null) {
+                    pairing.value = PairingState.Completing
+                    val adopted = deviceLinkRepository.adopt(handover)
+                    // The same attach as the typed path, deliberately: if
+                    // pairing had its own copy of 15.2's rules, one of the two
+                    // would drift and it would be this one.
+                    resolve(
+                        accountRepository.adoptSession(localUserId, adopted),
+                        localUserId,
+                        onSignedIn
+                    )
+                    if (adopted is AuthAttempt.Failed) {
+                        pairing.value = PairingState.Failed(adopted.message)
+                    } else {
+                        pairing.value = PairingState.Idle
+                    }
+                    return@launch
+                }
+
+                delay(POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    fun cancelPairing() {
+        pollJob?.cancel()
+        pollJob = null
+        deviceLinkRepository.forget()
+        pairing.value = PairingState.Idle
     }
 
     fun signOut() {
@@ -271,15 +360,25 @@ class AccountViewModel(
         value = block(value)
     }
 
+    override fun onCleared() {
+        // The loop runs in viewModelScope so it is cancelled anyway; forgetting
+        // the secret is the part that matters, because a secret still in memory
+        // is one a later poll could use against a code the rider abandoned.
+        deviceLinkRepository.forget()
+        super.onCleared()
+    }
+
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
+        private const val POLL_INTERVAL_MS = DeviceLinkRepository.POLL_INTERVAL_MS
 
         val Factory = viewModelFactory {
             AccountViewModel(
                 accountRepository = ServiceLocator.accountRepository,
                 userRepository = ServiceLocator.userRepository,
                 settingsRepository = ServiceLocator.settingsRepository,
-                workoutRepository = ServiceLocator.workoutRepository
+                workoutRepository = ServiceLocator.workoutRepository,
+                deviceLinkRepository = ServiceLocator.deviceLinkRepository
             )
         }
     }
