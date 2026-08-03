@@ -11,6 +11,7 @@ import com.pelonot.data.local.dao.SyncBacklog
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.domain.model.HouseholdLeaderboard
 import com.pelonot.domain.model.MetricSample
+import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -39,6 +40,20 @@ data class DashboardStats(
 ) {
     val hasRidden: Boolean get() = lastRide != null
 }
+
+/**
+ * An interrupted ride reopened, and everything it had already banked (8.3d).
+ *
+ * The row and the aggregates travel together because the service needs both and
+ * they must describe the same instant: the row carries the identity the ride
+ * must keep — its id, its class, and **the FTP it was started at**, which has
+ * to come from here rather than from the rider's profile or a breakthrough
+ * accepted in between would silently rescore the ride (7.8).
+ */
+data class ResumedRide(
+    val workout: WorkoutEntity,
+    val aggregates: WorkoutAggregates
+)
 
 /** Leaderboard figures for a ride of a given length. */
 data class LeaderboardStats(
@@ -202,6 +217,74 @@ class WorkoutRepository(
         )
         workoutDao.updateWorkout(recovered)
         return recovered
+    }
+
+    /**
+     * How long [workoutId] has been interrupted for, or null if it is not a
+     * ride that can be asked (8.3d).
+     *
+     * Reads the last sample rather than the row's `duration_sec`, because the
+     * row of an interrupted ride was written at ride start with zeroed totals —
+     * that ordering is what lets `workout_metrics` reference it at all (1.12) —
+     * so the row does not know how far the ride got. The samples do.
+     */
+    suspend fun interruptionFor(
+        workoutId: String,
+        nowEpochMs: Long = System.currentTimeMillis()
+    ): RideInterruption? {
+        val workout = workoutDao.getWorkoutById(workoutId) ?: return null
+        val lastSample = metricDao.getLastMetricForWorkout(workoutId)
+        return RideInterruption.between(
+            startedAtEpochMs = workout.timestamp,
+            lastRecordedSec = lastSample?.timestampSec ?: 0,
+            nowEpochMs = nowEpochMs
+        )
+    }
+
+    /**
+     * Reopens an interrupted ride so the service can carry on recording it
+     * (8.3d).
+     *
+     * Deliberately **not** an insert. The `workouts` row already exists and
+     * `workout_metrics` points at it; re-inserting would either violate the
+     * primary key or, with the wrong conflict strategy, delete the row and take
+     * the whole metric series with it by cascade — which is the REPLACE trap
+     * that has already cost this project three tables and one live defect.
+     *
+     * Records the interruption on the way past (8.3d.2) and returns the totals
+     * the ride had banked, or null if there is nothing to resume.
+     */
+    suspend fun resumeInterruptedWorkout(
+        workoutId: String,
+        interruption: RideInterruption
+    ): ResumedRide? {
+        val workout = workoutDao.getWorkoutById(workoutId) ?: return null
+        val metrics = metricDao.getMetricsForWorkout(workoutId)
+
+        val aggregates = WorkoutAggregates.from(
+            metrics.map {
+                MetricSample(
+                    second = it.timestampSec,
+                    power = it.power,
+                    cadence = it.cadence,
+                    heartRate = it.heartRate
+                )
+            }
+        )
+
+        // Same rule as the keep path: a ride that recorded nothing is not a
+        // ride. Unlike that path this one does not delete it — the rider has
+        // asked to carry on, and answering by silently binning their ride is
+        // worse than declining to.
+        if (aggregates.isEmpty) return null
+
+        val reopened = workout.copy(
+            resumeCount = workout.resumeCount + 1,
+            interruptedSec = workout.interruptedSec + interruption.unrecordedSec
+        )
+        workoutDao.updateWorkout(reopened)
+
+        return ResumedRide(workout = reopened, aggregates = aggregates)
     }
 
     suspend fun getRecentWorkouts(userId: Int, limit: Int): List<WorkoutEntity> =

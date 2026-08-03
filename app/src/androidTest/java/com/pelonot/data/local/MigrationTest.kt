@@ -640,6 +640,79 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 10 → 11: `resume_count` and `interrupted_sec` (8.3d.2).
+     *
+     * The mirror image of the test above, and the contrast is the point. 9 → 10
+     * left `synced_at` null because stamping it would have *claimed* something
+     * about rides nobody had checked. Zero here claims only what is certainly
+     * true: no ride already on a tablet was ever resumed, because resuming did
+     * not exist until this migration. A default is safe exactly when it states
+     * a fact rather than a guess.
+     */
+    @Test
+    fun migrate10To11_saysEveryExistingRideWasRiddenStraightThrough() {
+        helper.createDatabase(TEST_DB, 10).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at, auth_user_id, household_visible)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj, total_distance_km,
+                    avg_cadence, avg_power, avg_hr, intent_modifier, rpe_rating,
+                    is_complete, was_recovered, timestamp, ftp_watts, ftp_proposal_declined,
+                    synced_at
+                ) VALUES ('w1', 1, NULL, 1200, 180.0, 8.0, 85.0, 150.0, 140.0, 1.0, NULL, 1, 0, 1000, 200, 0, NULL)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 11, true, AppMigrations.MIGRATION_10_11)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query(
+                    "SELECT resume_count, interrupted_sec, total_output_kj " +
+                        "FROM workouts WHERE id = 'w1'"
+                )
+                .use { cursor ->
+                    assertTrue(
+                        "the ride that existed before the migration is gone",
+                        cursor.moveToFirst()
+                    )
+                    assertEquals(0, cursor.getInt(0))
+                    assertEquals(0, cursor.getInt(1))
+                    // The ride itself is untouched, which is the other half of
+                    // what an ALTER TABLE ... ADD COLUMN has to leave true.
+                    assertEquals(180.0, cursor.getDouble(2), 0.001)
+                }
+
+            // NOT NULL, so a row cannot be written that declines to answer.
+            // This is the difference from synced_at stated as a constraint
+            // rather than as a comment.
+            migrated.openHelper.readableDatabase
+                .query("SELECT COUNT(*) FROM workouts WHERE resume_count IS NULL")
+                .use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

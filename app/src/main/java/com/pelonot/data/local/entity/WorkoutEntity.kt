@@ -161,5 +161,43 @@ data class WorkoutEntity(
      * cloud keeps a copy the rider has since corrected — see 14.2.4a.
      */
     @ColumnInfo(name = "synced_at")
-    val syncedAt: Long? = null
+    val syncedAt: Long? = null,
+
+    /**
+     * How many times this ride was interrupted and picked up again (8.3d.2).
+     *
+     * **The series cannot show this, which is the whole reason it is a
+     * column.** A resumed ride continues recording at the second it left off
+     * (8.3d.1), so `workout_metrics` comes back contiguous and a reader
+     * afterwards sees an unbroken hour. A 45-minute ride actually ridden across
+     * two hours with a crash in the middle is a different ride from one ridden
+     * straight through, whatever the totals say.
+     *
+     * [wasRecovered] will not do the job: it means *rebuilt from its samples
+     * after a crash*, which is the **keep** path, and the two are different
+     * claims about what happened — the same argument that keeps
+     * `power_is_measured` nullable and `target_position` absent.
+     *
+     * `NOT NULL DEFAULT 0` rather than nullable, and unlike [syncedAt] the
+     * backfill here is *true*: every ride that predates this column was never
+     * resumed, because resuming did not exist. A default that states a fact is
+     * not the false reassurance 9→10 was avoiding.
+     */
+    @ColumnInfo(name = "resume_count")
+    val resumeCount: Int = 0,
+
+    /**
+     * Total wall-clock seconds this ride spent not being ridden (8.3d.2).
+     *
+     * Accumulated across every interruption, from `RideInterruption`. It is
+     * time that produced no samples rather than specifically time the app was
+     * dead — see that class for why the broader quantity is the honest one.
+     *
+     * Kept beside [resumeCount] rather than derived from it because they answer
+     * different questions: *was this ride continuous?* and *how much of it is
+     * missing?* One resume after ten seconds and one after twenty minutes are
+     * the same count and very different rides.
+     */
+    @ColumnInfo(name = "interrupted_sec")
+    val interruptedSec: Int = 0
 )

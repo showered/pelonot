@@ -34,6 +34,26 @@ enum class RideIntent(
         /** Resolves an [id], falling back to [DEFAULT] for unknown values. */
         fun fromId(id: String?): RideIntent =
             entries.firstOrNull { it.id == id } ?: DEFAULT
+
+        /**
+         * Resolves the intent a *stored* ride was ridden at (8.3d).
+         *
+         * `workouts.intent_modifier` persists the multiplier and not the id, so
+         * a ride being resumed has to come back through the number. Compared on
+         * a tolerance rather than by equality because it is a `Double` that has
+         * been through SQLite.
+         *
+         * **This works only while the multipliers are distinct**, which they
+         * are — 1.05 and 0.95. An intent added with a multiplier another one
+         * already uses would make this ambiguous, and the fix then is to
+         * persist the id beside the modifier rather than to widen the
+         * tolerance. Unknown values fall back to [DEFAULT], matching [fromId].
+         */
+        fun fromMultiplier(multiplier: Double): RideIntent =
+            entries.firstOrNull { kotlin.math.abs(it.multiplier - multiplier) < TOLERANCE }
+                ?: DEFAULT
+
+        private const val TOLERANCE = 0.001
     }
 }
 

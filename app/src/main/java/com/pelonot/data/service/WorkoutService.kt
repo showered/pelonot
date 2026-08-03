@@ -23,6 +23,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.ResumedRide
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.PowerModel
 import com.pelonot.data.sensor.SensorReading
@@ -185,14 +186,17 @@ class WorkoutService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_START_WORKOUT) {
-            startWorkout(
+        when (intent?.action) {
+            ACTION_START_WORKOUT -> startWorkout(
                 userId = intent.getIntExtra(EXTRA_USER_ID, GUEST_USER_ID)
                     .takeIf { it != GUEST_USER_ID },
                 classId = intent.getStringExtra(EXTRA_CLASS_ID),
                 intent = RideIntent.fromId(intent.getStringExtra(EXTRA_INTENT_ID)),
                 ftpWatts = intent.getIntExtra(EXTRA_FTP_WATTS, WorkoutSession.DEFAULT_FTP)
             )
+
+            ACTION_RESUME_WORKOUT -> intent.getStringExtra(EXTRA_WORKOUT_ID)
+                ?.let { resumeInterruptedRide(it) }
         }
 
         // NOT_STICKY: if the system kills us mid-ride we must not silently
@@ -275,6 +279,120 @@ class WorkoutService : Service() {
         syncHudVisibility()
 
         Log.i(TAG, "Workout started: ${session.workoutId}")
+    }
+
+    /**
+     * Picks up a ride the app was killed in the middle of (8.3d).
+     *
+     * The counterpart to [startWorkout] rather than a variant of it, because
+     * three of that method's opening moves are exactly wrong here: it mints a
+     * fresh `UUID`, it inserts a `workouts` row, and it starts the clock at
+     * zero. This adopts the existing id, updates the row that is already there,
+     * and starts the clock at the last second that recorded.
+     *
+     * Asynchronous because the totals have to be added back up off disk first.
+     * Nothing is published until they are, so a caller that binds immediately
+     * sees `Idle` and then a ride, rather than a ride with no history in it.
+     *
+     * Note the name: [resumeWorkout] is un-pausing, and has been since Phase 3.
+     */
+    fun resumeInterruptedRide(workoutId: String) {
+        if (_workoutState.value != WorkoutState.Idle) return
+
+        serviceScope.launch {
+            val interruption = workoutRepository.interruptionFor(workoutId)
+            if (interruption == null || !interruption.isResumable) {
+                Log.w(TAG, "Not resumable: $workoutId")
+                return@launch
+            }
+
+            val resumed = workoutRepository.resumeInterruptedWorkout(workoutId, interruption)
+            if (resumed == null) {
+                Log.w(TAG, "Nothing to resume in $workoutId")
+                return@launch
+            }
+            beginResumedRide(resumed)
+        }
+    }
+
+    private fun beginResumedRide(resumed: ResumedRide) {
+        val workout = resumed.workout
+        val aggregates = resumed.aggregates
+        val intent = RideIntent.fromMultiplier(workout.intentModifier)
+        // From the row, never the profile: a breakthrough accepted between the
+        // crash and the resume would otherwise rescore the ride it came from
+        // (7.8).
+        val ftpWatts = workout.ftpWatts ?: WorkoutSession.DEFAULT_FTP
+
+        // The clock is wound back so elapsedSeconds() returns the last second
+        // that recorded. That is what makes the class pick up where it left off
+        // and the metric series continue rather than restart (8.3d.1).
+        rideStartedAtRealtimeMs =
+            SystemClock.elapsedRealtime() - aggregates.durationSec * 1000L
+        accumulatedPausedMs = 0L
+        pausedAtRealtimeMs = 0L
+        metricsCalculator.restore(aggregates.totalOutputKj, aggregates.distanceKm)
+        coachPolicy.reset()
+        telemetryStalled = false
+        pendingMetrics.clear()
+        calibrationSamples.clear()
+        intervalEngine = null
+
+        serviceScope.launch {
+            PowerModel.curve = runCatching { calibrationRepository.activeCurve() }
+                .getOrDefault(PowerModel.curve)
+        }
+
+        // Before anything can ask, exactly as in startWorkout — otherwise the
+        // recovery query offers to recover the ride that has just been resumed,
+        // which is 8.3b arriving by a new door (8.3d.4).
+        RideInProgress.begin(
+            ActiveRide(
+                workoutId = workout.id,
+                classId = workout.classId,
+                intentId = intent.id,
+                ftpWatts = ftpWatts
+            )
+        )
+
+        val session = WorkoutSession(
+            workoutId = workout.id,
+            userId = workout.userId,
+            classId = workout.classId,
+            startedAtEpochMs = workout.timestamp,
+            intent = intent,
+            ftpWatts = ftpWatts
+        ).restoredWith(aggregates)
+
+        _currentSession.value = session
+        _workoutState.value = WorkoutState.Active
+        _rideSnapshot.value = RideSnapshot(
+            state = WorkoutState.Active,
+            ftpWatts = ftpWatts,
+            intent = intent,
+            elapsedSeconds = aggregates.durationSec,
+            // Seeded, or the ride screen and the overlay both show a rider who
+            // has just ridden twenty minutes a total output of zero until the
+            // first tick lands on top of the restored calculator.
+            totalOutputKj = aggregates.totalOutputKj,
+            distanceKm = aggregates.distanceKm
+        )
+        // The prompt is answered; nothing should still be offering this ride.
+        _recoverableWorkout.value = null
+
+        startForegroundNotification()
+
+        if (workout.classId != null) loadClass(workout.classId)
+
+        sensorRepository.start()
+        startTicker(fromSecond = aggregates.durationSec)
+        syncHudVisibility()
+
+        Log.i(
+            TAG,
+            "Workout resumed: ${workout.id} at ${aggregates.durationSec}s " +
+                "after ${resumed.workout.interruptedSec}s not riding"
+        )
     }
 
     /**
@@ -452,10 +570,15 @@ class WorkoutService : Service() {
 
     // ── Recording loop ──────────────────────────────────────────────
 
-    private fun startTicker() {
+    /**
+     * @param fromSecond the highest second already written for this ride, so a
+     *   resumed ride does not record second *N* twice (8.3d.4). `-1` for a
+     *   fresh ride, because second 0 is a second like any other.
+     */
+    private fun startTicker(fromSecond: Int = -1) {
         tickerJob?.cancel()
         tickerJob = serviceScope.launch {
-            var lastRecordedSecond = -1
+            var lastRecordedSecond = fromSecond
             var classFinished = false
 
             while (isActive) {
@@ -780,10 +903,28 @@ class WorkoutService : Service() {
         const val GUEST_USER_ID = -1
 
         const val ACTION_START_WORKOUT = "com.pelonot.action.START_WORKOUT"
+
+        /** 8.3d — pick up a ride the app was killed in the middle of. */
+        const val ACTION_RESUME_WORKOUT = "com.pelonot.action.RESUME_WORKOUT"
+
         const val EXTRA_USER_ID = "com.pelonot.extra.USER_ID"
         const val EXTRA_CLASS_ID = "com.pelonot.extra.CLASS_ID"
         const val EXTRA_INTENT_ID = "com.pelonot.extra.INTENT_ID"
         const val EXTRA_FTP_WATTS = "com.pelonot.extra.FTP_WATTS"
+        const val EXTRA_WORKOUT_ID = "com.pelonot.extra.WORKOUT_ID"
+
+        /**
+         * Everything a resume needs is already on the row, so this carries only
+         * the id — the class, the intent and the FTP the ride was started at
+         * are read back from `workouts` rather than passed in, which is what
+         * stops a resumed ride being rescored against a profile that has moved
+         * since (7.8).
+         */
+        fun resumeIntent(context: Context, workoutId: String): Intent =
+            Intent(context, WorkoutService::class.java).apply {
+                action = ACTION_RESUME_WORKOUT
+                putExtra(EXTRA_WORKOUT_ID, workoutId)
+            }
 
         fun startIntent(
             context: Context,

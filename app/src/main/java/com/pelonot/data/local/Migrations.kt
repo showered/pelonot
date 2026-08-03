@@ -264,9 +264,36 @@ object AppMigrations {
         }
     }
 
+    /**
+     * `workouts.resume_count` and `workouts.interrupted_sec` — a ride that was
+     * picked up again after a crash says so (8.3d.2).
+     *
+     * Both `NOT NULL DEFAULT 0`, and here the backfill is a **fact** rather
+     * than a guess: every ride already on a tablet was never resumed, because
+     * resuming did not exist until this migration. That is the distinction 9→10
+     * turned on — `synced_at` was left null because stamping it would have
+     * claimed something untrue about rides nobody had checked. Zero here claims
+     * only what is certainly the case.
+     *
+     * Two columns rather than one because they are two questions. The count
+     * answers *was this ride continuous?*; the seconds answer *how much of it is
+     * missing?*, and a resume ten seconds after a crash and one twenty minutes
+     * after are the same count and very different rides.
+     */
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `workouts` ADD COLUMN `resume_count` INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE `workouts` ADD COLUMN `interrupted_sec` INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-        MIGRATION_8_9, MIGRATION_9_10
+        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
     )
 }
