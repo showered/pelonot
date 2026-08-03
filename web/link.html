@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link a Pelonot bike</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Link a bike</h1>
+    <p class="muted small">Sign in here and the bike signs itself in.</p>
+  </header>
+
+  <p id="status" class="small"></p>
+
+  <!-- The device being paired, named before anything is committed to.
+       A pairing page that does not say what it is pairing is a phishing
+       primitive: the QR is a URL and anyone can print a URL. PLAN 15.6.5. -->
+  <div class="card" id="device-card">
+    <p class="figure-label">This will sign in</p>
+    <p class="figure" id="device-label">…</p>
+    <p class="small muted" id="device-code"></p>
+  </div>
+
+  <!-- No code in the URL: the rider opened this page directly. -->
+  <section id="need-code" class="hidden">
+    <div class="card">
+      <label for="code">Code from the bike's screen</label>
+      <input id="code" inputmode="text" autocapitalize="characters" class="device"
+             placeholder="ABCD 2345">
+      <button id="code-go" type="button">Continue</button>
+    </div>
+  </section>
+
+  <section id="signed-out" class="hidden">
+    <div class="card">
+      <div class="tabs">
+        <button id="tab-signin" aria-pressed="true">Sign in</button>
+        <button id="tab-signup" aria-pressed="false">Create an account</button>
+      </div>
+      <form id="auth-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <p id="auth-error" class="small error"></p>
+        <button id="auth-submit" type="submit">Sign in</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="confirm" class="hidden">
+    <div class="card">
+      <p id="confirm-who" class="small muted"></p>
+      <p id="fallback-warning" class="small hidden">
+        This deployment hands the bike your own session, which means
+        <strong>you will be signed out on this phone</strong> once the bike picks
+        it up. That is a limitation of this setup, not of the bike.
+      </p>
+      <button id="confirm-go" type="button">Sign this bike in</button>
+      <button id="not-me" class="secondary" type="button">Not now</button>
+    </div>
+  </section>
+
+  <section id="done" class="hidden">
+    <div class="card">
+      <p class="figure">Done</p>
+      <p class="small muted" id="done-text">
+        The bike should be signed in within a couple of seconds. You can close
+        this page.
+      </p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js" onerror="void 0"></script>
+<script src="lib.js"></script>
+<script src="link.js"></script>
+</body>
+</html>

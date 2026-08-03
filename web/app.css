@@ -1,0 +1,140 @@
+/*
+ * Pelonot on the web — one stylesheet, no framework (PLAN 17.1).
+ *
+ * It is opened on two devices with nothing in common: a phone held in one hand
+ * (the pairing page, which is the only thing that page is ever for) and a
+ * laptop (ride history). So it is a single column that grows, rather than a
+ * layout that reflows.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1f232c;
+  --line: #2b303b;
+  --text: #e8eaf0;
+  --muted: #98a0b3;
+  --accent: #6fd3a3;
+  --accent-ink: #06251a;
+  --danger: #ff8080;
+
+  /* The ride metrics keep the app's own colours so a chart on the web and a
+     chart on the bike are recognisably the same measurement. */
+  --power: #ffb020;
+  --cadence: #6fb1ff;
+  --hr: #6fd3a3;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --line: #dce0e8;
+    --text: #15181e;
+    --muted: #5c6474;
+    --accent: #12795a;
+    --accent-ink: #ffffff;
+    --danger: #b3261e;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 24px 16px 64px;
+}
+
+main { max-width: 720px; margin: 0 auto; }
+
+header { margin-bottom: 24px; }
+
+h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.875rem; }
+.error { color: var(--danger); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.card.tap {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.card.tap:hover { border-color: var(--accent); }
+
+label { display: block; font-size: 0.875rem; color: var(--muted); margin: 12px 0 4px; }
+
+input {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+button:disabled { opacity: 0.5; cursor: default; }
+
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row > * { flex: 1 1 120px; }
+
+.figure { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+.figure-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.tabs { display: flex; gap: 8px; margin: 16px 0; }
+.tabs button { margin: 0; }
+.tabs button[aria-pressed='false'] { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+.device {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.chart { width: 100%; height: 140px; display: block; }
+
+.hidden { display: none !important; }

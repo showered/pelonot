@@ -58,9 +58,9 @@ growth (the paragraph above), inferring the maximum heart rate (**21.1.6**, and
 recommendation is not to move the Gradle root, and the two rules that actually
 keep the apps independent are written down there instead).
 
-### Owner's inbox
+### Design system
 
-*Empty.*
+I believe we already utilise a design system but now, more than ever, since we are building a companion web app, they should be singing from the same hymn sheet. This shouldn't need to create much overhead, in fact it should save time and compute, if we can already know what colour, spacing and typography palettes we're working with. Native and web app should have a similar feel. Bear that in mind while fleshing out the web app.
 
 ---
 

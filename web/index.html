@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pelonot — your rides</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pelonot</h1>
+    <p class="muted small" id="subtitle">Your rides, off the bike.</p>
+  </header>
+
+  <p id="status" class="small"></p>
+
+  <!-- Signed out: the same two fields the bike has, on a device with a
+       password manager. This is the point of the web app existing for auth
+       at all (PLAN 15.6). -->
+  <section id="signed-out" class="hidden">
+    <div class="card">
+      <div class="tabs">
+        <button id="tab-signin" aria-pressed="true">Sign in</button>
+        <button id="tab-signup" aria-pressed="false">Create an account</button>
+      </div>
+      <form id="auth-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <p id="auth-error" class="small error"></p>
+        <button id="auth-submit" type="submit">Sign in</button>
+      </form>
+    </div>
+    <p class="muted small">
+      The same account the bike uses. Signing in here never changes anything on
+      the bike.
+    </p>
+  </section>
+
+  <!-- Signed in -->
+  <section id="signed-in" class="hidden">
+    <p class="small muted" id="who"></p>
+    <h2>Your rides</h2>
+    <div id="rides"></div>
+    <p id="empty" class="muted small hidden">
+      Nothing here yet. Rides appear once the bike has backed one up — which it
+      does on its own, whenever there is a network.
+    </p>
+    <button class="secondary" id="sign-out">Sign out</button>
+  </section>
+
+  <!-- One ride -->
+  <section id="ride" class="hidden">
+    <button class="secondary" id="back">← All rides</button>
+    <h2 id="ride-title"></h2>
+    <p class="muted small" id="ride-when"></p>
+    <div class="card row" id="ride-figures"></div>
+    <div class="card">
+      <p class="figure-label">Power</p>
+      <svg class="chart" id="chart-power"></svg>
+      <p class="figure-label" style="margin-top:16px">Cadence</p>
+      <svg class="chart" id="chart-cadence"></svg>
+      <p class="figure-label" style="margin-top:16px">Heart rate</p>
+      <svg class="chart" id="chart-hr"></svg>
+      <p class="small muted" id="power-provenance"></p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js" onerror="void 0"></script>
+<script src="lib.js"></script>
+<script src="rides.js"></script>
+</body>
+</html>
