@@ -38,12 +38,24 @@ class SupabaseSyncRepository(
      * looked up separately — see [CloudAccess.accountIdFor] for why those are
      * one question. Before this, `WorkoutDto` carried no owner at all and every
      * ride that ever left a tablet arrived anonymous.
+     *
+     * **An upsert, not an insert** (PLAN 15.3.3). The ride's id is a
+     * client-generated UUID and is already the cloud's primary key, so sending
+     * one twice is a duplicate-key failure rather than a harmless no-op — and
+     * "twice" is not exotic: it is a retry after a timeout that actually
+     * landed, a re-install restoring from a backup file, and above all the
+     * first-sign-in backfill, which re-offers every ride the tablet has
+     * (15.3.1). With `insert`, the first already-present ride in a backlog
+     * fails the drain and stops it, permanently, with a message about a
+     * constraint nobody will read.
      */
     suspend fun syncWorkout(
         workout: WorkoutEntity,
         metrics: List<WorkoutMetricEntity>
     ): SyncOutcome<Unit> = execute("syncWorkout", workout.userId) { supabase, accountId ->
-        supabase.from(TABLE_WORKOUTS).insert(WorkoutDto.from(workout, metrics, accountId))
+        supabase.from(TABLE_WORKOUTS).upsert(WorkoutDto.from(workout, metrics, accountId)) {
+            onConflict = "id"
+        }
     }
 
     /**

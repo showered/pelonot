@@ -2,6 +2,7 @@ package com.pelonot.data.remote
 
 import com.pelonot.BuildConfig
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.serialization.json.Json
@@ -27,6 +28,20 @@ object SupabaseModule {
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY
         ) {
             install(Postgrest)
+
+            // Installing Auth is what makes every Postgrest request carry the
+            // rider's own JWT instead of the anon key (PLAN 15.1.1). After
+            // `003_cloud_identity.sql` the anon role can read the class library
+            // and nothing else, so without this the app would be *correctly*
+            // refused on every write it makes.
+            install(Auth) {
+                // A session that outlives the process, because a rider does not
+                // sign in to a bike weekly. The SDK persists it to the tablet's
+                // own encrypted preferences and refreshes it in the background;
+                // an expiry must never surface as a screen (15.1.3).
+                alwaysAutoRefresh = true
+                autoLoadFromStorage = true
+            }
         }
     }
 

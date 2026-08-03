@@ -35,7 +35,31 @@ class CloudAccess(
     private val userDao: UserDao,
     /** The rider's own backup switch, meaningful only once they have an account. */
     private val backupPreference: () -> Boolean = { true },
-    private val credentialsPresent: () -> Boolean = { SupabaseModule.isConfigured }
+    private val credentialsPresent: () -> Boolean = { SupabaseModule.isConfigured },
+    /**
+     * **Whose session this tablet is actually holding right now** (PLAN 15.2.8).
+     *
+     * A fourth reason to be offline, and the only one that is not about the
+     * rider's own choices. The Supabase SDK holds **one** session per process,
+     * so a household bike with two accounts on it can only ever be signed in as
+     * one of them at a time — and `auth_user_id` on a profile records that the
+     * rider *has* an account, not that this tablet is currently carrying their
+     * credentials.
+     *
+     * Without this check the shape is specific and bad: Priya finishes a ride
+     * while the tablet holds Simon's session, the gate says yes because Priya's
+     * row has an `auth_user_id`, and the upload goes out under **Simon's** JWT
+     * carrying **Priya's** `user_id`. Under `003`'s policies that is refused —
+     * `WITH CHECK (user_id = auth.uid())` — so it is a permanent, silent
+     * failure rather than a leak, which is the right way round but is still a
+     * ride that never gets backed up and a rider who is told the network is at
+     * fault.
+     *
+     * Suspending because at process start the SDK has not finished loading the
+     * stored session yet, and answering "nobody" during that window would stop
+     * a backlog drain that had every right to run.
+     */
+    private val sessionAccountId: suspend () -> String? = { null }
 ) {
 
     /**
@@ -67,7 +91,10 @@ class CloudAccess(
         if (!credentialsPresent()) return null
         val user = userDao.getUserById(id) ?: return null
         val authUserId = user.authUserId ?: return null
-        return if (backupPreference()) authUserId else null
+        if (!backupPreference()) return null
+        // 15.2.8. Having an account and being signed in on this tablet are two
+        // facts, and only the second one can send a request.
+        return if (sessionAccountId() == authUserId) authUserId else null
     }
 
     /**

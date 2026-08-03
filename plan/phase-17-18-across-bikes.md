@@ -36,6 +36,43 @@ keyboard should be possible on the web and optional on the bike.**
       use. **No npm, no bundler, and nothing the Gradle build can see.**
       If it ever needs a framework it can grow one; starting with one buys
       nothing today and costs a maintenance surface immediately
+- [ ] **17.1a** **Is this a monorepo? — the owner's note, 3 August 2026.**
+      Verbatim: *"Do we need to restructure the repo a bit to become a monorepo,
+      so the android app can sit alongside other apps such as the Web app, and
+      further down the road — who knows! Just those two for now anyway. Just my
+      2 cents. Do what you think is best."*
+
+      **The recommendation is: it already is one, and the restructuring is not
+      worth its cost.** The repository has held several deliverables for a long
+      time — `classlibrary/` is a Python generator, `calibration/` is a dataset
+      with its own method, `supabase/` is the schema, `plan/` is the plan — and
+      none of them is part of the Android build. Adding `web/` beside them is
+      the monorepo shape the note is asking for, with no move required.
+
+      What "restructuring" would actually mean is **moving the Gradle root**:
+      `settings.gradle.kts`, `gradlew`, `build.gradle.kts` and `app/` down into
+      an `android/` directory. That is a real cost against a benefit that is
+      currently zero — every path in `CLAUDE.md` and `HARDWARE.md`, the CI
+      workflow, `app/schemas`, the `run-as` database recipes and
+      `CloudConfigFenceTest`'s `File("..")` all name the current layout, and
+      none of them gets simpler afterwards. The Gradle build does not reach
+      outside `app/` today and must not start; **that property, not the
+      directory depth, is what makes the two apps independent.**
+
+      So two rules are written down instead of a move being made:
+
+      - **No build may depend on another's output.** 17.1 already says the
+        Android build must never depend on the web app; the reverse is equally
+        binding, and the web app must be openable with nothing installed —
+        which 17.1's *no build step* decision is what guarantees.
+      - **The root README says what each top-level directory is**, because a
+        repo with seven of them and no map is where a monorepo actually goes
+        wrong. Not in the nesting.
+
+      Revisit the day a third *build* arrives, not a third directory: two Gradle
+      projects, or a shared TypeScript package between two web apps, would make
+      a root-level workspace file earn its keep. Until then this is a monorepo
+      without the tooling, which is the cheap end of the trade
 - [ ] **17.13** **The pairing page — `link.html`, and it is the first thing to
       build here** (15.6). The whole of the QR sign-in flow lands on this page,
       it is the reason the web app exists before it has anything pretty to show,

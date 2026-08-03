@@ -5,8 +5,10 @@ import com.pelonot.data.audio.VolumeController
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
+import com.pelonot.data.remote.AuthRepository
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
@@ -90,15 +92,36 @@ object ServiceLocator {
      * The consent gate (23.1.1). Everything cloud-shaped goes through it, and
      * it answers per profile rather than per build.
      */
+    /**
+     * Signing in, signing up, signing out (15.1). It holds no state of its own
+     * — the session lives in the SDK's storage — so a single instance is only
+     * about having one place the SDK is reached from.
+     */
+    val authRepository: AuthRepository by lazy { AuthRepository() }
+
     val cloudAccess: CloudAccess by lazy {
         CloudAccess(
             userDao = database.userDao(),
-            backupPreference = { cloudSyncEnabled() }
+            backupPreference = { cloudSyncEnabled() },
+            sessionAccountId = { authRepository.settledAccountId() }
         )
     }
 
     val syncRepository: SupabaseSyncRepository by lazy {
         SupabaseSyncRepository(cloudAccess)
+    }
+
+    /**
+     * Signing in *for a profile* (15.2) — the half of an account that is about
+     * this tablet's riders rather than about the network.
+     */
+    val accountRepository: AccountRepository by lazy {
+        AccountRepository(
+            authRepository = authRepository,
+            userRepository = userRepository,
+            userDao = database.userDao(),
+            workoutDao = database.workoutDao()
+        )
     }
 
     val userRepository: UserRepository by lazy {

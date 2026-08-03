@@ -46,6 +46,19 @@ interface UserDao {
     @Query("SELECT COUNT(*) FROM profiles WHERE auth_user_id IS NOT NULL")
     suspend fun getAccountProfileCount(): Int
 
+    /**
+     * Which local profile, if any, already holds this account (PLAN 15.2.7).
+     *
+     * Two local profiles pointing at one cloud account is not a household — it
+     * is one rider's history split in half and then merged wrongly, because the
+     * cloud keys a profile by the account id and the two would fight over the
+     * same row while their rides pooled under one owner. It is easy to do by
+     * accident on a shared bike (sign in on the wrong profile), so the check is
+     * a query rather than a hope.
+     */
+    @Query("SELECT * FROM profiles WHERE auth_user_id = :authUserId LIMIT 1")
+    suspend fun getUserByAuthId(authUserId: String): UserEntity?
+
     @Query("DELETE FROM profiles WHERE local_user_id = :userId")
     suspend fun deleteUser(userId: Int)
 }

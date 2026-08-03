@@ -25,17 +25,31 @@ class CloudAccessTest {
     private val signedInRider = UserEntity(
         localUserId = 2,
         name = "Has an account",
-        authUserId = "auth-uuid-0001"
+        authUserId = SIGNED_IN_ACCOUNT
     )
 
+    /** A second rider on the same tablet, with a second account (15.2.4). */
+    private val housemateWithAccount = UserEntity(
+        localUserId = 3,
+        name = "Also has an account",
+        authUserId = "auth-uuid-0002"
+    )
+
+    /**
+     * @param session whose session the tablet is holding (15.2.8). It defaults
+     *   to `SIGNED_IN_ACCOUNT` so that the tests below read as they always did
+     *   — the interesting case is the mismatch, and it has tests of its own.
+     */
     private fun gate(
         vararg users: UserEntity,
         credentials: Boolean = true,
-        backup: Boolean = true
+        backup: Boolean = true,
+        session: String? = SIGNED_IN_ACCOUNT
     ) = CloudAccess(
         userDao = FakeUserDao(users.toList()),
         backupPreference = { backup },
-        credentialsPresent = { credentials }
+        credentialsPresent = { credentials },
+        sessionAccountId = { session }
     )
 
     @Test
@@ -131,10 +145,49 @@ class CloudAccessTest {
         assertNotEquals(signedInRider.localUserId.toString(), name)
     }
 
+    /**
+     * **The SDK holds one session and a household holds several riders**
+     * (15.2.8).
+     *
+     * Both of these profiles have accounts. Only one of them can be the session
+     * the tablet is carrying, and the other one's rides must wait rather than
+     * going out under somebody else's JWT — which `003`'s `WITH CHECK` would
+     * refuse anyway, permanently and silently, while telling the rider it was
+     * the network.
+     */
+    @Test
+    fun `two accounts on one tablet, and only the signed-in one may send`() = runBlocking {
+        val household = gate(signedInRider, housemateWithAccount, session = SIGNED_IN_ACCOUNT)
+        assertEquals(SIGNED_IN_ACCOUNT, household.accountIdFor(signedInRider.localUserId))
+        assertNull(household.accountIdFor(housemateWithAccount.localUserId))
+    }
+
+    @Test
+    fun `a profile with an account and no session on the tablet is refused`() = runBlocking {
+        assertFalse(gate(signedInRider, session = null).isAllowedFor(signedInRider.localUserId))
+    }
+
+    /**
+     * Signing out and back in as somebody else must not leave the previous
+     * rider's profile able to send. It is the same check from the other side,
+     * and it is the state a shared bike spends most of its life in.
+     */
+    @Test
+    fun `a session belonging to another account admits nobody here`() = runBlocking {
+        assertNull(
+            gate(signedInRider, session = "auth-uuid-somebody-else")
+                .accountIdFor(signedInRider.localUserId)
+        )
+    }
+
     @Test
     fun `nobody signed in is the default state of a tablet`() = runBlocking {
         assertFalse(gate(offlineRider, offlineRider.copy(localUserId = 3)).anyProfileHasAccount())
         assertTrue(gate(offlineRider, signedInRider).anyProfileHasAccount())
+    }
+
+    private companion object {
+        const val SIGNED_IN_ACCOUNT = "auth-uuid-0001"
     }
 
     private class FakeUserDao(private val users: List<UserEntity>) : UserDao {
@@ -149,6 +202,9 @@ class CloudAccessTest {
         override fun getAllUsers(): Flow<List<UserEntity>> = flowOf(users)
         override suspend fun getUserCount(): Int = users.size
         override suspend fun getAccountProfileCount(): Int = users.count { it.hasAccount }
+        override suspend fun getUserByAuthId(authUserId: String): UserEntity? =
+            users.firstOrNull { it.authUserId == authUserId }
+
         override suspend fun deleteUser(userId: Int) = Unit
     }
 }

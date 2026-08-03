@@ -74,6 +74,41 @@ something they could have had offline.**
 - [ ] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
 - [ ] **15.2.5** **`auth_user_id` on the local `UserEntity` is the flag the whole consent gate reads.** 23.1.1 asks one question — may this profile talk to the cloud? — and this column is the answer. Nullable, and null is the default rung of the ladder rather than a missing value
 - [ ] **15.2.6** A signed-in rider and an offline rider must be able to share a bike with no friction and no nagging. The offline one sees no sign-in prompt on a screen they did not open looking for one
+- [ ] **15.2.7** **One account, one local profile — checked, not hoped for.**
+      Two local profiles pointing at the same `auth_user_id` is not a household
+      arrangement, it is one rider's history split in half: the cloud keys a
+      profile *by* the account id, so the two rows fight over one record and
+      their rides pool under a single owner with no way to separate them
+      afterwards. And it is an easy mistake to make on a shared bike — sign in
+      while the wrong profile happens to be selected. So attaching queries for
+      an existing holder first, refuses by name (*"that account is already
+      backing up Priya on this bike"*), and **signs the session back out**,
+      because a session with nothing attached is a tablet that looks signed in
+      and will never send anything
+- [ ] **15.2.8** **The SDK holds one session; a household holds several riders.**
+      15.2.4 says nothing may assume a single signed-in user per device, and
+      that is right about the *data model* — `auth_user_id` is per profile and
+      two riders may have two accounts. But the client library holds exactly one
+      session per process, so at any moment the tablet can only be *carrying*
+      one rider's credentials. Those two facts have to be reconciled somewhere,
+      and the honest place is the gate: **having an account and being signed in
+      on this tablet are different questions**, and only the second one can send
+      a request.
+
+      The failure it prevents is specific. Priya finishes a ride while the
+      tablet holds Simon's session; her profile has an `auth_user_id`, so a gate
+      that only looked at the column says yes, and the upload goes out under
+      Simon's JWT carrying Priya's `user_id`. `003`'s `WITH CHECK (user_id =
+      auth.uid())` refuses it — correctly — so the outcome is not a leak but a
+      **permanent silent failure**, reported to the rider as a network problem
+      forever. `CloudAccess` therefore asks who the session belongs to and
+      matches it against the profile, and it *waits* for the SDK to finish
+      loading from storage before answering, because a cold-start "nobody" would
+      stop a backlog drain that had every right to run.
+
+      The consequence to state on screen rather than hide (15.2.6 governs how):
+      **a second rider's rides wait until that rider signs in**, which is
+      correct, is not a failure, and is invisible unless somebody says so
 
 ### 15.3 Sync in both directions
 - [ ] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background

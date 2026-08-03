@@ -46,15 +46,17 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fourteen entries have passed through it.** In order: standing and seated
+**Fifteen entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
 (**21.3.4**), heart-rate zones (**21.3.1**), the pre-ride countdown
 (**11.6.13**), this section's own rule (in CLAUDE.md and above), the inbox's
 growth (the paragraph above), inferring the maximum heart rate (**21.1.6**, and
-**20.3.9** for what it shares with the FTP question), and signing in by QR code
-(**15.6**).
+**20.3.9** for what it shares with the FTP question), signing in by QR code
+(**15.6**), and whether this is a monorepo (**17.1a** — it already is one; the
+recommendation is not to move the Gradle root, and the two rules that actually
+keep the apps independent are written down there instead).
 
 ### Owner's inbox
 

@@ -129,6 +129,26 @@ interface WorkoutDao {
     suspend fun markSynced(id: String, syncedAt: Long)
 
     /**
+     * Forgets that the cloud has any of this profile's rides (PLAN 15.3.1).
+     *
+     * Run when an account is **attached**, and the reason is that `synced_at`
+     * records a fact about *a* cloud without saying whose. A rider who signs
+     * out and signs in as somebody else — or on a different endpoint, or after
+     * the household's project was rebuilt — has a tablet full of rides marked
+     * as backed up into an account that has never seen them. There is no
+     * message that could be shown about this and no way for the rider to
+     * suspect it: the app would simply say "nothing waiting to go up" forever.
+     *
+     * So attaching an account re-asks the question from scratch. The upload is
+     * an upsert keyed by the ride's own UUID (15.3.3), so re-sending a ride the
+     * cloud already has costs bandwidth and changes nothing — which is the
+     * right way for this trade to fall, because the other way round loses a
+     * history silently.
+     */
+    @Query("UPDATE workouts SET synced_at = NULL WHERE user_id = :userId")
+    suspend fun clearSyncedFor(userId: Int)
+
+    /**
      * The rides belonging to this profile that the cloud has never accepted,
      * **oldest first** (PLAN 14.2.5, 14.2.6, 15.3.1).
      *
