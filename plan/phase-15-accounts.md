@@ -261,6 +261,17 @@ own**, minted for it, not a copy of the phone's.
       neither device. **This is the only part that needs anything deployed
       beyond SQL**, and if it cannot be deployed the fallback is written down
       in 15.6.9 rather than improvised
+
+      *Deployed 3 August 2026 and **half verified**: the refusals are checked,
+      the success path needs an account. With no token it answers `401`, and
+      with a garbage one `401 that session is not valid` — which is its own
+      check rather than the platform's, and that distinction is the reason
+      `verify_jwt` is **false** on the function. The platform's gate would
+      accept the **anon key** as a valid JWT, which proves nothing about who is
+      calling; the function asks `auth.getUser(token)` instead. It also claims
+      the pairing row **before** minting anything, so an expired code cannot
+      leave a live one-time credential for the rider's account sitting in a
+      log.*
 - [ ] **15.6.5** **What the phone shows before it commits.** *"Sign in to
       Pelonot on **PLTN-RB1VQ**?"* — the label the bike sent, its own words,
       shown to the rider before anything is claimed. A pairing flow that does

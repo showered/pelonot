@@ -54,6 +54,19 @@ The **preferred** hand-off also wants an Edge Function deployed:
 supabase functions deploy link-device --project-ref <your-ref>
 ```
 
+No CLI? The Management API takes it as a multipart upload, which is how this
+one was actually deployed:
+
+```bash
+curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=link-device" -H "Authorization: Bearer $TOKEN" -F 'metadata={"entrypoint_path":"index.ts","name":"link-device","verify_jwt":false};type=application/json' -F "file=@supabase/functions/link-device/index.ts;type=application/typescript"
+```
+
+`verify_jwt` is **false** on purpose and it is not a hole: the platform's own
+JWT gate would accept the anon key as a valid token, which proves nothing about
+who is calling. The function verifies the caller's token itself with
+`auth.getUser(token)` and answers `401 that session is not valid` to anything
+else — checked with no token and with a garbage one.
+
 Without it the page still works and falls back to handing over the phone's own
 session — which signs the phone out, and says so before it does it. The reason
 the good version exists is in `004_device_link.sql`: this project has
