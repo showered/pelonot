@@ -52,7 +52,51 @@ something they could have had offline.**
 - [ ] **15.4.3** Account deletion end to end, since GDPR applies to a hobby project too
 
 ### 15.5 RLS, properly
-- [ ] **15.5.1** Rewrite every policy against `auth.uid()` — currently all six are `USING (true)`
-- [ ] **15.5.2** A rider can read and write only their own profile and their own workouts
-- [ ] **15.5.3** `class_templates` stays world-readable; it is public data
-- [ ] **15.5.4** Verify each policy from a second account, not by reading the SQL. This is the one place where being wrong is a breach rather than a bug
+
+**Written in `supabase/003_cloud_identity.sql`, not yet applied and not yet
+verified.** The eighteenth sitting wrote the policies as part of 14.2.1,
+because the identity decision and the policies are the same decision: once
+`profiles.id` **is** the auth user id, every policy below is one line, and
+before that they could not be written at all. None of these boxes may be ticked
+on the strength of the file existing — 15.5.4 is the whole point.
+
+- [ ] **15.5.1** Rewrite every policy against `auth.uid()` — currently all six are `USING (true)`.
+      *Written in `003`. Eight policies rather than six, split by operation, and
+      **`WITH CHECK` as well as `USING` on every write** — they answer different
+      questions (which existing rows you may touch, versus what the row is
+      allowed to look like afterwards), and a policy with only `USING` lets a
+      rider `UPDATE` their own row and set its id to somebody else's*
+- [ ] **15.5.2** A rider can read and write only their own profile and their own workouts.
+      *Written. Also in `003` and worth knowing: `workouts.user_id` becomes
+      `ON DELETE CASCADE`, which is the **opposite** of the local rule. Locally,
+      deleting a profile keeps its rides — a housemate leaving does not erase
+      their training history off the bike. In the cloud, deleting the account is
+      the rider asking for their data to be gone (15.4.3, GDPR), so it must take
+      the rows with it. `SET NULL` would leave orphans no `auth.uid()` matches:
+      invisible to every policy and therefore **undeletable by the rider they
+      belonged to**, which means 15.4.2 would not have deleted their cloud data.
+      Same-looking constraint, opposite requirement, and backwards in either
+      direction is a serious bug*
+- [ ] **15.5.3** `class_templates` stays world-readable; it is public data.
+      *Written — `SELECT` to `anon` and `authenticated`, and **no write policy
+      at all**, which under RLS means nobody but the service role can author a
+      class. A class comes from `classlibrary/build.py` and ships in the APK;
+      nothing in the app has any business writing one*
+- [ ] **15.5.4** Verify each policy from a second account, not by reading the SQL. This is the one place where being wrong is a breach rather than a bug.
+      **Unchanged and now the item that matters most in this phase.** Reading
+      `003` is not this check and neither is running it successfully. Two real
+      sessions, pointed at each other's rows, bouncing. Until that has happened
+      the policies are a hypothesis
+- [ ] **15.5.5** **The grants move too, and RLS cannot do it for you.** RLS
+      *narrows* access a role already has and can confer none — the lesson of
+      14.0, where every request died `42501` before a policy was ever evaluated.
+      `003` revokes `anon`'s access to `profiles` and `workouts` entirely and
+      grants DML to `authenticated` instead, including `DELETE`, which 002
+      granted on nothing: a rider who cannot delete their own data does not have
+      an account, they have a submission
+- [ ] **15.5.6** **No cross-rider visibility yet, on purpose.** Every policy in
+      `003` is "your own rows and nobody else's". That is the correct floor to
+      build a friend graph on (17.5) and the wrong thing to relax speculatively
+      in advance of one — the first schema where a rider can see another
+      rider's data deserves its own item, its own review and its own second
+      account to test from

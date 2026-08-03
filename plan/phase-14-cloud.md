@@ -80,7 +80,69 @@ ever synced, confirmed by count rather than inferred.
 
 ### 14.2 The rest of the path to full connectivity
 
-- [ ] **14.2.1** Carry the rider through: local `user_id` (Int) → cloud `profiles.id` (UUID). Requires the profile to sync first and its cloud id to be stored locally. Until this lands, every uploaded ride is anonymous
+- [x] **14.2.1** Carry the rider through: local `user_id` (Int) → cloud `profiles.id` (UUID). Requires the profile to sync first and its cloud id to be stored locally. Until this lands, every uploaded ride is anonymous.
+      ***Done in the app and in `003_cloud_identity.sql`, and it found a second
+      hole beside the one the item names. Not ticked as observed — the SQL is
+      written, not applied; see 14.2.1a.***
+
+      **The item's own hole.** `WorkoutDto` carried no `user_id`. The column
+      existed, was nullable, and was simply never sent — so **every ride this
+      app has ever uploaded arrived anonymous**, with the insert returning 201
+      and the log saying `Synced`. It is non-null on the DTO now, so the
+      anonymous shape does not compile.
+
+      **The second one, which was worse.** `profiles` was keyed by
+      `local_user_id`, `UNIQUE`, and that was the upsert's `onConflict` target.
+      `local_user_id` is a **per-device autoincrement**: bike A's first profile
+      is `1` and bike B's first profile is `1`, so the second tablet to sign in
+      would not have collided harmlessly — it would have **updated the first
+      rider's row**, overwriting their name, weight and FTP. That is not an
+      edge case reachable by an unusual sequence; it is the first thing that
+      happens on the day a second bike appears. The column is dropped from the
+      cloud entirely: a column that looks like an identity and is not one is
+      how this went wrong the first time.
+
+      **The design departs from the item, deliberately.** 14.2.1 asks for a
+      generated cloud UUID read back and stored locally, which is a two-step
+      sync that can half-fail and leave a tablet holding a cloud profile whose
+      name it does not know. It is also unnecessary: under **rule 2** a profile
+      is in the cloud *if and only if* it has an account, so a cloud profile and
+      an auth user are **1:1 by construction**. So `profiles.id` **is** the auth
+      user id — which the app knows at the moment of signing in, needs no round
+      trip to learn, and makes every RLS policy in 15.5 one line.
+
+      **`CloudAccess.accountIdFor` collapses the gate and the identity into one
+      lookup**, because "may this rider talk to the cloud?" and "who are they up
+      there?" have the same answer. Asking twice means two lookups that can
+      disagree, and the shape where they disagree is a call that passes the gate
+      and then writes a row belonging to nobody — which is what the app did for
+      its whole history. The choke point hands the account id *to the block*, so
+      a request that does not know whose it is can no longer be written.
+
+      Two new fences in `CloudAccessFenceTest`: the account id must come from
+      the gate rather than off an entity, and `local_user_id` must never reach
+      the wire. Both scan the source with comments stripped — the names they
+      forbid are exactly the ones the KDoc has to say out loud to explain the
+      rule, and a fence that documenting it breaks teaches the next person to
+      delete the explanation
+- [ ] **14.2.1a** **Apply `003_cloud_identity.sql`**, and note the two things in
+      it that need a decision rather than a run. It **deletes every `profiles`
+      row** — they were all written by the consent defect in the connectivity
+      model's fourth row, they belong to riders who never signed in to anything,
+      and their `gen_random_uuid()` ids have no auth user behind them so they
+      cannot survive the new foreign key. And it **revokes anon's access to
+      `profiles` and `workouts` entirely**, which means 14.1.6 can no longer be
+      driven by hand-setting `auth_user_id` on the tablet: the app would still
+      be sending an anon key with no session behind it. That is the right trade
+      and worth stating — a round trip proved with a key that bypasses RLS
+      proves the path a real rider does *not* take
+- [ ] **14.2.4a** **Nothing nulls `synced_at` when a ride is edited**, because
+      nothing in the payload is editable today — `rpeRating` and the FTP
+      proposal flag are the only things that change after a ride ends and
+      neither travels. The moment something in the payload becomes editable,
+      that edit has to clear this column or the cloud keeps a copy the rider has
+      since corrected. Opened now rather than when it bites, because the failure
+      is silent and the fix is one line at a call site nobody will be looking at
 - [x] **14.2.2a** **The app now reads both shapes**, which is what actually
       unblocked this. `intervals_json` is an escaped JSON *string* in the
       bundled assets and a `JSONB` *array* in the cloud; `ClassTemplateDto`
@@ -97,9 +159,44 @@ ever synced, confirmed by count rather than inferred.
       class rendering its seven intervals on the detail screen.* Four JVM tests
 - [ ] **14.2.2** Settle `intervals_json` as one type on both sides — `TEXT` holding the JSON is the honest choice, since the app treats it as an opaque string it hands to `IntervalParser`. Less urgent now that 14.2.2a makes the app correct either way, and correct against whichever way a self-hoster sets theirs up
 - [ ] **14.2.3** **Surface sync state in Settings**: configured or not, last successful sync, count pending, and the actual error text of the last failure. `SyncOutcome.Failed` dies in `Log.w` today, which is precisely why this went unnoticed for the project's whole history
-- [ ] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable
-- [ ] **14.2.5** Retry the backlog when connectivity returns, not only at ride end
-- [ ] **14.2.6** Upload the rides already sitting in the local database — there is a real history on the tablet that predates sync working
+- [x] **14.2.4** `synced_at` on `workouts` locally, so a ride uploads once and a backlog is knowable.
+      *Done and observed — migration 9 → 10, verified on the tablet AVD against
+      real SQLite. **Nullable, and not backfilled.** Stamping the migration's
+      own clock onto every existing row is one line and would claim the rider's
+      entire local history was safely in the cloud, which is the exact false
+      reassurance the column exists to prevent — the same family as 6 → 7's
+      `ftp_watts` and 3 → 4's `power_is_measured`, where a backfilled guess is
+      indistinguishable from a recorded fact and the indistinguishable part is
+      what makes it dangerous. Nullable rather than a boolean for three
+      reasons, in order: a backlog has to be **ordered** to be drained
+      oldest-first; **"how stale is my backup?"** is a question a flag cannot
+      answer; and the payload is versioned inside itself (14.4.3), so a future
+      reader needs a date to compare against. `MIN()` over an empty backlog is
+      SQL NULL and is kept as null — read as 0 it would tell the rider their
+      backup was 56 years behind, on the screen whose whole job is to say
+      whether their history is safe*
+- [x] **14.2.5** Retry the backlog when connectivity returns, not only at ride end.
+      *Done as a **change of shape** rather than a retry policy on top of the
+      old one. `WorkoutSyncWorker` takes a **profile** now, not a workout id,
+      and drains `synced_at IS NULL` oldest-first in batches of 20. The
+      property that matters: **a ride that exhausts its retries is not lost** —
+      it is simply still in the backlog, and the next ride the rider finishes
+      sweeps it up. Nothing is permanently forgotten, which is what lets this
+      be called a backup rather than an attempt. Oldest-first is not a
+      preference: newest-first leaves the oldest rides permanently at the back
+      of a queue that every subsequent ride overtakes, and a rider's first
+      month is the part they would most miss. `APPEND_OR_REPLACE` rather than
+      `KEEP`, because a drain already running has taken its snapshot and `KEEP`
+      would silently drop the ride that just finished*
+- [x] **14.2.6** Upload the rides already sitting in the local database — there is a real history on the tablet that predates sync working.
+      *Falls out of 14.2.5 rather than being built beside it: a history that
+      predates sync is a history where every row has `synced_at IS NULL`, which
+      is the backlog query with no special case. **It is also 15.3.1** — a
+      rider who has just attached an account is in exactly this state, so
+      "backfill everything on first sign-in" and "drain the backlog" are one
+      implementation rather than two that drift (the 18.9 argument, applied a
+      phase early). The one thing still owed is the trigger: nothing calls it
+      at sign-in because there is no sign-in, which is 15.3.1's half*
 - [ ] **14.2.7** Decide the metrics payload ceiling. A 45-minute ride is ~2,700 samples in one JSONB column; a 90-minute ride is double that. Find the point where the insert starts failing before a rider does. **Partly answered, 1 August 2026** — the sizes are measured in *What a workout costs*: 228 KB on the wire for 45 minutes, 457 KB for 90. That is not near any hard PostgREST limit, but it is a large single body from a bike tablet on household wifi, and **14.4** halves it four times over
 - [ ] **14.2.8** `supabase/003_*.sql` for whatever 14.2.1 and 14.2.2 need, keeping migrations incremental and non-destructive — `002` deliberately did not drop or recreate anything, and the 72 class templates are still the originals
 
