@@ -101,6 +101,29 @@ class WorkoutMetricsCalculator {
         lastSample = null
     }
 
+    /**
+     * Restores the cumulative totals of a ride being resumed (8.3d).
+     *
+     * Only the two running totals are restored. The rolling windows are
+     * deliberately left empty: `avgPower30s` and friends describe *the last
+     * thirty seconds of riding*, and the last thirty seconds of a ride that was
+     * interrupted are not the thirty seconds about to happen. They refill
+     * within half a minute, and reporting nothing until they do is the same
+     * answer this app gives everywhere else that a window has no data.
+     *
+     * [lastSample] stays null on purpose too, so the first sample after a
+     * resume integrates no trapezoid at all. Bridging across the interruption
+     * would credit the rider with output for the time they were not riding —
+     * the 5-second gap clamp would cap the damage but not prevent it, and the
+     * honest area under a curve with a hole in it excludes the hole.
+     */
+    fun restore(totalOutputKj: Double, distanceKm: Double) {
+        samples.clear()
+        lastSample = null
+        totalEnergyJoules = totalOutputKj * 1000.0
+        totalDistanceKm = distanceKm
+    }
+
     companion object {
         private const val SECONDS_PER_MINUTE = 60.0
         private const val ROLLING_WINDOW_SEC = 30

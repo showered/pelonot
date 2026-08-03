@@ -21,7 +21,28 @@ data class WorkoutAggregates(
     val avgPower: Double = 0.0,
     val avgCadence: Double = 0.0,
     val avgHeartRate: Int? = null,
-    val sampleCount: Int = 0
+    val sampleCount: Int = 0,
+    /**
+     * How many of [sampleCount] carried a heart rate.
+     *
+     * Counted separately for the same reason `WorkoutSession` counts it
+     * separately: a strap that connects thirty seconds in contributes to far
+     * fewer samples than the bike does. It exists so a resumed ride (8.3d) can
+     * restore the running mean with the weight it was actually built at —
+     * folding new readings in against the total sample count would under-weight
+     * every one of them.
+     */
+    val heartRateSampleCount: Int = 0,
+    /**
+     * The unrounded mean behind [avgHeartRate].
+     *
+     * [avgHeartRate] is a whole bpm for display and for the `avg_hr` column.
+     * Resuming (8.3d) has to carry the running mean *forward* and keep folding
+     * into it, and a mean that is re-rounded every time it is restored drifts —
+     * which is the failure `WorkoutSession.avgHeartRateBpm` already exists to
+     * avoid, one layer up.
+     */
+    val avgHeartRateExact: Double? = null
 ) {
     val isEmpty: Boolean get() = sampleCount == 0
 
@@ -52,6 +73,7 @@ data class WorkoutAggregates(
             }
 
             val heartRates = ordered.mapNotNull { it.heartRate }
+            val meanHeartRate = if (heartRates.isEmpty()) null else heartRates.average()
 
             return WorkoutAggregates(
                 durationSec = ordered.last().second,
@@ -59,8 +81,10 @@ data class WorkoutAggregates(
                 distanceKm = distanceKm,
                 avgPower = ordered.sumOf { it.power } / ordered.size,
                 avgCadence = ordered.sumOf { it.cadence } / ordered.size,
-                avgHeartRate = if (heartRates.isEmpty()) null else heartRates.average().toInt(),
-                sampleCount = ordered.size
+                avgHeartRate = meanHeartRate?.toInt(),
+                sampleCount = ordered.size,
+                heartRateSampleCount = heartRates.size,
+                avgHeartRateExact = meanHeartRate
             )
         }
     }

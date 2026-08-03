@@ -1,6 +1,7 @@
 package com.pelonot.data.service
 
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.WorkoutAggregates
 import kotlin.math.roundToInt
 
 /**
@@ -82,6 +83,32 @@ data class WorkoutSession(
             sampleCount = samples
         )
     }
+
+    /**
+     * Reopens this session on the totals a ride had already accumulated before
+     * it was interrupted (8.3d).
+     *
+     * Without it a resumed ride's `workouts` row would describe only the part
+     * ridden *after* the crash, while its `workout_metrics` series described
+     * all of it — the same class of defect as `avg_hr`, where the row and the
+     * samples it summarises disagreed for the project's whole history and
+     * nothing on any screen looked wrong.
+     *
+     * The means are restored with the sample counts they were built at, so
+     * subsequent readings are weighted correctly against them; [elapsedSeconds]
+     * is restored so the class clock and the metric series both continue from
+     * the last second that recorded rather than from zero (8.3d.1).
+     */
+    fun restoredWith(aggregates: WorkoutAggregates): WorkoutSession = copy(
+        elapsedSeconds = aggregates.durationSec,
+        totalOutputKj = aggregates.totalOutputKj,
+        distanceKm = aggregates.distanceKm,
+        avgPower = aggregates.avgPower,
+        avgCadence = aggregates.avgCadence,
+        avgHeartRateBpm = aggregates.avgHeartRateExact,
+        heartRateSampleCount = aggregates.heartRateSampleCount,
+        sampleCount = aggregates.sampleCount
+    )
 
     companion object {
         const val DEFAULT_FTP = 150
