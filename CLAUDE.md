@@ -376,7 +376,20 @@ and `Telemetry live again at …s` in logcat without an app restart.
 ### On the real bike
 
 The bike's tablet connects over wireless adb and identifies as `PLTN-RB1VQ`
-(Android 11). `installDebug` targets it like any device. The real columns are
+(Android 11). `installDebug` targets it like any device.
+
+**Which is the hazard: when the bike is connected *and* an emulator is running,
+`./gradlew installDebug` and `connectedDebugAndroidTest` will happily reach the
+bike** — and `connectedDebugAndroidTest` uninstalls the app, so it would take a
+ride down with it. Check `adb devices` before either, and when the rider might
+be on the bike, drive the emulator by serial instead of through Gradle:
+
+```bash
+adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Note `-s` needs its own argument — in zsh an unquoted `$SERIAL` holding
+`-s emulator-5554` is *one* word, not two, and adb rejects it. The real columns are
 `cadence` / `resistance` / `power` / `heart_rate` — not the `*_watts` names it
 is easy to guess:
 
