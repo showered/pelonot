@@ -23,7 +23,7 @@ touching any of this. **Signing in must never be the way a rider reaches
 something they could have had offline.**
 
 ### 15.1 Auth
-- [ ] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
+- [x] **15.1.1** Add the Supabase `auth-kt` module — only `Postgrest` is installed today
 - [ ] **15.1.2** Email magic link and/or OAuth. Prefer flows with no password field: the app should not be in the business of handling credentials
 
       **Amended by the owner, 3 August 2026**, who asked for *"profile setup
@@ -58,9 +58,9 @@ something they could have had offline.**
       an hour), so a rider who asks twice must be told that rather than shown
       a generic error
 - [ ] **15.1.3** Session persisted and refreshed; expiry never interrupts a ride or blocks a screen
-- [ ] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
-- [ ] **15.1.5** The copy calls it what it does — **"Back up my rides"**, not "Log in". A rider on a bike is not looking for an account; they are deciding whether their history is safe
-- [ ] **15.1.6** **Nothing in this phase may be reachable during a ride, and
+- [x] **15.1.4** Sign in from Settings, never as a gate on launch or on starting a class
+- [x] **15.1.5** The copy calls it what it does — **"Back up my rides"**, not "Log in". A rider on a bike is not looking for an account; they are deciding whether their history is safe
+- [x] **15.1.6** **Nothing in this phase may be reachable during a ride, and
       nothing may block one.** Sign-in lives in Settings, and Settings is
       reachable mid-ride through the sheet (11.6.10) — so the failure to avoid
       is a rider who taps *Back up my rides* at minute 12 and gets a modal over
@@ -68,11 +68,11 @@ something they could have had offline.**
       dialog
 
 ### 15.2 Identity model
-- [ ] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
+- [x] **15.2.1** Local Room profiles stay the source of truth. An account **attaches to** one local profile rather than replacing the profile system — the bike is a shared household device and that is the whole reason profiles exist
 - [ ] **15.2.2** `profiles.auth_user_id UUID REFERENCES auth.users` in the cloud schema; `cloud_id` on the local `UserEntity`
-- [ ] **15.2.3** Household guests never sync. A guest ride has no owner by definition
+- [x] **15.2.3** Household guests never sync. A guest ride has no owner by definition
 - [ ] **15.2.4** Two local profiles on one tablet may be two different accounts — nothing may assume a single signed-in user per device
-- [ ] **15.2.5** **`auth_user_id` on the local `UserEntity` is the flag the whole consent gate reads.** 23.1.1 asks one question — may this profile talk to the cloud? — and this column is the answer. Nullable, and null is the default rung of the ladder rather than a missing value
+- [x] **15.2.5** **`auth_user_id` on the local `UserEntity` is the flag the whole consent gate reads.** 23.1.1 asks one question — may this profile talk to the cloud? — and this column is the answer. Nullable, and null is the default rung of the ladder rather than a missing value
 - [ ] **15.2.6** A signed-in rider and an offline rider must be able to share a bike with no friction and no nagging. The offline one sees no sign-in prompt on a screen they did not open looking for one
 - [ ] **15.2.7** **One account, one local profile — checked, not hoped for.**
       Two local profiles pointing at the same `auth_user_id` is not a household
@@ -85,7 +85,7 @@ something they could have had offline.**
       backing up Priya on this bike"*), and **signs the session back out**,
       because a session with nothing attached is a tablet that looks signed in
       and will never send anything
-- [ ] **15.2.8** **The SDK holds one session; a household holds several riders.**
+- [x] **15.2.8** **The SDK holds one session; a household holds several riders.**
       15.2.4 says nothing may assume a single signed-in user per device, and
       that is right about the *data model* — `auth_user_id` is per profile and
       two riders may have two accounts. But the client library holds exactly one
@@ -231,20 +231,20 @@ first one to refresh invalidates the other, and a detected reuse can revoke the
 family and sign out *both*. So the bike must end up with a **session of its
 own**, minted for it, not a copy of the phone's.
 
-- [ ] **15.6.1** **`device_link`, a table that holds a pairing for five
+- [x] **15.6.1** **`device_link`, a table that holds a pairing for five
       minutes.** `code` (short, unambiguous, typeable — the QR is the fast path
       and not the only one), `secret_hash`, `label`, `created_at`,
       `expires_at`, `claimed_at`, `claimed_by`, and the payload. RLS on, and
       **no policy at all for `anon` or `authenticated`** — every access is
       through a function, which is what stops a leaked anon key enumerating
       pending pairings
-- [ ] **15.6.2** **The code is not the credential.** The bike generates a random
+- [x] **15.6.2** **The code is not the credential.** The bike generates a random
       **device secret**, sends only its SHA-256, and shows the *code*. The QR
       and the printed code are therefore safe to be photographed off a wall:
       collecting the session needs the secret, which never leaves the tablet.
       Without this split, anyone who can see the bike's screen from across the
       room can race the bike for its own session
-- [ ] **15.6.3** **Three functions, `SECURITY DEFINER`, one grant each.**
+- [x] **15.6.3** **Three functions, `SECURITY DEFINER`, one grant each.**
       `device_link_begin` (to `anon`: create a pairing, return the code),
       `device_link_claim` (to `authenticated` only: attach my account to this
       code), `device_link_poll` (to `anon`: given code **and** secret, return
@@ -266,7 +266,7 @@ own**, minted for it, not a copy of the phone's.
       shown to the rider before anything is claimed. A pairing flow that does
       not name the device being paired is a phishing primitive: the QR is a URL
       and a URL can be printed by anyone
-- [ ] **15.6.6** **What the bike shows while it waits, and what it does when it
+- [x] **15.6.6** **What the bike shows while it waits, and what it does when it
       stops.** A QR, the code underneath it in large type, a plain fallback URL,
       and a countdown that is honest about the five minutes. On expiry it
       offers a fresh code rather than sitting on a dead one — and it polls at a

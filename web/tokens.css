@@ -1,0 +1,97 @@
+/*
+ * Pelonot's design tokens, on the web (PLAN 17.15).
+ *
+ * **These are transcribed from `app/src/main/java/com/pelonot/ui/theme/`, not
+ * invented here.** `Color.kt` and `Theme.kt` are the source; this file is the
+ * copy, and it is a separate file from `app.css` precisely so the copying is
+ * visible and reviewable rather than smeared through a stylesheet.
+ *
+ * The honest limitation, stated rather than hidden: nothing enforces that these
+ * stay in step. There is no shared build (17.1a — deliberately), so a colour
+ * changed in `Color.kt` will not change here. What keeps the drift small is
+ * that this file holds **only** what both surfaces genuinely share, and that
+ * every value below names its Kotlin original — so checking is a grep, not an
+ * audit. 17.15.2 is the item for making it mechanical if it ever needs to be.
+ *
+ * What is deliberately NOT copied: the seven power-zone colours and the five
+ * heart-rate ones. The web app does not draw a zone today, and a palette copied
+ * in advance of a use is a palette that will be wrong by the time it has one.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* --- Neutral surfaces: dark (Color.kt, DarkBackground …) --- */
+  --bg: #09090b;                 /* DarkBackground */
+  --surface: #141417;            /* DarkSurface */
+  --surface-2: #1b1b1f;          /* DarkSurfaceContainer */
+  --surface-3: #27272a;          /* DarkSurfaceVariant */
+  --line: #3a3a3f;               /* OutlineVariantDark */
+  --text: #f4f4f5;               /* DarkTextPrimary */
+  --muted: #a1a1aa;              /* DarkTextSecondary */
+
+  /* --- Brand (PrimaryTeal*) --- */
+  --accent: #80cbc4;             /* PrimaryTealDark */
+  --accent-ink: #00332c;         /* OnPrimaryDark */
+  --accent-container: #00504a;   /* PrimaryTealContainerDark */
+  --on-accent-container: #a7f3eb;/* OnPrimaryContainerDark */
+
+  --danger: #ff6b7e;             /* ErrorDark */
+
+  /*
+   * Live metric accents. Reserved in the app for telemetry, so that a
+   * saturated colour always means "a number changing right now" — the web app
+   * inherits the same reservation, which is why the chrome above is entirely
+   * desaturated.
+   */
+  --power: #ff5252;              /* MetricPowerCoral */
+  --cadence: #00e5ff;            /* MetricCadenceCyan */
+  --hr: #00e676;                 /* MetricHeartRateGreen */
+  --resistance: #b388ff;         /* MetricResistanceViolet */
+
+  /* --- Spacing (Theme.kt, Spacing) --- */
+  --space-xs: 4px;
+  --space-s: 8px;
+  --space-m: 12px;
+  --space-l: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /*
+   * The readable-width cap (Theme.kt, Layout.readableWidth = 760.dp; PLAN
+   * 22.2.6). A line of body text across a whole screen is harder to read than
+   * the same text at 760, and that is a fact about eyes rather than about
+   * Android — so the web app takes the same number rather than picking its own.
+   */
+  --readable-width: 760px;
+
+  /* Shapes, matching the app's card and control radii. */
+  --radius-card: 16px;
+  --radius-control: 10px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8f9fa;               /* LightBackground */
+    --surface: #ffffff;          /* LightSurface */
+    --surface-2: #f1f3f4;        /* LightSurfaceContainer */
+    --surface-3: #eceef0;        /* LightSurfaceVariant */
+    --line: #d5d2da;             /* OutlineVariantLight */
+    --text: #1c1b1f;             /* LightTextPrimary */
+    --muted: #4a454f;            /* LightTextSecondary */
+
+    --accent: #00695c;           /* PrimaryTealLight */
+    --accent-ink: #ffffff;       /* OnPrimaryLight */
+    --accent-container: #b2dfdb;
+    --on-accent-container: #00201c;
+
+    --danger: #b3261e;           /* ErrorLight */
+
+    /*
+     * The metric accents do NOT flip with the theme, and that is the same
+     * decision the app makes: they identify a measurement rather than
+     * decorating a surface, and a rider who learns that coral means watts must
+     * not have to relearn it in daylight.
+     */
+  }
+}

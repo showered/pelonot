@@ -8,6 +8,94 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### Latest session — 3 August 2026 (twentieth sitting): the owner's five snags, and the phase one of them opened
+
+**Five notes in the inbox, and a sixth about the inbox itself.** The owner's
+rule, verbatim: *"even though you read my comments as one of the first things
+you do, don't necessarily action them first. They should have plan entries
+created and then triaged with just the same weighting as any other plan
+items."* That is now how CLAUDE.md and the inbox's own heading read — **emptying
+it is urgent, building it is not** — and it replaces the older line saying the
+inbox outranks *What to do next*. All five are written up; four are built and
+observed; the fifth turned out to be a whole phase. 516 JVM tests, 0 failures.
+
+**The zone ladder's bounce was not the animation, it was the quantity being
+animated.** `fractionThroughZone` is a position *within* a rung, so crossing a
+boundary reset it from ~1.0 to ~0.0 and the spring drove the fill **backwards
+across a whole segment** before growing again in the next one — a recoil at the
+exact moment the rider looked down to see that something had changed. The
+ladder was holding two coordinates where a rider reads one. `ZoneScale` now
+carries `ladderPosition`, one number across all seven rungs, and the drawing
+animates that alone. The property that says it is right is **monotonic in
+power**, swept at every watt from 1 to 400 — a coarse sweep steps straight over
+this defect, because it lived only at the boundaries.
+
+**Two of them were confirmed by looking rather than by reasoning, and one of
+those was the owner's own.** *"Output in watts … has a decimal place but gets
+cut off"* — the ride screen's OUTPUT tile was rendering **`63.`**, two digits, a
+decimal point, and the tenth clipped clean off. Whole kilojoules everywhere now,
+which is 11.6.12 and the owner's call to make.
+
+**The countdown had to be a gate, not a curtain.** A class used to start its
+first interval and its clock on the same tick as the tap, so the rider was
+already behind a Z1 target while reaching for the handlebars — and the opening
+seconds of every ride on disk are somebody getting onto a bike, filed as riding.
+Drawing a countdown *over* a running ride would have moved that defect rather
+than fixed it, so `RideScreen` returns early and `startRide` is genuinely not
+reached. Ten seconds, skippable, and a resume skips it outright — 8.3d's whole
+argument is that the ride never really stopped.
+
+**The heart beats, and the interesting part is what stops it.** The period is
+the live bpm, so 180 is three beats a second and the owner's example is the
+specification — but it is re-read at the *top of each beat* rather than keyed on
+bpm, because keyed, the animation restarts mid-contraction every time the 2 Hz
+display reading moves. And it stops dead when the reading does: a heart still
+beating over a strap that has dropped out is 2.4.4's frozen cadence in the one
+place a rider would be most alarmed to find it afterwards. Screenshots cannot
+show motion, so it was **measured**: across a burst of captures the glyph swells
+110 → 132 px and its green roughly doubles, resting between beats.
+
+**The fifth note was the one worth arguing with, and the honest answer was
+no.** *"Heart rate zones — pretty sure this is already covered."* It was not,
+and the reason is the phase: **the app had no maximum heart rate for anybody**,
+so it had no boundaries to colour between. Phase 21 opens rather than the colour
+being faked. The order of the two inputs is the whole design — the rider's own
+number is asked for first and date of birth is the fallback — because every age
+formula has a 10–12 bpm spread between individuals, which is **wider than a
+zone**, so an estimate gives a meaningful fraction of riders the wrong zones
+outright. Asking for the real number is both more accurate and asks less about
+the person, which is a rare combination. The estimate is Tanaka, not the folk
+220 − age, and every screen showing it says it is one.
+
+**Migration 11 → 12 is the mirror of 10 → 11 and lands on the other side of
+it.** `resume_count` took `NOT NULL DEFAULT 0` because zero stated a *fact*.
+There is no equivalent fact about a rider's heart: any default maximum is a
+**guess about a body**, silently prescribing zones off a number nobody gave. So
+both columns are nullable and every profile already on a tablet comes out with
+no zones at all — which is correct until they are asked, and is the same rule as
+a null heart rate.
+
+**And driving it found a defect reading the diff would not have.** The *"use the
+highest you've recorded"* offer read the rider's id from `uiState.value.profile`
+— still null during the section's first composition — so a rider with **382
+recorded samples was offered nothing**, with nothing on screen looking broken.
+The same shape as 8.3d.4 and 7.10.3: the code is right about what it wants and
+wrong about when it can have it.
+
+**It was checked on the bike, not only on the AVD.** The owner switched the
+tablet on mid-session and gave permission to install on it. Migration 11 → 12
+ran against the bike's own database: `user_version` 12, the profile and all six
+rides intact, and both new columns null — it invented nothing. And Settings
+there offers *"Use 170 — the highest you've recorded"*, off the owner's real
+strap data, which is the point at which 21.1.3 stops being a demo.
+
+One stale note corrected while there: **the bike does have a profile now**, so
+the line under *What to do next* saying it has none is no longer true.
+
+---
+
+---
+
 ### 3 August 2026 (nineteenth sitting): a crash is a pause nobody got to press
 
 **The owner left two notes in the inbox and went for a ride**, which set the

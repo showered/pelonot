@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fifteen entries have passed through it.** In order: standing and seated
+**Sixteen entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -56,11 +56,14 @@ growth (the paragraph above), inferring the maximum heart rate (**21.1.6**, and
 **20.3.9** for what it shares with the FTP question), signing in by QR code
 (**15.6**), and whether this is a monorepo (**17.1a** — it already is one; the
 recommendation is not to move the Gradle root, and the two rules that actually
-keep the apps independent are written down there instead).
+keep the apps independent are written down there instead), and one design
+system across native and web (**17.15** — `web/tokens.css`, transcribed from
+`Color.kt` and `Theme.kt`, with 17.15.1 for typography and 17.15.2 for the fact
+that nothing keeps the two in step).
 
-### Design system
+### Owner's inbox
 
-I believe we already utilise a design system but now, more than ever, since we are building a companion web app, they should be singing from the same hymn sheet. This shouldn't need to create much overhead, in fact it should save time and compute, if we can already know what colour, spacing and typography palettes we're working with. Native and web app should have a similar feel. Bear that in mind while fleshing out the web app.
+*Empty.*
 
 ---
 
@@ -112,89 +115,84 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 3 August 2026 (twentieth sitting): the owner's five snags, and the phase one of them opened
+### Latest session — 3 August 2026 (twenty-first sitting): the app goes online, and the endpoint stops being hypothetical
 
-**Five notes in the inbox, and a sixth about the inbox itself.** The owner's
-rule, verbatim: *"even though you read my comments as one of the first things
-you do, don't necessarily action them first. They should have plan entries
-created and then triaged with just the same weighting as any other plan
-items."* That is now how CLAUDE.md and the inbox's own heading read — **emptying
-it is urgent, building it is not** — and it replaces the older line saying the
-inbox outranks *What to do next*. All five are written up; four are built and
-observed; the fifth turned out to be a whole phase. 516 JVM tests, 0 failures.
+**The owner asked for accounts, and said they were available to help set it up.**
+Three inbox notes were emptied on the way — including one about the inbox
+itself, and one asked mid-session about whether this should become a monorepo.
+Phase 15 exists now: the app has auth, a screen that says what an account is
+*for*, a companion web app, and signing in by scanning a QR code with a phone.
+**`003`, `004` and `005` are applied to the real project.** 532 JVM tests, 0
+failures.
 
-**The zone ladder's bounce was not the animation, it was the quantity being
-animated.** `fractionThroughZone` is a position *within* a rung, so crossing a
-boundary reset it from ~1.0 to ~0.0 and the spring drove the fill **backwards
-across a whole segment** before growing again in the next one — a recoil at the
-exact moment the rider looked down to see that something had changed. The
-ladder was holding two coordinates where a rider reads one. `ZoneScale` now
-carries `ladderPosition`, one number across all seven rungs, and the drawing
-animates that alone. The property that says it is right is **monotonic in
-power**, swept at every watt from 1 to 400 — a coarse sweep steps straight over
-this defect, because it lived only at the boundaries.
+**The migration that had been written for two sittings finally ran, and the
+important part is what happened after it.** `003` returned `201`, which proves
+nothing — this project's history is three cloud defects that all returned
+success. So the catalogue was read back: nine policies, `WITH CHECK` on every
+write and `USING` on every read. Then the endpoint was probed over HTTP with
+the real anon key, which is the path an attacker takes rather than the one the
+SQL describes: `profiles`, `workouts` and `device_link` all answer **401**, and
+`class_templates` answers **200**. Three pre-consent profile rows deleted; the
+16 workouts kept, because one of them is 14.4.5's specimen.
 
-**Two of them were confirmed by looking rather than by reasoning, and one of
-those was the owner's own.** *"Output in watts … has a decimal place but gets
-cut off"* — the ride screen's OUTPUT tile was rendering **`63.`**, two digits, a
-decimal point, and the tenth clipped clean off. Whole kilojoules everywhere now,
-which is 11.6.12 and the owner's call to make.
+**That habit found something reading the SQL again could not.** `anon` still
+held **`TRUNCATE`** on `class_templates`, and then on `device_link` the moment
+`004` created it — from Supabase's own default privileges, not from any
+migration here. TRUNCATE ignores row-level security, being table-level, so on
+paper the 72-class library was one statement from empty. It is not reachable
+(PostgREST speaks no TRUNCATE and `anon` has no login), which makes it exactly
+what 14.0 called the old `USING (true)` policies: **a loaded gun rather than a
+fired one**. `005` puts it down. The rule it leaves behind is 15.5.7: *after any
+migration that creates a table, read the catalogue back* — what a migration
+granted and what a table ends up holding are different questions.
 
-**The countdown had to be a gate, not a curtain.** A class used to start its
-first interval and its clock on the same tick as the tap, so the rider was
-already behind a Z1 target while reaching for the handlebars — and the opening
-seconds of every ride on disk are somebody getting onto a bike, filed as riding.
-Drawing a countdown *over* a running ride would have moved that defect rather
-than fixed it, so `RideScreen` returns early and `startRide` is genuinely not
-reached. Ten seconds, skippable, and a resume skips it outright — 8.3d's whole
-argument is that the ride never really stopped.
+**The owner's QR idea turned out to be both feasible and the flow this app
+should have led with.** The bike's tablet is the worst keyboard in the house;
+a phone is the opposite of all four reasons why. Supabase has no device
+authorization grant, so it is built out of a locked table, four `SECURITY
+DEFINER` functions and a one-time OTP. Three things it gets right on purpose:
+**the code is not the credential** (the bike sends only the SHA-256 of a secret
+it keeps, so a code photographed off the screen collects nothing); the table has
+RLS on and **not one policy**, so no role can read it and every access is a
+narrow function with `search_path` pinned; and **the bike ends up with a session
+of its own** — this project has refresh-token rotation on, so two devices in one
+token family revoke each other, which is why the phone's own refresh token is
+the thing not to copy.
 
-**The heart beats, and the interesting part is what stops it.** The period is
-the live bpm, so 180 is three beats a second and the owner's example is the
-specification — but it is re-read at the *top of each beat* rather than keyed on
-bpm, because keyed, the animation restarts mid-contraction every time the 2 Hz
-display reading moves. And it stops dead when the reading does: a heart still
-beating over a strap that has dropped out is 2.4.4's frozen cadence in the one
-place a rider would be most alarmed to find it afterwards. Screenshots cannot
-show motion, so it was **measured**: across a burst of captures the glyph swells
-110 → 132 px and its green roughly doubles, resting between beats.
+**`004` had a real flaw that only the endpoint could show.** `device_link_
+describe` was authenticated-only, which reads as the safer choice and is the
+wrong one: the phone must be told **which device it is signing in** *before* it
+asks anybody for a password, and a protection that only fires after the password
+is typed is not one. It is granted to `anon` now, with the bound stated — you
+cannot ask without the code, and a claimed code answers `expired` exactly like
+an unknown one.
 
-**The fifth note was the one worth arguing with, and the honest answer was
-no.** *"Heart rate zones — pretty sure this is already covered."* It was not,
-and the reason is the phase: **the app had no maximum heart rate for anybody**,
-so it had no boundaries to colour between. Phase 21 opens rather than the colour
-being faked. The order of the two inputs is the whole design — the rider's own
-number is asked for first and date of birth is the fallback — because every age
-formula has a 10–12 bpm spread between individuals, which is **wider than a
-zone**, so an estimate gives a meaningful fraction of riders the wrong zones
-outright. Asking for the real number is both more accurate and asks less about
-the person, which is a rare combination. The estimate is Tanaka, not the folk
-220 − age, and every screen showing it says it is one.
+**Driving the AVD found the defect that reading the diff would not have, again.**
+Settings read `hasAccount` off the profile row, so a tablet holding **no session
+at all** said *"Backed up to your account"* — while the sync status line one
+card below, which does ask the gate, was silently absent. Two surfaces a card
+apart disagreeing, and the wrong one is the sentence a rider reads *instead of*
+checking. It now says the honest thing 15.2.8 asked for and nothing was drawing:
+*"Signed out on this bike. Your rides are still here and still yours … 3 rides
+are waiting to go up."*
 
-**Migration 11 → 12 is the mirror of 10 → 11 and lands on the other side of
-it.** `resume_count` took `NOT NULL DEFAULT 0` because zero stated a *fact*.
-There is no equivalent fact about a rider's heart: any default maximum is a
-**guess about a body**, silently prescribing zones off a number nobody gave. So
-both columns are nullable and every profile already on a tablet comes out with
-no zones at all — which is correct until they are asked, and is the same rule as
-a null heart rate.
+**15.2.8 is the design decision worth carrying forward.** 15.2.4 says nothing
+may assume one signed-in user per device, and that is right about the data
+model — but the client library holds exactly **one** session per process. Both
+are true, and the honest place to reconcile them is the gate: *having an account*
+and *this tablet carrying that rider's credentials* are different questions, and
+only the second can send a request. Without it, Priya's ride goes out under
+Simon's JWT with Priya's `user_id`, `003`'s `WITH CHECK` refuses it — correctly —
+and she is told forever that the network is at fault.
 
-**And driving it found a defect reading the diff would not have.** The *"use the
-highest you've recorded"* offer read the rider's id from `uiState.value.profile`
-— still null during the section's first composition — so a rider with **382
-recorded samples was offered nothing**, with nothing on screen looking broken.
-The same shape as 8.3d.4 and 7.10.3: the code is right about what it wants and
-wrong about when it can have it.
-
-**It was checked on the bike, not only on the AVD.** The owner switched the
-tablet on mid-session and gave permission to install on it. Migration 11 → 12
-ran against the bike's own database: `user_version` 12, the profile and all six
-rides intact, and both new columns null — it invented nothing. And Settings
-there offers *"Use 170 — the highest you've recorded"*, off the owner's real
-strap data, which is the point at which 21.1.3 stops being a demo.
-
-One stale note corrected while there: **the bike does have a profile now**, so
-the line under *What to do next* saying it has none is no longer true.
+**What is built and not yet seen working is the sign-in itself**, because it
+needs an account and creating one is the owner's to do. Everything up to that
+point is observed: the bike asks the live project for a pairing code and gets
+one, the server describes it back under the device's own name, `poll` with the
+right secret and with a wrong one are indistinguishable, `claim` is 401 to
+`anon`, and both web pages render against the real endpoint. **15.5.4 — every
+policy checked from a second account — is still open and is still the item in
+this phase that matters most.**
 
 ---
 
@@ -354,9 +352,9 @@ Two notes worth carrying into the next bike session:
 | 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. What is left is **14.2.1a** — `003_cloud_identity.sql` is written and not applied — — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: built and **gated shut** — every call goes through `CloudAccess` and no profile has an account, so nothing reaches the cloud until Phase 15 exists. 14.1.6's sighting is still missing and is no longer drivable from the app. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
-| 15 | Accounts, login and multi-device sync | ❌ Not started, but **no longer starting from nothing** — the eighteenth sitting built the two things underneath it. `profiles.id` **is** the auth user id (14.2.1), so signing in needs no cloud-id round trip; and 15.3.1's first-sign-in backfill is 14.2.6's backlog drain with a trigger on it. **15.5 is written in `supabase/003_cloud_identity.sql` and deliberately unticked**: the policies exist in a file, and 15.5.4 says they are verified from a second account, which reading the SQL is not. `auth_user_id` is still the gate and still nothing sets it |
+| 15 | Accounts, login and multi-device sync | 🔶 **Open and largely built.** auth-kt is installed, which is also what makes every request carry the rider's own JWT instead of the anon key — after `003` the anon role can read the class library and nothing else. *Back up my rides* is its own destination off Settings (15.1.4–15.1.6), with four states including the one that gets forgotten: **signed up, not confirmed, no session**. **15.6 is the owner's QR flow and it works up to the hand-off**: the bike invents a secret, sends only its SHA-256, shows a code and a countdown, and the live project describes that code back under the device's own name. **15.2.8 is the design decision to carry forward** — the SDK holds one session and a household holds several riders, so *having an account* and *this tablet carrying that rider's credentials* are different questions and only the second may send. It was also the defect: Settings said "Backed up to your account" on a tablet holding no session at all. **What is not yet seen working is signing in**, because that needs an account and creating one is the owner's; and **15.5.4 is still open and still the item here that matters most** |
 | 16 | Data visualisation | ✅ **Complete.** Post-ride charts done, the power caption says where the watts came from (16.1.6), and every trace now carries a scale decided once for all four (16.1.7 / 16.1.8). **The first trend is built (16.3.1)** — FTP over time on its own screen, with the ride behind each change one tap away — which also settles where a trend lives. **Three more landed in the seventeenth sitting**: the prescribed cadence finally has a chart (16.1.5a), weekly volume and the ride-day calendar share a second screen — *Your riding* (16.3.2, 16.3.5) — and a ride can be drawn against the rider's own previous best at the same class (16.3.4). **Phase 16 is complete**: 16.3.3 is mean-maximal power on *Your FTP*, measured rides only, with a gap breaking the window. What is left is **16.3.3a**, the scan's ceiling |
-| 17 | Companion web application | ❌ Not started, and **now sixth on a written road rather than an undated *nice to have*** — the owner named it as a destination in the eighteenth sitting. Still account-tier only: a household-only profile does not exist in the cloud and never appears there, which is 17.10's copy problem with a data-model cause. It reads `metrics_payload`, which is settled and versioned inside itself since 14.4, so it has something stable to build against |
+| 17 | Companion web application | 🔶 **Built and running, and it moved up the road rather than waiting at the end of it** — it is the only way either of us can see what the bike put in the cloud without writing SQL. `web/`, static, no build step, opens from `file://` (17.1); `link.html` is the QR flow's landing page and names the device before asking for anything (17.13); the endpoint comes from a git-ignored `config.js` (17.14). **17.1a answers the owner's monorepo question**: it already is one, and moving the Gradle root costs real paths for no benefit — the rule that keeps the apps independent is that no build depends on another's output. **17.15 is the owner's design system**: `tokens.css` is transcribed from `Color.kt` and `Theme.kt`, `app.css` holds no literal colour, and the metric accents deliberately do not flip with the theme. Ride history and detail read `metrics_payload` in **both** shapes, since one pre-14.4 row is still up there |
 | 18 | Social **across bikes** — the networked tier | ❌ Not started, and it sits on 15. **Phase 24 is the half that does not, and it is largely built** — which is 18.9's whole point: every screen here goes *on top of* its 24 equivalent rather than beside it, or one of the two leaderboards drifts and it will be the one nobody rides against |
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4) |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started. **20.3 is new and is the owner's**: profile creation asks a rider for their FTP in a text box prefilled with `200`, which by their own words **cannot go into production**. The constraint that makes it interesting is that the app cannot simply stop having a number — FTP is the denominator of the whole zone system and is written onto the ride at its start |

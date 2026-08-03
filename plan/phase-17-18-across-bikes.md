@@ -18,7 +18,7 @@ the web app is the natural home for everything social that involves words —
 friend requests, display names, bios, ride titles. **Anything that requires a
 keyboard should be possible on the web and optional on the bike.**
 
-- [ ] **17.1** Stack and repo layout. A separate top-level `web/` directory or a separate repo — **the Android build must never depend on it**
+- [x] **17.1** Stack and repo layout. A separate top-level `web/` directory or a separate repo — **the Android build must never depend on it**
 
       *Decided, 3 August 2026, and the owner's reason for bringing it forward is
       worth recording: the web app is not only a destination, it is **the
@@ -36,7 +36,7 @@ keyboard should be possible on the web and optional on the bike.**
       use. **No npm, no bundler, and nothing the Gradle build can see.**
       If it ever needs a framework it can grow one; starting with one buys
       nothing today and costs a maintenance surface immediately
-- [ ] **17.1a** **Is this a monorepo? — the owner's note, 3 August 2026.**
+- [x] **17.1a** **Is this a monorepo? — the owner's note, 3 August 2026.**
       Verbatim: *"Do we need to restructure the repo a bit to become a monorepo,
       so the android app can sit alongside other apps such as the Web app, and
       further down the road — who knows! Just those two for now anyway. Just my
@@ -73,18 +73,65 @@ keyboard should be possible on the web and optional on the bike.**
       projects, or a shared TypeScript package between two web apps, would make
       a root-level workspace file earn its keep. Until then this is a monorepo
       without the tooling, which is the cheap end of the trade
-- [ ] **17.13** **The pairing page — `link.html`, and it is the first thing to
+- [x] **17.13** **The pairing page — `link.html`, and it is the first thing to
       build here** (15.6). The whole of the QR sign-in flow lands on this page,
       it is the reason the web app exists before it has anything pretty to show,
       and it is one screen: sign in (or sign up), see which bike is asking, and
       confirm. **It must name the device** (15.6.5), and it must work on a phone
       held in one hand, which is the only device it will ever be opened on
-- [ ] **17.14** **Where the endpoint comes from, on a static page with no build
+- [x] **17.14** **Where the endpoint comes from, on a static page with no build
       step.** The same rule as 14.10 and for the same reason: not in the source.
       A `config.js` beside the page, git-ignored, with a checked-in
       `config.example.js` — and the page says plainly that it is unconfigured
       rather than failing in the console, which is where this project's cloud
       defects have historically gone to die
+- [x] **17.15** **One design system across both — the owner's note, 3 August
+      2026.** Verbatim: *"I believe we already utilise a design system but now,
+      more than ever, since we are building a companion web app, they should be
+      singing from the same hymn sheet. This shouldn't need to create much
+      overhead, in fact it should save time and compute, if we can already know
+      what colour, spacing and typography palettes we're working with. Native
+      and web app should have a similar feel."*
+
+      **Agreed, and the "saves time" part is the true part.** The web app's
+      first stylesheet had already invented its own greens and its own gaps, an
+      hour after the app's own were sitting in `Color.kt` — which is how two
+      surfaces of one product start feeling like two products, and it costs
+      *more* effort rather than less, because every new element is a small
+      colour decision taken again.
+
+      `web/tokens.css` is now the shared sheet: surfaces, text, outlines, the
+      brand teal, the four live metric accents, the spacing steps, and the
+      760 dp readable-width cap — each value naming the Kotlin original it was
+      transcribed from. `app.css` holds no literal colour or gap.
+
+      Three decisions inside it worth keeping:
+
+      - **The metric accents do not flip with the theme**, exactly as they do
+        not in the app. Coral means watts; a rider who learnt that at night
+        must not relearn it in daylight. They identify a measurement rather
+        than decorating a surface.
+      - **The zone palettes are deliberately not copied.** The web app draws no
+        power or heart-rate zone today, and a palette copied ahead of a use is
+        one that will be stale by the time it has one — the same argument as
+        21.1.4's *do not collect a field nothing reads*.
+      - **The width cap travels**, because 760 is a fact about eyes rather than
+        about Android (22.2.6)
+- [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
+      colour, spacing and shape; the web app is still on a system font stack
+      while the app has its own type scale. Worth doing when the web app has
+      more than three screens — before that, a webfont is weight on a page whose
+      whole virtue is that it opens instantly with nothing installed (17.1)
+- [ ] **17.15.2** **Nothing keeps the two in step, and that is stated rather
+      than hidden.** There is no shared build by design (17.1a), so a colour
+      changed in `Color.kt` does not change `tokens.css`. What keeps the drift
+      small today is that the file holds only what both surfaces genuinely
+      share and every value names its original, so checking is a grep. If it
+      ever needs to be mechanical, the cheap version is a script in
+      `classlibrary/`'s spirit — parse `Color.kt`, emit `tokens.css`, and fail
+      if the checked-in file differs. **Do not build that until the drift has
+      actually happened once**: a generator nobody runs is worse than a copy
+      somebody reads
 - [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
 - [ ] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
 - [ ] **17.4** Profile customisation: display name, avatar, bio, FTP, units
