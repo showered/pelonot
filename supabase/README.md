@@ -30,9 +30,36 @@ degraded one.
 |------|--------------|
 | `migration.sql` | Creates `profiles`, `class_templates`, `workouts`; enables RLS; seeds 72 class templates |
 | `002_grants_and_sync_fix.sql` | Grants `anon` the privileges the app needs, adds the missing `profiles` INSERT policy, renames `workouts.timestamp` → `recorded_at` |
+| `003_cloud_identity.sql` | **`profiles.id` becomes the auth user id.** Rewrites every policy against `auth.uid()`, moves DML from `anon` to `authenticated`. **Deletes existing `profiles` rows** — read it before running it |
+| `004_device_link.sql` | The pairing table and four functions behind signing in by QR code (PLAN 15.6) |
+| `005_revoke_truncate.sql` | Takes back `TRUNCATE`, `TRIGGER` and `REFERENCES`, which Supabase's default privileges grant to `anon` on every new table and no migration here ever asked for |
 
-Run them in that order in the SQL Editor. `002` is non-destructive: it drops no
-table and leaves the seeded class templates alone.
+Run them in that order in the SQL Editor. `002` is non-destructive; **`003` is
+not** — it clears `profiles`, deliberately, because every row in it was written
+before there was any such thing as consent.
+
+Everything from `004` on is optional: without it the app's email-and-password
+sign-in works and the QR offer simply does not appear.
+
+### Check what you got, not what you ran
+
+The one habit worth keeping from applying these: **read the catalogue back**.
+`005` exists entirely because `role_table_grants` said something different from
+what `003` had granted.
+
+```sql
+select tablename, policyname, cmd, roles::text from pg_policies
+  where schemaname = 'public' order by tablename, cmd;
+
+select table_name, grantee, string_agg(privilege_type, ',' order by privilege_type)
+  from information_schema.role_table_grants
+  where table_schema = 'public' and grantee in ('anon','authenticated')
+  group by 1, 2 order by 1, 2;
+```
+
+After `005` the second query should return exactly `SELECT` on
+`class_templates` for both roles, full DML on `profiles` and `workouts` for
+`authenticated`, and **nothing at all** for `anon` or for `device_link`.
 
 > **`migration.sql` alone does not produce a working project.** It enables RLS
 > and writes policies but never `GRANT`s anything to `anon`. RLS narrows access

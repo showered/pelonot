@@ -271,8 +271,27 @@ REVOKE ALL ON FUNCTION public.device_link_claim(text, jsonb)   FROM public;
 
 GRANT EXECUTE ON FUNCTION public.device_link_begin(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.device_link_poll(text, text)  TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.device_link_describe(text)    TO authenticated;
 GRANT EXECUTE ON FUNCTION public.device_link_claim(text, jsonb) TO authenticated;
+
+-- `describe` is granted to `anon` as well, and that is a decision rather than
+-- an oversight.
+--
+-- The first version had it authenticated-only, which reads as the safer choice
+-- and is the wrong one, because of *when* the phone needs the answer: it opens
+-- the pairing page having just scanned a code, and it must be told which device
+-- it is about to sign in **before** it asks anybody for a password. A rider who
+-- has to authenticate first in order to find out what they are authenticating
+-- into has already given up the protection 15.6.5 exists for — naming the
+-- device is the anti-phishing measure, and a measure that only fires after the
+-- password is typed is not one.
+--
+-- What it exposes is bounded by the fact that you cannot ask without the code:
+-- one device label, for one unclaimed pairing, for five minutes. It says
+-- nothing about who is pairing, because until somebody claims it there is
+-- nobody — and a claimed code returns 'expired' to this function exactly like
+-- an unknown one, so it is not an oracle for what has been claimed.
+
+GRANT EXECUTE ON FUNCTION public.device_link_describe(text) TO anon, authenticated;
 
 COMMIT;
 

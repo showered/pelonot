@@ -125,7 +125,7 @@ ever synced, confirmed by count rather than inferred.
       forbid are exactly the ones the KDoc has to say out loud to explain the
       rule, and a fence that documenting it breaks teaches the next person to
       delete the explanation
-- [ ] **14.2.1a** **Apply `003_cloud_identity.sql`**, and note the two things in
+- [x] **14.2.1a** **Apply `003_cloud_identity.sql`**, and note the two things in
       it that need a decision rather than a run. It **deletes every `profiles`
       row** — they were all written by the consent defect in the connectivity
       model's fourth row, they belong to riders who never signed in to anything,
@@ -160,6 +160,28 @@ ever synced, confirmed by count rather than inferred.
         specimen. It has `user_id` NULL, so it breaks no new constraint; it
         simply becomes invisible to PostgREST, which is correct for an
         unattributed ride and still readable through the Management API
+
+      ***Applied 3 August 2026, and both decisions above held.*** *Run before
+      15.1's UI existed, so there was never a window with a live session and
+      `USING (true)` policies. `DELETE FROM public.profiles` removed 3 rows; the
+      16 `workouts` rows are untouched and all still `user_id` NULL, which is
+      14.4.5's specimen preserved. **Verified by reading the catalogue back
+      rather than by the run returning 201**: nine policies, `WITH CHECK` on
+      every write and `USING` on every read, and — probed over HTTP with the
+      real anon key — `profiles`, `workouts` and `device_link` all answer `401`
+      while `class_templates` answers `200`. That last probe is the one that
+      matters, because it is the path an attacker would take rather than the
+      one the SQL describes.*
+
+      *It also found something the SQL could not: `anon` still held `TRUNCATE`,
+      `TRIGGER` and `REFERENCES` on `class_templates`, from Supabase's default
+      privileges rather than from any migration here. **TRUNCATE ignores RLS**,
+      so on paper the 72-class library was one statement from empty. Not
+      reachable — PostgREST speaks no TRUNCATE and `anon` has no login — but it
+      is the same "loaded gun rather than a fired one" that 14.0 said about
+      `USING (true)`, and `005_revoke_truncate.sql` puts it down. **The habit is
+      the lesson**: what a migration granted and what a table ends up holding
+      are different questions.*
 - [ ] **14.2.4a** **Nothing nulls `synced_at` when a ride is edited**, because
       nothing in the payload is editable today — `rpeRating` and the FTP
       proposal flag are the only things that change after a ride ends and

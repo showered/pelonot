@@ -126,20 +126,21 @@ something they could have had offline.**
 
 ### 15.5 RLS, properly
 
-**Written in `supabase/003_cloud_identity.sql`, not yet applied and not yet
-verified.** The eighteenth sitting wrote the policies as part of 14.2.1,
+**Applied 3 August 2026. Verified against the endpoint for everything that does
+not need a second account; 15.5.4 itself is still open and is still the item
+that matters.** The eighteenth sitting wrote the policies as part of 14.2.1,
 because the identity decision and the policies are the same decision: once
 `profiles.id` **is** the auth user id, every policy below is one line, and
 before that they could not be written at all. None of these boxes may be ticked
 on the strength of the file existing — 15.5.4 is the whole point.
 
-- [ ] **15.5.1** Rewrite every policy against `auth.uid()` — currently all six are `USING (true)`.
+- [x] **15.5.1** Rewrite every policy against `auth.uid()` — currently all six are `USING (true)`.
       *Written in `003`. Eight policies rather than six, split by operation, and
       **`WITH CHECK` as well as `USING` on every write** — they answer different
       questions (which existing rows you may touch, versus what the row is
       allowed to look like afterwards), and a policy with only `USING` lets a
       rider `UPDATE` their own row and set its id to somebody else's*
-- [ ] **15.5.2** A rider can read and write only their own profile and their own workouts.
+- [x] **15.5.2** A rider can read and write only their own profile and their own workouts.
       *Written. Also in `003` and worth knowing: `workouts.user_id` becomes
       `ON DELETE CASCADE`, which is the **opposite** of the local rule. Locally,
       deleting a profile keeps its rides — a housemate leaving does not erase
@@ -150,7 +151,7 @@ on the strength of the file existing — 15.5.4 is the whole point.
       belonged to**, which means 15.4.2 would not have deleted their cloud data.
       Same-looking constraint, opposite requirement, and backwards in either
       direction is a serious bug*
-- [ ] **15.5.3** `class_templates` stays world-readable; it is public data.
+- [x] **15.5.3** `class_templates` stays world-readable; it is public data.
       *Written — `SELECT` to `anon` and `authenticated`, and **no write policy
       at all**, which under RLS means nobody but the service role can author a
       class. A class comes from `classlibrary/build.py` and ships in the APK;
@@ -160,13 +161,36 @@ on the strength of the file existing — 15.5.4 is the whole point.
       `003` is not this check and neither is running it successfully. Two real
       sessions, pointed at each other's rows, bouncing. Until that has happened
       the policies are a hypothesis
-- [ ] **15.5.5** **The grants move too, and RLS cannot do it for you.** RLS
+- [x] **15.5.5** **The grants move too, and RLS cannot do it for you.** RLS
       *narrows* access a role already has and can confer none — the lesson of
       14.0, where every request died `42501` before a policy was ever evaluated.
       `003` revokes `anon`'s access to `profiles` and `workouts` entirely and
       grants DML to `authenticated` instead, including `DELETE`, which 002
       granted on nothing: a rider who cannot delete their own data does not have
       an account, they have a submission
+- [x] **15.5.7** **The privileges nobody granted.** Reading
+      `role_table_grants` back after `003` — rather than trusting the run —
+      showed `anon` holding `TRUNCATE`, `TRIGGER` and `REFERENCES` on
+      `class_templates`, and then on `device_link` the moment `004` created it.
+      Neither migration granted them: they come from Supabase's own default
+      privileges, which grant ALL on new tables in `public` to `anon` and
+      `authenticated`. `003`'s `REVOKE ALL` happened to catch them on `profiles`
+      and `workouts`, so the two tables it did not name kept the full set.
+
+      **TRUNCATE ignores row-level security**, being a table-level operation, so
+      no policy could have stopped it — the 72-class library was, on paper, one
+      statement from empty. It is not reachable: PostgREST speaks only SELECT,
+      INSERT, UPDATE and DELETE over HTTP, and `anon` has no login of its own.
+      That is precisely the state 14.0 described the old `USING (true)` policies
+      in — *a loaded gun rather than a fired one* — and the answer is the same.
+      `005_revoke_truncate.sql`.
+
+      The rule it leaves behind is the one worth keeping: **after any migration
+      that creates a table, read the catalogue back.** What a migration granted
+      and what a table ends up holding are different questions, and only the
+      second one is the answer. It is also why this was found at all — the
+      alternative was re-reading `003`, which is correct and would have told us
+      nothing
 - [ ] **15.5.6** **No cross-rider visibility yet, on purpose.** Every policy in
       `003` is "your own rows and nobody else's". That is the correct floor to
       build a friend graph on (17.5) and the wrong thing to relax speculatively
