@@ -145,6 +145,20 @@ class UserRepository(
     }
 
     /**
+     * "Don't ask me again" for the dashboard's account offer (15.8.4).
+     *
+     * Per profile, same argument as [setHouseholdVisible] — a household bike
+     * has several riders and only one of them dismissing this must not
+     * silence it for the others. Never called by the profile-creation offer
+     * (15.8.1), which shows once and is not repeated regardless of the
+     * answer; this is only reachable from the dashboard card.
+     */
+    suspend fun dismissAccountOffer(userId: Int) {
+        val user = userDao.getUserById(userId) ?: return
+        save(user.copy(accountOfferDismissed = true))
+    }
+
+    /**
      * Renames a profile (20.1.5).
      *
      * The one field Settings cannot change — it edits FTP and weight — and the

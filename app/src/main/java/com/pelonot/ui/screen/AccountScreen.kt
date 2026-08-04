@@ -185,7 +185,7 @@ private fun GuestCannotBackUp() {
  * again.
  */
 @Composable
-private fun Loading() {
+internal fun Loading() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
@@ -271,7 +271,7 @@ private fun ConfirmYourEmail(
 }
 
 @Composable
-private fun SignInForm(
+internal fun SignInForm(
     state: AccountUiState,
     viewModel: AccountViewModel,
     onDone: () -> Unit
@@ -412,7 +412,7 @@ private fun SignInForm(
  * code" is a mechanism; "use your phone" is the reason.
  */
 @Composable
-private fun ScanToSignIn(onStart: () -> Unit) {
+internal fun ScanToSignIn(onStart: () -> Unit) {
     Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
         Column(Modifier.padding(MaterialTheme.spacing.large)) {
             Text("Use your phone instead", style = MaterialTheme.typography.titleMedium)
@@ -443,7 +443,7 @@ private fun ScanToSignIn(onStart: () -> Unit) {
  * went to fetch their phone is the most confusing thing this flow can do.
  */
 @Composable
-private fun PairingSection(
+internal fun PairingSection(
     state: AccountUiState,
     onCancel: () -> Unit,
     onRetry: () -> Unit
@@ -530,10 +530,10 @@ private fun PairingSection(
  * The tablet is 1280 × 720 dp and this screen is capped at `readableWidth`, so
  * 260 dp is a comfortable third of the column rather than a wall.
  */
-private val QR_SIZE = 260.dp
+internal val QR_SIZE = 260.dp
 
 @Composable
-private fun ProblemLine(message: String) {
+internal fun ProblemLine(message: String) {
     Text(
         text = message,
         style = MaterialTheme.typography.bodyMedium,

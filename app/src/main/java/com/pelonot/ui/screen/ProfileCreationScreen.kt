@@ -91,6 +91,13 @@ import java.util.Date
  * descriptions are a [WideGrid] — and the prose is capped with [readableText],
  * which is 22.4.3's "capped column inside a wider frame" rather than a
  * `readableColumn` over the whole screen.
+ *
+ * **A fourth step on a build with a cloud** (15.8.1): once the number is
+ * accepted, the profile is written immediately — never held back for what
+ * happens next — and [accountOffer] offers to back it up. Skipping it is as
+ * first-class as answering the three questions above; this screen's job was
+ * always "get the rider onto the bike", and an account is something offered
+ * to them on the way, not a second gate.
  */
 @Composable
 fun ProfileCreationScreen(
@@ -102,6 +109,13 @@ fun ProfileCreationScreen(
      * advertise a backup it cannot perform.
      */
     accountOffer: (@Composable (onDone: () -> Unit) -> Unit)? = null,
+    /**
+     * Called once the account offer is finished — skipped, linked, or backed
+     * out of. Unused when [accountOffer] is null: there, [onProfileCreated]
+     * alone is the caller's signal that this screen is done, exactly as
+     * before 15.8 (see [PostRideSummaryScreen], which never passes an offer).
+     */
+    onAccountOfferFinished: () -> Unit = {},
     nowMillis: Long = System.currentTimeMillis()
 ) {
     var step by remember { mutableStateOf(Step.Name) }
@@ -182,12 +196,18 @@ fun ProfileCreationScreen(
                 typedFtp = typedFtp,
                 onTypedFtpChange = { typedFtp = it?.filter(Char::isDigit) },
                 onCreate = {
-                    if (accountOffer != null) step = Step.Account else finish()
+                    // 15.8.1: the profile is written the moment the rider
+                    // leaves this step, whether or not an account offer
+                    // follows — never held back for what happens next, so a
+                    // rider who walks away mid-offer still has a rideable
+                    // bike with a real profile on it.
+                    finish()
+                    if (accountOffer != null) step = Step.Account
                 },
                 createLabel = if (accountOffer != null) "Continue" else "Start riding"
             )
 
-            Step.Account -> accountOffer?.invoke(::finish)
+            Step.Account -> accountOffer?.invoke(onAccountOfferFinished)
         }
     }
 }
@@ -603,7 +623,8 @@ private const val MAX_TYPED_FTP = 600
 fun ProfileCreationDialog(
     onProfileCreated: (NewProfile) -> Unit,
     onDismiss: () -> Unit,
-    accountOffer: (@Composable (onDone: () -> Unit) -> Unit)? = null
+    accountOffer: (@Composable (onDone: () -> Unit) -> Unit)? = null,
+    onAccountOfferFinished: () -> Unit = onDismiss
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -612,7 +633,8 @@ fun ProfileCreationDialog(
         ProfileCreationScreen(
             onProfileCreated = onProfileCreated,
             onCancel = onDismiss,
-            accountOffer = accountOffer
+            accountOffer = accountOffer,
+            onAccountOfferFinished = onAccountOfferFinished
         )
     }
 }

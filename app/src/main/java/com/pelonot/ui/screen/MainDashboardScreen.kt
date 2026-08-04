@@ -100,6 +100,14 @@ fun MainDashboardScreen(
     youId: Int? = null,
     /** How much riding a backup would protect (23.3.1). Draws nothing until it is due. */
     backupReminder: BackupReminder = BackupReminder.None,
+    /**
+     * The offer to back this profile up by account, on selecting one that has
+     * ridden offline (15.8.4). Takes priority over [backupReminder] when both
+     * would otherwise show — one nag about the same risk, not two.
+     */
+    showAccountOffer: Boolean = false,
+    onAccountOffer: () -> Unit = {},
+    onDismissAccountOffer: () -> Unit = {},
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
     onHistory: () -> Unit,
@@ -210,11 +218,23 @@ fun MainDashboardScreen(
                     )
                 }
 
-                // ── 4️⃣a The backup reminder, when there is one ──────────
+                // ── 4️⃣a The account offer or the backup reminder ────────
                 // Under the actions rather than above them, and never as a
-                // dialog: it is a reminder, not a nag (23.3.1). It sits beside
-                // the Settings card because that is where it sends the rider.
-                if (backupReminder.isDue) {
+                // dialog — same shape as 23.3.1, and 15.8.5 folds them into
+                // one slot rather than stacking two nags about the same risk:
+                // a rider being offered the fuller answer does not also need
+                // the lesser one.
+                if (showAccountOffer) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+                    WideRow {
+                        AccountOfferCard(
+                            onLink = onAccountOffer,
+                            onDismiss = onDismissAccountOffer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.weight(1f))
+                    }
+                } else if (backupReminder.isDue) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
                     WideRow {
                         BackupReminderCard(
@@ -581,6 +601,61 @@ private fun BackupReminderCard(
             Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
             TextButton(onClick = onDismiss) { Text("Not now") }
             TextButton(onClick = onBackup) { Text("Back up") }
+        }
+    }
+}
+
+/**
+ * *"Back this up?"* for a profile that has been riding offline (PLAN 15.8.4).
+ *
+ * The second of the two moments this app offers an account — the first is
+ * profile creation itself (15.8.1) — and the only one on the dashboard,
+ * because that is where selecting a profile lands. **Never a modal**: a rider
+ * choosing a profile is on their way to a ride, and 11.6.14 is the standing
+ * lesson about what a dialog in front of that costs.
+ */
+@Composable
+private fun AccountOfferCard(
+    onLink: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Save,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
+            Text(
+                // 15.8.6: the cost, in the same breath as the offer.
+                text = "This profile's rides are only on this tablet. An account " +
+                    "keeps a copy safe — everything keeps working without one.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            // Equal weight, same as BackupReminderCard's pair — "not now" is
+            // not a smaller answer than "back up".
+            TextButton(onClick = onDismiss) { Text("Not now") }
+            TextButton(onClick = onLink) { Text("Back this up") }
         }
     }
 }

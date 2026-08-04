@@ -362,10 +362,32 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 14 → 15: whether this profile has said not to be asked about an
+     * account again (PLAN 15.8.4).
+     *
+     * Per profile rather than per tablet, on the same argument as
+     * `household_visible` and unlike `hasEverBackedUp` (23.3.1, a device-wide
+     * DataStore flag) — a household bike has several riders and only one of
+     * them dismissing the offer must not silence it for the others.
+     *
+     * `NOT NULL DEFAULT 0`: every profile that already exists has never seen
+     * the offer, so *not dismissed* is a fact rather than a guess, the same
+     * shape as `household_visible`'s backfill.
+     */
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `profiles` ADD COLUMN `account_offer_dismissed` " +
+                    "INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-        MIGRATION_12_13, MIGRATION_13_14
+        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
     )
 }

@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) },
                             onDismissBackupReminder = viewModel::snoozeBackupReminder,
+                            onDismissAccountOffer = viewModel::dismissAccountOffer,
                             onRevertFtpChange = viewModel::revertFtpChange,
                             onLoadLeaderboard = viewModel::householdLeaderboard
                         )

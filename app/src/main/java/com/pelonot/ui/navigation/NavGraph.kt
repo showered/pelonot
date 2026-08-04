@@ -35,7 +35,9 @@ import com.pelonot.ui.screen.HistoryScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
 import com.pelonot.ui.screen.PreRideIntentPrompt
+import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.model.NewProfile
+import com.pelonot.ui.screen.ProfileAccountOfferStep
 import com.pelonot.ui.screen.ProfileCreationDialog
 import com.pelonot.ui.screen.ProfileSelectorScreen
 import com.pelonot.ui.screen.RideDetailScreen
@@ -74,6 +76,8 @@ fun PelonotNavGraph(
     onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
     /** "Not now" on the backup reminder (23.3.1) — moves the line, does not silence it. */
     onDismissBackupReminder: () -> Unit = {},
+    /** "Don't ask me again" on the dashboard's account offer (15.8.4) — per profile. */
+    onDismissAccountOffer: () -> Unit = {},
     /** Put back the FTP an auto change replaced (7.10.4). */
     onRevertFtpChange: (Int) -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
@@ -83,6 +87,12 @@ fun PelonotNavGraph(
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
     var showIntentPrompt by rememberSaveable { mutableStateOf(false) }
+
+    // 15.8.7: neither account offer may appear on a build with no cloud
+    // configured — a self-hoster's app must not advertise a backup it cannot
+    // perform. Read once; whether a build has a cloud does not change while
+    // it runs.
+    val cloudConfigured = remember { ServiceLocator.accountRepository.cloudConfigured }
 
     // 11.1a.5. Opening the app while a class is already recording — from the
     // ride notification, from the launcher, or from the strip after the task
@@ -142,16 +152,30 @@ fun PelonotNavGraph(
     }
 
     if (showProfileDialog) {
+        val leaveProfileCreation = {
+            showProfileDialog = false
+            navController.navigate(Destination.Dashboard.route) {
+                popUpTo(Destination.ProfileSelector.route) { inclusive = false }
+            }
+        }
+
         ProfileCreationDialog(
             onProfileCreated = { newProfile ->
-                onCreateProfile(newProfile) {
-                    showProfileDialog = false
-                    navController.navigate(Destination.Dashboard.route) {
-                        popUpTo(Destination.ProfileSelector.route) { inclusive = false }
-                    }
+                onCreateProfile(newProfile) { _ ->
+                    // 15.8.1: the profile is already persisted at this point.
+                    // With no account offer to follow it, this is also the
+                    // rider's cue that profile creation is finished; with one,
+                    // onAccountOfferFinished carries that job instead.
+                    if (!cloudConfigured) leaveProfileCreation()
                 }
             },
-            onDismiss = { showProfileDialog = false }
+            onDismiss = { showProfileDialog = false },
+            accountOffer = if (cloudConfigured) {
+                { onDone -> ProfileAccountOfferStep(onDone = onDone) }
+            } else {
+                null
+            },
+            onAccountOfferFinished = leaveProfileCreation
         )
     }
 
@@ -196,6 +220,17 @@ fun PelonotNavGraph(
         }
 
         composable(Destination.Dashboard.route) {
+            val selected = uiState.selectedProfile
+            // 15.8.4: the two moments this app already knows a rider is
+            // thinking about identity are creating a profile and selecting
+            // one that has ridden offline — this is the second. Never for a
+            // profile that already has an account, never once dismissed, and
+            // never on a build with no cloud (15.8.7, same gate as the offer
+            // at profile creation).
+            val showAccountOffer = cloudConfigured && selected != null &&
+                selected.authUserId == null && !selected.accountOfferDismissed &&
+                uiState.dashboardStats.hasRidden
+
             MainDashboardScreen(
                 userName = uiState.selectedProfile?.name ?: "Guest",
                 ftp = uiState.selectedProfile?.ftpWatts
@@ -206,6 +241,9 @@ fun PelonotNavGraph(
                 youId = uiState.selectedProfile?.localUserId,
                 backupReminder = uiState.backupReminder,
                 onDismissBackupReminder = onDismissBackupReminder,
+                showAccountOffer = showAccountOffer,
+                onAccountOffer = { navController.navigate(Destination.Account.route) },
+                onDismissAccountOffer = onDismissAccountOffer,
                 onJustRide = {
                     pendingClassId = null
                     showIntentPrompt = true

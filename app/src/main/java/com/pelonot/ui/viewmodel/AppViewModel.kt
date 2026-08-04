@@ -437,6 +437,21 @@ class AppViewModel(
         viewModelScope.launch { settingsRepository.snoozeBackupReminder() }
     }
 
+    /**
+     * "Don't ask me again" on the dashboard's account offer (15.8.4).
+     *
+     * Per profile — [UserRepository.dismissAccountOffer] — unlike
+     * [snoozeBackupReminder], which is a device-wide mark. A household bike
+     * has several riders and one of them dismissing this must not silence it
+     * for the others.
+     */
+    fun dismissAccountOffer() {
+        viewModelScope.launch {
+            val profileId = settingsRepository.settings.first().lastProfileId ?: return@launch
+            userRepository.dismissAccountOffer(profileId)
+        }
+    }
+
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val DEFAULT_WEIGHT_KG = 70.0

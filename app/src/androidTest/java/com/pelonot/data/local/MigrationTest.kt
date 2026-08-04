@@ -877,6 +877,58 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 14 → 15: `profiles.account_offer_dismissed` (PLAN 15.8.4).
+     *
+     * `household_visible`'s backfill argument rather than `fitness_level`'s:
+     * a profile that existed before this column was never *asked* whether to
+     * link an account, so *not dismissed* is a true fact about it rather than
+     * a guess — the dashboard's offer is free to show on the very next
+     * launch, which is what the migration has to leave in place.
+     */
+    @Test
+    fun migrate14To15_leavesAnExistingProfileNotDismissed() {
+        helper.createDatabase(TEST_DB, 14).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at,
+                                      auth_user_id, household_visible, max_hr_bpm, birth_date,
+                                      fitness_level)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1, 186, 500, 'regular')
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 15, true, AppMigrations.MIGRATION_14_15)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query(
+                    "SELECT account_offer_dismissed, ftp_watts FROM profiles " +
+                        "WHERE local_user_id = 1"
+                )
+                .use { cursor ->
+                    assertTrue("the profile that existed before the migration is gone", cursor.moveToFirst())
+                    assertFalse(
+                        "a rider who was never asked came out as having declined",
+                        cursor.getInt(0) != 0
+                    )
+                    // And nothing else moved.
+                    assertEquals(210, cursor.getInt(1))
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

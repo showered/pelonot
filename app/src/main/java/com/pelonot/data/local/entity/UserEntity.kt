@@ -120,7 +120,21 @@ data class UserEntity(
      * recorded denominator from a self-assessment months old.
      */
     @ColumnInfo(name = "fitness_level")
-    val fitnessLevel: String? = null
+    val fitnessLevel: String? = null,
+
+    /**
+     * Whether this rider has said not to be asked about an account again
+     * (15.8.4) — from the dashboard's offer to a profile that has ridden
+     * offline, never from the profile-creation offer (15.8.1), which is
+     * shown once and never repeated regardless of the answer.
+     *
+     * Per profile, not per tablet — [SettingsRepository]'s `hasEverBackedUp`
+     * is the device-wide equivalent for the *local* backup reminder (23.3.1),
+     * and the two must not be merged: a household bike has several riders and
+     * one dismissing the cloud offer must not silence it for the others.
+     */
+    @ColumnInfo(name = "account_offer_dismissed")
+    val accountOfferDismissed: Boolean = false
 ) {
 
     /** True when this rider has an account, and therefore a cloud. */
