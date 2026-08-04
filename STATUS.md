@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated the same evening.** Measured, not estimated:
-`assembleDebug` passes, **585 JVM tests, 0 failures**, and **445 of 682 plan
-boxes** are ticked across 27 phases. It is a summary — every claim below belongs to a phase file and
+**Written 4 August 2026, updated the same evening (twenty-seventh sitting).**
+Measured, not estimated: `assembleDebug` passes, **599 JVM tests, 0
+failures**, and **459 of 689 plan boxes** are ticked across 27 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
 
@@ -40,7 +40,7 @@ currently open and should not be, and one deploy that has not been run.
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done** except one item — a live pace target *during* a ride (24.3.2) |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
-| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **Half a gap now.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, and estimates an FTP rather than demanding one. What it still never mentions is that an account exists (15.8). See *How close to done*, below |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. What is left is the overlay permission still being explained only at ride start (19.1.6) and a green CI run (19.1.4). See *How close to done*, below |
 
 ---
 
@@ -117,9 +117,12 @@ second real account — 21 probes, 0 failures** — rather than read; a backlog 
 drains oldest-first so a ride is never lost to exhausted retries; a payload that
 is columnar, versioned inside itself and 228 KB → 54 KB per ride; sign-in by
 **scanning a QR code with a phone**, where the code is not the credential and
-the bike ends up with a session of its own; a hosted companion web app; and one
+the bike ends up with a session of its own; a hosted companion web app; one
 leaderboard carrying every registered rider **plus** everyone on your own bike,
-with no friend graph to maintain.
+with no friend graph to maintain; and, as of this sitting, **an offer to back
+up rather than a destination to go looking for** — at profile creation and
+again from the dashboard for a profile that has been riding offline, each
+dismissable on its own and neither shown on a build with no cloud (15.8).
 
 **The floor under all of it**: offline is the mode, not a fallback. A rider with
 no account makes **no request to Supabase at all**, and a fence test fails the
@@ -138,7 +141,6 @@ for.
 | **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
 | **15.4.1–15.4.3** | Sign out, delete cloud data, delete the account | GDPR applies to a hobby project, and sign-out must keep every local ride |
 | **17.16.2** | How the web app is deployed | The fix shipped and the check confirms it (17.16.8), but the command itself lives only in the owner's shell history. `./web/check-deployed.sh` is what catches the next drift, and only if somebody runs it |
-| **15.8** | The account as the front door | **20.3 is done** — profile creation is a proper three-step screen with no watt field. What is missing is the other half of the same note: it still never mentions that an account exists. The screen was built with the hook in place, so this goes in rather than beside |
 
 ### Deliberately deferred, with the reason written down
 
@@ -246,19 +248,20 @@ deliberately) and the web app was redeployed and verified. What is left is
 sign-out doing the right thing, and a full-length ride that measures battery and
 heat.
 
-**Done for a stranger with a Peloton: the seven rows in the table above.** In
+**Done for a stranger with a Peloton: the six rows in the table above.** In
 order of what a new rider meets first: a first-run flow that offers an account
-and gets to a usable FTP without a text box. **Half of that is now built** —
-20.3 is a three-step screen that estimates an FTP from questions a person can
-answer — and the half that is not is 15.8, the offer of an account, which the
-screen was deliberately built with a hook for rather than beside; a first run that
-explains the overlay permission before the ride needs it (19.1.6), and a green
-CI run so the project can take a patch (19.1.4). That is a genuinely short list,
-and it is short because the hard parts — a stock bike, honest telemetry,
-migrations, an overlay that survives Netflix — are behind us.
+and gets to a usable FTP without a text box. **Both halves of that are now
+built** — 20.3 is a three-step screen that estimates an FTP from questions a
+person can answer, and 15.8 fills the slot it was left with, offering to back
+the profile up right there and again from the dashboard if it was skipped.
+What is left is a first run that explains the overlay permission before the
+ride needs it (19.1.6), and a green CI run so the project can take a patch
+(19.1.4). That is a genuinely short list, and it is short because the hard
+parts — a stock bike, honest telemetry, migrations, an overlay that survives
+Netflix — are behind us.
 
-**Done as the plan is written: 66%, and it will never be 100.** 453 of 684
-boxes, and the remaining 231 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 67%, and it will never be 100.** 459 of 689
+boxes, and the remaining 230 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
 things it had already decided against. **It went *down* the sitting before this one while
 three things were finished**, which is the clearest possible demonstration of
