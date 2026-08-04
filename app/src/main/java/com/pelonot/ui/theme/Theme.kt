@@ -130,6 +130,14 @@ val MaterialTheme.layout: Layout
  * fillMaxWidth` sequence is what centres it without needing the parent's
  * alignment scope, which is exactly the cooperation a per-screen fix kept
  * having to arrange for itself.
+ *
+ * **What this is not for (22.4).** It caps a *line*, not a *screen*. A screen
+ * whose content is figures, charts, tiles or cards in a set has the opposite
+ * problem and wants [WideGrid] instead — reaching for this token because it is
+ * the one that exists is how four screens came to leave 520 dp of tablet
+ * empty. The rule: **cap what is read at arm's length, tile what is looked
+ * at.** Both answers are legitimate and a screen may want one inside the
+ * other — a capped column of prose beside a wide grid of numbers.
  */
 @Composable
 fun Modifier.readableColumn(): Modifier {

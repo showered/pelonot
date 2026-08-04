@@ -2,6 +2,7 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -29,28 +31,49 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.ui.components.ClassLeaderboardCard
-import com.pelonot.ui.components.RideSummaryCard
+import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.PostRideViewModel
+import java.text.DateFormat
+import java.util.Date
 
 /**
- * Post-ride summary with RPE capture and FTP breakthrough handling.
+ * What the rider sees the moment they stop pedalling.
+ *
+ * **Rebuilt in the twenty-third sitting (22.4.6 and 26.1.2).** It was a centred
+ * column of six label-value rows on a screen 1280 dp wide — the moment the app
+ * has the rider's full attention, saying the least it ever says with the most
+ * room it ever has. Three things changed and they are all one decision:
+ *
+ * - The figures **tile** rather than stack (`RideFigures`), because they are
+ *   looked at rather than read.
+ * - The two things a rider does here — say how hard it felt, and see how it
+ *   compares — sit **side by side** instead of one below the fold. The RPE
+ *   answer rate is the point: a question a rider has to scroll to is a question
+ *   most riders do not answer.
+ * - **Done and Discard do not scroll.** They are pinned below the content, so
+ *   getting off the bike never involves finding the button first.
+ *
+ * The heading is the class the rider chose rather than the words *Ride
+ * Summary*: they know they just rode, and a screen that spends its largest
+ * type telling them so is spending it on the one thing they already know.
  */
 @Composable
 fun PostRideSummaryScreen(
@@ -110,86 +133,177 @@ fun PostRideSummaryScreen(
 
     val workout = state.workout
 
+    Column(modifier.fillMaxSize()) {
+        SummaryHeader(
+            title = if (workout == null) "Ride Summary" else state.displayTitle,
+            rider = state.riderName,
+            isGuest = isGuest,
+            atEpochMs = workout?.timestamp
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MaterialTheme.spacing.large)
+        ) {
+            if (workout == null) {
+                Text(
+                    text = "This ride could not be found. It may already have been discarded.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                RideFigures(workout)
+
+                Spacer(Modifier.size(MaterialTheme.spacing.large))
+
+                // The rider's two jobs, beside each other while there is room.
+                // 24.1.2's board draws nothing for a free ride, a household of
+                // one, or a household whose rides were all simulated — so on
+                // most nights this is the RPE card and half a screen of air,
+                // which is why it is left-aligned rather than centred.
+                BoxWithConstraints {
+                    // `isWorthShowing`, not merely non-null: a board of one
+                    // row draws nothing at all, and asking the wrong question
+                    // here would leave the RPE card at half width beside an
+                    // empty half of screen.
+                    val board = state.leaderboard?.takeIf { it.isWorthShowing }
+                    val sideBySide = maxWidth >= SIDE_BY_SIDE_BREAKPOINT && board != null
+
+                    if (sideBySide) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(
+                                MaterialTheme.spacing.medium
+                            )
+                        ) {
+                            RpeCard(state.rpe, viewModel::setRpe, Modifier.weight(1f))
+                            board?.let { ClassLeaderboardCard(it, Modifier.weight(1f)) }
+                        }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(
+                                MaterialTheme.spacing.medium
+                            )
+                        ) {
+                            RpeCard(state.rpe, viewModel::setRpe, Modifier.fillMaxWidth())
+                            board?.let { ClassLeaderboardCard(it, Modifier.fillMaxWidth()) }
+                        }
+                    }
+                }
+            }
+
+            if (isGuest) {
+                Spacer(Modifier.size(MaterialTheme.spacing.large))
+                GuestDestination(
+                    profiles = state.profiles,
+                    onSaveToProfile = { userId ->
+                        viewModel.saveToProfile(context, userId, onDone)
+                    },
+                    onCreateProfile = { showProfileDialog = true },
+                    onKeepAsGuest = onDone,
+                    onDiscard = { viewModel.discard(onDone) }
+                )
+            }
+
+            Spacer(Modifier.size(MaterialTheme.spacing.large))
+        }
+
+        // Pinned. A rider who has just stopped pedalling should not have to
+        // scroll to leave, and *Discard* being off-screen is what made 11.1a.4
+        // worth doing in the first place.
+        if (!isGuest) {
+            SummaryActions(
+                canDiscard = workout != null,
+                onDiscard = { confirmingDiscard = true },
+                onDone = onDone
+            )
+        }
+    }
+}
+
+/**
+ * The class, whose it was, and when — in that order of size.
+ *
+ * Full width and deliberately outside any cap: this is the line that says what
+ * the numbers below it are about, and the numbers below it use the whole panel.
+ */
+@Composable
+private fun SummaryHeader(
+    title: String,
+    rider: String?,
+    isGuest: Boolean,
+    atEpochMs: Long?
+) {
+    val when_ = remember(atEpochMs) {
+        atEpochMs?.let { DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)) }
+    }
+    val subtitle = listOfNotNull(
+        rider ?: "Guest ride".takeIf { isGuest },
+        when_
+    ).joinToString(" · ")
+
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(MaterialTheme.spacing.large),
-        horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.padding(
+            start = MaterialTheme.spacing.large,
+            end = MaterialTheme.spacing.large,
+            top = MaterialTheme.spacing.large,
+            bottom = MaterialTheme.spacing.large
+        )
     ) {
         Text(
-            text = "Ride Summary",
+            text = title,
             style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.semantics { heading() }
         )
-
-        Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
-
-        if (workout == null) {
+        if (subtitle.isNotEmpty()) {
             Text(
-                text = "This ride could not be found. It may already have been discarded.",
+                text = subtitle,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        } else {
-            // Shared with the ride detail screen (12.2.2).
-            RideSummaryCard(workout)
-
-            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
-
-            RpeSelector(
-                selected = state.rpe,
-                onSelect = viewModel::setRpe
-            )
-
-            // 24.1.2, which is what 11.4.1 became: the household board for the
-            // class just ridden. Draws nothing for a free ride, a household of
-            // one, or a household whose rides were all simulated.
-            state.leaderboard?.let { leaderboard ->
-                Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
-                ClassLeaderboardCard(leaderboard)
-            }
         }
+    }
+}
 
-        Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
-
-        if (isGuest) {
-            GuestDestination(
-                profiles = state.profiles,
-                onSaveToProfile = { userId ->
-                    viewModel.saveToProfile(context, userId, onDone)
-                },
-                onCreateProfile = { showProfileDialog = true },
-                onKeepAsGuest = onDone,
-                onDiscard = { viewModel.discard(onDone) }
-            )
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-            ) {
-                // Deliberately the quieter of the two and on the far side of
-                // the row from Done, which is the button a rider reaches for
-                // without looking.
-                OutlinedButton(
-                    onClick = { confirmingDiscard = true },
-                    enabled = workout != null,
-                    modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
-                    shape = MaterialTheme.expressiveShapes.pill
-                ) {
-                    Text("Discard this ride")
-                }
-                Button(
-                    onClick = onDone,
-                    modifier = Modifier
-                        .weight(1f)
-                        .sizeIn(minHeight = MIN_TOUCH_TARGET),
-                    shape = MaterialTheme.expressiveShapes.pill
-                ) {
-                    Text("Done")
-                }
-            }
+/**
+ * Done, and the quieter way out beside it.
+ *
+ * *Done* is the button a rider reaches for without looking, so it is on the
+ * right where the thumb already is and *Discard* is as far from it as the row
+ * allows — the same reasoning as before the rebuild, kept.
+ */
+@Composable
+private fun SummaryActions(
+    canDiscard: Boolean,
+    onDiscard: () -> Unit,
+    onDone: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(MaterialTheme.spacing.large),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedButton(
+            onClick = onDiscard,
+            enabled = canDiscard,
+            modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+            shape = MaterialTheme.expressiveShapes.pill
+        ) {
+            Text("Discard this ride")
+        }
+        Button(
+            onClick = onDone,
+            modifier = Modifier
+                .width(DONE_WIDTH)
+                .sizeIn(minHeight = MIN_TOUCH_TARGET),
+            shape = MaterialTheme.expressiveShapes.pill
+        ) {
+            Text("Done")
         }
     }
 }
@@ -317,63 +431,132 @@ private fun GuestDestination(
 /**
  * Rate of Perceived Exertion, 1–10.
  *
+ * In a card since 22.4.6 so that it and the leaderboard read as two things of
+ * equal standing side by side, rather than a heading floating above a row of
+ * pills.
+ *
  * Uses [FlowRow] rather than a single [Row]: ten 48dp buttons plus spacing
- * needs roughly 520dp, so on any phone the previous row pushed the higher
- * numbers off-screen where they could not be tapped at all.
+ * needs roughly 520dp, so in one column of a two-column layout the higher
+ * numbers would sit off the edge where they cannot be tapped at all.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RpeSelector(
+private fun RpeCard(
     selected: Int?,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "How hard did that feel?",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
-        Text(
-            text = "1 = very easy, 10 = maximal",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    ) {
+        Column(Modifier.padding(MaterialTheme.spacing.large)) {
+            Text(
+                text = "How hard did that feel?",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                // Load-bearing rather than decorative: without the ends named,
+                // one rider's 7 is another's 4 and the column means nothing.
+                text = "1 = very easy, 10 = maximal",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(
-                MaterialTheme.spacing.small,
-                Alignment.CenterHorizontally
-            ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-        ) {
-            for (rating in 1..10) {
-                val isSelected = selected == rating
-                FilledTonalButton(
-                    onClick = { onSelect(rating) },
-                    modifier = Modifier
-                        .sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = MIN_TOUCH_TARGET)
-                        .semantics {
-                            contentDescription = "Rate this effort $rating out of 10"
-                        },
-                    shape = MaterialTheme.expressiveShapes.pill,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                    colors = if (isSelected) {
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+            // Wide enough and the ten pills share the row out between them,
+            // which is both the easier target and the reason this card can
+            // hold the full width of the panel without looking like a strip of
+            // buttons pushed into one corner of it (22.4.6). Below that they
+            // wrap, and each keeps its 48 dp minimum.
+            BoxWithConstraints {
+                if (maxWidth >= RPE_SPREAD_BREAKPOINT) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.small
                         )
-                    } else {
-                        ButtonDefaults.filledTonalButtonColors()
+                    ) {
+                        for (rating in 1..10) {
+                            RpeButton(
+                                rating = rating,
+                                isSelected = selected == rating,
+                                onSelect = onSelect,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                ) {
-                    Text("$rating")
+                } else {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.small
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        for (rating in 1..10) {
+                            RpeButton(
+                                rating = rating,
+                                isSelected = selected == rating,
+                                onSelect = onSelect
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+@Composable
+private fun RpeButton(
+    rating: Int,
+    isSelected: Boolean,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FilledTonalButton(
+        onClick = { onSelect(rating) },
+        modifier = modifier
+            .sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = RPE_BUTTON_HEIGHT)
+            .semantics { contentDescription = "Rate this effort $rating out of 10" },
+        shape = MaterialTheme.expressiveShapes.pill,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+        colors = if (isSelected) {
+            ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        } else {
+            ButtonDefaults.filledTonalButtonColors()
+        }
+    ) {
+        Text(
+            text = "$rating",
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
 private val MIN_TOUCH_TARGET = 48.dp
+
+/** Taller than the minimum once the pills are wide: a 10:1 pill looks like a bar. */
+private val RPE_BUTTON_HEIGHT = 56.dp
+
+/** Ten 48 dp pills and nine gaps need ~530 dp before they can share a row. */
+private val RPE_SPREAD_BREAKPOINT = 560.dp
+
+/** Wide enough to be the obvious target, narrow enough not to be a banner. */
+private val DONE_WIDTH = 220.dp
+
+/**
+ * Below this the RPE pills and a leaderboard cannot both hold their shape, so
+ * they stack. 900 dp is the same breakpoint the ride detail charts use.
+ */
+private val SIDE_BY_SIDE_BREAKPOINT = 900.dp

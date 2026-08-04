@@ -70,7 +70,7 @@ import com.pelonot.ui.components.ChartCard
 import com.pelonot.ui.components.GhostTraceColor
 import com.pelonot.ui.components.HeartRateTraceChart
 import com.pelonot.ui.components.PowerTraceChart
-import com.pelonot.ui.components.RideSummaryCard
+import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableColumn
@@ -267,7 +267,7 @@ fun RideDetailScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
-            RideSummaryCard(workout)
+            RideFigures(workout)
 
             state.charts?.integrity?.takeIf { it.isSuspect }?.let { integrity ->
                 Spacer(Modifier.size(MaterialTheme.spacing.medium))

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -35,9 +36,23 @@ data class PostRideUiState(
      * 11.4.1 became). Empty for a free ride, which is not a class anyone else
      * can have ridden.
      */
-    val leaderboard: ClassLeaderboard? = null
+    val leaderboard: ClassLeaderboard? = null,
+    /** The title of the class just ridden; null for a free ride (22.4.6). */
+    val classTitle: String? = null,
+    /** Whose ride it was, for the header. Null while a guest ride is unfiled. */
+    val riderName: String? = null
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
+
+    /**
+     * What the rider just did, in the words they chose it by.
+     *
+     * "Just Ride" rather than an empty heading, and the same string the ride
+     * detail screen uses for the same ride — a class that has one name in the
+     * library and another in its own summary is two rides as far as anyone
+     * reading is concerned.
+     */
+    val displayTitle: String get() = classTitle ?: "Just Ride"
 }
 
 /**
@@ -52,6 +67,7 @@ class PostRideViewModel(
     private val workoutRepository: WorkoutRepository,
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
+    private val classRepository: ClassRepository,
     private val analyzer: PostWorkoutAnalyzer = PostWorkoutAnalyzer()
 ) : ViewModel() {
 
@@ -113,6 +129,11 @@ class PostRideViewModel(
                     currentFtp = currentFtp,
                     proposedFtp = proposed,
                     leaderboard = leaderboard,
+                    classTitle = workout?.classId?.let { id -> classRepository.getPlan(id)?.title },
+                    // The ride's own owner rather than the last profile
+                    // selected: a guest ride has none, and saying the wrong
+                    // name over a ride is worse than saying no name at all.
+                    riderName = workout?.userId?.let { id -> userRepository.getUser(id)?.name },
                     isLoading = false
                 )
             }
@@ -236,7 +257,8 @@ class PostRideViewModel(
             PostRideViewModel(
                 workoutRepository = ServiceLocator.workoutRepository,
                 userRepository = ServiceLocator.userRepository,
-                settingsRepository = ServiceLocator.settingsRepository
+                settingsRepository = ServiceLocator.settingsRepository,
+                classRepository = ServiceLocator.classRepository
             )
         }
     }

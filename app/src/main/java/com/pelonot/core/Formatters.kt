@@ -35,6 +35,18 @@ object Formatters {
 
     fun rpm(value: Double): String = String.format(Locale.US, "%.0f RPM", value)
 
+    // The value-only forms, for a tile that carries its own unit label (22.4.6).
+    // Same rounding as the sentence forms above and deliberately so: two ways of
+    // writing the same number that disagree in the last digit is the drift
+    // `Formatters` exists to stop.
+
+    fun wattsValue(value: Double): String = String.format(Locale.US, "%.0f", value)
+
+    fun rpmValue(value: Double): String = String.format(Locale.US, "%.0f", value)
+
+    /** Null is *unknown*, never zero — see `heartRateBpm`. */
+    fun bpmValue(value: Int?): String = value?.toString() ?: "--"
+
     /** Rounded the way a rider reads a file size, not the way a disk reports one. */
     fun fileSize(bytes: Long): String = when {
         bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024))
