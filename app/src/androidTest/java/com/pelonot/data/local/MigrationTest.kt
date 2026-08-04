@@ -955,16 +955,20 @@ class MigrationTest {
                 """
                 INSERT INTO workouts (id, user_id, class_id, duration_sec, total_output_kj,
                                       total_distance_km, avg_cadence, avg_power, avg_hr,
-                                      intent_modifier, is_complete, timestamp)
-                VALUES ('rival', 1, 'CLB-02', 1800, 240.0, 12.0, 90.0, 200.0, 150.0, 1.0, 1, 2000)
+                                      intent_modifier, is_complete, was_recovered, timestamp,
+                                      ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('rival', 1, 'CLB-02', 1800, 240.0, 12.0, 90.0, 200.0, 150.0, 1.0,
+                        1, 0, 2000, 0, 0, 0)
                 """.trimIndent()
             )
             db.execSQL(
                 """
                 INSERT INTO workouts (id, user_id, class_id, duration_sec, total_output_kj,
                                       total_distance_km, avg_cadence, avg_power, avg_hr,
-                                      intent_modifier, is_complete, timestamp)
-                VALUES ('live', 1, 'CLB-02', 0, 0.0, 0.0, 0.0, 0.0, NULL, 1.0, 0, 3000)
+                                      intent_modifier, is_complete, was_recovered, timestamp,
+                                      ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('live', 1, 'CLB-02', 0, 0.0, 0.0, 0.0, 0.0, NULL, 1.0,
+                        0, 0, 3000, 0, 0, 0)
                 """.trimIndent()
             )
         }

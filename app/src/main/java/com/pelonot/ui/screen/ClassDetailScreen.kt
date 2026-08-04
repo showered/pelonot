@@ -207,7 +207,14 @@ fun ClassDetailScreen(
                             rivals = rivals,
                             selectedId = selectedRivalId,
                             onPick = onPickRival,
-                            modifier = Modifier.loneCard()
+                            // Order matters and cost a screenshot to find:
+                            // `loneCard` only caps, so without a fill the
+                            // card sizes to its chips and sits half the width
+                            // of the board above it — and with the fill
+                            // *first* the cap cannot shrink it back, so it
+                            // spans the whole 1280 dp panel instead (22.6).
+                            // Cap outermost, fill inside it.
+                            modifier = Modifier.loneCard().fillMaxWidth()
                         )
                     }
                 }
