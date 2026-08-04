@@ -1,6 +1,7 @@
 package com.pelonot.domain.coach
 
 import com.pelonot.domain.model.ClassIntervalEngine
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.PowerZone
@@ -16,7 +17,10 @@ class RideCoachPolicyTest {
 
     private val classIntervals = listOf(
         Interval(0, 60, cadenceMin = 80, cadenceMax = 90, powerZoneNumber = 1),
-        Interval(60, 120, cadenceMin = 90, cadenceMax = 100, powerZoneNumber = 5),
+        Interval(
+            60, 120, cadenceMin = 90, cadenceMax = 100, powerZoneNumber = 5,
+            governedBy = GovernedBy.Cadence
+        ),
         Interval(120, 180, cadenceMin = 70, cadenceMax = 80, powerZoneNumber = 1)
     )
     private val engine = ClassIntervalEngine(classIntervals)
@@ -30,7 +34,8 @@ class RideCoachPolicyTest {
         cadenceTarget: TargetBand = interval.current?.let {
             TargetBand.of(it.cadenceMin, it.cadenceMax)
         } ?: TargetBand.NONE,
-        powerTarget: TargetBand = TargetBand(100.0, 200.0)
+        powerTarget: TargetBand = TargetBand(100.0, 200.0),
+        governedBy: GovernedBy = interval.current?.governedBy ?: GovernedBy.Power
     ) = CoachInput(
         elapsedSec = second,
         isPaused = paused,
@@ -38,7 +43,8 @@ class RideCoachPolicyTest {
         cadence = cadence,
         power = power,
         cadenceTarget = cadenceTarget,
-        powerTarget = powerTarget
+        powerTarget = powerTarget,
+        governedBy = governedBy
     )
 
     // ── Interval announcements ──────────────────────────────────────
@@ -160,7 +166,9 @@ class RideCoachPolicyTest {
         val policy = RideCoachPolicy(offTargetGraceSec = 12)
         policy.onTick(input(0))
 
-        val alerts = (1..20).flatMap { policy.onTick(input(it, cadence = 60.0)) }
+        val alerts = (1..20).flatMap {
+            policy.onTick(input(it, cadence = 60.0, governedBy = GovernedBy.Cadence))
+        }
 
         assertEquals(
             "Pick up the cadence",
@@ -173,7 +181,9 @@ class RideCoachPolicyTest {
         val policy = RideCoachPolicy(offTargetGraceSec = 12, offTargetRepeatSec = 45)
         policy.onTick(input(0))
 
-        val alerts = (1..50).flatMap { policy.onTick(input(it, cadence = 60.0)) }
+        val alerts = (1..50).flatMap {
+            policy.onTick(input(it, cadence = 60.0, governedBy = GovernedBy.Cadence))
+        }
 
         assertEquals(1, alerts.count { it is RideAlert.OffTarget })
     }
@@ -183,7 +193,9 @@ class RideCoachPolicyTest {
         val policy = RideCoachPolicy(offTargetGraceSec = 12, offTargetRepeatSec = 45)
         policy.onTick(input(0))
 
-        val alerts = (1..120).flatMap { policy.onTick(input(it, cadence = 60.0)) }
+        val alerts = (1..120).flatMap {
+            policy.onTick(input(it, cadence = 60.0, governedBy = GovernedBy.Cadence))
+        }
 
         // Ignored advice is worth saying again — eventually.
         assertEquals(3, alerts.count { it is RideAlert.OffTarget })
@@ -197,7 +209,7 @@ class RideCoachPolicyTest {
         val alerts = (1..40).flatMap { second ->
             // Ten seconds off, one on, repeatedly — never sustained.
             val cadence = if (second % 11 == 0) 85.0 else 60.0
-            policy.onTick(input(second, cadence = cadence))
+            policy.onTick(input(second, cadence = cadence, governedBy = GovernedBy.Cadence))
         }
 
         assertTrue(alerts.none { it is RideAlert.OffTarget })
@@ -208,13 +220,15 @@ class RideCoachPolicyTest {
         val policy = RideCoachPolicy(offTargetGraceSec = 5)
         policy.onTick(input(0))
 
-        val alerts = (1..30).flatMap { policy.onTick(input(it, cadence = 0.0)) }
+        val alerts = (1..30).flatMap {
+            policy.onTick(input(it, cadence = 0.0, governedBy = GovernedBy.Cadence))
+        }
 
         assertTrue(alerts.none { it is RideAlert.OffTarget })
     }
 
     @Test
-    fun `advises on resistance when cadence is right but power is not`() {
+    fun `advises on resistance when the block is governed by power`() {
         val policy = RideCoachPolicy(offTargetGraceSec = 5)
         policy.onTick(input(0))
 
@@ -226,6 +240,47 @@ class RideCoachPolicyTest {
             "Add resistance",
             alerts.filterIsInstance<RideAlert.OffTarget>().first().advice
         )
+    }
+
+    @Test
+    fun `a block governed by power never comments on the cadence`() {
+        // 11.7.1a, in the voice. The old rule checked cadence first and
+        // returned on it, so a rider spinning 92 rpm through a threshold
+        // effort — against the library's neutral 75-85 default — was told to
+        // ease the cadence back, and the power drift the class actually cared
+        // about could never be reached at all.
+        val policy = RideCoachPolicy(offTargetGraceSec = 5)
+        policy.onTick(input(0))
+
+        val alerts = (1..40).flatMap {
+            policy.onTick(input(it, cadence = 40.0, power = 150.0))
+        }
+
+        assertTrue(alerts.none { it is RideAlert.OffTarget })
+    }
+
+    @Test
+    fun `a block governed by cadence never comments on the power`() {
+        val policy = RideCoachPolicy(offTargetGraceSec = 5)
+        policy.onTick(input(60))
+
+        val alerts = (61..100).flatMap {
+            policy.onTick(input(it, cadence = 95.0, power = 20.0))
+        }
+
+        assertTrue(alerts.none { it is RideAlert.OffTarget })
+    }
+
+    @Test
+    fun `a block governed by power does not speak a cadence to hold`() {
+        // The loudest channel this app has, spent on prescribing the cadence
+        // a rider is already at. 574 of the library's 1071 blocks sit in the
+        // neutral seated bands, so this was most of what the coach said.
+        val alert = RideAlert.IntervalChange(
+            zone = PowerZone.Z4, cadenceMin = 80, cadenceMax = 90,
+            governedBy = GovernedBy.Power
+        )
+        assertEquals("Zone 4, Lactate Threshold.", alert.speech)
     }
 
     @Test
@@ -343,7 +398,10 @@ class RideCoachPolicyTest {
 
     @Test
     fun `an interval that prescribes nothing says nothing about position`() {
-        val alert = RideAlert.IntervalChange(zone = PowerZone.Z2, cadenceMin = 80, cadenceMax = 90)
+        val alert = RideAlert.IntervalChange(
+            zone = PowerZone.Z2, cadenceMin = 80, cadenceMax = 90,
+            governedBy = GovernedBy.Cadence
+        )
         assertEquals("Zone 2, Endurance. 80 to 90 R P M.", alert.speech)
     }
 }

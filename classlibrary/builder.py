@@ -19,21 +19,80 @@ that prescribes a position for every one of them is nagging, not coaching.
 STANDING = "standing"
 SEATED = "seated"
 
+# --- Which metric governs a block (PLAN 11.7.2 / README R12) ---------------
+#
+# The rider's own complaint: *"what do i do? do i focus on zone, cadence, or
+# resistance?"* It is not three instructions, it is one outcome and two
+# controls — power is what happens when you turn the pedals at some cadence
+# against some resistance. So exactly one of the two is the instruction and the
+# rest of the screen is context, and **the block says which**, because 25.4.2
+# already settled the general form of this: a class states what it means rather
+# than letting the reader infer it from a number band.
+
+POWER_GOVERNS = "power"
+CADENCE_GOVERNS = "cadence"
+
+
+class Cadence(tuple):
+    """A cadence band that also knows whether it is *the* instruction.
+
+    A tuple subclass rather than a new type, so every `(lo, hi)` unpacking in
+    `build.py` and every comparison in R9's signature check keeps working
+    untouched.
+
+    Governance rides on the intent rather than on the block because that is
+    where the meaning already lives: an author who writes `GRIND` has said
+    "this block is about turning a big gear slowly", and an author who writes
+    `STEADY` has said "ride at a normal cadence and let the watts be the
+    point". The number band is a consequence of the intent, not the source of
+    it — which is why this is not 11.7.2's rejected route (a).
+    """
+
+    def __new__(cls, lo, hi, governs=POWER_GOVERNS):
+        self = super().__new__(cls, (lo, hi))
+        self.governs = governs
+        return self
+
+
+def POWER(cadence):
+    """Override: this block wants the watts, whatever its cadence intent.
+
+    For a threshold effort that happens to sit at a climbing cadence — the
+    cadence is the terrain, the zone is the work.
+    """
+    return Cadence(cadence[0], cadence[1], POWER_GOVERNS)
+
+
+def CADENCE(cadence):
+    """Override: this block wants the legs, whatever its cadence intent.
+
+    The owner's *"perhaps there's a way we can use both"* case, from the other
+    side: a sweet-spot block that genuinely wants 60 rpm as well as the zone.
+    """
+    return Cadence(cadence[0], cadence[1], CADENCE_GOVERNS)
+
+
 # --- Cadence intents (PLAN 23.2.6 / README R5) -----------------------------
 #
 # Cadence is a second axis, not a function of the zone. The same zone ridden
 # at GRIND and at SPIN is two different workouts, and the library has to be
 # able to say so.
+#
+# The tails govern and the middle does not. A 50-60 rpm grind and a 110-125 rpm
+# sprint are exercises *about* the pedalling; 75-85 and 80-90 are the library's
+# comfortable seated defaults and prescribing them is how a rider spinning a
+# perfectly good 92 rpm during a threshold block came to be shown amber
+# (11.7.1a).
 
-GRIND = (50, 60)    # seated heavy torque; strength work, not aerobic work
-CLIMB = (60, 70)    # a climb you stay seated for
-STAND = (70, 80)    # out of the saddle, or the transition into it
-EASY = (75, 85)     # recovery spin, low enough to be genuinely easy
-STEADY = (80, 90)   # the default riding cadence
-BRISK = (85, 95)    # endurance with intent
-FAST = (95, 105)    # aerobic work on the fast side
-SPIN = (105, 115)   # leg speed
-SURGE = (110, 125)  # sprints
+GRIND = Cadence(50, 60, CADENCE_GOVERNS)    # seated heavy torque; strength work, not aerobic work
+CLIMB = Cadence(60, 70, CADENCE_GOVERNS)    # a climb you stay seated for
+STAND = Cadence(70, 80)     # out of the saddle, or the transition into it
+EASY = Cadence(75, 85)      # recovery spin, low enough to be genuinely easy
+STEADY = Cadence(80, 90)    # the default riding cadence
+BRISK = Cadence(85, 95)     # endurance with intent
+FAST = Cadence(95, 105)     # aerobic work on the fast side
+SPIN = Cadence(105, 115, CADENCE_GOVERNS)   # leg speed
+SURGE = Cadence(110, 125, CADENCE_GOVERNS)  # sprints
 
 # --- Warmups (R2) ----------------------------------------------------------
 #

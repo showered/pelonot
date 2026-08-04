@@ -40,6 +40,26 @@ enum class RidePosition {
         }
 }
 
+/**
+ * Which of a block's two axes is *the instruction* (PLAN 11.7.2).
+ *
+ * The owner's complaint, riding: *"what do i do? do i focus on zone, cadence,
+ * or resistance?"* It was never three instructions. Power is not something a
+ * rider does — it is what happens when you turn the pedals at some cadence
+ * against some resistance, which is literally [com.pelonot.data.sensor
+ * .PowerModel]. One outcome and two controls, drawn as three tiles of equal
+ * weight and equal off-target signalling.
+ *
+ * Resistance is deliberately not a value here. No class prescribes it; the
+ * band is `PowerModel` inverted, and that curve scores RMSE 137 W against the
+ * board's own measured watts. It is the knob, not a target.
+ */
+@Serializable
+enum class GovernedBy {
+    @SerialName("power") Power,
+    @SerialName("cadence") Cadence
+}
+
 @Serializable
 data class Interval(
     @SerialName("time_start_sec") val startSec: Int,
@@ -60,7 +80,19 @@ data class Interval(
      * for every one of its blocks is nagging rather than coaching, and a
      * default would make every such class look like that.
      */
-    @SerialName("target_position") val position: RidePosition? = null
+    @SerialName("target_position") val position: RidePosition? = null,
+
+    /**
+     * Which metric this block is actually asking for — **and absent means
+     * power**, which is why the field is defaulted rather than nullable.
+     *
+     * Deliberately *not* the shape `position` takes above. There absent is a
+     * third claim ("the rider chooses") and a default would erase it; here
+     * absent is simply the ordinary case, and 840 of the library's 1071 blocks
+     * write nothing. Optional and additive either way, so every class authored
+     * before the field decodes unchanged.
+     */
+    @SerialName("governed_by") val governedBy: GovernedBy = GovernedBy.Power
 ) {
     val durationSec: Int get() = (endSec - startSec).coerceAtLeast(0)
 

@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import catalogue  # noqa: F401  (importing it is what populates the catalogue)
-from builder import CATALOGUE
+from builder import CADENCE_GOVERNS, CATALOGUE, POWER_GOVERNS
 
 ASSETS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -57,6 +57,30 @@ FLOOR_ABSOLUTE = {"Sprints": (6, 3 * 60)}
 # minutes, and "stand up" at 120 rpm is an instruction with no way to follow it.
 STANDING_CAP_SEC = 180
 STANDING_CADENCE_CAP = 110
+
+# R12 — governance (PLAN 11.7.2). The library's comfortable seated range: a band
+# living entirely inside it is the *default*, and a block that claims to be
+# governed by a default is claiming nothing.
+NEUTRAL_CADENCE = (75, 95)
+
+# R12 — the categories whose names promise the exercise is about the pedalling
+# rather than about the watts. If a Climbs class never says cadence governs,
+# it is an interval class at a low rpm.
+CADENCE_CATEGORIES = {"Climbs", "Sprints"}
+
+# R12 — cadence governing is the exception, across the whole library. A
+# ceiling rather than a floor, because the failure mode is the field spreading
+# until "one instruction at a time" means "always the cadence".
+CADENCE_LIBRARY_CEILING = 1 / 3
+
+
+def governs(cadence):
+    """Which metric this block's cadence intent says is the instruction.
+
+    Plain tuples still appear in tests and in hand-written blocks, and they
+    mean what an unmarked interval means on disk: power.
+    """
+    return getattr(cadence, "governs", POWER_GOVERNS)
 
 
 def problems(session):
@@ -192,6 +216,25 @@ def problems(session):
             "a class to the rider",
         )
 
+    # R12 — one instruction at a time, and it has to be one worth giving.
+    for _, _, cadence, _ in blocks:
+        if governs(cadence) != CADENCE_GOVERNS:
+            continue
+        lo, hi = cadence
+        if NEUTRAL_CADENCE[0] <= lo and hi <= NEUTRAL_CADENCE[1]:
+            note(
+                "R12",
+                f"says cadence governs a {lo}-{hi} rpm block; that is the library's "
+                "default seated range and governing it instructs nobody",
+            )
+    if session.category in CADENCE_CATEGORIES:
+        if not any(governs(c) == CADENCE_GOVERNS for _, _, c, _ in blocks):
+            note(
+                "R12",
+                f"is a {session.category} class where the cadence never governs; "
+                "the category name promises the pedalling is the point",
+            )
+
     # R7 — a recovery class recovers.
     if session.category == "Recovery":
         if top > 2:
@@ -207,6 +250,19 @@ def _index_of_first(zones, threshold):
         if zone >= threshold:
             return i
     return len(zones)
+
+
+def _signature(session):
+    """A class reduced to what makes it that class.
+
+    `Cadence` is a tuple subclass so that every `(lo, hi)` unpacking keeps
+    working, which also means two bands compare equal while asking the rider
+    for different things. R9 has to see the difference.
+    """
+    return tuple(
+        (sec, zone, tuple(cadence), governs(cadence), position)
+        for sec, zone, cadence, position in session.blocks
+    )
 
 
 def library_problems(sessions):
@@ -225,10 +281,26 @@ def library_problems(sessions):
             "cadence is behaving like a lookup from the zone"
         )
 
-    # R9 — no two classes are the same class.
+    # R12 — both governors are used, and cadence stays the exception. Same
+    # shape of argument as R5's: a field only one value is ever written to is
+    # decorative, and a field written to every block has stopped choosing.
+    governors = [governs(c) for s in sessions for _, _, c, _ in s.blocks]
+    for value in (POWER_GOVERNS, CADENCE_GOVERNS):
+        if value not in governors:
+            out.append(f"[R12] no block anywhere is governed by {value}")
+    share = governors.count(CADENCE_GOVERNS) / max(len(governors), 1)
+    if share > CADENCE_LIBRARY_CEILING:
+        out.append(
+            f"[R12] cadence governs {share:.0%} of the library; the ceiling is "
+            f"{CADENCE_LIBRARY_CEILING:.0%} — it is meant to be the exception"
+        )
+
+    # R9 — no two classes are the same class. The signature carries the
+    # governor as well as the band, because two classes alike in every number
+    # but differing in what they ask the rider to *do* are two classes.
     seen = {}
     for session in sessions:
-        signature = tuple(session.blocks)
+        signature = _signature(session)
         if signature in seen:
             out.append(f"[R9] {session.id} is the same class as {seen[signature]}")
         seen[signature] = session.id
@@ -240,7 +312,9 @@ def library_problems(sessions):
         for i, a in enumerate(group):
             for b in group[i + 1:]:
                 if len(a.blocks) == len(b.blocks):
-                    differing = sum(1 for x, y in zip(a.blocks, b.blocks) if x != y)
+                    differing = sum(
+                        1 for x, y in zip(_signature(a), _signature(b)) if x != y
+                    )
                     if differing <= 1:
                         out.append(
                             f"[R9] {a.id} and {b.id} are both {category} "
@@ -258,7 +332,8 @@ def library_problems(sessions):
 def to_json(session):
     intervals = []
     at = 0
-    for seconds, zone, (lo, hi), position in session.blocks:
+    for seconds, zone, cadence, position in session.blocks:
+        lo, hi = cadence
         interval = {
             "time_start_sec": at,
             "time_end_sec": at + seconds,
@@ -271,6 +346,13 @@ def to_json(session):
         # third value.
         if position is not None:
             interval["target_position"] = position
+        # PLAN 11.7.2. Optional and additive, exactly like `target_position`,
+        # so every class written before it decodes unchanged — and **absent
+        # means power**, which is why the common case writes nothing. Not the
+        # same argument as position's omission: there is no third claim here,
+        # the default is simply the ordinary one.
+        if governs(cadence) != POWER_GOVERNS:
+            interval["governed_by"] = governs(cadence)
         intervals.append(interval)
         at += seconds
     return {

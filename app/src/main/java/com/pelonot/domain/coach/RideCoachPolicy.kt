@@ -1,5 +1,6 @@
 package com.pelonot.domain.coach
 
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideCue
@@ -30,15 +31,30 @@ sealed interface RideAlert {
          * announcing the state rather than the change would double the length
          * of every interval call in the class.
          */
-        val positionChange: RidePosition? = null
+        val positionChange: RidePosition? = null,
+        /** Which axis this block is asking for (11.7.2). */
+        val governedBy: GovernedBy = GovernedBy.Power
     ) : RideAlert {
         // First in the sentence: it is the only part of this that has to be
         // acted on the instant it is heard. The zone and the cadence are
         // something to settle into.
+        //
+        // 11.7.4. The rpm is spoken only when the cadence is what the block is
+        // asking for. It used to be spoken on every interval of every class,
+        // including the 574 blocks of 1071 that sit in the library's neutral
+        // seated bands — so the voice, the loudest channel this app has, said
+        // "80 to 90 R P M" over a rider's film to prescribe the cadence they
+        // were already at. The zone stays either way: on a grind it says how
+        // hard to make it, which is the owner's *"perhaps there's a way we can
+        // use both"*.
         override val speech: String
             get() = (positionChange?.let { "${it.instruction}. " } ?: "") +
-                "Zone ${zone.number}, ${zone.displayName}. " +
-                "$cadenceMin to $cadenceMax R P M."
+                "Zone ${zone.number}, ${zone.displayName}." +
+                if (governedBy == GovernedBy.Cadence) {
+                    " $cadenceMin to $cadenceMax R P M."
+                } else {
+                    ""
+                }
         override val haptic get() = HapticStrength.Firm
     }
 
@@ -88,7 +104,9 @@ data class CoachInput(
     val cadence: Double,
     val power: Double,
     val cadenceTarget: TargetBand,
-    val powerTarget: TargetBand
+    val powerTarget: TargetBand,
+    /** Which axis the current block is asking for (11.7.2). */
+    val governedBy: GovernedBy = GovernedBy.Power
 )
 
 /**
@@ -160,7 +178,8 @@ class RideCoachPolicy(
                 zone = current.powerZone,
                 cadenceMin = current.cadenceMin,
                 cadenceMax = current.cadenceMax,
-                positionChange = positionChange
+                positionChange = positionChange,
+                governedBy = current.governedBy
             )
         }
 
@@ -186,9 +205,12 @@ class RideCoachPolicy(
      * Sustained drift from the prescription, at most once every
      * [offTargetRepeatSec].
      *
-     * Cadence is checked before power because it is the thing a rider can act
-     * on directly: legs are immediate, whereas power is the product of cadence
-     * and a resistance knob and takes a few seconds to settle.
+     * Only the metric the block is *asking for* can produce advice (11.7.1a in
+     * the voice). The old rule checked cadence first and returned on it, which
+     * on a threshold block meant a rider spinning a perfectly good 92 rpm
+     * against the library's default 75–85 band was told to ease their cadence
+     * back — and, worse, the power drift the class actually cared about could
+     * never be reached, because cadence had already returned.
      */
     private fun offTargetAdvice(input: CoachInput): RideAlert.OffTarget? {
         // A stationary bike is not "below target" — it is a rider taking a
@@ -216,13 +238,15 @@ class RideCoachPolicy(
         return RideAlert.OffTarget(advice)
     }
 
-    private fun adviceFor(input: CoachInput): String? {
-        when (input.cadenceTarget.statusFor(input.cadence)) {
-            TargetStatus.Below -> return "Pick up the cadence"
-            TargetStatus.Above -> return "Ease the cadence back"
-            else -> Unit
+    private fun adviceFor(input: CoachInput): String? = when (input.governedBy) {
+        GovernedBy.Cadence -> when (input.cadenceTarget.statusFor(input.cadence)) {
+            TargetStatus.Below -> "Pick up the cadence"
+            TargetStatus.Above -> "Ease the cadence back"
+            else -> null
         }
-        return when (input.powerTarget.statusFor(input.power)) {
+        // The advice names the knob rather than the watts, because that is the
+        // control: "add resistance" is an action, "add 20 watts" is a result.
+        GovernedBy.Power -> when (input.powerTarget.statusFor(input.power)) {
             TargetStatus.Below -> "Add resistance"
             TargetStatus.Above -> "Back off the resistance"
             else -> null

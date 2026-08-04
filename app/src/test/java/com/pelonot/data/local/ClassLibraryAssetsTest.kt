@@ -1,6 +1,7 @@
 package com.pelonot.data.local
 
 import com.pelonot.data.remote.dto.ClassTemplateDto
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.IntervalParser
 import com.pelonot.domain.model.RidePosition
 import kotlinx.serialization.json.Json
@@ -393,13 +394,64 @@ class ClassLibraryAssetsTest {
         assertTrue("no class in the library prescribes a position at all", withAPosition > 0)
     }
 
+    /**
+     * R12 — one instruction at a time, and it has to be one worth giving
+     * (PLAN 11.7.2).
+     *
+     * A block claiming to be governed by 80–90 rpm is claiming nothing: that
+     * is the library's default seated cadence, and prescribing it is exactly
+     * how a rider spinning a perfectly good 92 rpm through a threshold effort
+     * came to be shown amber for it.
+     */
+    @Test
+    fun `a cadence only governs where the cadence is the point`() {
+        for ((file, _, intervals) in plans()) {
+            for (interval in intervals.filter { it.governedBy == GovernedBy.Cadence }) {
+                assertTrue(
+                    "$file: says cadence governs a ${interval.cadenceMin}-" +
+                        "${interval.cadenceMax} rpm block, which is the neutral " +
+                        "seated range",
+                    interval.cadenceMin < 75 || interval.cadenceMax > 95
+                )
+            }
+        }
+    }
+
+    /**
+     * R12, the other two halves. A category named after the pedalling has to
+     * say so on at least one block, and cadence stays the **exception** across
+     * the library — the failure mode being the field spreading until "one
+     * instruction at a time" means "always the cadence".
+     */
+    @Test
+    fun `the cadence governs where the category promises it, and stays the exception`() {
+        for ((file, dto, intervals) in plans()) {
+            if (dto.category !in setOf("Climbs", "Sprints")) continue
+            assertTrue(
+                "$file: is a ${dto.category} class where the cadence never governs",
+                intervals.any { it.governedBy == GovernedBy.Cadence }
+            )
+        }
+
+        val all = plans().flatMap { (_, _, intervals) -> intervals }
+        val governed = all.count { it.governedBy == GovernedBy.Cadence }
+        assertTrue("no block anywhere is governed by the cadence", governed > 0)
+        assertTrue("every block is governed by the cadence", governed < all.size)
+        assertTrue(
+            "cadence governs $governed of ${all.size} blocks; it is meant to be " +
+                "the exception",
+            governed * 3 <= all.size
+        )
+    }
+
     /** R9. Seventy-two classes and twelve shapes was the old library. */
     @Test
     fun `no two classes are the same class`() {
         val signatures = mutableMapOf<String, String>()
         for ((_, dto, intervals) in plans()) {
             val signature = intervals.joinToString("|") {
-                "${it.durationSec}:${it.powerZoneNumber}:${it.cadenceMin}-${it.cadenceMax}"
+                "${it.durationSec}:${it.powerZoneNumber}:${it.cadenceMin}-" +
+                    "${it.cadenceMax}:${it.governedBy}"
             }
             val existing = signatures.put(signature, dto.id)
             assertTrue("${dto.id} is the same class as $existing", existing == null)

@@ -81,6 +81,7 @@ import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.ui.components.BeatingHeart
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
@@ -888,6 +889,14 @@ private fun MetricGrid(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // 11.7. The class asks for one of these and the rest are context. Which
+        // one is the block's own answer (`governed_by` in the catalogue), not a
+        // rider preference and not inferred from the numbers: a 55 rpm grind is
+        // about the legs, a threshold effort at 80-90 is about the watts, and
+        // before this the screen said both at once with equal weight.
+        val cadenceEmphasis = if (hasTargets) snapshot.cadenceEmphasis else TargetEmphasis.None
+        val powerEmphasis = if (hasTargets) snapshot.powerEmphasis else TargetEmphasis.None
+
         // The two inputs, given the most room: cadence and resistance are the
         // only things the rider can actually change.
         Row(
@@ -902,7 +911,8 @@ private fun MetricGrid(
                 value = if (live) state.reading.cadenceRpm.toInt().toString() else NO_READING,
                 unit = "rpm",
                 accent = MetricCadenceCyan,
-                band = if (hasTargets) snapshot.cadenceTarget else TargetBand.NONE,
+                band = snapshot.cadenceTarget,
+                emphasis = cadenceEmphasis,
                 rawValue = state.reading.cadenceRpm,
                 modifier = Modifier.weight(1f)
             )
@@ -912,7 +922,15 @@ private fun MetricGrid(
                 value = if (live) state.reading.resistancePercent.toInt().toString() else NO_READING,
                 unit = "%",
                 accent = MetricResistanceViolet,
-                band = if (hasTargets) snapshot.resistanceTarget else TargetBand.NONE,
+                // 11.7.3, and it is the whole of the owner's *"if the target is
+                // powerzone, then no resistance target is required"*. No class
+                // in the library prescribes resistance; the band was PowerModel
+                // inverted, and that curve is 66% out at the median against the
+                // board's own watts. It was the least trustworthy number on the
+                // screen and it was drawn with the same authority as the two
+                // that are measured. It is the knob, not a target.
+                band = TargetBand.NONE,
+                emphasis = TargetEmphasis.None,
                 rawValue = state.reading.resistancePercent,
                 modifier = Modifier.weight(1f)
             )
@@ -931,7 +949,8 @@ private fun MetricGrid(
                 value = if (live) state.reading.powerWatts.toInt().toString() else NO_READING,
                 unit = "watts",
                 accent = MetricPowerCoral,
-                band = if (hasTargets) snapshot.powerTarget else TargetBand.NONE,
+                band = snapshot.powerTarget,
+                emphasis = powerEmphasis,
                 rawValue = state.reading.powerWatts,
                 valueSize = 76.sp,
                 modifier = Modifier.weight(1f)
@@ -1038,7 +1057,9 @@ private fun RideMetricTile(
     onClick: (() -> Unit)? = null,
     footnote: String? = null,
     /** Non-null beats a heart in the tile's empty half at that rate (21.3.4). */
-    pulseBpm: Int? = null
+    pulseBpm: Int? = null,
+    /** Whether this tile's band is the class's instruction (11.7.3). */
+    emphasis: TargetEmphasis = TargetEmphasis.Instruction
 ) {
     Card(
         modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
@@ -1075,6 +1096,7 @@ private fun RideMetricTile(
                 // screen a rider reads rather than glances at.
                 showTargetRange = true,
                 icon = icon,
+                emphasis = emphasis,
                 modifier = Modifier.fillMaxWidth()
             )
 

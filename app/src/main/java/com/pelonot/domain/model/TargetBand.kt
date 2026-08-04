@@ -95,6 +95,32 @@ enum class TargetStatus {
     val isOffTarget: Boolean get() = this == Below || this == Above
 }
 
+/**
+ * How hard a tile asserts its band (PLAN 11.7.3).
+ *
+ * The screen shows three numbers and the class is only ever asking for one of
+ * them; before this, all three carried the same gauge, the same amber and the
+ * same arrow, which is why the rider's question was *"what do I do?"* — the
+ * app was answering it three times.
+ *
+ * Note what [Context] keeps and what it drops. It keeps the shaded band, so a
+ * rider who wants to know roughly what cadence the class had in mind can still
+ * see it; it drops **every signal that says they are wrong** — the amber value,
+ * the amber marker, the direction arrow and the spelled-out `TARGET` line. The
+ * consequence worth designing for: exactly one tile on the ride screen carries
+ * a `TARGET` line at any moment, and that is the instruction.
+ */
+enum class TargetEmphasis {
+    /** This is what the class is asking for. Gauge, amber, arrow, target line. */
+    Instruction,
+
+    /** Worth knowing, never worth being told off about. */
+    Context,
+
+    /** No band at all — the free ride, and resistance always (11.7.3). */
+    None
+}
+
 /** The cadence band prescribed by this interval. */
 val Interval.cadenceBand: TargetBand get() = TargetBand.of(cadenceMin, cadenceMax)
 

@@ -73,12 +73,14 @@ import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.coach.PositionCallTracker
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RidePosition
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.HudPositionCall
@@ -884,19 +886,32 @@ private fun NowBlock(snapshot: RideSnapshot, accent: Color, modifier: Modifier =
                 letterSpacing = (-1).sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = buildString {
-                    append("${snapshot.cadenceTarget.min.toInt()}–")
-                    append("${snapshot.cadenceTarget.max.toInt()} RPM")
-                    val resistance = snapshot.resistanceTarget
-                    if (resistance.isDefined) {
-                        append(" · ${resistance.min.toInt()}–${resistance.max.toInt()}%")
-                    }
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
+            // 11.7.4. The strip has room for one instruction and the ride
+            // screen has room for three, so this is where "one instruction at
+            // a time" either works or does not — it is the surface a rider
+            // actually watches for forty minutes. It used to say the cadence
+            // band *and* a resistance percentage inverted out of a power curve
+            // that is 66% out at the median, under a zone name, which is three
+            // answers to a question with one.
+            //
+            // Now it is the governing metric's target and nothing else's, and
+            // that is the first principled answer this line has had to what it
+            // drops when it runs out of width.
+            val instruction = when (snapshot.governedBy) {
+                GovernedBy.Cadence -> snapshot.cadenceTarget.label?.let { "$it RPM" }
+                // Watts rather than the zone: the zone is already the ring and
+                // the word beside it, and a rider steering their resistance
+                // needs the number the ladder does not give them.
+                GovernedBy.Power -> snapshot.powerTarget.label?.let { "$it W" }
+            }
+            if (instruction != null) {
+                Text(
+                    text = instruction,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -930,7 +945,8 @@ private fun MetricsBlock(
                 value = if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
                 unit = "RPM",
                 accent = MetricCadenceCyan,
-                band = if (showTargets) snapshot.cadenceTarget else TargetBand.NONE,
+                band = snapshot.cadenceTarget,
+                emphasis = if (showTargets) snapshot.cadenceEmphasis else TargetEmphasis.None,
                 rawValue = reading.cadenceRpm,
                 valueSize = 42.sp,
                 modifier = Modifier.weight(1f)
@@ -941,7 +957,9 @@ private fun MetricsBlock(
                 value = if (live) reading.resistancePercent.toInt().toString() else NO_READING,
                 unit = "%",
                 accent = MetricResistanceViolet,
-                band = if (showTargets) snapshot.resistanceTarget else TargetBand.NONE,
+                // 11.7.3. The knob, not a target — and no class prescribes it.
+                band = TargetBand.NONE,
+                emphasis = TargetEmphasis.None,
                 rawValue = reading.resistancePercent,
                 valueSize = 42.sp,
                 modifier = Modifier.weight(1f)
@@ -952,7 +970,8 @@ private fun MetricsBlock(
                 value = if (live) reading.powerWatts.toInt().toString() else NO_READING,
                 unit = "W",
                 accent = MetricPowerCoral,
-                band = if (showTargets) snapshot.powerTarget else TargetBand.NONE,
+                band = snapshot.powerTarget,
+                emphasis = if (showTargets) snapshot.powerEmphasis else TargetEmphasis.None,
                 rawValue = reading.powerWatts,
                 valueSize = 42.sp,
                 modifier = Modifier.weight(1f)

@@ -134,4 +134,36 @@ class IntervalParserTest {
     fun `an empty interval list parses to an empty class`() {
         assertEquals(emptyList<Interval>(), IntervalParser.parse("[]").getOrThrow())
     }
+
+    // ── Which metric governs (11.7.2) ───────────────────────────────
+
+    @Test
+    fun `a block that names no governor is asking for the power`() {
+        // The whole point of the field being additive: 840 of the library's
+        // 1071 blocks write nothing, and every class authored before it
+        // existed decodes to exactly what it always meant.
+        val json = """
+            [{"time_start_sec":0,"time_end_sec":60,"target_cadence_min":80,
+              "target_cadence_max":90,"target_power_zone":3}]
+        """.trimIndent()
+
+        assertEquals(
+            GovernedBy.Power,
+            IntervalParser.parse(json).getOrThrow().single().governedBy
+        )
+    }
+
+    @Test
+    fun `a block can say the cadence is the instruction`() {
+        val json = """
+            [{"time_start_sec":0,"time_end_sec":120,"target_cadence_min":50,
+              "target_cadence_max":60,"target_power_zone":4,
+              "governed_by":"cadence"}]
+        """.trimIndent()
+
+        assertEquals(
+            GovernedBy.Cadence,
+            IntervalParser.parse(json).getOrThrow().single().governedBy
+        )
+    }
 }

@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.domain.model.TargetStatus
 import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.theme.AlertAmber
@@ -234,7 +235,15 @@ fun TargetGauge(
     value: Double,
     accent: Color,
     modifier: Modifier = Modifier,
-    height: androidx.compose.ui.unit.Dp = 10.dp
+    height: androidx.compose.ui.unit.Dp = 10.dp,
+    /**
+     * False for a band that is context rather than instruction (11.7.3). The
+     * marker still moves and the band is still shaded — the rider can see
+     * where they are against what the class had in mind — but it never turns
+     * amber, because amber is this app's way of saying *you are wrong about
+     * the thing being asked of you*, and only one metric is being asked for.
+     */
+    alerts: Boolean = true
 ) {
     val status = band.statusFor(value)
     val markerFraction by animateFloatAsState(
@@ -243,7 +252,7 @@ fun TargetGauge(
         label = "GaugeMarker"
     )
     val markerColor by animateColorAsState(
-        targetValue = if (status.isOffTarget) AlertAmber else accent,
+        targetValue = if (alerts && status.isOffTarget) AlertAmber else accent,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "GaugeMarkerColor"
     )
@@ -340,14 +349,30 @@ fun MetricReadout(
     valueSize: androidx.compose.ui.unit.TextUnit = 56.sp,
     compact: Boolean = false,
     showTargetRange: Boolean = false,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    /**
+     * Whether this band is the class's instruction or merely context
+     * (11.7.3). [TargetEmphasis.None] draws no gauge at all, which is what a
+     * free ride and resistance both get.
+     */
+    emphasis: TargetEmphasis = TargetEmphasis.Instruction
 ) {
+    // 11.7.1a. `isOffTarget` used to drive the amber treatment uniformly
+    // across every tile, so during a threshold block — where the class wants
+    // the watts and 75-85 is the library's neutral default — a rider spinning
+    // a perfectly good 92 rpm was shown amber cadence: the app telling them
+    // they were wrong about something it was never really asking for. Amber is
+    // the strongest glanceable signal this app has and it is now spent on one
+    // metric at a time.
+    val instructs = emphasis == TargetEmphasis.Instruction
+    val band = if (emphasis == TargetEmphasis.None) TargetBand.NONE else band
     val status = band.statusFor(rawValue)
+    val alerting = instructs && status.isOffTarget
     val valueColor by animateColorAsState(
         // Amber, not red. Power's own accent is coral, and a coral number
         // turning red is not a signal anybody can read at a glance — the two
         // are three hue degrees apart. Amber is unmistakably neither.
-        targetValue = if (status.isOffTarget) AlertAmber else accent,
+        targetValue = if (alerting) AlertAmber else accent,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "MetricValueColor"
     )
@@ -361,8 +386,14 @@ fun MetricReadout(
                 // The band is spoken whenever there is one, on both surfaces:
                 // the reason for hiding it on the strip is width, and a screen
                 // reader has none.
-                if (targetRange != null) append(", target $targetRange $unit")
-                append(status.spokenSuffix)
+                if (targetRange != null) {
+                    // "for reference" is the spoken form of the amber that is
+                    // not there: a screen-reader rider must be able to tell an
+                    // instruction from a note as easily as a sighted one.
+                    append(", target $targetRange $unit")
+                    if (!instructs) append(" for reference")
+                }
+                if (instructs) append(status.spokenSuffix)
             }
         },
         horizontalAlignment = Alignment.Start
@@ -393,7 +424,7 @@ fun MetricReadout(
         // is a gauge that measures nothing, which is worse than no gauge.
         if (!compact && band.isDefined) {
             Spacer(Modifier.height(6.dp))
-            TargetGauge(band = band, value = rawValue, accent = accent)
+            TargetGauge(band = band, value = rawValue, accent = accent, alerts = instructs)
             Spacer(Modifier.height(4.dp))
 
             // 11.6.4. The gauge shows a rider they are under the band without
@@ -401,7 +432,11 @@ fun MetricReadout(
             // rather than borrowed from the value above it: "85–95" beside a
             // resistance tile is ambiguous on its own, and this line is read
             // separately from the number it sits under.
-            if (showTargetRange && targetRange != null) {
+            // 11.7.3. Only the governing metric spells its band out, which is
+            // what makes "one instruction at a time" visible rather than
+            // merely true: exactly one tile on the ride screen carries a
+            // TARGET line at any moment, and that is the one to ride to.
+            if (showTargetRange && instructs && targetRange != null) {
                 Text(
                     text = "TARGET ${targetWithUnit(targetRange, unit)}",
                     style = MaterialTheme.typography.titleSmall,
@@ -443,7 +478,7 @@ fun MetricReadout(
                 maxLines = 1,
                 softWrap = false
             )
-            if (status.isOffTarget) {
+            if (alerting) {
                 Spacer(Modifier.width(5.dp))
                 Text(
                     text = if (status == TargetStatus.Below) "▼" else "▲",

@@ -275,6 +275,64 @@ percentage would catch. **Rough guide: 30 seconds of recovery between
 positioned reps.** Below that, position the block or the set, not every rep of
 it.
 
+### R12 — One instruction at a time, and the block says which
+
+PLAN.md **11.7**. The owner's complaint, riding: *"what do i do? do i focus on
+zone, cadence, or resistance?"* The answer is that it was never three
+instructions. Power is not something a rider *does* — it is what happens when
+you turn the pedals at some cadence against some resistance. One outcome, two
+controls, drawn as three tiles of equal weight.
+
+So **exactly one metric is the instruction on any block**, and the block names
+it. In practice the cadence intent already does:
+
+| Intent | rpm | Governs |
+|---|---|---|
+| `GRIND` | 50–60 | **cadence** |
+| `CLIMB` | 60–70 | **cadence** |
+| `STAND` | 70–80 | power |
+| `EASY` | 75–85 | power |
+| `STEADY` | 80–90 | power |
+| `BRISK` | 85–95 | power |
+| `FAST` | 95–105 | power |
+| `SPIN` | 105–115 | **cadence** |
+| `SURGE` | 110–125 | **cadence** |
+
+The tails govern and the middle does not, and that is a statement about
+meaning rather than about numbers: an author writing `GRIND` has said *this
+block is about turning a big gear slowly*, and an author writing `STEADY` has
+said *ride normally and let the watts be the point*. **This is not inference
+from a band** — the band is a consequence of the intent, which is why the
+plan's route (a) was rejected and this is route (b).
+
+Override either way when a block means something the intent does not:
+`POWER(CLIMB)` for a threshold effort that happens to sit at climbing cadence,
+`CADENCE(SWEET_SPOT_BAND)` for the owner's *"perhaps there's a way we can use
+both"* case. Both read at the call site.
+
+Three bounds, checked by `build.py` and by `ClassLibraryAssetsTest`:
+
+| | |
+|---|---|
+| A cadence-governed band | must fall outside **75–95 rpm** |
+| Climbs and Sprints | must have at least one cadence-governed block |
+| Cadence's share of the library | at most **a third** of all blocks |
+
+The first is the one that does real work. A block claiming to be governed by
+80–90 rpm is claiming nothing: that is the library's default seated cadence,
+and prescribing it is exactly how a rider spinning a perfectly good 92 rpm
+during a threshold effort came to be shown amber for it (11.7.1a).
+
+The third is a ceiling rather than a floor, and the failure mode it guards is
+the field spreading until "one instruction at a time" means "always the
+cadence". Today it sits at **231 of 1071 blocks, 22%** — the same 231 the plan
+measured out in the tails before the field existed.
+
+On disk the field is `governed_by`, **optional, and absent means power** — the
+same additive shape as `target_position`, so every class written before it
+decodes unchanged. Unlike position there is no third claim: absent is not "the
+rider chooses", it is simply the ordinary case.
+
 ---
 
 ## The seven categories

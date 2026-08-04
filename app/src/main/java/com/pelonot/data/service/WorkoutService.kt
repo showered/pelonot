@@ -806,7 +806,8 @@ class WorkoutService : Service() {
                 cadence = reading.cadenceRpm,
                 power = reading.powerWatts,
                 cadenceTarget = snapshot.cadenceTarget,
-                powerTarget = snapshot.powerTarget
+                powerTarget = snapshot.powerTarget,
+                governedBy = snapshot.governedBy
             )
         )
         coach?.deliver(alerts)

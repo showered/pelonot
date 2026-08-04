@@ -1,11 +1,13 @@
 package com.pelonot.data.service
 
 import com.pelonot.data.sensor.PowerModel
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
+import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.domain.model.cadenceBand
 import com.pelonot.domain.model.powerBand
 
@@ -80,9 +82,42 @@ data class RideSnapshot(
         get() = interval.current?.powerBand(ftpWatts.toDouble(), intent) ?: TargetBand.NONE
 
     /**
+     * Which metric the current block is actually asking for (PLAN 11.7.2).
+     *
+     * Power outside a class, which is not a claim about a free ride so much as
+     * the harmless default: with no class running there is no band on any tile
+     * for this to weight.
+     */
+    val governedBy: GovernedBy
+        get() = interval.current?.governedBy ?: GovernedBy.Power
+
+    /** How hard the cadence tile asserts its band. */
+    val cadenceEmphasis: TargetEmphasis get() = emphasisFor(GovernedBy.Cadence)
+
+    /** How hard the power tile asserts its band. */
+    val powerEmphasis: TargetEmphasis get() = emphasisFor(GovernedBy.Power)
+
+    private fun emphasisFor(axis: GovernedBy): TargetEmphasis = when {
+        !interval.hasClass -> TargetEmphasis.None
+        governedBy == axis -> TargetEmphasis.Instruction
+        else -> TargetEmphasis.Context
+    }
+
+    /**
      * The resistance that would produce [powerTarget] at the middle of
-     * [cadenceTarget] — the actual instruction, rather than two numbers the
-     * rider has to combine in their head at 90 rpm.
+     * [cadenceTarget].
+     *
+     * **Nothing renders this today** (PLAN 11.7.3). It was the third of the
+     * three targets the rider was being asked to hit at once, and it is the
+     * one with no class behind it: no class in the library prescribes
+     * resistance, so this band is `PowerModel` inverted — and that curve
+     * scores RMSE 137 W and 66% median absolute error against 310 samples off
+     * the real board. Of the three numbers competing for a rider's attention
+     * mid-effort it was the derived guess, presented with equal authority.
+     *
+     * Kept rather than deleted because 11.7.3 says exactly when it comes back:
+     * a bike riding its own auto-calibrated curve (2.2a) has a resistance band
+     * worth reading, and it is a suggestion the wording should admit to.
      *
      * Empty when the target is unreachable at that cadence, because then the
      * answer is "change your legs", which is a different instruction and must
