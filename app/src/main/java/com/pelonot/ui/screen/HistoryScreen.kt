@@ -189,12 +189,30 @@ fun HistoryScreen(
                             // recovered-after-a-crash note is taller than its
                             // neighbour, and two cards of different heights side
                             // by side read as a rendering fault.
+                            // 22.7.1. A day that holds fewer rides than the grid
+                            // is wide **centres** them rather than pushing them
+                            // left against an empty right-hand column. The
+                            // owner's note was "panels need to be centrally
+                            // aligned — look in particular at the bottom", and
+                            // the bottom is where the one-ride days are: at the
+                            // cadence 22.5 established, one ride a week, most
+                            // days are a single card and the old layout drew
+                            // every one of them hard against the left with 600
+                            // dp of nothing beside it.
+                            //
+                            // The cards keep their cell width — the gap is
+                            // split into two half-spacers rather than given to
+                            // the card — because a lone ride stretched to the
+                            // width of two is the day looking more important
+                            // than the day above it (22.6).
+                            val gap = columns - row.size
                             Row(
                                 modifier = Modifier.height(IntrinsicSize.Min),
                                 horizontalArrangement = Arrangement.spacedBy(
                                     MaterialTheme.spacing.small
                                 )
                             ) {
+                                if (gap > 0) Spacer(Modifier.weight(gap / 2f))
                                 row.forEach { ride ->
                                     RideRow(
                                         ride = ride,
@@ -205,25 +223,29 @@ fun HistoryScreen(
                                             .fillMaxHeight()
                                     )
                                 }
-                                // The last row's cards keep every other row's
-                                // width rather than stretching to fill it.
-                                repeat(columns - row.size) {
-                                    Spacer(Modifier.weight(1f))
-                                }
+                                if (gap > 0) Spacer(Modifier.weight(gap - gap / 2f))
                             }
                         }
                     }
 
                     if (state.hasMore) {
                         item(key = "load-more") {
-                            OutlinedButton(
-                                onClick = viewModel::loadMore,
+                            // 22.7.1, and the same rule as the cards above it:
+                            // one control does not band across 1232 dp. It is
+                            // the last thing on the screen and it is centred
+                            // under the list rather than drawn as a bar.
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = MaterialTheme.spacing.large),
-                                shape = MaterialTheme.expressiveShapes.pill
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text("Show older rides")
+                                OutlinedButton(
+                                    onClick = viewModel::loadMore,
+                                    shape = MaterialTheme.expressiveShapes.pill
+                                ) {
+                                    Text("Show older rides")
+                                }
                             }
                         }
                     }

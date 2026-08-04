@@ -393,7 +393,7 @@ notes that came back after riding with the result, and neither is a
 disagreement with that audit: one is a piece of it that was not finished, and
 one is a screen the audit never reached.
 
-- [ ] **22.7.1** **History's panels are not centrally aligned — *"look in
+- [x] **22.7.1** **History's panels are not centrally aligned — *"look in
       particular at the bottom"*.** The owner's whole note is those two
       sentences, so the diagnosis is the work. Three candidates, and the first
       is almost certainly it:
@@ -415,6 +415,24 @@ one is a screen the audit never reached.
       on some days and two on others** before changing anything — the shape of
       the complaint depends on the data, and dense fixture data hides it (22.5.5
       is the same trap)
+
+      *Done, and the screenshot settled it: **both** of the first two candidates
+      were real and they are the same defect in two costumes. At the bottom of
+      the list were two days holding one ride each, every one of them drawn hard
+      against the left edge with 600 dp of nothing beside it, and under them a
+      single outlined button stretched across 1232 dp. A day is a row now, and a
+      row that does not fill the grid **centres** what it has — the gap split
+      into two half-spacers, so the card keeps its cell width rather than
+      growing to the width of two (a lone ride stretched to fill its day would
+      read as a more important day than the one above it — 22.6). The button is
+      centred at its own width.*
+
+      ***The third candidate turned out to be the important one and it was
+      about the data, not the layout:*** at the cadence 22.5 established — one
+      ride a week — **most days hold exactly one ride**, so what looked like an
+      edge case at the bottom of a dense fixture list is the ordinary reading
+      of this screen. That is 22.5.5's warning arriving on a second surface,
+      and it is the reason this is worth a change rather than a shrug.*
 - [ ] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
       *"I'm sure this is already on the todo list but it needs some work.
       Visualisation should be much more beautiful and also adhere to the rules
