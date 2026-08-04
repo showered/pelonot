@@ -764,7 +764,7 @@ so the items below are written to be *read* before anything is built. But three
 of the facts underneath it are measurable rather than matters of taste, and
 measuring them moves most of the question.
 
-- [ ] **11.7.1** **The diagnosis: it is not three targets, it is one outcome
+- [x] **11.7.1** **The diagnosis: it is not three targets, it is one outcome
       and two inputs — and the app gives all three the same weight.** Power is
       not something a rider *does*. It is what happens when you turn the pedals
       at some cadence against some resistance: `power = f(cadence, resistance)`,
@@ -803,7 +803,7 @@ measuring them moves most of the question.
         the one presented with equal authority**. 11.2.1a is already a
         symptom of this — the band vanishes on Zone 1 for a low-FTP rider
         because the model says the unloaded bike already exceeds the zone.
-- [ ] **11.7.1a** **A defect falls out of 11.7.1 and is worth fixing whatever
+- [x] **11.7.1a** **A defect falls out of 11.7.1 and is worth fixing whatever
       is decided above.** `MetricStatus.isOffTarget` drives the amber treatment
       in `RideComponents` uniformly across every tile. So during a threshold
       block — where the class wants the watts and the 75–85 band is the
@@ -815,7 +815,7 @@ measuring them moves most of the question.
       able to go amber**; the others are context and should stay in the accent
       colour. This is a small change and it removes most of the felt confusion
       on its own.
-- [ ] **11.7.2** **The decision that is the owner's: how a block says which
+- [x] **11.7.2** **The decision that is the owner's: how a block says which
       metric governs it.** The recommendation below is one instruction per
       block, chosen by the block rather than by the rider — because the owner's
       own sentence contains the answer ("a time and place", "spin-ups and
@@ -856,7 +856,7 @@ measuring them moves most of the question.
       on the recommendation above. Not yet built — it does not jump ahead of
       15.8 in the queue, but 11.7.1a, 11.7.3 and 11.7.4 are now unblocked
       rather than waiting on a design question.
-- [ ] **11.7.3** **What the ride screen does with the answer.** Sketched, not
+- [x] **11.7.3** **What the ride screen does with the answer.** Sketched, not
       settled — it depends on 11.7.2. The shape that follows from "one outcome,
       two controls":
       - The **governing** metric keeps the full target treatment — the gauge,
@@ -874,7 +874,7 @@ measuring them moves most of the question.
         reading of where the rider *is* against the whole ladder, not a
         competing instruction, and it is the thing that makes power scale to
         fitness — which is the property the owner said they love.
-- [ ] **11.7.4** **And what the overlay does**, which is the harder half and
+- [x] **11.7.4** **And what the overlay does**, which is the harder half and
       why 11.7.3 should not be built without thinking about it. The strip has
       room for one instruction and the ride screen has room for three, so the
       strip is where "one instruction at a time" either works or does not —
@@ -897,3 +897,56 @@ side rather than the parser's. It does not by itself answer 11.7.2, the one
 decision in this item that is the owner's and is still open: derive the
 governing metric from the cadence band (a), or name it in the catalogue (b).
 The recommendation stands at (b).
+
+**Built in the twenty-ninth sitting, on the owner's own priority** — *"please
+address the 'resistance target' vs 'cadence target' vs 'powerzone target'
+issue as a priority"*, the third time it had come up. What is worth writing
+down is the two decisions that were not simply reading the items back.
+
+**Where the field lives.** 11.7.2 chose route (b) — name it — over route (a),
+derive it from the band. The implementation puts governance on the **cadence
+intent** in `classlibrary/builder.py`: `GRIND`, `CLIMB`, `SPIN` and `SURGE`
+are cadence-governed and the rest are not, with `POWER(x)` and `CADENCE(x)`
+overriding at the call site. That is not route (a) wearing route (b)'s
+clothes, and the distinction is the whole reason (b) was chosen: an author who
+writes `GRIND` **has said what they mean** — this block is about turning a big
+gear slowly — and the 50–60 band is a consequence of that intent rather than
+its source. A reader inferring "cadence governs" from seeing 50–60 would be
+route (a); a reader looking up what `GRIND` *is* is not. It also cost nothing
+to seed: 231 blocks of 1071 came out governed by cadence, which is exactly the
+231 the tails measurement above found before the field existed.
+
+**And what the non-governing metric keeps.** 11.7.3 was written as *"they lose
+the target band and the amber and become plain readings"*. What shipped keeps
+the shaded band and drops everything that says the rider is wrong — the amber
+value, the amber marker, the arrow, the `TARGET 80–90 rpm` line and the spoken
+cue. Two reasons, and the second is the load-bearing one. A rider does want to
+know roughly what cadence the class had in mind, and dropping the band entirely
+would say the class never mentioned it. And the gauge appearing and
+disappearing between blocks changes the tile's height, which is 11.6.8's
+family of defect — something on the ride screen moving for a reason the rider
+cannot see. The visible consequence is the thing to judge it by: **exactly one
+tile on the ride screen carries a `TARGET` line at any moment**, and that is
+the answer to *"what do I do?"*.
+
+Resistance took the harder version: **no band at all, on either surface, ever**
+— which is the owner's own *"if the target is powerzone, then no resistance
+target is required"*. `RideSnapshot.resistanceTarget` is kept and documented
+rather than deleted, because 11.7.3 says exactly when it comes back (2.2a, a
+bike on its own calibrated curve).
+
+**Four surfaces changed, not two.** Two were not in the items and were found by
+driving the flow rather than by reading the diff:
+- the **next-up preview** named a cadence for every upcoming block, directly
+  under the zone name that was the actual instruction
+- the **class detail list** is the one place both halves stay, because it is
+  the screen a rider *studies* a class on — but the governing half is bold and
+  the other is dimmed, so the instruction is legible before the ride instead of
+  discovered during it
+
+**And the voice had 11.7.1a's exact twin, which the items did not name.**
+`adviceFor` checked the cadence first and *returned* on it, so on a threshold
+block a rider spinning 92 rpm against the library's neutral 75–85 default was
+told to ease the cadence back — and the power drift the class actually cared
+about **could never be reached at all**, because cadence had already answered.
+Same defect as the amber, one channel louder.

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.core.Formatters
 import kotlinx.coroutines.delay
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.TargetBand
@@ -1020,9 +1021,18 @@ fun NextUpPreview(
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
+            // 11.7.4. The rpm only when the next block is asking for it. The
+            // zone name is directly above this line, so on a power block the
+            // cadence was a second instruction under the first — and on the
+            // 574 blocks of 1071 that sit in the neutral bands it was
+            // announcing the cadence the rider is already at.
             Text(
-                text = "${next.cadenceMin}–${next.cadenceMax} rpm · " +
-                    Formatters.duration(next.durationSec),
+                text = if (next.governedBy == GovernedBy.Cadence) {
+                    "${next.cadenceMin}–${next.cadenceMax} rpm · " +
+                        Formatters.duration(next.durationSec)
+                } else {
+                    Formatters.duration(next.durationSec)
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1

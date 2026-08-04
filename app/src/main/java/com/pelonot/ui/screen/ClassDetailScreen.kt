@@ -36,12 +36,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
@@ -388,11 +393,39 @@ private fun IntervalCard(interval: Interval, ftp: Double) {
                         PositionChip(position)
                     }
                 }
+                // 11.7. Both halves are here — this is the screen a rider
+                // *studies* a class on, not the one they glance at mid-effort,
+                // and "50–60 rpm at 180–210 W" is the honest description of a
+                // grind. What the weight says is which of the two the block is
+                // actually asking for, so the instruction is legible before the
+                // ride rather than discovered during it.
+                val instruction = MaterialTheme.colorScheme.onSurface
+                val context = MaterialTheme.colorScheme.onSurfaceVariant
+                val cadenceGoverns = interval.governedBy == GovernedBy.Cadence
                 Text(
-                    text = "${interval.cadenceMin}–${interval.cadenceMax} RPM · " +
-                        "${powerRange.start.toInt()}–${powerRange.endInclusive.toInt()} W",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = buildAnnotatedString {
+                        withStyle(
+                            SpanStyle(
+                                color = if (cadenceGoverns) instruction else context,
+                                fontWeight = if (cadenceGoverns) FontWeight.Bold else null
+                            )
+                        ) {
+                            append("${interval.cadenceMin}–${interval.cadenceMax} RPM")
+                        }
+                        withStyle(SpanStyle(color = context)) { append(" · ") }
+                        withStyle(
+                            SpanStyle(
+                                color = if (cadenceGoverns) context else instruction,
+                                fontWeight = if (cadenceGoverns) null else FontWeight.Bold
+                            )
+                        ) {
+                            append(
+                                "${powerRange.start.toInt()}–" +
+                                    "${powerRange.endInclusive.toInt()} W"
+                            )
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
