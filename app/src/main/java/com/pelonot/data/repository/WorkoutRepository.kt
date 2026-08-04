@@ -290,7 +290,22 @@ class WorkoutRepository(
 
         val reopened = workout.copy(
             resumeCount = workout.resumeCount + 1,
-            interruptedSec = workout.interruptedSec + interruption.unrecordedSec
+            interruptedSec = workout.interruptedSec + interruption.unrecordedSec,
+            // Both matter only on the path 12.6.2 opened — resuming a ride that
+            // was *finished* rather than crashed out of, because the rider hit
+            // End by accident. A crashed ride is already incomplete and has
+            // never been synced, so for 8.3d these two are no-ops.
+            //
+            // `isComplete` because a ride being ridden is not a ride in the
+            // rider's history: left true it shows up in history, in the
+            // leaderboards and in the totals while it is still being ridden.
+            // `syncedAt` because the cloud's copy is now the short version of a
+            // ride that is about to get longer, and a ride that is marked as
+            // backed up is never offered again (14.2.5). The upload is an
+            // upsert on the ride's own id (15.3.3), so re-sending replaces it
+            // rather than duplicating it.
+            isComplete = false,
+            syncedAt = null
         )
         workoutDao.updateWorkout(reopened)
 

@@ -380,6 +380,15 @@ fun PelonotNavGraph(
             PostRideSummaryScreen(
                 workoutId = workoutId,
                 isGuest = uiState.selectedProfile == null,
+                // 12.6.2. The same destination the crash-recovery dialog uses,
+                // and it replaces the summary rather than stacking on it:
+                // system back from a resumed ride must not land on the summary
+                // of the ride still being ridden.
+                onResume = { resumedId, classId ->
+                    navController.navigate(Destination.Ride.resuming(resumedId, classId)) {
+                        popUpTo(Destination.PostRide.route) { inclusive = true }
+                    }
+                },
                 onDone = {
                     // 8.3c. `popBackStack` returns false when the destination
                     // asked for was never on the stack, and that Boolean was

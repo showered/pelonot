@@ -206,14 +206,29 @@ screen plus the two things that are only true tonight** (the FTP proposal, and
 Discard) **minus the charts, for no reason**. Everything below follows from
 that.
 
-- [ ] **12.6.1** **The charts come to the summary**, by extracting
+- [x] **12.6.1** **The charts come to the summary**, by extracting
       `RideChartsSection` the way `RideFigures` was extracted in 12.2.2 — one
       component, two screens, so the next chart is added once. It needs the
       metric series, which the summary does not load today; `PostRideViewModel`
       already reads the samples for the FTP analysis, so the cost is a state
       field rather than a query. Watch 12.1.6's rule in reverse: this is one of
       the two screens where touching `workout_metrics` is correct
-- [ ] **12.6.2** **Resume from the summary — and it is a real hazard, not a
+
+      *Done and observed on the tablet AVD: Power beside Heart rate under the
+      effort question, filling the half of the screen that was empty.
+      `RideChartsSection` lives in `ui/components` now and takes the ghost and
+      the rivals as **defaults**, because a comparison is the one thing this
+      screen has not been asked for — a rider who has just stopped pedalling
+      wants to know how the last twenty minutes went, not how it went against
+      Alex.*
+
+      ***The second extraction is the half worth naming.** `buildRideCharts`
+      came out with the section, because the FTP rule that decides the zone
+      bands (7.8) was inside `RideDetailViewModel` — and a second copy of it is
+      a second answer to* which FTP were these bands drawn from*, on the one
+      question this app has already got wrong once. The samples are read once
+      and used twice: the breakthrough analysis wanted the whole series anyway.*
+- [x] **12.6.2** **Resume from the summary — and it is a real hazard, not a
       convenience.** The owner's *"in case it was an accident"* is the two-tap
       stop on the overlay (11.6.6) and the one-tap End on the ride screen, both
       of which sit a thumb's width from pause. 8.3d already built everything
@@ -228,7 +243,32 @@ that.
       `WorkoutSession` does not carry, so a re-opened ride must go back through
       a session that carries `resume_count`, `interrupted_sec` and `ftp_watts`
       or the second finalise silently reverts them
-- [ ] **12.6.3** **Decide what stays different, and say so in the file.** After
+
+      ***Done, and the database is the witness** — a resumed series comes back
+      contiguous and cannot show any of this on a screen. Ended a ride at
+      01:44, tapped* Carry on riding*: the row read `is_complete = 0`,
+      `resume_count = 1`, `interrupted_sec = 22`, `synced_at` null, and the ride
+      screen came back at 01:48 with 16 kJ and 0.19 mi still on it rather than
+      at zero. Ended it again: `is_complete = 1` with **`resume_count` and
+      `interrupted_sec` still 1 and 22** — 8.3d.4's trap checked rather than
+      trusted — 153 contiguous samples, and `avg_power` 142.978 on the row
+      against 142.98 over the samples themselves.*
+
+      ***Three things this needed beyond 8.3d's path, all because that path had
+      never met a finished ride.** The reopen now clears `is_complete` — left
+      set, a ride still being ridden sits in history, in the leaderboards and
+      in the totals — and `syncedAt`, because otherwise the cloud keeps the
+      short version of a ride that got longer and never offers it again
+      (14.2.5); the upload is an upsert on the ride's own id (15.3.3), so
+      re-sending replaces rather than duplicates. And `resumeInterruptedRide`
+      accepts `Completed` as well as `Idle`: the summary appears while the
+      service is still shutting itself down, and refusing there would make this
+      a button that works or does nothing depending on how fast the rider
+      tapped it.*
+
+      *It also made a sentence false, which is fixed: the end-ride dialog said*
+      "Everything so far is saved either way, but a ride can't be restarted."
+- [x] **12.6.3** **Decide what stays different, and say so in the file.** After
       12.6.1 the two screens are one layout with three deltas: the FTP
       breakthrough dialog, Discard/Resume, and the guest destination (8.4). That
       is a small enough difference to be worth stating at the top of both files,
@@ -236,7 +276,15 @@ that.
       list they are adding to. It is also the answer to whether they should be
       merged: **no** — 12.2.1's reasoning stands, and it is the behaviour that
       differs rather than the presentation
-- [ ] **12.6.4** **Judged on the 1280 × 720 dp AVD after 22.4.6's rebuild.**
+
+      *Done, at the top of both files, and writing it out found a fourth delta
+      the item had missed: **ride detail has two of its own**, export (12.4.3)
+      and* ride against *(24.3.1, 16.3.4). The second is the interesting one and
+      it is why `RideChartsSection` defaults the ghost away rather than taking
+      it from wherever it is drawn — a comparison is something a rider comes
+      back to make, not something to put in front of them while they are still
+      breathing hard.*
+- [x] **12.6.4** **Judged on the 1280 × 720 dp AVD after 22.4.6's rebuild.**
       The summary now pins Done and Discard below a scrolling body; adding two
       charts and a Resume button to that body is exactly the change that pushes
       something below the fold, which is how 22.4.2's regression was found

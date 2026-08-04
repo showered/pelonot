@@ -51,6 +51,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.model.PerceivedEffort
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.RideChartsSection
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.loneCard
@@ -79,12 +80,29 @@ import java.util.Date
  * The heading is the class the rider chose rather than the words *Ride
  * Summary*: they know they just rode, and a screen that spends its largest
  * type telling them so is spending it on the one thing they already know.
+ *
+ * **How this differs from `RideDetailScreen`, stated once (12.6.3).** They are
+ * the same ride and, since 12.6.1, the same figures and the same charts. The
+ * whole difference is three things that are only true tonight:
+ *
+ * 1. The FTP breakthrough dialog, which is right ninety seconds after a ride
+ *    and bizarre on a ride from March (12.2.1).
+ * 2. *Discard* and *Carry on riding* (11.1a.4, 12.6.2) — both about a ride that
+ *    has only just happened.
+ * 3. The guest destination (8.4), which is the last moment a guest ride can be
+ *    filed against a profile.
+ *
+ * Ride detail has its own two — export and *ride against* — and everything else
+ * belongs on **both**, through a shared component. They are deliberately not
+ * merged: it is the behaviour that differs, not the presentation.
  */
 @Composable
 fun PostRideSummaryScreen(
     workoutId: String,
     isGuest: Boolean,
     onDone: () -> Unit,
+    /** Back into the ride that was ended by accident (12.6.2). */
+    onResume: (workoutId: String, classId: String?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: PostRideViewModel = viewModel(factory = PostRideViewModel.Factory)
 ) {
@@ -198,6 +216,23 @@ fun PostRideSummaryScreen(
                         }
                     }
                 }
+
+                Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+
+                // 12.6.1. The owner's note: *"this should be pretty much the
+                // same as when you view it from history, right? It currently
+                // doesn't contain any graphs."* It is the same ride and the
+                // same component — below the effort question rather than above
+                // it, because the question is the one thing here only the
+                // rider can answer and a question they have to scroll to is a
+                // question most riders do not answer (22.4.6).
+                //
+                // No ghost and no rivals: those are a comparison, and this is
+                // the one screen where the rider has not asked for one.
+                RideChartsSection(
+                    charts = state.charts,
+                    isGuestRide = workout.userId == null
+                )
             }
 
             if (isGuest) {
@@ -222,6 +257,8 @@ fun PostRideSummaryScreen(
         if (!isGuest) {
             SummaryActions(
                 canDiscard = workout != null,
+                canResume = state.canResume,
+                onResume = { viewModel.resume(onResume) },
                 onDiscard = { confirmingDiscard = true },
                 onDone = onDone
             )
@@ -276,15 +313,22 @@ private fun SummaryHeader(
 }
 
 /**
- * Done, and the quieter way out beside it.
+ * Done, and the two quieter ways out beside it.
  *
  * *Done* is the button a rider reaches for without looking, so it is on the
  * right where the thumb already is and *Discard* is as far from it as the row
  * allows — the same reasoning as before the rebuild, kept.
+ *
+ * *Carry on riding* (12.6.2) sits with Discard rather than with Done, for the
+ * same reason: it is the answer to a mistake, not the ordinary way off this
+ * screen. It says the same words the crash-recovery dialog does (8.3d), because
+ * it does the same thing to the same ride.
  */
 @Composable
 private fun SummaryActions(
     canDiscard: Boolean,
+    canResume: Boolean,
+    onResume: () -> Unit,
     onDiscard: () -> Unit,
     onDone: () -> Unit
 ) {
@@ -295,13 +339,26 @@ private fun SummaryActions(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        OutlinedButton(
-            onClick = onDiscard,
-            enabled = canDiscard,
-            modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
-            shape = MaterialTheme.expressiveShapes.pill
-        ) {
-            Text("Discard this ride")
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            OutlinedButton(
+                onClick = onDiscard,
+                enabled = canDiscard,
+                modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                shape = MaterialTheme.expressiveShapes.pill
+            ) {
+                Text("Discard this ride")
+            }
+            // Absent rather than disabled when the window has closed: a
+            // greyed-out button is a promise the app is not keeping, and the
+            // reason it cannot be kept takes a paragraph to explain.
+            if (canResume) {
+                TextButton(
+                    onClick = onResume,
+                    modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET)
+                ) {
+                    Text("Carry on riding")
+                }
+            }
         }
         Button(
             onClick = onDone,

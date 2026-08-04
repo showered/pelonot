@@ -507,7 +507,11 @@ private fun EndRideDialog(
                     if (remainingSec != null && remainingSec > 0) {
                         append("There's ${Formatters.duration(remainingSec)} of the class left. ")
                     }
-                    append("Everything so far is saved either way, but a ride can't be restarted.")
+                    // 12.6.2 made the old second half of this sentence false —
+                    // it said a ride can't be restarted, and now the summary
+                    // offers to carry on. A dialog that overstates what is at
+                    // stake is the kind riders learn to tap past.
+                    append("Everything so far is saved either way.")
                 }
             )
         },

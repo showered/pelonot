@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -26,7 +25,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -61,24 +59,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.core.Formatters
-import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
 import com.pelonot.domain.model.PerceivedEffort
-import com.pelonot.domain.model.PowerProvenance
-import com.pelonot.ui.components.CadenceDistributionChart
-import com.pelonot.ui.components.CadenceTraceChart
-import com.pelonot.ui.components.ChartCard
-import com.pelonot.ui.components.GhostTraceColor
-import com.pelonot.ui.components.HeartRateTraceChart
-import com.pelonot.ui.components.PowerTraceChart
+import com.pelonot.ui.components.RideChartsSection
 import com.pelonot.ui.components.RideFigures
-import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.loneCard
 import com.pelonot.ui.theme.readableText
-import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailUiState
 import com.pelonot.ui.viewmodel.RideDetailViewModel
@@ -92,12 +81,20 @@ import kotlin.math.roundToInt
 /**
  * A ride from history.
  *
- * The same figures as the post-ride summary, minus everything that belongs to
- * the minute after a ride: no FTP breakthrough dialog, no guest filing. RPE
- * stays, because it is the one number riders get wrong while still out of
- * breath (12.2.4).
+ * **The same figures and the same charts as the post-ride summary** — one
+ * `RideFigures` (12.2.2) and one `RideChartsSection` (12.6.1), so a rider
+ * cannot be shown two pictures of one ride. What is missing here is everything
+ * that belongs to the minute after a ride: no FTP breakthrough dialog, no
+ * *Discard* or *Carry on riding*, no guest filing.
  *
- * Charts land here first (12.2.3 / phase 16).
+ * What is here and not there: **export** (12.4.3), and **ride against** — the
+ * housemate or the rider's own previous best drawn behind the power trace
+ * (24.3.1, 16.3.4), which is a comparison somebody has come back to make rather
+ * than one to put in front of them while they are still breathing hard.
+ *
+ * RPE stays on both, because it is the one number riders get wrong while still
+ * out of breath (12.2.4). The two screens are deliberately not merged: it is
+ * the behaviour that differs, not the presentation (12.2.1, 12.6.3).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -400,250 +397,6 @@ private fun correctedAverage(
 }
 
 /**
- * The four charts, laid out for the width this app actually has.
- *
- * Two columns on the tablet — 1280 dp is a great deal of width to spend on one
- * 140 dp chart at a time — and a single column anywhere narrower.
- */
-@Composable
-private fun RideChartsSection(
-    charts: RideCharts?,
-    rivals: List<RideDetailUiState.Rival>,
-    ghost: RideDetailUiState.GhostRide?,
-    onPickRival: (String?) -> Unit,
-    isGuestRide: Boolean
-) {
-    if (charts == null) {
-        // Distinguished from "this ride recorded nothing", which is a
-        // different sentence and a permanent one.
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.size(MaterialTheme.spacing.small))
-            Text(
-                text = "Working out how the ride went…",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
-    }
-
-    if (!charts.hasAnything) {
-        Text(
-            text = "This ride has no second-by-second record — only its totals. " +
-                "Rides recorded before the app started keeping one look like this.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        return
-    }
-
-    BoxWithConstraints {
-        val twoUp = maxWidth >= TWO_COLUMN_BREAKPOINT
-
-        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
-            if (twoUp) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                ) {
-                    PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.weight(1f))
-                    HeartCard(charts, Modifier.weight(1f))
-                }
-                // The two cadence cards side by side on purpose: they are the
-                // same metric answering two questions — when, and how long at
-                // each — and the one with a time axis is the only one a
-                // prescribed cadence can be drawn on (16.1.5a).
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-                ) {
-                    CadenceTraceCard(charts, Modifier.weight(1f))
-                    CadenceCard(charts, Modifier.weight(1f))
-                }
-                // 22.6: no partner beside it, so it stops at a column's width
-                // rather than becoming a bar across the room.
-                ZoneCard(charts, Modifier.loneCard())
-            } else {
-                PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.fillMaxWidth())
-                HeartCard(charts, Modifier.fillMaxWidth())
-                CadenceTraceCard(charts, Modifier.fillMaxWidth())
-                CadenceCard(charts, Modifier.fillMaxWidth())
-                ZoneCard(charts, Modifier.fillMaxWidth())
-            }
-        }
-    }
-}
-
-@Composable
-private fun PowerCard(
-    charts: RideCharts,
-    ghost: RideDetailUiState.GhostRide?,
-    rivals: List<RideDetailUiState.Rival>,
-    onPickRival: (String?) -> Unit,
-    isGuestRide: Boolean,
-    modifier: Modifier
-) = ChartCard(
-    title = "Power",
-    // 16.1.6, and it now reads from where the watts actually came from:
-    // `workout_metrics.power_is_measured` records it per sample. A ride from
-    // before that column existed says "estimated", which is the safe
-    // direction — the rule this project cares about is never presenting a
-    // modelled watt as a measured one, and "we did not write it down" is not
-    // grounds for claiming a measurement.
-    caption = listOfNotNull(
-        when (charts.powerProvenance) {
-            PowerProvenance.Measured -> "Measured by the bike"
-            PowerProvenance.Mixed ->
-                "Partly measured — the bike's sensor dropped out during this ride"
-            else -> "Estimated from cadence and resistance — see Settings"
-        },
-        // Only said when there are blocks to explain. On a free ride there is
-        // no prescription and no legend for one.
-        "blocks are what the class asked for".takeUnless { charts.prescribed.isEmpty },
-        // 7.8.4. Said only when it is true, and it is true only of rides
-        // recorded before the app kept the number. Bands drawn from an FTP the
-        // ride never saw are a re-derivation from a source that has moved
-        // since, and they must not sit here looking like a record.
-        "zones from your FTP today — this ride did not record its own"
-            .takeUnless { charts.ftpIsTheRides },
-        // 7.8.5, adjusted. A guest ride *does* have an FTP — the app's default,
-        // which is what its live targets and its zone ladder were built from
-        // during the ride, so the number on the row is a true record of what it
-        // was judged against. What it does not have is a *rider*, and "Zone 5"
-        // is a claim about somebody. Said, rather than the bands withdrawn:
-        // withdrawing them would also take the prescription and the
-        // time-in-zone with them, and would make the ride's own screen disagree
-        // with what the guest was looking at while they rode it.
-        "no rider on this ride — zones from the app's default FTP"
-            .takeIf { isGuestRide }
-    ).joinToString(" · "),
-    summary = listOf(
-        RideChartSummaries.power(charts.power, charts.powerProvenance),
-        RideChartSummaries.prescribed(charts.prescribed),
-        // 16.2.4: the canvas is inert to a screen reader, so a second trace
-        // that is not in this sentence does not exist for the rider using one.
-        ghost?.let {
-            if (it.you) {
-                "Your previous best at this class is drawn behind it, dashed, " +
-                    "at ${Formatters.kilojoules(it.outputKj)} total."
-            } else {
-                "${it.name}'s ride of this class is drawn behind it, dashed, " +
-                    "at ${Formatters.kilojoules(it.outputKj)} total."
-            }
-        }.orEmpty()
-    ).filter { it.isNotEmpty() }.joinToString(" "),
-    modifier = modifier
-) {
-    Column {
-        PowerTraceChart(
-            trace = charts.power,
-            ftpWatts = charts.ftpWatts,
-            prescribed = charts.prescribed,
-            ghost = ghost?.trace,
-            // The rider's own earlier ride is *them*, so it is drawn in the
-            // power colour rather than in the grey that means "a second rider"
-            // — dimmed, because it is still the thing behind rather than the
-            // record on top (16.3.4).
-            ghostColor = if (ghost?.you == true) {
-                MetricPowerCoral.copy(alpha = 0.55f)
-            } else {
-                GhostTraceColor
-            }
-        )
-        RivalPicker(rivals, ghost, onPickRival)
-    }
-}
-
-/**
- * "Ride against" — the housemates who have ridden this class (24.3.1).
- *
- * **Draws nothing at all when there is nobody**, which is the common case and
- * the same rule 24.1.6 settled for the leaderboard card: a household of one
- * must never see an empty comparison, because an empty comparison is a message
- * about the people who are not on it.
- *
- * Opt-in per tap rather than drawn by default. The rider opened this screen to
- * look at their own ride, and a second line arriving unasked over the top of it
- * is somebody else's ride being made the point of the chart.
- */
-@Composable
-private fun RivalPicker(
-    rivals: List<RideDetailUiState.Rival>,
-    ghost: RideDetailUiState.GhostRide?,
-    onPick: (String?) -> Unit
-) {
-    if (rivals.isEmpty()) return
-
-    Spacer(Modifier.size(MaterialTheme.spacing.small))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-    ) {
-        Text(
-            text = "Ride against",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        rivals.forEach { rival ->
-            val on = ghost?.workoutId == rival.workoutId
-            FilterChip(
-                selected = on,
-                onClick = { onPick(rival.workoutId) },
-                label = {
-                    Text("${rival.name} · ${Formatters.kilojoules(rival.outputKj)}")
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = when {
-                        rival.you && on -> "Hide your previous best"
-                        rival.you -> "Draw your previous best at this class behind this ride"
-                        on -> "Hide ${rival.name}'s ride"
-                        else -> "Draw ${rival.name}'s ride behind yours"
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeartCard(charts: RideCharts, modifier: Modifier) = ChartCard(
-    title = "Heart rate",
-    summary = RideChartSummaries.heartRate(charts.heartRate),
-    modifier = modifier
-) {
-    HeartRateTraceChart(trace = charts.heartRate)
-}
-
-@Composable
-private fun CadenceTraceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
-    title = "Cadence over time",
-    caption = "What the class asked for, behind what you turned"
-        .takeUnless { charts.prescribed.isEmpty },
-    summary = RideChartSummaries.cadenceOverTime(charts.cadenceTrace, charts.prescribed),
-    modifier = modifier
-) {
-    CadenceTraceChart(trace = charts.cadenceTrace, prescribed = charts.prescribed)
-}
-
-@Composable
-private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
-    title = "Cadence spread",
-    caption = "How long was spent at each cadence",
-    summary = RideChartSummaries.cadence(charts.cadence),
-    modifier = modifier
-) {
-    CadenceDistributionChart(distribution = charts.cadence)
-}
-
-@Composable
-private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
-    title = "Time in zone",
-    summary = RideChartSummaries.timeInZone(charts.timeInZone),
-    modifier = modifier
-) {
-    TimeInZoneBar(timeInZone = charts.timeInZone)
-}
-
-/**
  * Taking your own data with you (12.4.3).
  *
  * This is an open-source app, and not being able to get your ride out of it is
@@ -688,8 +441,6 @@ private fun ExportSection(onExport: (ExportFormat) -> Unit, modifier: Modifier =
     }
   }
 }
-
-private val TWO_COLUMN_BREAKPOINT = 900.dp
 
 /**
  * RPE, after the fact.

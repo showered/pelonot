@@ -13,8 +13,10 @@ import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.model.ClassLeaderboard
-import com.pelonot.domain.model.PowerProvenance
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,10 +39,32 @@ data class PostRideUiState(
      * can have ridden.
      */
     val leaderboard: ClassLeaderboard? = null,
+    /**
+     * The ride's own time series, reduced to what can be drawn (12.6.1).
+     *
+     * Null while it is still being built, which is a different thing from a
+     * ride with nothing in it — a screen that cannot tell those apart flashes
+     * "no data" at every rider on the way in. Same field, same rule and the
+     * same builder as ride detail: the owner's question was whether these two
+     * screens are the same ride, and the answer has to be yes here or the two
+     * pictures of one ride drift.
+     */
+    val charts: RideCharts? = null,
     /** The title of the class just ridden; null for a free ride (22.4.6). */
     val classTitle: String? = null,
     /** Whose ride it was, for the header. Null while a guest ride is unfiled. */
-    val riderName: String? = null
+    val riderName: String? = null,
+    /**
+     * Whether *carry on riding* is still honest (12.6.2).
+     *
+     * The owner's reason for wanting it is the two-tap stop on the overlay and
+     * the End button on the ride screen, both a thumb's width from pause. It is
+     * the same judgement 8.3d makes after a crash, asked of a ride that ended a
+     * moment ago: a ride that recorded nothing has nothing to carry on with,
+     * and one whose gap has grown past half an hour is a new ride wearing the
+     * old one's interval clock.
+     */
+    val canResume: Boolean = false
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
 
@@ -85,18 +109,22 @@ class PostRideViewModel(
             val profileId = settingsRepository.settings.first().lastProfileId
             val currentFtp = profileId?.let { userRepository.getUser(it)?.ftpWatts } ?: 0
 
+            // Read once and used twice — the breakthrough analysis and the
+            // charts (12.6.1) both want the whole series, and it is a few
+            // thousand rows.
+            val metrics = if (workout != null) {
+                workoutRepository.getMetrics(workoutId)
+            } else {
+                emptyList()
+            }
+
             // 7.10.5. A ride the rider has already answered for is not asked
             // about again. The analyser is run on every load — that is what
             // makes the summary re-offer a proposal after it is closed and
             // reopened — so the answer has to be on the ride rather than in
             // this object's memory.
             val proposed = if (workout != null && currentFtp > 0 && !workout.ftpProposalDeclined) {
-                val metrics = workoutRepository.getMetrics(workoutId)
-                val provenance = PowerProvenance.of(
-                    measured = metrics.count { it.powerIsMeasured == true },
-                    modelled = metrics.count { it.powerIsMeasured == false },
-                    unknown = metrics.count { it.powerIsMeasured == null }
-                )
+                val provenance = powerProvenanceOf(metrics)
                 // 7.10.7. An FTP is a fact about a rider, and this one is
                 // computed from a twenty-minute peak. On a simulated ride that
                 // peak is `PowerModel`'s invention — a curve measured at RMSE
@@ -123,13 +151,33 @@ class PostRideViewModel(
                 workoutRepository.householdLeaderboard(classId, youId = workout.userId)
             }
 
+            val plan = workout?.classId?.let { id -> classRepository.getPlan(id) }
+
+            // 12.6.1. The same reduction ride detail does, off the main thread
+            // for the same reason (16.2.3): a 45-minute ride is a few thousand
+            // samples and this screen appears the moment a rider stops
+            // pedalling.
+            val charts = workout?.let {
+                withContext(Dispatchers.Default) {
+                    buildRideCharts(
+                        workout = it,
+                        metrics = metrics,
+                        intervals = plan?.intervals.orEmpty(),
+                        riderFtp = currentFtp.takeIf { ftp -> ftp > 0 }
+                    )
+                }
+            }
+
             _uiState.update {
                 it.copy(
                     workout = workout,
                     currentFtp = currentFtp,
                     proposedFtp = proposed,
                     leaderboard = leaderboard,
-                    classTitle = workout?.classId?.let { id -> classRepository.getPlan(id)?.title },
+                    charts = charts,
+                    canResume = workout != null &&
+                        workoutRepository.interruptionFor(workout.id)?.isResumable == true,
+                    classTitle = plan?.title,
                     // The ride's own owner rather than the last profile
                     // selected: a guest ride has none, and saying the wrong
                     // name over a ride is worse than saying no name at all.
@@ -142,6 +190,30 @@ class PostRideViewModel(
         viewModelScope.launch {
             userRepository.allUsers.collect { users ->
                 _uiState.update { it.copy(profiles = users) }
+            }
+        }
+    }
+
+    /**
+     * Picks the ride back up because ending it was a mistake (12.6.2).
+     *
+     * Re-asks the question rather than trusting the answer this screen loaded
+     * with: the summary can sit open for an hour, and the honest window is
+     * half an hour of not riding (`RideInterruption`). If it has closed, the
+     * button disappears rather than the rider being handed a ride screen with
+     * no ride on it — the service would refuse the same resume silently.
+     *
+     * Nothing is written here. `WorkoutService` reopens the row, because it is
+     * the thing that then has to keep recording into it.
+     */
+    fun resume(onResuming: (workoutId: String, classId: String?) -> Unit) {
+        val workout = _uiState.value.workout ?: return
+        viewModelScope.launch {
+            val resumable = workoutRepository.interruptionFor(workout.id)?.isResumable == true
+            if (resumable) {
+                onResuming(workout.id, workout.classId)
+            } else {
+                _uiState.update { it.copy(canResume = false) }
             }
         }
     }

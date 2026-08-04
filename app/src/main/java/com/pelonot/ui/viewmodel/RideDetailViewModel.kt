@@ -11,6 +11,8 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.ui.components.RideGhost
+import com.pelonot.ui.components.RideRival
 import com.pelonot.domain.export.ExportFormat
 import com.pelonot.domain.export.ExportRide
 import com.pelonot.domain.export.ExportSample
@@ -42,36 +44,11 @@ data class RideDetailUiState(
      * Housemates who have ridden this same class and can be drawn behind it
      * (24.3.1). Empty is the ordinary answer and draws nothing.
      */
-    val rivals: List<Rival> = emptyList(),
+    val rivals: List<RideRival> = emptyList(),
     /** The one currently drawn, or null. Only ever one: two ghosts is a graph. */
-    val ghost: GhostRide? = null
+    val ghost: RideGhost? = null
 ) {
     val displayTitle: String get() = classTitle ?: "Just Ride"
-
-    /**
-     * A ride of this class that can be drawn behind this one — a housemate's
-     * (24.3.1), or **the rider's own previous best** (16.3.4).
-     *
-     * One list rather than two, because from the chart's point of view they are
-     * the same thing: another ride of the same class, on the same axes, under
-     * the same measured-power rule. [you] is the only difference, and it exists
-     * because "Alex" and "your best" read very differently under a trace.
-     */
-    data class Rival(
-        val workoutId: String,
-        val name: String,
-        val outputKj: Double,
-        val you: Boolean = false
-    )
-
-    /** That ride, fetched and reduced, ready to draw. */
-    data class GhostRide(
-        val workoutId: String,
-        val name: String,
-        val outputKj: Double,
-        val trace: com.pelonot.domain.chart.RideTrace,
-        val you: Boolean = false
-    )
 }
 
 /**
@@ -125,55 +102,17 @@ class RideDetailViewModel(
     /**
      * Off the main thread and computed once (16.2.3).
      *
-     * The FTP used for the zone bands is **the ride's own** (7.8), falling back
-     * to the rider's current one only for a ride recorded before
-     * `workouts.ftp_watts` existed. That fallback is what the whole app used to
-     * do, and it is why accepting one auto-FTP breakthrough silently redrew
-     * every past ride's zones; `RideCharts.ftpIsTheRides` carries which of the
-     * two was used so the screen can say so rather than presenting both with
-     * the same authority.
-     *
-     * The intent multiplier has no such problem — `workouts.intent_modifier` is
-     * on the row, so the prescribed band is the one the rider was actually
-     * given rather than a re-derivation from today's preferences.
+     * The reduction itself is `buildRideCharts`, shared with the post-ride
+     * summary (12.6.1) — including the FTP rule that decides the zone bands,
+     * which is the part that must not exist twice (7.8).
      */
     private suspend fun buildCharts(workout: WorkoutEntity, intervals: List<Interval>) {
         val charts = withContext(Dispatchers.Default) {
-            val metrics = workoutRepository.getMetrics(workout.id)
-            // 7.8.3. The ride's own FTP, and the rider's current one only as a
-            // fallback for a ride recorded before the column existed. That
-            // fallback is exactly today's behaviour, so an old ride is no worse
-            // than it was — but the screen now says which of the two it used
-            // (7.8.4), because bands drawn from a number the ride never saw
-            // must not look as authoritative as bands drawn from one it did.
-            val ftp = workout.ftpWatts
-                ?: workout.userId?.let { userRepository.getUser(it)?.ftpWatts }
-                ?: UserEntity.DEFAULT_FTP
-
-            RideChartBuilder.build(
-                samples = metrics.map { metric ->
-                    ChartSample(
-                        timestampSec = metric.timestampSec,
-                        powerWatts = metric.power,
-                        cadenceRpm = metric.cadence,
-                        // Preserved as null: 16.1.2 depends on it.
-                        heartRateBpm = metric.heartRate,
-                        // Drawn by nothing, judged by 2.7.5.
-                        resistancePercent = metric.resistance
-                    )
-                },
-                ftpWatts = ftp,
-                // 16.1.6: counted from the samples themselves rather than
-                // asked of the ride, because the samples are where the answer
-                // lives and a ride can be both.
-                powerProvenance = PowerProvenance.of(
-                    measured = metrics.count { it.powerIsMeasured == true },
-                    modelled = metrics.count { it.powerIsMeasured == false },
-                    unknown = metrics.count { it.powerIsMeasured == null }
-                ),
+            buildRideCharts(
+                workout = workout,
+                metrics = workoutRepository.getMetrics(workout.id),
                 intervals = intervals,
-                intentMultiplier = workout.intentModifier,
-                ftpIsTheRides = workout.ftpWatts != null
+                riderFtp = workout.userId?.let { userRepository.getUser(it)?.ftpWatts }
             )
         }
         _uiState.update { it.copy(charts = charts) }
@@ -211,7 +150,7 @@ class RideDetailViewModel(
             excludingWorkoutId = workout.id,
             beforeMs = workout.timestamp
         )?.let {
-            RideDetailUiState.Rival(
+            RideRival(
                 workoutId = it.workoutId,
                 name = "Your best",
                 outputKj = it.outputKj,
@@ -221,7 +160,7 @@ class RideDetailViewModel(
 
         val rivals = workoutRepository
             .householdRivals(classId, excludingWorkoutId = workout.id, excludingUserId = userId)
-            .map { RideDetailUiState.Rival(it.workoutId, it.name, it.outputKj) }
+            .map { RideRival(it.workoutId, it.name, it.outputKj) }
         _uiState.update { it.copy(rivals = listOfNotNull(yourBest) + rivals) }
     }
 
@@ -260,7 +199,7 @@ class RideDetailViewModel(
             if (trace.isEmpty) return@launch
             _uiState.update {
                 it.copy(
-                    ghost = RideDetailUiState.GhostRide(
+                    ghost = RideGhost(
                         workoutId = rival.workoutId,
                         name = rival.name,
                         outputKj = rival.outputKj,

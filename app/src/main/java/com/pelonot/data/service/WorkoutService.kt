@@ -297,7 +297,16 @@ class WorkoutService : Service() {
      * Note the name: [resumeWorkout] is un-pausing, and has been since Phase 3.
      */
     fun resumeInterruptedRide(workoutId: String) {
-        if (_workoutState.value != WorkoutState.Idle) return
+        // `Completed` as well as `Idle` (12.6.2): a rider who ended a ride by
+        // accident reaches the summary while this service is still shutting
+        // itself down, and refusing them because `stopSelf()` has not landed
+        // yet would be a button that works or does nothing depending on how
+        // fast they tapped. Everything the ride needs is set up again below —
+        // the clock, the calculator, the sensor, the ticker and the
+        // notification — so a completed ride is as good a starting point as a
+        // cold service.
+        if (_workoutState.value == WorkoutState.Active) return
+        if (_workoutState.value == WorkoutState.Paused) return
 
         serviceScope.launch {
             val interruption = workoutRepository.interruptionFor(workoutId)
