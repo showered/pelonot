@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Twenty-five entries have passed through it.** In order: standing and seated
+**Thirty-three entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -72,11 +72,16 @@ is more* (**Phase 26**, and a line in CLAUDE.md — it is a standing rule about
 every screen rather than a job on one), ten answers where three will do
 (**26.3**), no single card at full width (**22.6**, and the rule is in
 CLAUDE.md), and inferring the effort from the heart rate instead of asking
-(**21.5**).
+(**21.5**), branded email instead of Supabase's own (**15.7**), a score shown
+consistently like a game's level (**26.4**), two answers to questions this plan
+asked the owner (**22.6.3**, closed as *not* to be enforced, and **26.3.3**,
+settled as written), the overlay prompt landing after the countdown instead of
+during it (**11.6.14**, and **11.6.15** found beside it), the ride summary
+against the ride record (**12.6**), history's alignment (**22.7.1**), the Start
+Class screen (**22.7.2**), and the line across the overlay (**11.1b.10**, which
+already existed and was waiting on exactly this decision).
 
-### Supabase email notifications
-
-Any communication with a user sent by Supabase should be branded Pelonot using our design system, and also the "From" field and basically just any mention of Supabase should be removed, within our control. Please use my API key to jump in and make all that happen if possible.
+*The inbox is empty.*
 
 ---
 

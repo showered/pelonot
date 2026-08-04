@@ -263,6 +263,22 @@ less of the screen and less of the attention.
       edge for both docks. **This is a design call about an alert, so it is the
       owner's** — it is diagnosed, not decided*
 
+      **Decided, 4 August 2026, from the inbox: *"HUD orange line. There is a
+      line that goes across the screen. Can we remove this?"*** Orange rather
+      than grey this time, which is the same element seen in a zone above 1 —
+      and that it reads as a stray rule in *two* different colours is the answer
+      to the "give a grey zone a non-grey alert colour" candidate: the problem
+      is not the hue, it is that a hairline drawn edge to edge across a film
+      **is** a rule, whatever colour it is. So candidate one: **the resting
+      alpha goes to nothing**. The line does not exist while nothing is
+      happening, and it still thickens and pulses in the last seconds before an
+      interval change, which is the only part of it that was ever earning its
+      place — an alert the rider needs no reading for. If the owner wants the
+      pulse gone as well, that is a one-line follow-on; removing it entirely
+      would leave a silent coach with no peripheral warning at all, which is why
+      it is not being removed unasked (see `CueBand` and the countdown chip for
+      what else covers the same moment)
+
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
 - [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind **2.2a** (see 2.2a.10) — until this bike is on its own curve it is as likely to be a modelling artefact as a real contradiction, and 2.2.4 has now answered that the shipped curve is 66% out at the median, which makes the artefact reading the likelier of the two.
@@ -664,6 +680,45 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       cost the record nothing. A resume skips it outright. `Start now` sets the
       count to zero and the effect is keyed on the count, so it cancels the
       second already in flight rather than waiting for it.*
+- [ ] **11.6.14** **The overlay permission lands on the wrong side of the
+      countdown.** The owner's note, 4 August 2026, verbatim: *"First ride — you
+      get the countdown timer of 10 seconds, very exciting! But then when it
+      gets to 0 it asks you to allow to show over other apps. This should happen
+      DURING the countdown (and pause the countdown while you go away and do
+      it)."*
+
+      **It is 11.6.13's own defect, one layer up.** That item's whole argument
+      was that a ride must not start while the rider is still reaching for the
+      handlebars — and the permission dialog is raised by `checkOverlayPermission`
+      inside `startRide`, which now runs the instant the count hits zero. So the
+      ten seconds the rider spent getting clipped in buy them a modal, a trip to
+      the Android settings app, and a return to a class whose clock has been
+      running the whole time. The first ride anybody ever takes is the one that
+      hits it, because that is the only ride the permission has not been granted
+      on.
+
+      **Ask while the count is running, and stop the count while the answer is
+      elsewhere.** The check is cheap (`Settings.canDrawOverlays`) and needs no
+      service, so it can happen the moment the countdown appears. Two things to
+      get right, and both are about the count rather than the dialog:
+      - **The countdown pauses whenever the question is outstanding** — while
+        the dialog is up *and* while the rider is away in the system settings
+        screen. Coming back to `2` and then to a ride they have not sat down for
+        is the same defect wearing the other costume.
+      - **The countdown branch has no lifecycle observer.** `RideScreen`'s
+        `DisposableEffect` on `ON_START`/`ON_STOP` sits below the early return,
+        so nothing currently re-reads the permission when the rider comes back
+        from granting it. The countdown needs its own resume hook, or the
+        dialog is still up over a granted permission
+- [ ] **11.6.15** **`Don't use the overlay` is answered once and asked for
+      ever.** Not the owner's note, found while reading for 11.6.14 and left as
+      its own item because it is a different failure: *Not now* clears the flag
+      for this ride only, so the prompt returns on the next one, which is right.
+      *Don't use the overlay* writes `hudEnabled = false` — and there is nothing
+      on any screen that says the overlay is off or offers it back except the
+      Settings row that turned it on. A rider who taps the wrong button on their
+      first ride loses the app's primary surface silently. Small; check what
+      Settings already says before writing anything new
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 

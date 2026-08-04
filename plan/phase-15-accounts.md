@@ -328,3 +328,70 @@ own**, minted for it, not a copy of the phone's.
       that way: expired rows deleted on every `begin`, a cap on how many
       unclaimed pairings can exist, and nothing in the row that identifies a
       rider until the moment one claims it
+
+---
+
+### 15.7 The emails come from Supabase — the owner's note, 4 August 2026
+
+**Verbatim:** *"Any communication with a user sent by Supabase should be branded
+Pelonot using our design system, and also the 'From' field and basically just
+any mention of Supabase should be removed, within our control. Please use my API
+key to jump in and make all that happen if possible."*
+
+**Two of these are one setting and one of them is not, and the difference is the
+whole item.** Everything a rider receives today comes out of Supabase's stock
+templates: *Confirm your signup*, *Reset password*, *Magic link*, *Invite*,
+*Change email*, *Reauthentication*. The subjects and the bodies are ours to
+replace through the Management API — `PATCH /v1/projects/{ref}/config/auth`,
+`mailer_subjects_*` and `mailer_templates_*_content`, with the same `sbp_`
+personal access token `mint_session.py` and `publish_class_library.py` already
+read out of `local.properties` (14.11.2 — account-wide, never in `BuildConfig`).
+
+**The From address is the one that is not.** On the default sender the mail
+leaves as `noreply@mail.app.supabase.io`, and no auth setting moves it: the
+address is a property of the SMTP relay, so changing it means **configuring
+custom SMTP** — a domain, a sender address on it, and credentials from whichever
+provider sends the mail. That is the owner's to obtain and not a session's to
+invent, which is why it is its own item below rather than a line in the first
+one. It is also worth knowing that the default sender is **rate limited to a
+handful of messages an hour and is explicitly not for production**, so this is
+not only a branding question.
+
+**And there is a live-service caution that outranks the work.** This is the
+owner's real project, with real accounts on it, and `PATCH .../config/auth`
+takes the whole auth config object. Read it, keep a copy, and send back only the
+mailer fields — an accidental omission here does not break a screen, it breaks
+signing in.
+
+- [ ] **15.7.1** **Read the current auth config and check the copy in**, before
+      changing anything. `supabase/` already has the pattern (`mint_session.py`,
+      `verify_rls.py`): a small script, token out of `local.properties`, nothing
+      secret written to the repo. The saved config is the rollback
+- [ ] **15.7.2** **Six templates, written in the app's own voice** (Phase 26 —
+      it applies to email as much as to a screen), and rendered with the design
+      system's colours transcribed the way `web/tokens.css` was (17.15). Email
+      is the one surface where the CSS cannot be shared: no external stylesheet
+      survives a mail client, so it is inline styles and a table layout, and the
+      dark-mode question is answered by choosing colours that work in both
+      rather than by a media query most clients ignore. **Every mention of
+      Supabase goes**, which is the owner's ask taken literally: the stock
+      footer, the stock heading, the word in the subject line
+- [ ] **15.7.3** **The sender needs a domain, and that is the owner's to
+      supply.** Custom SMTP is `smtp_host` / `smtp_port` / `smtp_user` /
+      `smtp_pass` / `smtp_admin_email` / `smtp_sender_name` on the same config
+      object. Until it exists, 15.7.2 gets the body right and the From line
+      still says `mail.app.supabase.io` — which is worth doing anyway rather
+      than waiting, since the body is what a rider reads. Note the domain also
+      wants SPF and DKIM or the mail lands in spam, which is a worse outcome
+      than an odd sender name
+- [ ] **15.7.4** **Check what is actually sent today before writing six
+      templates.** Confirmation may well be off (18.11.1 is about sign-up being
+      open, which is a different setting), and a template nobody receives is
+      six templates' worth of work for the two that matter. The order that
+      follows from the app as it stands: confirm signup, then reset password,
+      then the rest
+- [ ] **15.7.5** **Seen in a real inbox, not asserted from a 200.** The
+      Management API returning success says the template was stored, not that it
+      renders — and an email that renders wrong renders wrong in *somebody
+      else's* client. Send one to a real address through the real flow, on a
+      phone, which is where it will be read

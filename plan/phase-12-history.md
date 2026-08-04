@@ -182,3 +182,61 @@ layer is done and nothing renders it.
 > installed on the bike's tablet, a destructive fallback stops being a
 > pre-release convenience and becomes a data-loss bug that has already happened
 > by the time anyone notices.
+
+---
+
+### 12.6 The summary and the record are the same ride — the owner's note, 4 August 2026
+
+**Verbatim:** *"Ride summary (after a ride). This should be pretty much the same
+as when you view it from history, right? It currently doesn't contain any
+graphs. Also add an option to 'Resume' from here in case it was an accident."*
+
+**The first sentence is a question and the answer is nearly yes** — which is
+what makes the difference worth naming rather than closing. 12.2.1 decided
+deliberately that these are two screens: `PostRideViewModel` runs the FTP
+analyser over the whole series on load and can offer to rewrite the rider's
+FTP, which is right ninety seconds after a ride and bizarre on a ride from
+March. 12.2.2 then made the *figures* one component so the two could not drift.
+Charts were never given the same treatment, and the reason is nothing more
+principled than that 16.1 landed on ride detail first: `RideChartsSection` is
+private to `RideDetailScreen`.
+
+So the honest statement of the difference is: **the summary is the detail
+screen plus the two things that are only true tonight** (the FTP proposal, and
+Discard) **minus the charts, for no reason**. Everything below follows from
+that.
+
+- [ ] **12.6.1** **The charts come to the summary**, by extracting
+      `RideChartsSection` the way `RideFigures` was extracted in 12.2.2 — one
+      component, two screens, so the next chart is added once. It needs the
+      metric series, which the summary does not load today; `PostRideViewModel`
+      already reads the samples for the FTP analysis, so the cost is a state
+      field rather than a query. Watch 12.1.6's rule in reverse: this is one of
+      the two screens where touching `workout_metrics` is correct
+- [ ] **12.6.2** **Resume from the summary — and it is a real hazard, not a
+      convenience.** The owner's *"in case it was an accident"* is the two-tap
+      stop on the overlay (11.6.6) and the one-tap End on the ride screen, both
+      of which sit a thumb's width from pause. 8.3d already built everything
+      this needs: a ride is resumable while its row is incomplete, and
+      `RideScreen` takes a `resumeWorkoutId` that skips the countdown. **The
+      constraint is that the summary is reached *after* `stopWorkout`**, which
+      finalises the row — `is_complete = 1`, averages computed, `synced_at`
+      queued. So this is not 8.3d's path and must not pretend to be: either the
+      finalise is reversible (re-open the row, and let 8.3d's own resume take
+      it) or the ride is genuinely over and the offer is a lie. Read 8.3d.4
+      before touching it — the finalise writes defaults over any column
+      `WorkoutSession` does not carry, so a re-opened ride must go back through
+      a session that carries `resume_count`, `interrupted_sec` and `ftp_watts`
+      or the second finalise silently reverts them
+- [ ] **12.6.3** **Decide what stays different, and say so in the file.** After
+      12.6.1 the two screens are one layout with three deltas: the FTP
+      breakthrough dialog, Discard/Resume, and the guest destination (8.4). That
+      is a small enough difference to be worth stating at the top of both files,
+      because the next person to add a card to one of them needs to know which
+      list they are adding to. It is also the answer to whether they should be
+      merged: **no** — 12.2.1's reasoning stands, and it is the behaviour that
+      differs rather than the presentation
+- [ ] **12.6.4** **Judged on the 1280 × 720 dp AVD after 22.4.6's rebuild.**
+      The summary now pins Done and Discard below a scrolling body; adding two
+      charts and a Resume button to that body is exactly the change that pushes
+      something below the fold, which is how 22.4.2's regression was found

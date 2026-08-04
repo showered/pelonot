@@ -114,57 +114,6 @@ claim (14.4.7, 21.1).
 **Verbatim:** *"It's 1-10 which is good but honestly it causes me anxiety,
 wondering if I'm selecting the right option. Please change it to three options.
 Use better labels than I'm suggesting but basically it should be a) that was
-easy b) that was a good workout c) I'm exhausted."*
-
-**This is the same rule as the rest of the phase, applied to a control rather
-than to a sentence.** A ten-point scale is not more information, it is more
-*decision* — and the decision it asks for is one nobody can make. Borg's RPE
-earns its resolution in a lab, where it is calibrated against a rider who has
-been taught it and repeated over sessions. On a bike in a living room, asked of
-somebody who has just stopped pedalling and is out of breath, the gap between 6
-and 7 is not a measurement; it is a doubt manufactured by the control. The
-owner's word for the result is the right one: *anxiety*.
-
-**Nothing downstream needed the ten points.** One consumer reads the number at
-all — `PostWorkoutAnalyzer.suggestFtpFromRpe`, which asks *was this ≤ 4* — and
-everything else displays it.
-
-- [x] **26.3.1** **Three answers, and the column stays 1–10.** `PerceivedEffort`
-      is the type: `Comfortable` / `A good workout` / `Everything I had`, each
-      storing the middle of its band (3 / 6 / 9) and reading back anything
-      inside it. Three reasons the column does not change: **a ride already
-      recorded keeps its exact answer** rather than being reinterpreted, the
-      cloud payload's field is untouched (14.4), and `EASY_RPE_THRESHOLD` still
-      works — *Comfortable* stores 3, so a hard class that felt easy still
-      proposes an FTP bump. That last one is the trap worth naming: had the easy
-      level stored 5, the FTP proposal would have silently stopped firing and
-      **no screen would have looked any different**. It is a test.
-
-      *Done and observed on the tablet AVD. A new ride answered "A good workout"
-      lands as `rpe_rating = 6` in the database; **a ride rated 7 on the old
-      ten-point scale opens in ride detail reading "A good workout"**, which is
-      the backward-compatibility claim checked against real data rather than
-      argued. Both screens ask it the same way, which matters more than either:
-      a rider who answered on the night must not meet a 1–10 row a month later.*
-- [x] **26.3.2** **Each answer says what it felt like.** Three wide buttons have
-      room for a line under the label, and that line is what makes them
-      answerable — *Comfortable* against *A good workout* is not a distinction
-      anybody can make from the titles alone. It is also the argument for why
-      three is not simply "ten with less detail": the detail moved from a number
-      the rider had to interpret into words that interpret themselves
-- [ ] **26.3.3** **The wording is the owner's to settle.** The labels here are a
-      first draft against their brief ("use better labels than I'm suggesting").
-      Worth a look on the bike: *Everything I had* is the one most likely to be
-      wrong, because a rider who stopped a class early did not give everything
-      and may not want to say they did
-
----
-
-### 26.3 Ten answers where three will do — the owner's note, 4 August 2026
-
-**Verbatim:** *"It's 1-10 which is good but honestly it causes me anxiety,
-wondering if I'm selecting the right option. Please change it to three options.
-Use better labels than I'm suggesting but basically it should be a) that was
 easy b) that was a good workout c) I'm exhausted. Under the hood these can
 still map to 1-10 if that makes data migration easier. Whatever you think."*
 
@@ -206,9 +155,94 @@ which asks *was this ≤ 4*.
       anybody can draw from the titles alone. It is also why three is not
       simply "ten with less detail": the detail moved out of a number the rider
       had to interpret and into words that interpret themselves
-- [ ] **26.3.3** **The wording is the owner's to settle.** These labels are a
+- [x] **26.3.3** **The wording is the owner's to settle.** These labels are a
       first draft against their brief ("use better labels than I'm
       suggesting"). Worth a look on the bike: *Everything I had* is the most
       likely to be wrong, because a rider who stopped a class early did not
       give everything and may not want to say they did
 
+      *Settled by the owner, 4 August 2026: **"I love what you've done. Keep it.
+      If someone ends a ride early then they are unlikely to rate it at all."***
+      *The second sentence is the part worth keeping, because it answers the
+      objection rather than waving it off: the case the item worried about —
+      somebody who quit at eight minutes being asked to claim they gave
+      everything — is a case where nobody answers the question at all, so the
+      label is never read by the rider it would have misdescribed. Which also
+      says something about the RPE answer rate that no code change can: **an
+      unanswered RPE is evidence about the ride**, and nothing today
+      distinguishes "did not rate it" from "has not rated it yet". Not worth an
+      item on its own; worth remembering if 7.10.7's proposal ever starts
+      reading absence as an answer.*
+
+
+---
+
+### 26.4 A score, shown the same way everywhere — the owner's note, 4 August 2026
+
+**Verbatim:** *"We may have thrown the baby out with the bathwater a little. We
+removed '200 W FTP' from profile selector screen and now it looks SO much
+better. But now we don't see '200' at all. I wonder if there's a clean and
+beautiful way we can show people's scores, consistently, a design system
+feature, as a way of showing their overall score. A bit like 'lvl' in video
+games. See what you think. Happy to leave it."*
+
+**The note contains its own best argument and it is the word *lvl*.** A level in
+a game is not a measurement dressed up — it has three properties, and they are
+what make it feel good to see:
+
+1. **It only ever goes up.** Nobody is demoted for a bad week.
+2. **It is earned by playing**, so it accumulates rather than being measured.
+3. **It is comparable between players without a unit**, because it is
+   dimensionless by construction.
+
+**FTP has none of the three.** It falls when a rider is ill, off the bike, or
+simply having a bad day on the test that proposed it (Phase 7 moves it *by
+itself*, which is 7.8's whole trap). It is a measurement, not an accumulation.
+And raw watts are unfair between bodies — which the app already knows, because
+the household board ranks on kJ (24.1) and kJ/kg exists precisely so two
+housemates are not compared by mass. **So putting the FTP number back as a
+"score" is 26.1.1's defect with the unit filed off**: the same stale, personal,
+uninterpretable number, now also implying a demotion the rider did not earn.
+
+The interesting reading of the note is therefore not "put 200 back". It is that
+the app **has no dimensionless number for a rider at all**, and the reason the
+profile tile felt empty is that nothing in this app has ever said *how much you
+have ridden* in one glyph.
+
+- [ ] **26.4.1** **If it is a level, it is built on volume, not on fitness.**
+      Rides, minutes and kilojoules over the rider's whole history, through a
+      curve that grows slowly — monotonic by construction, so it survives an
+      injury, a holiday and a bad winter. This is the same argument 22.5.2 made
+      about the streak: the quantity the app should reward is *getting on the
+      bike*, because that is the one the rider controls. Pure, JVM-testable, and
+      derived from figures `RidingHistory` already produces
+- [ ] **26.4.2** **It must never be presented as fitness, and the wording is the
+      whole risk.** A rider at level 12 beside a rider at level 30 must not read
+      as *fitter* — it reads as *has ridden more*, which is true and is also the
+      only thing the number can honestly claim. This is where Phase 26's own
+      rule cuts both ways: less is more, but a number with no label is a number
+      the reader supplies their own meaning for. One word, not a paragraph
+- [ ] **26.4.3** **The deliverable is the component, not the number.** The
+      owner's phrase is *"consistently, a design system feature"*, and this
+      project's habit is the right one — `readableColumn`, `WideGrid`,
+      `loneCard`: one token, its KDoc naming the others. A `RiderScore`
+      composable with one shape, one type scale and one colour, so the profile
+      tile, the dashboard, the household board (24.1) and the web app (17.15)
+      cannot each draw it slightly differently. **17.15.2 is the catch**:
+      nothing keeps `tokens.css` and `Color.kt` in step, so a badge invented on
+      the bike will not exist on the web until somebody transcribes it
+- [ ] **26.4.4** **Where it goes is a separate decision from what it is, and the
+      profile selector is the one place to be careful.** 26.1.1 just took a
+      number off that screen and the result is the owner's own "SO much better",
+      so a badge goes back there only if it reads as *identity* rather than as
+      *measurement* — "I'm the one on 12" is a recognition cue, "I'm the one on
+      150 W" is not. The dashboard and the household board are the uncontested
+      homes. Judged on the AVD (26.2.2), and it is the kind of thing to draw
+      three ways and look at rather than argue about
+- [ ] **26.4.5** **The FTP is not homeless and does not need this.** It has two
+      screens of its own (7.10.1, 7.10.2), the ride screen's zone ladder is a
+      reading of it, and every chart's bands come from it. Whatever this becomes,
+      it is a second quantity beside the FTP and never a replacement for it —
+      and if the answer turns out to be "leave it", which the owner explicitly
+      allowed for, that is a legitimate close for this section rather than a
+      failure

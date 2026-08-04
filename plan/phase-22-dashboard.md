@@ -359,12 +359,93 @@ The rule, and it now sits in `CLAUDE.md` beside the other two:
       same audit turned up: the post-ride summary's effort card when no
       leaderboard sits beside it, and the FTP screen's *Every change* list.
       *Observed on the tablet AVD.*
-- [ ] **22.6.3** **Enforce it, rather than remembering it.** The owner's word
-      was *enforce*, and a rule that lives only in `CLAUDE.md` is the kind this
-      project has already broken once — within a single session. What is
-      wanted is the `CloudAccessFenceTest` treatment: something that fails the
-      build when a `Card` is given `fillMaxWidth()` outside a grid or a
-      weighted row. It is a lint rule or a source-scanning test rather than a
+- [x] **22.6.3** ~~**Enforce it, rather than remembering it.**~~ **Closed by the
+      owner, 4 August 2026, and not by being built.** The item asked them
+      directly — *"you said enforce, and I've only written the rule down; it was
+      broken inside the single session that wrote it, so it wants a build-time
+      check"* — and the answer was: *"Don't enforce it deterministically, just
+      bear it in mind when designing screens. You've done a good job. Will let
+      you know if I spot any problems."*
+
+      **Kept as a decision rather than deleted**, because the reasoning is worth
+      having the next time this project reaches for a fence. The three fences it
+      does have — `CloudAccessFenceTest`, `CloudConfigFenceTest`,
+      `ClassLibraryAssetsTest` — all guard things that are **invisible when
+      broken**: a cloud call with no rider on it, a key checked into a file, a
+      class the generator would have refused. This rule is the opposite. A card
+      banded across 1232 dp is visible from the other side of the room, and the
+      owner is the person looking at it — which makes a source-scanning test
+      with a hand-maintained exception list a cost with no failure to catch.
+      The original ask follows.
+      What was wanted is the `CloudAccessFenceTest` treatment: something that
+      fails the build when a `Card` is given `fillMaxWidth()` outside a grid or
+      a weighted row. It is a lint rule or a source-scanning test rather than a
       unit test, and the hard part is the exception list — a card *inside* a
       weighted row is `fillMaxWidth` and correct
 
+
+---
+
+### 22.7 Two screens the panel rebuild left behind — the owner's notes, 4 August 2026
+
+22.4.3 audited seven screens and gave five of them the width. These are the two
+notes that came back after riding with the result, and neither is a
+disagreement with that audit: one is a piece of it that was not finished, and
+one is a screen the audit never reached.
+
+- [ ] **22.7.1** **History's panels are not centrally aligned — *"look in
+      particular at the bottom"*.** The owner's whole note is those two
+      sentences, so the diagnosis is the work. Three candidates, and the first
+      is almost certainly it:
+      - ***Show older rides* is `fillMaxWidth()`** — one outlined button banded
+        across 1232 dp, at the bottom of the screen, which is exactly where the
+        owner was told to look. It is 22.6's rule applied to a control instead
+        of a card, and the rule reads the same way: a lone thing stops at a
+        column's width. `Modifier.loneCard()` is probably not the token for a
+        button; decide whether it centres or takes the width of one ride card.
+      - **The last row of a day leaves its gap on the right**, by the deliberate
+        rule in `WideGrid` that the final row's cells keep every other row's
+        width. That is right *inside* a set — but a day with one ride in it is a
+        whole day drawn as a half-empty row, and at one ride a week (22.5) most
+        days are exactly that. Worth looking at before assuming the rule
+        transfers.
+      - **The empty state and the guest empty state** are centred columns in a
+        screen that is otherwise a left-aligned grid.
+      Screenshot it on the 1280 × 720 dp AVD **with a database that has one ride
+      on some days and two on others** before changing anything — the shape of
+      the complaint depends on the data, and dense fixture data hides it (22.5.5
+      is the same trap)
+- [ ] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
+      *"I'm sure this is already on the todo list but it needs some work.
+      Visualisation should be much more beautiful and also adhere to the rules
+      of sticking inside a max-width container, unless full-width is necessary
+      and appropriate."*
+
+      **It was not already on the list**, which is worth saying plainly:
+      `ClassDetailScreen` is the last screen between a rider and a ride, it is
+      the only place the *shape* of a class is ever shown before it is ridden,
+      and no item in this plan has ever been about how it looks. 22.4.3 audited
+      the class **library** (three cards across) and never opened the screen
+      behind it.
+
+      Three things this has to answer, in this order:
+      - **What is the visualisation *of*?** The class is a list of intervals
+        with a zone, a cadence band, a duration and sometimes a position
+        (25.4). The app already draws that twice — `IntervalTimeline` on the
+        HUD and `UpcomingIntervals` on the ride screen — both designed to be
+        read at two metres mid-effort, which is not this screen's job. Here the
+        rider is deciding *whether to ride this*, and the questions are how long,
+        how hard, and what shape: where the work is, how many efforts, how long
+        the recoveries. A profile of the whole class — height for zone, width
+        for time — answers all three at a glance and none of them are a number.
+      - **Which rule applies where.** The class profile is *looked at*, so it
+        takes the width (22.4). The description and the details are *read*, so
+        they are capped. And Start is one control, not a card the width of the
+        room. This is the "capped column inside a wider frame" case 22.4.3
+        named and no screen has yet used.
+      - **Less is more (Phase 26).** This screen currently states the same
+        facts several times over. A rider choosing a class is answering *do I
+        want this tonight*, not reading a spec — the same test as 26.1.1's
+        profile tile.
+
+      Do it **after** 22.7.1, which is small, and judge it on the AVD (22.4.5)
