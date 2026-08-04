@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.pelonot.R
@@ -383,7 +384,13 @@ private fun IntervalCard(interval: Interval, ftp: Double) {
                     Text(
                         text = "Z${zone.number} · ${zone.displayName}",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        // The chip beside this is two words wide at most and
+                        // must keep its room; the zone name is the part that
+                        // can afford to end in an ellipsis.
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     // Only when the class asks for one: an absent position is
                     // the rider's choice and drawing "either" for it would turn

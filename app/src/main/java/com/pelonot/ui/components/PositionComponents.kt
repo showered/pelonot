@@ -78,7 +78,14 @@ fun PositionChip(position: RidePosition, modifier: Modifier = Modifier) {
             text = position.displayName.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            // Seen on the bike's own screen: squeezed inside a card whose
+            // title had grown, "SIT" wrapped into a vertical S/I/T. Exactly
+            // the failure `MetricReadout` already carries a note about for
+            // "BPM" — a three-letter word is not too long for a chip, it is
+            // too long for the room the chip was left.
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
