@@ -300,6 +300,10 @@ keyboard should be possible on the web and optional on the bike.**
       **It is fixed in the repo and not on the internet.** Redeploying is the
       owner's, and `./web/check-deployed.sh` (17.16.7) says whether it has
       happened
+
+      ***And it has — the owner redeployed, 4 August, and the check says so***:
+      all seven files the same, exit 0. See 17.16.8. So this item is closed on
+      both halves at last — the fix exists and a rider can meet it
 - [x] **17.16.7** **Nothing tells anyone the deployed copy has drifted, and now
       it has cost something.** 17.16.2 asks for the deploy to be written down;
       this is the smaller half that should not wait for it. `curl` the deployed
@@ -317,6 +321,33 @@ keyboard should be possible on the web and optional on the bike.**
       `lib.js` and `rides.js` the same, `link.html` and `link.js` drifted. It
       exits non-zero when they differ, so it can be a CI step (19.1.4) the day
       the deploy is written down
+- [x] **17.16.8** **The redeploy happened, and the check is what says so — the
+      owner's note, 4 August 2026.** Verbatim: *"Live site deployment — The live
+      URL is now up to date"*.
+
+      Confirmed rather than taken on trust, which is the entire point of having
+      built 17.16.7 the sitting before: `./web/check-deployed.sh` now reports
+      **seven files the same and exit 0**, against `link.html` and `link.js`
+      drifted twenty-four hours earlier. So 17.16.6's fix — sign in whenever,
+      confirm separately — is on the internet, and the state that produced the
+      owner's bug report no longer exists.
+
+      **What is worth taking from this is the shape of the loop rather than the
+      deploy.** A fix landed in the repo; a note in the plan said nothing checked
+      whether it had shipped (17.16.2); it had not; a rider met the unfixed page;
+      one command was written; the owner deployed; the same command closed it.
+      The gap that made all of this possible was open for exactly one drift, and
+      the reason it was one is that the check exists — **not** that the deploy is
+      now reliable. It still is not: 17.16.2 is untouched, `web/README.md` still
+      names neither the host nor the command, and the next drift will be found
+      only by somebody choosing to run the script.
+
+      So this item closes and **17.16.2 is what it hands forward**, with its
+      priority raised by having been paid for twice. Two things belong in
+      `web/README.md`: the redeploy command the owner has now run twice, and a
+      line saying to run `check-deployed.sh` after it. The second is worth more
+      than the first — a written-down command is a fact the project has, but a
+      command that *verifies* is the one that survives the command changing
 - [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has

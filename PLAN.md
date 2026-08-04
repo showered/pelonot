@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Thirty-seven entries have passed through it.** In order: standing and seated
+**Thirty-eight entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -89,7 +89,9 @@ first reach the owner), the live ghost (**24.3.3–24.3.9** for the household
 half and **18.12** for the network's — the note is right that nothing social
 happens *during* a ride today), and alerts worth being given (**Phase 27**,
 promoted out of 19.3.2's one line the way Phase 21 was promoted out of
-19.3.3's).
+19.3.3's), and the live site being up to date (**17.16.8** — the redeploy the
+previous sitting asked the owner for, confirmed by the command that sitting
+wrote rather than taken on trust).
 
 **The inbox is empty.**
 
