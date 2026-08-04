@@ -10,9 +10,12 @@ modified bootloader, or a hardware mod.
 
 > **Status: it works, and it is not finished.** A ride records, the HUD runs over
 > whatever you are watching, heart-rate straps pair, and the whole history is
-> yours to export. Accounts, multi-device sync and a companion web app are not
-> built. `PLAN.md` is the honest picture of what is done, what is not, and what
-> was once claimed to be done and was not.
+> yours to export. Accounts, cloud backup and a companion web app arrived in
+> August 2026 and are a week old rather than weathered; signing out, deleting a
+> cloud copy and restoring onto a new device are not built yet.
+> **[STATUS.md](STATUS.md) is the one-page answer to "how close is this?"**, and
+> `PLAN.md` is the long one — what is done, what is not, and what was once
+> claimed to be done and was not.
 
 ---
 
@@ -119,12 +122,27 @@ Two things worth knowing before reading any code:
 - **The pure logic is deliberately free of Android imports** — `PowerModel`,
   `CadenceTracker`, `WorkoutMetricsCalculator`, `PostWorkoutAnalyzer` and
   everything under `domain/` are plain Kotlin and JVM-testable. That is why
-  there are 260 unit tests that run in a couple of seconds.
+  there are 547 unit tests that run in a couple of seconds.
 - **`PowerModel` is not trustworthy and the code says so out loud.** Its shipped
   coefficients score RMSE 137 W against 310 measured samples from a real board.
   It never produces a recorded number: on hardware the board reports watts
   directly, and the model only drives simulated rides and a suggested resistance
   range. A bike can also fit its own curve from your rides — see `calibration/`.
+
+### What each top-level directory is
+
+Several deliverables live here and **none of them is part of the Android
+build** — that property, rather than the directory depth, is what keeps them
+independent (PLAN 17.1a). No build may depend on another's output.
+
+| Directory | What it is |
+|-----------|------------|
+| `app/` | The Android app. The only thing Gradle knows about |
+| `web/` | The companion web app — static HTML, CSS and ES modules, no build step, opens from `file://` |
+| `supabase/` | The cloud schema: numbered SQL migrations, and Python scripts that verify them against a live project rather than by reading |
+| `classlibrary/` | The generator for the 72 bundled classes. **Never hand-edit `app/src/main/assets/classes/`** — edit the catalogue and rebuild |
+| `calibration/` | Measured sweeps from a real board, and the method for fitting a bike its own power curve |
+| `plan/` | The plan, one file per phase. `PLAN.md` at the root is its index |
 
 ---
 

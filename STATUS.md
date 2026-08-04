@@ -1,0 +1,238 @@
+# Where Pelonot is
+
+**Written 4 August 2026.** Measured, not estimated: `assembleDebug` passes,
+**547 JVM tests, 0 failures**, and **410 of 594 plan boxes** are ticked across
+25 phases. It is a summary — every claim below belongs to a phase file and
+names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
+[plan/](plan/). Nothing is decided here.
+
+> This page exists because the plan answers *why* extremely well and *where are
+> we* not at all (19.1.7). It is rewritten by whichever sitting changes the
+> picture rather than patched, so treat the date above as its shelf life.
+
+---
+
+## The one-paragraph answer
+
+**The bike half is finished and the cloud half is a week old.** A rider gets on
+a stock Peloton, picks a profile, starts one of 72 designed classes, watches
+Netflix with a translucent overlay of their own numbers on top, and ends up with
+a per-second record that is theirs — measured watts off the board, not estimated
+— with charts, an FTP that corrects itself, heart-rate zones, a household
+leaderboard and an export. All of that is built and has been observed working on
+the real hardware. What arrived in the last two sittings is everything *off* the
+bike: accounts, a cloud backup that has been seen making the round trip, a
+companion web app that is now hosted, sign-in by scanning a QR code with a
+phone, and one leaderboard with everybody on it. That half works and is thin —
+it has been ridden by one household for a day. **The gap between here and
+finished is not features. It is a handful of first-run and honesty problems that
+any new rider would meet in their first ten minutes**, plus one setting on the
+Supabase dashboard that is currently open and should not be.
+
+---
+
+## The five tiers, and where each one stands
+
+| Tier | What it is | State |
+|------|-----------|-------|
+| **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
+| **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
+| **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done** except one item — a live pace target *during* a ride (24.3.2) |
+| **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, one day old.** Round trip observed, RLS verified from a second account, web app hosted. Sign-out, account deletion and pull-to-a-new-device are not built |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | ❌ **The real gap.** See *How close to done*, below |
+
+---
+
+## What is built
+
+**The bike, and it is the part nobody should have to think about again.**
+Telemetry comes from Peloton's own sensor service on a **stock, un-jailbroken
+tablet** (2.1a) — no root, no serial port, no hardware mod. The board's own
+self-identifying frame decides which metric is which, which is the fix for
+**2.7**, the worst defect this project has had: the service labels its replies
+by position in its request cycle, so 55 of 204 messages arrived mislabelled and
+a stationary rider was recorded at 544 rpm. 1609 + 464 messages have since been
+captured with zero mislabels. Underneath it sits a fence that **rejects rather
+than clamps** — an impossible value becomes a gap, and it takes its neighbours
+with it, because a power of 37 W filed as 37% resistance breaks no bound anyone
+can write.
+
+**A ride.** A foreground service, per-second recording into Room, auto-pause
+when the pedals stop, a screen-on lock, and a ride that can be **resumed** after
+a crash rather than merely kept (8.3d). On the bike the watts are *measured by
+the board*; the modelled curve only ever drives the simulator and a suggested
+resistance band, and the app never presents a modelled watt as a measured one.
+
+**The overlay.** Translucent chips docked to a screen edge over Netflix or
+anything else, collapsing to a single pill, with a spoken coach that ducks under
+the film instead of shouting over it. This is the product's whole reason to
+exist and it works on the real tablet.
+
+**Classes.** 72 of them, **generated from a catalogue by a build that refuses to
+emit a session breaking a design rule** (`classlibrary/`), bundled in the APK,
+and reconciled onto an already-seeded tablet by retire-rather-than-delete so a
+ride never loses the class it points at.
+
+**The record.** History, ride detail, delete, CSV and TCX export, explicit Room
+migrations with an exported schema and a test each, and a local backup/restore
+through the system file picker. Charts: power against the rider's zones, heart
+rate drawn only where a strap was reporting, cadence against the class's
+prescribed rpm, the ride against your own previous best at the same class, and
+mean-maximal power by duration.
+
+**FTP that corrects itself** — detected from a ride, proposed rather than
+applied, declinable in a way that stays declined, reversible in one action that
+appends rather than erases, never proposed from simulated watts, and recorded
+onto the ride so a later change cannot silently redraw history.
+
+**Heart-rate zones** built on the rider's own maximum, with Tanaka as a labelled
+estimate and both columns nullable, because a default maximum is a guess about
+somebody's body.
+
+**The household.** A profile selector built for the tablet, a per-class
+leaderboard, the household's week with streaks and an opt-out, and a housemate's
+trace drawn behind your own — **all of it a Room query, none of it touching the
+network**, which is rule 3 of the connectivity model.
+
+**The cloud, as of the last two sittings.** Accounts with a screen that says
+what an account is *for*; row-level security applied and then **verified from a
+second real account — 21 probes, 0 failures** — rather than read; a backlog that
+drains oldest-first so a ride is never lost to exhausted retries; a payload that
+is columnar, versioned inside itself and 228 KB → 54 KB per ride; sign-in by
+**scanning a QR code with a phone**, where the code is not the credential and
+the bike ends up with a session of its own; a hosted companion web app; and one
+leaderboard carrying every registered rider **plus** everyone on your own bike,
+with no friend graph to maintain.
+
+**The floor under all of it**: offline is the mode, not a fallback. A rider with
+no account makes **no request to Supabase at all**, and a fence test fails the
+build if a new cloud entry point appears that does not name the rider it acts
+for.
+
+---
+
+## What is outstanding
+
+### Blocking a stranger being able to use this
+
+| # | What | Why it blocks |
+|---|------|--------------|
+| **18.11.1** | Public sign-up is on | Not a feature — a live setting. See *What is wrong today* |
+| **20.3** | The initial FTP | Profile creation asks for an FTP in a text box prefilled with `200`. The owner's own words: it **cannot go into production**. FTP is the denominator of every zone in the app |
+| **19.1.6** | The first run explains nothing | A new rider is dropped on the profile picker; the overlay permission — the thing the product is built on — is first mentioned at ride start; a heart-rate strap is discoverable only in Settings |
+| **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
+| **15.4.1–15.4.3** | Sign out, delete cloud data, delete the account | GDPR applies to a hobby project, and sign-out must keep every local ride |
+| **17.16.1** | The bike's QR points at `10.0.2.2` | One line in `local.properties`. Until then the QR the bike draws is unscannable off the emulator |
+
+### Deliberately deferred, with the reason written down
+
+- **23.4 retention** — condensing old rides to aggregates. Blocked *on purpose*
+  by **16.3.3a**: personal bests are re-scanned from every measured ride's
+  samples on every load, so trimming would silently make a rider's bests worse.
+- **17.5 / 18.1 friends** — dropped in favour of "everyone registered"
+  (18.11) while the population is four people. The item stays open for the day
+  the answer changes.
+- **12.3.5 deleting a synced ride** — needs a tombstone, not a delete, or the
+  next pull resurrects it. Pull itself (15.3.2) is not built.
+- **2.2a calibration** — settled as *yes*, and gated on capturing a sweep with
+  the coverage `calibration/README.md` specifies. The first fit failed
+  cross-validation.
+- **11.7.2, 11.1b.10** — two decisions that are the owner's rather than a
+  session's, both written up with the measurements behind them.
+
+### Nice to have, and honestly labelled as such
+
+Most of Phase 17 beyond what is hosted, most of Phase 18 beyond the leaderboard,
+avatars (20.2), the Material Expressive cosmetic backlog (~30 items in 8.11), a
+custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
+(19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
+is the standing argument for why, and it has been right so far.
+
+---
+
+## What is wrong today, ranked
+
+1. **Public sign-up is open on a project whose web app is now hosted
+   (18.11.1).** Measured today: the endpoint answers `"disable_signup": false`,
+   the deployed page draws a *Create an account* tab, and `007` puts every
+   registered account on the household's leaderboard. The blast radius is
+   bounded and worth stating exactly — `workouts` and `profiles` still hold
+   "your own rows and nobody else's", so a stranger who registered would see
+   **leaderboard entries and ghost traces**: display names, class ids,
+   durations, output. Not ride dates, not RPE, not heart rate, not anyone's
+   rows. **It is two minutes in the Supabase dashboard and it is the owner's to
+   do** — Authentication → Providers → Email → *Allow new users to sign up*,
+   off.
+2. **The cloud tier has been alive for one day.** Everything in it has been
+   observed once, by one household, mostly on an emulator. This project's
+   history is three cloud defects that all returned success codes, so the right
+   posture is that the round trip works and nothing about it is weathered.
+3. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
+   ours. One `/dev/ttyO0`, one open, so two bike apps can never both work — and
+   after the other app is gone the port can stay unopenable **until the tablet
+   is rebooted**. What we owe it is 2.7.7 and 2.7.8: say what actually happened,
+   and stop rebinding so eagerly.
+4. **The power curve is measurably wrong** — RMSE 137 W against the board's own
+   watts. It is fenced to two consumers (the simulator and a suggested
+   resistance band) and can never reach a recorded number, which is the only
+   reason this is a caveat rather than a defect. Adding a third consumer breaks
+   that.
+5. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
+   instrumented suite is order-dependent, which is why CI runs only the JVM
+   tests. A red run you are trained to re-run is a suite nobody reads.
+6. **Nothing keeps the two design systems in step (17.15.2)**, nothing keeps the
+   deployed web app in step with the repo (17.16.2), and nothing keeps this page
+   in step with the plan (19.1.7a). All three are stated rather than hidden, and
+   all three have the same cheap fix that should not be built until the drift
+   actually happens.
+7. **10.6 is still unanswered**: battery, thermals and memory over a full-length
+   ride. The one 20-minute ride on real hardware was spent finding 2.7.
+
+---
+
+## How close to done
+
+**Done for this household: weeks, not months — and mostly not code.** The bike
+works, the record is honest, the backup runs. What stands between here and
+"nobody thinks about it any more" is the sign-up setting, the QR pointing at the
+live page, sign-out doing the right thing, and a full-length ride that measures
+battery and heat. Two of those four are settings rather than work.
+
+**Done for a stranger with a Peloton: the six rows in the table above.** In
+order of what a new rider meets first: something better than a text box
+prefilled with `200` (20.3), a first run that explains the overlay permission
+before the ride needs it (19.1.6), and a green CI run so the project can take a
+patch (19.1.4). That is a genuinely short list, and it is short because the hard
+parts — a stock bike, honest telemetry, migrations, an overlay that survives
+Netflix — are behind us.
+
+**Done as the plan is written: 69%, and it will never be 100.** 410 of 594
+boxes, and the remaining 184 are not a queue. They are a place ideas are kept
+with their reasoning attached, which is what has stopped this project rebuilding
+things it had already decided against. A closed box and an open one are not the
+same unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 is one
+box and a screen that has to be designed. **Read the percentage as an inventory
+count, never as a completion estimate.**
+
+**The thing most likely to move that date is not on any list**, and it is worth
+naming: this app has been ridden by one person on one bike. Every defect that
+mattered — the mislabelled frames, the FTP save that put the old value back, the
+`avg_hr` that was wrong for the project's whole history, the payload version
+that never travelled — was found by *using it and then looking at the database*,
+not by reading code or writing tests. The next twenty hours of riding will find
+things this list does not have on it.
+
+---
+
+## Where to read more
+
+| Question | File |
+|----------|------|
+| What is done, what is next, and this sitting's story | [PLAN.md](PLAN.md) |
+| How data actually flows | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| The bike's measured display, system and input facts | [HARDWARE.md](HARDWARE.md) |
+| The traps that have already bitten, and the house rules | [CLAUDE.md](CLAUDE.md) |
+| Why the phases are ordered the way they are | [plan/fundamentals.md](plan/fundamentals.md) |
+| Things once ticked that were not working | [plan/corrections.md](plan/corrections.md) |
+| The offline/cloud rules in full | [plan/connectivity.md](plan/connectivity.md) |
+| One phase in detail | `plan/phase-NN-*.md` — PLAN.md's table says which |
