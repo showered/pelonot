@@ -102,7 +102,9 @@ exactly), and the birth-year grid looking ridiculous (**21.1.1b** — already on
 shared component on both screens that use it, so only the layout needed
 fixing, a `LazyColumn` in place of the grid).
 
-**The inbox is empty.**
+### Rivals vs Leaderboard
+
+We have two competing ideas. One is yours, one is mine. I think i prefer Leaderboard as a feature for "chasing" your PB or your friend's PB. It has scope for including unlimited number of people whereas rivals is (i think) just one person you race against. Let's not waste all the effort though, let's feature flag the Rivals feature and keep it hidden away. But i do think Leaderboard is better. Not only can it include your own PB as a "ghost" to chase on the leaderboard, but also it could be PB this month, PB this year, and all your friends scores too. Just something to always be reaching for, you know? And in case this hasn't been logged, I'm expecting it to show the person above you, the person below you, with score being the current number of Watts **as of this point in the class**.
 
 ---
 

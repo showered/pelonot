@@ -1,8 +1,9 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated the same evening (twenty-seventh sitting).**
-Measured, not estimated: `assembleDebug` passes, **599 JVM tests, 0
-failures**, and **459 of 689 plan boxes** are ticked across 27 phases. It is a summary — every claim below belongs to a phase file and
+**Written 4 August 2026, updated the same evening (twenty-eighth sitting).**
+Measured, not estimated: `assembleDebug` passes, **606 JVM tests and 62
+instrumented tests, 0 failures**, and **465 of 690 plan boxes** are ticked
+across 27 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
 
@@ -38,7 +39,7 @@ currently open and should not be, and one deploy that has not been run.
 |------|-----------|-------|
 | **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
-| **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done** except one item — a live pace target *during* a ride (24.3.2) |
+| **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and the live ghost landed with it — you can now race a housemate's ride, or your own best, *while* you ride. Two corners owed: the *they finished* state and the gap watched moving under a real rider |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
 | **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. What is left is the overlay permission still being explained only at ride start (19.1.6) and a green CI run (19.1.4). See *How close to done*, below |
 
@@ -111,6 +112,16 @@ and a housemate's
 trace drawn behind your own — **all of it a Room query, none of it touching the
 network**, which is rule 3 of the connectivity model.
 
+**And racing one of them live (24.3.3–24.3.9).** Pick a finished ride of the
+class before you start it — a housemate's best, or your own — and one number on
+the ride screen says how far ahead of or behind it you are *at that point in the
+class*. Cumulative rather than second-by-second, off the clock that already
+excludes paused time, so stopping for a bottle does not lose you the race; and
+never on the overlay, which belongs to the next sixty seconds of pedalling.
+Both sides have to be watts the bike actually measured, so it does not appear on
+a simulated ride at all — which is the honest answer rather than a missing
+feature. **`RIVALS.md` is the plain-English description.**
+
 **The cloud, as of the last two sittings.** Accounts with a screen that says
 what an account is *for*; row-level security applied and then **verified from a
 second real account — 21 probes, 0 failures** — rather than read; a backlog that
@@ -172,11 +183,16 @@ custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
 (19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
 is the standing argument for why, and it has been right so far.
 
-**The live ghost (24.3.3–24.3.9, 18.12) is the exception worth naming**, because
-it is the one thing on this list that would change how a ride *feels*: nothing
-social in this app happens during a ride. It needs no account, no schema and no
-network for the household half, and the cloud half's endpoint (`class_ghost`)
-already exists and has never been called.
+**The live ghost's household half is now built** (24.3.3–24.3.9) and is
+described above; what is still on this list is **18.12**, the same thing across
+bikes, whose endpoint (`class_ghost`) already exists and has never been called.
+
+**What the owner would rather have is 24.3.10**, and it is the next thing to
+build in this area: Peloton's own shape — a live leaderboard in watts, several
+rows, your personal best and a friend's ranked as you ride, rather than the
+single gap that shipped. It deliberately reopens two decisions the single-gap
+version made, and the plan records the disagreement rather than settling it
+quietly.
 
 ---
 
@@ -287,6 +303,7 @@ things this list does not have on it.
 |----------|------|
 | What is done, what is next, and this sitting's story | [PLAN.md](PLAN.md) |
 | How data actually flows | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Racing a housemate's ride, in plain English | [RIVALS.md](RIVALS.md) |
 | The bike's measured display, system and input facts | [HARDWARE.md](HARDWARE.md) |
 | The traps that have already bitten, and the house rules | [CLAUDE.md](CLAUDE.md) |
 | Why the phases are ordered the way they are | [plan/fundamentals.md](plan/fundamentals.md) |
