@@ -24,6 +24,7 @@ import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.model.RideInterruption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -310,6 +311,18 @@ class AppViewModel(
                     }
             }
         )
+
+    /**
+     * Rides of this class that can be raced live (24.3.3).
+     *
+     * Household only, and never the cloud: a ghost needs the rival's
+     * second-by-second series, which only exists on this tablet for a ride
+     * recorded on it. That is the same reason 24.3.1's chart comparison is
+     * household-only, and it is not a gap to be filled later without saying
+     * so — 18.12 is where the network's version of this belongs.
+     */
+    suspend fun classRivals(classId: String, youId: Int?): List<ClassRival> =
+        workoutRepository.rivalsForClass(classId, youId)
 
     /**
      * One tap is one write (7.10.3). Every field the screen collected goes into

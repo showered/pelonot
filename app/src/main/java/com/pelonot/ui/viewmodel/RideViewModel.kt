@@ -228,13 +228,26 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Starts the foreground service for this ride and binds to it. */
-    fun startRide(userId: Int?, classId: String?, intent: RideIntent, ftpWatts: Int) {
+    /**
+     * Starts the foreground service for this ride and binds to it.
+     *
+     * @param rivalWorkoutId the ride being raced live (24.3.3), chosen on the
+     *   class detail screen. Null is the ordinary case.
+     */
+    fun startRide(
+        userId: Int?,
+        classId: String?,
+        intent: RideIntent,
+        ftpWatts: Int,
+        rivalWorkoutId: String? = null
+    ) {
         if (bound) return
         _uiState.update { it.copy(ftpWatts = ftpWatts) }
 
         val context = getApplication<Application>()
-        val serviceIntent = WorkoutService.startIntent(context, userId, classId, intent, ftpWatts)
+        val serviceIntent = WorkoutService.startIntent(
+            context, userId, classId, intent, ftpWatts, rivalWorkoutId
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)

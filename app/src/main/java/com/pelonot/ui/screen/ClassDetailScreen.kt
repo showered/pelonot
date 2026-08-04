@@ -22,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
+import com.pelonot.domain.social.ClassRival
 import com.pelonot.ui.components.ClassLeaderboardCard
 import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.PositionChip
@@ -76,7 +78,15 @@ fun ClassDetailScreen(
      * Who on this bike has ridden this class (24.1.2). Null while it is being
      * read, and drawn as nothing when there is nothing worth drawing.
      */
-    leaderboard: ClassLeaderboard? = null
+    leaderboard: ClassLeaderboard? = null,
+    /**
+     * Rides of this class that can be raced live (24.3.3). Empty is the
+     * ordinary answer and draws nothing at all.
+     */
+    rivals: List<ClassRival> = emptyList(),
+    /** Which of [rivals] is selected, or null for nobody. */
+    selectedRivalId: String? = null,
+    onPickRival: (String?) -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier,
@@ -186,6 +196,22 @@ fun ClassDetailScreen(
                     item { ClassLeaderboardCard(leaderboard = it, modifier = Modifier.loneCard()) }
                 }
 
+                // 24.3.3. Directly under the board, because the board is what
+                // makes the offer make sense — a rider looking at "Kilo did
+                // 240 kJ on this one" is exactly the rider who might want to
+                // race it. Chosen here rather than mid-ride: a menu over
+                // somebody who is already pedalling is 15.1.6's rule.
+                if (rivals.isNotEmpty()) {
+                    item {
+                        RivalPicker(
+                            rivals = rivals,
+                            selectedId = selectedRivalId,
+                            onPick = onPickRival,
+                            modifier = Modifier.loneCard()
+                        )
+                    }
+                }
+
                 if (plan.intervals.isNotEmpty()) {
                     // Tiles, not a stack of full-width rows. Each row used to
                     // carry four facts down its left edge with 1200 dp of empty
@@ -237,6 +263,72 @@ fun ClassDetailScreen(
  * this question has an answer (22.4.5).
  */
 private val START_BUTTON_WIDTH = 420.dp
+
+/**
+ * "Ride against" — who this class can be raced live (24.3.3).
+ *
+ * Opt-in per tap and **nobody selected by default**, which is the same rule
+ * 24.3.1 settled for the ride-detail chart: a rider who has not asked for a
+ * comparison must not be given one. Tapping the selected chip again clears it.
+ *
+ * Drawn only when there is somebody, so a rider with no measured rides of this
+ * class — and that is most riders, most of the time — sees nothing rather than
+ * an empty offer (24.1.6).
+ */
+@Composable
+private fun RivalPicker(
+    rivals: List<ClassRival>,
+    selectedId: String?,
+    onPick: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.expressiveShapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        ) {
+            Text(
+                text = "Ride against",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                // Phase 26: says what it does, once, without naming a unit
+                // the rider is not being asked to read.
+                text = "Their pace shows on your ride screen as you go.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                rivals.forEach { rival ->
+                    val on = selectedId == rival.workoutId
+                    FilterChip(
+                        selected = on,
+                        onClick = { onPick(if (on) null else rival.workoutId) },
+                        label = {
+                            Text("${rival.name} · ${Formatters.kilojoules(rival.outputKj)}")
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = when {
+                                on -> "Don't race ${rival.name}"
+                                rival.you -> "Race your own best ride of this class"
+                                else -> "Race ${rival.name}'s ride of this class"
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun IntervalCard(interval: Interval, ftp: Double) {

@@ -79,6 +79,7 @@ import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.ui.components.BeatingHeart
 import com.pelonot.ui.components.CountdownBanner
@@ -127,6 +128,8 @@ fun RideScreen(
     userId: Int? = null,
     /** Non-null re-enters an interrupted ride instead of starting a new one (8.3d). */
     resumeWorkoutId: String? = null,
+    /** The ride being raced live, chosen before the class started (24.3.3). */
+    rivalWorkoutId: String? = null,
     onEndRide: (workoutId: String?) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RideViewModel = viewModel()
@@ -186,7 +189,8 @@ fun RideScreen(
                 userId = userId,
                 classId = plan?.id,
                 intent = intent,
-                ftpWatts = ftp
+                ftpWatts = ftp,
+                rivalWorkoutId = rivalWorkoutId
             )
         }
     }
@@ -726,7 +730,81 @@ private fun EffortColumn(
 
         Spacer(Modifier.weight(1f))
 
+        // 24.3.4. Above the totals rather than among them, because it is a
+        // comparison and they are facts — and deliberately not in MetricGrid,
+        // which already carries the zone ladder and four target gauges. The
+        // ghost must not become a third thing competing for the same glance.
+        RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
+
         RideTotals(state, Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * The live ghost: one number, and nothing else (24.3.4).
+ *
+ * **Not a position, not a percentage, not a list.** A leaderboard of two is a
+ * number, and the number is the gap in the unit the board already ranks on.
+ *
+ * Drawn in the output colour rather than green-for-ahead and red-for-behind,
+ * which is the decision worth keeping: a rider behind a stronger housemate is
+ * not doing anything wrong, and colouring it as a failure would say they were.
+ */
+@Composable
+private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
+    if (rival == null) return
+
+    val ahead = rival.gapKj >= 0
+    val gap = Formatters.kilojoulesValue(kotlin.math.abs(rival.gapKj))
+
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium)
+        ) {
+            Text(
+                // 24.3.6. A rival whose ride has ended says so, once, and the
+                // gap beside it stops moving — never a line extrapolated
+                // forward and never a comparison that silently freezes.
+                text = if (rival.rivalFinished) {
+                    "${rival.rivalName.uppercase()} · FINISHED"
+                } else {
+                    rival.rivalName.uppercase()
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = if (ahead) "+$gap" else "−$gap",
+                    fontSize = 34.sp,
+                    lineHeight = 36.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-1).sp,
+                    color = MetricPowerCoral,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "kJ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(bottom = 5.dp)
+                )
+            }
+        }
     }
 }
 

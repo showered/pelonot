@@ -42,7 +42,9 @@ import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.MaxHeartRate
+import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RivalTrace
 import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.overlay.HudOverlayManager
 import com.pelonot.ui.overlay.RideCoach
@@ -147,6 +149,27 @@ class WorkoutService : Service() {
     /** Latches the stall so a dropout logs twice, not four times a second. */
     private var telemetryStalled = false
 
+    /**
+     * The rival this ride is racing (24.3.3), loaded once at ride start or on
+     * resume and then read by elapsed second. Null means no ghost, which is
+     * the ordinary case.
+     */
+    private var rivalTrace: RivalTrace? = null
+    private var rivalName: String? = null
+
+    /**
+     * Set the moment a sample lands whose watts were not measured (24.3.7).
+     *
+     * The gate has to be applied to *this* ride as well as the rival's, and
+     * this is the only point at which it can be: the rival's side is excluded
+     * by the query before the offer is made, but whether the ride about to
+     * happen will be measured is not knowable in advance. Once set the ghost
+     * is gone for the rest of the ride and never comes back — `Mixed` fails
+     * `isTrustworthyAsMeasured` on purpose (24.4.2), and a race that was
+     * honest for ten minutes and fiction for the next ten is worse than none.
+     */
+    private var rivalDiscredited = false
+
     /** True while the in-app ride screen is on top; the HUD stands down. */
     private var rideScreenVisible = false
     private var hudEnabled = true
@@ -196,7 +219,8 @@ class WorkoutService : Service() {
                     .takeIf { it != GUEST_USER_ID },
                 classId = intent.getStringExtra(EXTRA_CLASS_ID),
                 intent = RideIntent.fromId(intent.getStringExtra(EXTRA_INTENT_ID)),
-                ftpWatts = intent.getIntExtra(EXTRA_FTP_WATTS, WorkoutSession.DEFAULT_FTP)
+                ftpWatts = intent.getIntExtra(EXTRA_FTP_WATTS, WorkoutSession.DEFAULT_FTP),
+                rivalWorkoutId = intent.getStringExtra(EXTRA_RIVAL_WORKOUT_ID)
             )
 
             ACTION_RESUME_WORKOUT -> intent.getStringExtra(EXTRA_WORKOUT_ID)
@@ -213,11 +237,16 @@ class WorkoutService : Service() {
 
     // ── Controls ────────────────────────────────────────────────────
 
+    /**
+     * @param rivalWorkoutId the ride being raced live (24.3.3), or null for
+     *   the ordinary case of racing nobody.
+     */
     fun startWorkout(
         userId: Int?,
         classId: String?,
         intent: RideIntent,
-        ftpWatts: Int
+        ftpWatts: Int,
+        rivalWorkoutId: String? = null
     ) {
         if (_workoutState.value != WorkoutState.Idle) return
 
@@ -239,6 +268,7 @@ class WorkoutService : Service() {
         pendingMetrics.clear()
         calibrationSamples.clear()
         intervalEngine = null
+        clearRival()
 
         // The curve this bike has earned, read once here rather than per
         // sample. On hardware it will not be consulted at all — the board
@@ -292,6 +322,13 @@ class WorkoutService : Service() {
             workoutRepository.beginWorkout(
                 (_currentSession.value ?: session).toEntity()
             )
+
+            // After the row, never before: `active_ride_rival` has a foreign
+            // key onto it, exactly as `workout_metrics` does (1.12).
+            if (rivalWorkoutId != null) {
+                workoutRepository.setActiveRival(session.workoutId, rivalWorkoutId)
+                loadRival(rivalWorkoutId, userId)
+            }
         }
 
         if (classId != null) loadClass(classId)
@@ -368,10 +405,21 @@ class WorkoutService : Service() {
         pendingMetrics.clear()
         calibrationSamples.clear()
         intervalEngine = null
+        clearRival()
 
         serviceScope.launch {
             PowerModel.curve = runCatching { calibrationRepository.activeCurve() }
                 .getOrDefault(PowerModel.curve)
+        }
+
+        // 24.3.8. Off the table rather than out of the navigation route, for
+        // the same reason the FTP comes off the row: a resume has to pick up
+        // the race the rider was actually in, and nothing on the way back into
+        // this ride knows what that was.
+        serviceScope.launch {
+            workoutRepository.getActiveRival(workout.id)?.let { rivalId ->
+                loadRival(rivalId, workout.userId)
+            }
         }
 
         // Before anything can ask, exactly as in startWorkout — otherwise the
@@ -468,6 +516,50 @@ class WorkoutService : Service() {
     }
 
     /**
+     * Loads the rival being raced, once (24.3.3).
+     *
+     * The whole series is read here and reduced to a cumulative-kJ lookup, so
+     * the recording path never touches the database for it — the tick reads an
+     * in-memory array by index. Same shape as [loadClass]: asynchronous, and
+     * until it lands the ride simply has no ghost, which is exactly what a
+     * ride racing nobody looks like.
+     */
+    private suspend fun loadRival(rivalWorkoutId: String, youId: Int?) {
+        val rival = runCatching { workoutRepository.getWorkout(rivalWorkoutId) }
+            .onFailure { Log.w(TAG, "Could not load the rival ride $rivalWorkoutId", it) }
+            .getOrNull() ?: return
+
+        val samples = runCatching { workoutRepository.getMetrics(rivalWorkoutId) }
+            .getOrDefault(emptyList())
+            .map { MetricSample(it.timestampSec, it.power, it.cadence, it.heartRate) }
+
+        val trace = RivalTrace.from(samples)
+        if (trace.isEmpty) {
+            Log.w(TAG, "Rival ride $rivalWorkoutId has no samples; riding without a ghost")
+            return
+        }
+
+        // "Your best" when it is the rider's own earlier ride, which the
+        // owner's own note says is the case that makes this work at all — on
+        // a household bike most riders are the only person who has ridden a
+        // given class.
+        rivalName = if (rival.userId != null && rival.userId == youId) {
+            "Your best"
+        } else {
+            rival.userId?.let { id -> userRepository.getUser(id)?.name } ?: "Rival"
+        }
+        rivalTrace = trace
+
+        Log.i(TAG, "Racing $rivalName: ${trace.finalKj.toInt()} kJ over ${trace.finalSecond}s")
+    }
+
+    private fun clearRival() {
+        rivalTrace = null
+        rivalName = null
+        rivalDiscredited = false
+    }
+
+    /**
      * @param manual false only when [autoPause] asked for this (19.1.2). A
      *   pause the rider worked themselves is theirs to lift, so the policy is
      *   told to let go of it.
@@ -526,6 +618,9 @@ class WorkoutService : Service() {
         serviceScope.launch {
             flushPendingMetrics()
             workoutRepository.finaliseWorkout(finalSession.toEntity())
+            // 24.3.9: the race is over and nothing about it is written to the
+            // ride. The row exists only to survive a crash *during* one.
+            workoutRepository.clearActiveRival(finalSession.workoutId)
             // Only now: until the row is `is_complete = 1` it still looks like
             // a crash artifact, and a cold start in that window would offer to
             // recover the ride that is in the middle of being saved.
@@ -721,20 +816,35 @@ class WorkoutService : Service() {
 
     private fun publishSnapshot(elapsedSec: Int, intervalState: IntervalState) {
         val session = _currentSession.value
+        val outputKj = session?.totalOutputKj ?: _rideSnapshot.value.totalOutputKj
         _rideSnapshot.update { current ->
             current.copy(
                 state = _workoutState.value,
                 elapsedSeconds = elapsedSec,
                 interval = intervalState,
-                totalOutputKj = session?.totalOutputKj ?: current.totalOutputKj,
+                totalOutputKj = outputKj,
                 distanceKm = session?.distanceKm ?: current.distanceKm,
                 // Decided in recordMetric, which runs first on every tick, so
                 // what the rider is told matches what was recorded for the very
                 // same second.
-                telemetryLive = !telemetryStalled
+                telemetryLive = !telemetryStalled,
+                rival = rivalStatus(elapsedSec, outputKj)
             )
         }
     }
+
+    /**
+     * The gap against the rival at this second, or null when there is no
+     * honest one to draw (24.3.4).
+     *
+     * Keyed off [elapsedSec] — the clock that already excludes paused time —
+     * and nothing else. 24.3.8's rule: wall-clock anywhere in this feature is
+     * a rider who stopped for a phone call losing a race they were winning.
+     */
+    private fun rivalStatus(elapsedSec: Int, outputKj: Double) =
+        rivalTrace
+            ?.takeUnless { rivalDiscredited }
+            ?.statusAt(elapsedSec, outputKj, rivalName.orEmpty())
 
     private suspend fun recordMetric(elapsedSec: Int) {
         val session = _currentSession.value ?: return
@@ -787,6 +897,15 @@ class WorkoutService : Service() {
             // on the reading and was thrown away here.
             powerIsMeasured = reading.powerIsMeasured
         )
+
+        // 24.3.7, the symmetric half of the measured-power gate. The rival's
+        // side was excluded by the query before the offer was made; this side
+        // cannot be known until the watts actually arrive, and one modelled
+        // sample is enough — `Mixed` fails `isTrustworthyAsMeasured` too.
+        if (!reading.powerIsMeasured && !rivalDiscredited && rivalTrace != null) {
+            rivalDiscredited = true
+            Log.i(TAG, "Dropping the ghost at ${elapsedSec}s: these watts are modelled")
+        }
 
         // 2.2a.1: the ride is already the calibration dataset. Kept in memory
         // for the length of the ride and folded in once at the end, so a fit
@@ -962,6 +1081,9 @@ class WorkoutService : Service() {
         const val EXTRA_FTP_WATTS = "com.pelonot.extra.FTP_WATTS"
         const val EXTRA_WORKOUT_ID = "com.pelonot.extra.WORKOUT_ID"
 
+        /** 24.3.3 — the ride being raced live, chosen before the class starts. */
+        const val EXTRA_RIVAL_WORKOUT_ID = "com.pelonot.extra.RIVAL_WORKOUT_ID"
+
         /**
          * Everything a resume needs is already on the row, so this carries only
          * the id — the class, the intent and the FTP the ride was started at
@@ -980,13 +1102,15 @@ class WorkoutService : Service() {
             userId: Int?,
             classId: String?,
             intent: RideIntent,
-            ftpWatts: Int
+            ftpWatts: Int,
+            rivalWorkoutId: String? = null
         ): Intent = Intent(context, WorkoutService::class.java).apply {
             action = ACTION_START_WORKOUT
             putExtra(EXTRA_USER_ID, userId ?: GUEST_USER_ID)
             putExtra(EXTRA_CLASS_ID, classId)
             putExtra(EXTRA_INTENT_ID, intent.id)
             putExtra(EXTRA_FTP_WATTS, ftpWatts)
+            putExtra(EXTRA_RIVAL_WORKOUT_ID, rivalWorkoutId)
         }
     }
 }

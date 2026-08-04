@@ -45,6 +45,7 @@ import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.social.ClassRival
 import com.pelonot.core.Formatters
 import com.pelonot.ui.viewmodel.AppUiState
 import com.pelonot.ui.viewmodel.InterruptedRide
@@ -82,11 +83,19 @@ fun PelonotNavGraph(
     onRevertFtpChange: (Int) -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
     onLoadLeaderboard: suspend (classId: String, youId: Int?) -> ClassLeaderboard =
-        { classId, _ -> ClassLeaderboard(classId) }
+        { classId, _ -> ClassLeaderboard(classId) },
+    /** Rides of this class that can be raced live (24.3.3). Always a Room read. */
+    onLoadRivals: suspend (classId: String, youId: Int?) -> List<ClassRival> =
+        { _, _ -> emptyList() }
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
     var showIntentPrompt by rememberSaveable { mutableStateOf(false) }
+
+    // 24.3.3. Chosen on class detail, carried across the intent prompt the
+    // same way the class id is, and cleared with it — the two are one answer
+    // to "what am I about to ride, and against whom".
+    var pendingRivalId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // 15.8.7: neither account offer may appear on a build with no cloud
     // configured — a self-hoster's app must not advertise a backup it cannot
@@ -184,12 +193,15 @@ fun PelonotNavGraph(
             onIntentSelected = { intent ->
                 showIntentPrompt = false
                 val classId = pendingClassId
+                val rivalId = pendingRivalId
                 pendingClassId = null
-                navController.navigate(Destination.Ride.of(classId, intent.id))
+                pendingRivalId = null
+                navController.navigate(Destination.Ride.of(classId, intent.id, rivalId))
             },
             onDismiss = {
                 showIntentPrompt = false
                 pendingClassId = null
+                pendingRivalId = null
             }
         )
     }
@@ -332,6 +344,16 @@ fun PelonotNavGraph(
                 value = classId?.let { onLoadLeaderboard(it, youId) }
             }
 
+            // 24.3.3, read the same way and for the same reason.
+            val rivals by produceState(emptyList<ClassRival>(), classId, youId) {
+                value = classId?.let { onLoadRivals(it, youId) }.orEmpty()
+            }
+            // Held here rather than inside the screen so it survives the
+            // intent prompt, which composes over this destination.
+            var selectedRivalId by rememberSaveable(classId) {
+                mutableStateOf<String?>(null)
+            }
+
             ClassDetailScreen(
                 plan = plan,
                 ftp = (uiState.selectedProfile?.ftpWatts
@@ -339,9 +361,13 @@ fun PelonotNavGraph(
                 onBack = navController::popBackStack,
                 onStart = {
                     pendingClassId = plan?.id
+                    pendingRivalId = selectedRivalId
                     showIntentPrompt = true
                 },
-                leaderboard = leaderboard
+                leaderboard = leaderboard,
+                rivals = rivals,
+                selectedRivalId = selectedRivalId,
+                onPickRival = { selectedRivalId = it }
             )
         }
 
@@ -361,6 +387,11 @@ fun PelonotNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument(Destination.ARG_RIVAL_ID) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
@@ -373,6 +404,9 @@ fun PelonotNavGraph(
             val resumeWorkoutId = backStackEntry.arguments
                 ?.getString(Destination.ARG_RESUME_ID)
                 ?.takeIf { it.isNotBlank() }
+            val rivalWorkoutId = backStackEntry.arguments
+                ?.getString(Destination.ARG_RIVAL_ID)
+                ?.takeIf { it.isNotBlank() }
             val plan = remember(classId, uiState.classes) {
                 uiState.classes.firstOrNull { it.id == classId }
             }
@@ -384,6 +418,7 @@ fun PelonotNavGraph(
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 userId = uiState.selectedProfile?.localUserId,
                 resumeWorkoutId = resumeWorkoutId,
+                rivalWorkoutId = rivalWorkoutId,
                 onEndRide = { workoutId ->
                     if (workoutId != null) {
                         navController.navigate(Destination.PostRide.of(workoutId)) {

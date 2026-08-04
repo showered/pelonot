@@ -4,6 +4,7 @@ import com.pelonot.data.sensor.PowerModel
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.cadenceBand
 import com.pelonot.domain.model.powerBand
@@ -53,7 +54,19 @@ data class RideSnapshot(
      * Both surfaces say so: a ride that stops on its own and does not explain
      * itself is indistinguishable from one that has frozen.
      */
-    val autoPaused: Boolean = false
+    val autoPaused: Boolean = false,
+    /**
+     * The live ghost, or null when this ride is not racing anybody (24.3.4).
+     *
+     * Null is by far the ordinary case: a rival has to be chosen before the
+     * ride, both sides have to be measured power, and most classes have no
+     * measured ride behind them at all. **Nothing renders it on the overlay**
+     * — 24.1.5 and 18.6 both say nothing social goes on the strip, and the
+     * ghost is a full ride screen feature for the reason 19.4 gives: the
+     * overlay has half a second of attention and it belongs to the next sixty
+     * seconds of pedalling.
+     */
+    val rival: RivalStatus? = null
 ) {
     val isPaused: Boolean get() = state == WorkoutState.Paused
     val isRunning: Boolean get() = state == WorkoutState.Active || state == WorkoutState.Paused

@@ -29,12 +29,18 @@ sealed class Destination(val route: String) {
 
     data object Ride : Destination(
         "ride?$ARG_CLASS_ID={$ARG_CLASS_ID}&$ARG_INTENT_ID={$ARG_INTENT_ID}" +
-            "&$ARG_RESUME_ID={$ARG_RESUME_ID}"
+            "&$ARG_RESUME_ID={$ARG_RESUME_ID}&$ARG_RIVAL_ID={$ARG_RIVAL_ID}"
     ) {
-        fun of(classId: String?, intentId: String) = buildString {
+        /**
+         * @param rivalWorkoutId the ride being raced live (24.3.3), chosen on
+         *   the class detail screen before the ride starts. Null is the
+         *   ordinary case and means no ghost.
+         */
+        fun of(classId: String?, intentId: String, rivalWorkoutId: String? = null) = buildString {
             append("ride?")
             append("$ARG_CLASS_ID=${classId?.let(Uri::encode).orEmpty()}")
             append("&$ARG_INTENT_ID=$intentId")
+            append("&$ARG_RIVAL_ID=${rivalWorkoutId?.let(Uri::encode).orEmpty()}")
         }
 
         /**
@@ -51,6 +57,11 @@ sealed class Destination(val route: String) {
          * Without the class id the screen has no `ClassPlan` and calls a
          * 13-interval class a free ride in its own subtitle, which is how this
          * argument was found.
+         *
+         * The rival being raced (24.3.3) is absent here for the same reason:
+         * it belongs to the ride, so the service reads it back off
+         * `active_ride_rival` rather than having it passed in from a screen
+         * that would be guessing (24.3.8).
          */
         fun resuming(workoutId: String, classId: String?) = buildString {
             append("ride?")
@@ -107,5 +118,8 @@ sealed class Destination(val route: String) {
 
         /** 8.3d — set only when re-entering a ride rather than starting one. */
         const val ARG_RESUME_ID = "resumeId"
+
+        /** 24.3.3 — the ride being raced live, chosen before the class starts. */
+        const val ARG_RIVAL_ID = "rivalId"
     }
 }
