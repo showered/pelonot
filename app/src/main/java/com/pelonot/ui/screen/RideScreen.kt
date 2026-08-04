@@ -731,20 +731,24 @@ private fun EffortColumn(
             // between them, with nothing saying they were related. The next
             // effort now hangs directly off the current one.
             NextUpBlock(interval, Modifier.fillMaxWidth())
+
+            // 24.3.13b, and it is 11.6.1's argument carried one step further:
+            // *now*, *next* and *then* are one thought, and the rest of the
+            // class was the only part of it still living in another column.
+            // The owner's own reasoning for moving it — *"this then frees up
+            // space for leaderboard which is where your eyes are naturally
+            // drawn to anyway"*.
+            UpcomingIntervals(
+                intervals = snapshot.intervals,
+                fromIndex = interval.index,
+                // Three rather than four: this is a shape, not a schedule, and
+                // the column it now lives in is the busiest on the screen.
+                max = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Spacer(Modifier.weight(1f))
-
-        // 24.3.4. Above the totals rather than among them, because it is a
-        // comparison and they are facts — and deliberately not in MetricGrid,
-        // which already carries the zone ladder and four target gauges. The
-        // ghost must not become a third thing competing for the same glance.
-        //
-        // Exactly one of these two draws (24.3.11): the board is the race, and
-        // the single gap is the same race with a `LIMIT 1` on it, kept behind
-        // a flag. The service never populates both.
-        RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
-        LiveLeaderboardCard(state.snapshot.standings, Modifier.fillMaxWidth())
 
         RideTotals(state, Modifier.fillMaxWidth())
     }
@@ -875,7 +879,7 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.medium)
+                .padding(MaterialTheme.spacing.large)
         ) {
             Text(
                 // The one thing the window hides is how big the field is. A
@@ -889,11 +893,16 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
                 } else {
                     "${ordinal(standings.yourRank)} OF ${standings.fieldSize}"
                 },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (standings.leading) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 maxLines = 1
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
             standings.window.forEach { row ->
                 LeaderboardRow(row, standings.metric)
             }
@@ -909,51 +918,54 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
         RaceMetric.Output -> Formatters.kilojoulesValue(magnitude)
         RaceMetric.Distance -> Formatters.distanceValue(magnitude, units)
     }
+    val colour = if (row.isYou) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(26.dp),
+            .height(44.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "${row.rank}",
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Normal,
-            color = if (row.isYou) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = colour,
             textAlign = TextAlign.End,
             maxLines = 1,
             // Reserved rather than sized to its own text, which is 11.6.8's
             // finding: a column that fits itself shifts everything beside it
             // the moment a rider goes from 9th to 10th.
-            modifier = Modifier.width(18.dp)
+            modifier = Modifier.width(24.dp)
         )
         Spacer(Modifier.width(MaterialTheme.spacing.small))
-        Text(
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = row.name.uppercase(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Medium,
+                color = colour,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             // 24.3.6. A competitor whose own ride has run out says so, once,
             // and their number stops moving — never a line extrapolated
-            // forward. It is far less confusing on a board than it was on the
-            // single gap, because the rows either side of it are still moving.
-            text = if (row.finished) {
-                "${row.name.uppercase()} · DONE"
-            } else {
-                row.name.uppercase()
-            },
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Normal,
-            color = if (row.isYou) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+            // forward. On its own line rather than appended to the name,
+            // because a name is as long as somebody's name is and this must
+            // not be the thing that gets ellipsed away.
+            if (row.finished) {
+                Text(
+                    text = "FINISHED",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+        }
         Spacer(Modifier.width(MaterialTheme.spacing.small))
         Text(
             text = when {
@@ -961,8 +973,10 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
                 row.gapToYou >= 0 -> "+$number"
                 else -> "−$number"
             },
-            style = MaterialTheme.typography.titleMedium,
+            fontSize = 26.sp,
+            lineHeight = 28.sp,
             fontWeight = FontWeight.Black,
+            letterSpacing = (-1).sp,
             color = if (row.isYou) {
                 MaterialTheme.colorScheme.primary
             } else {
@@ -981,7 +995,8 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                softWrap = false
+                softWrap = false,
+                modifier = Modifier.padding(bottom = 3.dp)
             )
         }
     }
@@ -1404,11 +1419,16 @@ private fun NextUpBlock(
 }
 
 /**
- * The rest of the class, and the controls.
+ * The race, and the controls.
  *
- * The *next* effort moved out of here to sit under the current one (11.6.1);
- * what stays is the shape of the class beyond it, and pause / end / overlay,
- * which stay put because a thumb learns where they are.
+ * It used to be the rest of the class and the controls. The *next* effort left
+ * first (11.6.1), and *then* followed it in 24.3.13b — now, next and then are
+ * one thought and they belong in one column. What arrived in their place is
+ * the live leaderboard, on the owner's own reading of the screen: this is
+ * where the eye goes, and a race is the thing worth looking at.
+ *
+ * Pause / end / overlay stay exactly where they are, because a thumb learns
+ * where they are.
  */
 @Composable
 private fun UpNextColumn(
@@ -1419,19 +1439,15 @@ private fun UpNextColumn(
     onBackToHud: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val interval = state.snapshot.interval
-
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
     ) {
-        if (interval.hasClass) {
-            UpcomingIntervals(
-                intervals = state.snapshot.intervals,
-                fromIndex = interval.index,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        // Exactly one of these two draws (24.3.11): the board is the race, and
+        // the single gap is the same race with a `LIMIT 1` on it, kept behind
+        // a flag. The service never populates both.
+        RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
+        LiveLeaderboardCard(state.snapshot.standings, Modifier.fillMaxWidth())
 
         Spacer(Modifier.weight(1f))
 

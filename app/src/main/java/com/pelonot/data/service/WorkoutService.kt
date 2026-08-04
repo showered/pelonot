@@ -1042,7 +1042,7 @@ class WorkoutService : Service() {
         // this side cannot be known until the watts actually arrive, and one
         // modelled sample is enough — `Mixed` fails `isTrustworthyAsMeasured`
         // too.
-        if (!reading.powerIsMeasured && !raceDiscredited &&
+        if (!reading.powerIsMeasured && !raceDiscredited && !RaceDebug.ignoreMeasuredGate &&
             (rivalTrace != null || raceBoard != null)
         ) {
             raceDiscredited = true

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.pelonot.data.sensor.PelotonSensorServiceSource
+import com.pelonot.data.service.RaceDebug
 import com.pelonot.data.sensor.SimulatedSensorSource
 
 /**
@@ -26,6 +27,11 @@ import com.pelonot.data.sensor.SimulatedSensorSource
  * # The board goes quiet without failing: the dead source of 2.7.4.
  * adb shell am broadcast -a com.pelonot.debug.SILENCE \
  *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
+ *
+ * # The live leaderboard draws on a simulated ride (24.3.13a). This one is
+ * # not a lie about the telemetry — see RaceDebug for why.
+ * adb shell am broadcast -a com.pelonot.debug.RACE \
+ *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ez on true
  * ```
  *
  * Debug source set only: this class does not exist in a release build, so the
@@ -44,6 +50,22 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
             ACTION_SILENCE -> {
                 SimulatedSensorSource.silenceFor(seconds)
                 Log.i(TAG, "Simulated board goes silent — without failing — for ${seconds}s")
+            }
+
+            // 24.3.13a. Not a lie about the telemetry — see [RaceDebug]. What
+            // is recorded is untouched; only the live comparison stops
+            // refusing to draw itself on a simulated ride.
+            ACTION_RACE -> {
+                val on = intent.getBooleanExtra(EXTRA_ON, true)
+                RaceDebug.ignoreMeasuredGate = on
+                Log.i(
+                    TAG,
+                    if (on) {
+                        "The race will run on modelled watts (the record still says modelled)"
+                    } else {
+                        "The race is back behind the measured-power gate"
+                    }
+                )
             }
 
             ACTION_TRACE -> {
@@ -81,6 +103,8 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
         const val ACTION_CORRUPT = "com.pelonot.debug.CORRUPT"
         const val ACTION_SILENCE = "com.pelonot.debug.SILENCE"
         const val ACTION_TRACE = "com.pelonot.debug.TRACE"
+        const val ACTION_RACE = "com.pelonot.debug.RACE"
+        const val EXTRA_ON = "on"
         const val ACTION_REGISTER = "com.pelonot.debug.REGISTER"
         const val EXTRA_ONLY = "only"
     }

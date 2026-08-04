@@ -106,7 +106,9 @@ behind a flag rather than into the bin, and **24.3.14 is a question back**:
 *watts* has now been used twice for the score and it decides whether the board
 re-sorts several times a second).
 
-*(The inbox is empty.)*
+### Ride screen (full screen mode)
+
+When the "next" section is counting down, it gets a bit bigger. No problem with this but it bumps the cards underneath it down, and actually off screen. Perhaps the "next" card can shrink to accomodate it and the bottom section (output, distance, power) can then remain entirely static.
 
 ---
 
