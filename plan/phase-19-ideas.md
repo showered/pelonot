@@ -135,6 +135,52 @@ has simply never been written down.
       now leads with the `SensorService` bind and the serial path is demoted to
       §1a-bis, for a rooted tablet, which is what it is*
 
+- [x] **19.1.7** **One page that says where the project is — the owner's note,
+      4 August 2026.** Verbatim: *"There is so much plan documentation (this is
+      good!) but it's difficult to get a true understanding of where we are.
+      Please create a high level summary of what we've done, what's
+      outstanding, any issues, and how close we are to being 'done'."*
+
+      **The complaint is correct and the cause is structural rather than
+      sloppy.** The plan is ~7,200 lines across 25 files, and every one of them
+      is written for the session that will *do* the work: the reasoning is kept
+      rather than summarised, deliberately, because that is what has stopped
+      this project re-litigating settled decisions and re-making found bugs.
+      What none of it answers is the question a person actually asks — *is this
+      nearly finished?* PLAN.md's status table comes closest and is still one
+      paragraph per phase, written in the same voice, at the same altitude.
+
+      `STATUS.md` at the repo root is that page: what works, what is
+      outstanding, what is actually wrong today, and an explicit answer to
+      "how close to done" — with **done defined three ways**, because the
+      honest answer differs by a lot depending on who is asking. Done for the
+      household that owns this bike is nearly here; done for a stranger with a
+      Peloton is a short list; done as the plan is written is 69% of the boxes
+      and will never reach 100 because the plan is a place ideas are *kept*.
+
+      Three rules it holds, and they are what keep it from becoming a
+      fourteenth thing to read:
+
+      - **It is a summary, not a source.** Every claim is a phase file's claim,
+        and it names the item so the reasoning is one hop away. Nothing is
+        decided here; a decision made in `STATUS.md` would be a decision
+        nobody doing the work would find.
+      - **It says what is wrong, in one ranked list.** The most useful thing
+        the plan hides is that its live problems are scattered across
+        twenty-five files by *phase* rather than gathered by *severity*.
+      - **It is regenerated, not maintained.** It goes stale the way the
+        status table goes stale — so it carries the date it was written and the
+        measurement behind it (the test count, the box count), and a sitting
+        that changes the picture rewrites it rather than patching it
+- [ ] **19.1.7a** **Nothing keeps `STATUS.md` honest, which is the same
+      problem as 17.15.2 and has the same cheap answer.** The box counts in it
+      are `grep -c` over `plan/*.md` and the test count is the build's own; a
+      script that emits both — in `classlibrary/build.py`'s spirit — would make
+      the number impossible to state wrongly, and CI (19.1.4) could fail on a
+      figure that has drifted. **Do not build it until the file has actually
+      gone stale once**, for exactly 17.15.2's reason: a generator nobody runs
+      is worse than a page somebody rewrites
+
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
 - [ ] **19.2.2** **Community class library** — share and import classes. `class_templates` is already a cloud table and already world-readable

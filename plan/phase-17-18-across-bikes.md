@@ -117,6 +117,73 @@ keyboard should be possible on the web and optional on the bike.**
         21.1.4's *do not collect a field nothing reads*.
       - **The width cap travels**, because 760 is a fact about eyes rather than
         about Android (22.2.6)
+- [x] **17.16** **It is hosted — the owner's note, 4 August 2026.** Verbatim:
+      *"Website is now running here: https://pelonot.showered.workers.dev/"*
+
+      **Confirmed live, and the deployed bytes are the repo's.** `link.html`
+      came back byte-identical to `web/link.html`; `index.html` serves from `/`;
+      `config.js` is deployed beside them, which is what makes the page work at
+      all and is the same decision as 17.14 with the git-ignore removed at the
+      far end.
+
+      Two facts measured rather than assumed, both about the host rather than
+      the code:
+
+      - **The host trims `.html`.** `/link.html` answers **307** to `/link`.
+        That matters because the QR code the bike draws is
+        `…/link.html#CODE`, and a fragment is the one part of a URL a redirect
+        could plausibly drop. It does not: loaded in a browser, the page ends
+        at `/link#ABCD2345` with the fragment intact, reaches the live project,
+        and answers *"That code has expired"* — which is `device_link_describe`
+        working as `anon` from the deployed page, the thing 15.6.6 needed and
+        the flow this note makes real.
+      - **The endpoint and its publishable key are now genuinely published**,
+        which is what hosting a static Supabase client means and is not a leak.
+        It is also exactly the condition 18.11.1 was written against, and that
+        item stops being hypothetical the moment this URL exists — read it
+        next, because as of this note the setting it names is still open
+- [ ] **17.16.1** **The bike's QR still points at the emulator.**
+      `pelonot.webUrl` in `local.properties` is `http://10.0.2.2:8000` — the
+      dev server's address *as seen from inside an AVD*, which is unreachable
+      from a phone and meaningless off that emulator. So the QR the bike draws
+      today is a code nobody can scan, on a build that has a real page to point
+      at. One line, and it is the owner's file rather than the repo's:
+      `pelonot.webUrl=https://pelonot.showered.workers.dev`. Worth doing
+      before the next bike sitting, because 15.6's remaining unknowns
+      (15.6.4's hand-off, the confirmation the owner has not yet given it) all
+      need a phone that can open the page
+- [ ] **17.16.2** **How it is deployed is written down nowhere.** `web/README.md`
+      says how to *run* the app — `python3 -m http.server`, or open the file —
+      and says nothing about where it now lives or how a change reaches it.
+      That is the same gap 14.10 closed on the Android side: a fact that lives
+      only in the owner's shell history is a fact the project does not have.
+      The README should name the host, the command that redeploys it, and the
+      one thing a static host adds to this app's threat model — **nothing
+      checks that the deployed copy is the committed one**. Today they match,
+      and today is the only day that has been checked
+- [ ] **17.16.3** **Two publishable keys are in play, and the project should
+      pick one.** The deployed `config.js` carries the legacy JWT anon key
+      (`eyJ…`); the working copy of `web/config.js` carries the newer
+      `sb_publishable_…` form. Both are the publishable key and neither is a
+      secret, so this is tidiness rather than exposure — but the two forms
+      revoke separately, which makes it a trap the day 14.11.4's rotation
+      happens: rotating the one you remember leaves the one on the internet
+      working. Say which form this project uses, in `config.example.js` and in
+      `cloud.properties`, and use it in both places
+- [ ] **17.16.4** **Point the project's Site URL at the host now that there is
+      one.** Email confirmation links go to *Authentication → URL
+      Configuration → Site URL*, so with it still pointing at a dev address
+      every account created from the live page gets a confirmation link to
+      somewhere that is not running — and 15.1's "signed up, not confirmed, no
+      session" state is exactly where that rider is stranded. `web/README.md`
+      already warns about this in the abstract; it is concrete now
+- [ ] **17.16.5** **A copy defect on the live pairing page.** With an unknown
+      or expired code the card reads *"This will sign in"* above *"That code
+      has expired"* — the caption is a promise about a device the page has
+      just said it cannot find. `link.js` replaces the device label and leaves
+      the `figure-label` above it alone. Small, and it is on the one page a
+      rider meets before they trust this app with a password, which is the
+      argument for fixing it rather than filing it
 - [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has
@@ -199,6 +266,27 @@ Two shapes to keep straight, because they will otherwise be built twice:
       open, anyone who finds the URL can create an account and land on the
       household's leaderboard. Authentication → Providers → Email → *Allow new
       users to sign up*, off; add the household by invitation
+
+      ***Measured, 4 August 2026, and it is now live rather than
+      hypothetical.*** The project's own public settings endpoint answers
+      **`"disable_signup": false`** with `email: true`, and 17.16 is the other
+      half: the web app is hosted, its `config.js` publishes the endpoint and
+      the publishable key, and `index.html` and `link.html` both draw a
+      ***Create an account*** tab. `007` is applied, so a new account is on the
+      household's board — with a display name and a score, and, through
+      `class_ghost`, a second-by-second trace to ride against.
+
+      **This is the owner's to change and nobody else's**: it is a setting on
+      their Supabase account, not a line in this repo, and no session should
+      touch it. Two minutes in the dashboard. Until it is done, the exposure is
+      bounded and worth stating exactly, because "the leaderboard leaks" would
+      be the wrong summary — `workouts` and `profiles` still hold "your own
+      rows and nobody else's" (15.5.4, verified from a second account), so a
+      stranger who registered would see **leaderboard entries and ghost
+      traces**: display names, class ids, durations, output. Not ride dates,
+      not RPE, not heart rate, not anyone's rows. That is the blast radius of
+      one dashboard toggle, which is the argument for turning it off today
+      rather than the argument that it can wait
 - [ ] **18.1** Friends list and requests, mirroring 17.5
 - [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
 - [ ] **18.3** Kudos, and nothing that requires typing during or just after a ride
