@@ -130,9 +130,9 @@ fun PostRideSummaryScreen(
 
     if (showProfileDialog) {
         ProfileCreationDialog(
-            onProfileCreated = { name, weightKg, ftpWatts ->
+            onProfileCreated = { newProfile ->
                 showProfileDialog = false
-                viewModel.saveToNewProfile(context, name, weightKg, ftpWatts, onDone)
+                viewModel.saveToNewProfile(context, newProfile, onDone)
             },
             onDismiss = { showProfileDialog = false }
         )

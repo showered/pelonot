@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.domain.model.NewProfile
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.AppSettings
@@ -310,14 +311,25 @@ class AppViewModel(
             }
         )
 
-    fun createProfile(name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) {
+    /**
+     * One tap is one write (7.10.3). Every field the screen collected goes into
+     * a single [UserEntity] and a single `save`, rather than a create followed
+     * by three updates — which is the shape that let Settings' `setFtp` and
+     * `setWeight` eat each other's field off one press of Save.
+     */
+    fun createProfile(profile: NewProfile, onCreated: (Int) -> Unit) {
         viewModelScope.launch {
             val saved = userRepository.save(
                 UserEntity(
-                    name = name.trim(),
-                    weightKg = weightKg ?: DEFAULT_WEIGHT_KG,
-                    ftpWatts = ftpWatts
-                )
+                    name = profile.name.trim(),
+                    weightKg = profile.weightKg ?: DEFAULT_WEIGHT_KG,
+                    ftpWatts = profile.ftpWatts,
+                    birthDate = profile.birthDate,
+                    fitnessLevel = profile.fitnessLevel?.id
+                ),
+                // 20.3.4: an estimate is not a claim the rider made, and the
+                // funnel is where that distinction gets recorded.
+                ftpSource = profile.ftpSource
             )
             settingsRepository.setLastProfileId(saved.localUserId)
             onCreated(saved.localUserId)

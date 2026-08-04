@@ -35,6 +35,7 @@ import com.pelonot.ui.screen.HistoryScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
 import com.pelonot.ui.screen.PreRideIntentPrompt
+import com.pelonot.domain.model.NewProfile
 import com.pelonot.ui.screen.ProfileCreationDialog
 import com.pelonot.ui.screen.ProfileSelectorScreen
 import com.pelonot.ui.screen.RideDetailScreen
@@ -63,7 +64,7 @@ private const val TRANSITION_MS = 300
 fun PelonotNavGraph(
     navController: NavHostController,
     uiState: AppUiState,
-    onCreateProfile: (name: String, weightKg: Double?, ftpWatts: Int, onCreated: (Int) -> Unit) -> Unit,
+    onCreateProfile: (profile: NewProfile, onCreated: (Int) -> Unit) -> Unit,
     onSelectProfile: (Int?) -> Unit,
     onRecoverWorkout: (onRecovered: (String) -> Unit) -> Unit = {},
     /** 8.3d — carry on riding the interrupted ride rather than filing it. */
@@ -142,8 +143,8 @@ fun PelonotNavGraph(
 
     if (showProfileDialog) {
         ProfileCreationDialog(
-            onProfileCreated = { name, weightKg, ftpWatts ->
-                onCreateProfile(name, weightKg, ftpWatts) {
+            onProfileCreated = { newProfile ->
+                onCreateProfile(newProfile) {
                     showProfileDialog = false
                     navController.navigate(Destination.Dashboard.route) {
                         popUpTo(Destination.ProfileSelector.route) { inclusive = false }

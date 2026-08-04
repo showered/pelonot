@@ -72,9 +72,7 @@ class UserRepository(
                         localUserId = stored.localUserId,
                         ftpWatts = stored.ftpWatts,
                         changedAt = clock(),
-                        // A brand-new profile's first FTP is where the number
-                        // came from, whatever the caller said about it.
-                        source = (if (previous == null) FtpChangeSource.ProfileCreated
+                        source = (if (previous == null) creationSource(ftpSource)
                         else ftpSource).name,
                         workoutId = ftpWorkoutId
                     )
@@ -88,6 +86,28 @@ class UserRepository(
         syncRepository.syncProfile(saved)
         return saved
     }
+
+    /**
+     * Which source a **brand-new** profile's first FTP is filed under (20.3.4).
+     *
+     * This used to be `ProfileCreated` unconditionally, and the comment said
+     * *"whatever the caller said about it"* — which was correct for as long as
+     * typing a number into a text box was the only way a profile could acquire
+     * one. Since 20.3 it is not: most riders never see a watt at signup and the
+     * app estimates one from their weight, age and their own description of
+     * their riding.
+     *
+     * Those are different facts and 20.3.4 requires the trend to tell them
+     * apart, so the caller's word is honoured **when it is one of the two
+     * things a creation can actually be**. Anything else — including the
+     * `Unknown` a caller gets for saying nothing — falls back to
+     * `ProfileCreated`, which keeps the funnel's own guarantee intact: a path
+     * that forgets to name a source still produces a truthful row rather than
+     * an inherited one from some other feature.
+     */
+    private fun creationSource(requested: FtpChangeSource): FtpChangeSource =
+        if (requested == FtpChangeSource.Estimated) requested
+        else FtpChangeSource.ProfileCreated
 
     /**
      * @param source why it moved (7.9.2) — the distinction the trend chart

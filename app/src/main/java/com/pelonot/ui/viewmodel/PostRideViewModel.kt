@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.domain.model.NewProfile
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.ClassRepository
@@ -282,19 +283,20 @@ class PostRideViewModel(
     /** Creates a profile for a guest who has decided to keep their rides. */
     fun saveToNewProfile(
         context: Context,
-        name: String,
-        weightKg: Double?,
-        ftpWatts: Int,
+        newProfile: NewProfile,
         onSaved: () -> Unit
     ) {
         val workoutId = _uiState.value.workout?.id ?: return onSaved()
         viewModelScope.launch {
             val profile = userRepository.save(
                 UserEntity(
-                    name = name.trim(),
-                    weightKg = weightKg ?: DEFAULT_WEIGHT_KG,
-                    ftpWatts = ftpWatts
-                )
+                    name = newProfile.name.trim(),
+                    weightKg = newProfile.weightKg ?: DEFAULT_WEIGHT_KG,
+                    ftpWatts = newProfile.ftpWatts,
+                    birthDate = newProfile.birthDate,
+                    fitnessLevel = newProfile.fitnessLevel?.id
+                ),
+                ftpSource = newProfile.ftpSource
             )
             workoutRepository.assignToUser(workoutId, profile.localUserId)
             // Riding as a guest and then keeping the ride is a strong signal

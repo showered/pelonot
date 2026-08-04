@@ -31,24 +31,40 @@ enum class FitnessLevel(
     val id: String,
     val displayName: String,
     val description: String,
+    /**
+     * The same answer as [displayName], phrased to sit inside a sentence the
+     * app is saying back — *"…and that you're **riding now and then**."*
+     *
+     * A separate string rather than a transformation of [displayName], because
+     * the transformation was tried and it is what produced the first version's
+     * copy defect: `displayName.lowercase()` turned *"I ride now and then"*
+     * into *"i ride now and then"*, and the screen quoted it at the rider with
+     * a lower-case "I". Text a person wrote does not survive being case-folded
+     * by a machine; two strings is the cheap answer and the one that cannot
+     * regress.
+     */
+    val estimateBasis: String,
     val wattsPerKg: Double
 ) {
     NewToThis(
         id = "new_to_this",
         displayName = "I'm new to this",
         description = "You haven't ridden much, or you're coming back after a break",
+        estimateBasis = "new to this",
         wattsPerKg = 1.6
     ),
     Occasional(
         id = "occasional",
         displayName = "I ride now and then",
         description = "A few times a month, and you finish comfortably",
+        estimateBasis = "riding now and then",
         wattsPerKg = 2.1
     ),
     Regular(
         id = "regular",
         displayName = "I ride regularly",
         description = "Most weeks, and you're used to working hard",
+        estimateBasis = "riding regularly",
         wattsPerKg = 2.7
     );
 

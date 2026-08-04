@@ -80,6 +80,7 @@ import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.ui.components.BirthDatePickerDialog
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.MaxHeartRate
@@ -742,21 +743,14 @@ private fun HeartRateZonesSection(
     val preview = MaxHeartRate.resolve(typed?.takeIf { !maxError }, date)
 
     if (picking) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = date)
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    date = state.selectedDateMillis
-                    picking = false
-                }) { Text("Use this date") }
-            },
-            dismissButton = {
-                TextButton(onClick = { picking = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = state, title = { Text("Date of birth") })
-        }
+        // Shared with profile creation (20.3.3): opens forty years back rather
+        // than on today, and refuses a date in the future.
+        BirthDatePickerDialog(
+            currentSelection = date,
+            onSelected = { date = it },
+            onDismiss = { picking = false },
+            title = "Date of birth"
+        )
     }
 
     SettingsSection("Heart-rate zones") {
