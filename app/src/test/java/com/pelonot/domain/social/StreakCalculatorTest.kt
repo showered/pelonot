@@ -124,4 +124,79 @@ class StreakCalculatorTest {
             )
         )
     }
+
+    // ── Weeks, which is the unit the dashboard reports (22.5.2) ─────
+
+    private fun weekly(vararg rides: Long, now: Long) =
+        StreakCalculator.currentWeeklyStreak(rides.toList(), now = now, timeZone = zone)
+
+    @Test
+    fun `no rides is no weekly streak`() {
+        assertEquals(
+            0,
+            StreakCalculator.currentWeeklyStreak(
+                emptyList(),
+                now = at(2026, 8, 4),
+                timeZone = zone
+            )
+        )
+    }
+
+    @Test
+    fun `one ride a week for four weeks is a streak of four`() {
+        // The case the whole item exists for: on the daily counter this rider
+        // scores 1 and is shown nothing at all.
+        assertEquals(
+            4,
+            weekly(
+                at(2026, 7, 12),
+                at(2026, 7, 19),
+                at(2026, 7, 26),
+                at(2026, 8, 2),
+                now = at(2026, 8, 4)
+            )
+        )
+    }
+
+    @Test
+    fun `two rides in the same week are one week`() {
+        assertEquals(
+            1,
+            weekly(at(2026, 8, 3), at(2026, 8, 4), now = at(2026, 8, 4))
+        )
+    }
+
+    @Test
+    fun `a streak that ended last week still counts this week`() {
+        // The same grace the daily counter gives until the end of today: a
+        // rider who has not yet ridden this week has not stopped.
+        assertEquals(
+            2,
+            weekly(at(2026, 7, 21), at(2026, 7, 28), now = at(2026, 8, 4))
+        )
+    }
+
+    @Test
+    fun `a whole missed week ends it`() {
+        // Rode two weeks ago and nothing since: this week and last week are
+        // both empty, so nothing is running.
+        assertEquals(
+            0,
+            weekly(at(2026, 7, 21), now = at(2026, 8, 6))
+        )
+    }
+
+    @Test
+    fun `a gap in the middle stops the count there`() {
+        assertEquals(
+            2,
+            weekly(
+                at(2026, 7, 5),
+                // no ride in the week of 12 July
+                at(2026, 7, 26),
+                at(2026, 8, 2),
+                now = at(2026, 8, 4)
+            )
+        )
+    }
 }

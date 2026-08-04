@@ -2,11 +2,14 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -54,7 +57,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.domain.model.RideDayGrouping
 import com.pelonot.ui.theme.expressiveShapes
-import com.pelonot.ui.theme.readableColumn
+import com.pelonot.ui.theme.columnsFor
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.HistoryViewModel
@@ -150,40 +153,78 @@ fun HistoryScreen(
                     "or pick a class from the library."
             )
 
-            else -> LazyColumn(
-                modifier = Modifier
+            // 22.4.3, and the owner's rule of 4 August: use the width, and no
+            // single card gets all of it. A ride is a card in a set, so the
+            // list is a grid — two across the bike's panel, one on a phone —
+            // with the day headings still spanning it, because a heading that
+            // only covered half the rides under it would be a lie about which
+            // day they belong to.
+            else -> BoxWithConstraints(
+                Modifier
                     .fillMaxHeight()
                     .padding(padding)
-                    .readableColumn(),
-                contentPadding = PaddingValues(
-                    horizontal = MaterialTheme.spacing.large,
-                    vertical = MaterialTheme.spacing.medium
-                ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
             ) {
-                state.days.forEach { day ->
-                    item(key = "header-${day.startOfDayMs}") {
-                        DayHeader(day)
-                    }
-                    items(day.rides, key = { it.id }) { ride ->
-                        RideRow(
-                            ride = ride,
-                            onClick = { onRideSelected(ride.id) },
-                            onDelete = { confirming = ride }
-                        )
-                    }
-                }
+                val columns = columnsFor(
+                    available = maxWidth - MaterialTheme.spacing.large * 2,
+                    minCellWidth = RIDE_CARD_MIN_WIDTH,
+                    spacing = MaterialTheme.spacing.small
+                )
 
-                if (state.hasMore) {
-                    item(key = "load-more") {
-                        OutlinedButton(
-                            onClick = viewModel::loadMore,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = MaterialTheme.spacing.large),
-                            shape = MaterialTheme.expressiveShapes.pill
-                        ) {
-                            Text("Show older rides")
+                LazyColumn(
+                    contentPadding = PaddingValues(
+                        horizontal = MaterialTheme.spacing.large,
+                        vertical = MaterialTheme.spacing.medium
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    state.days.forEach { day ->
+                        item(key = "header-${day.startOfDayMs}") {
+                            DayHeader(day)
+                        }
+                        // Row-major, so the order down a phone's single column
+                        // is the order across the tablet's rows (see `WideGrid`).
+                        val rows = day.rides.chunked(columns)
+                        items(rows, key = { row -> "row-${row.first().id}" }) { row ->
+                            // Equal heights across a row: one ride carrying the
+                            // recovered-after-a-crash note is taller than its
+                            // neighbour, and two cards of different heights side
+                            // by side read as a rendering fault.
+                            Row(
+                                modifier = Modifier.height(IntrinsicSize.Min),
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    MaterialTheme.spacing.small
+                                )
+                            ) {
+                                row.forEach { ride ->
+                                    RideRow(
+                                        ride = ride,
+                                        onClick = { onRideSelected(ride.id) },
+                                        onDelete = { confirming = ride },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                    )
+                                }
+                                // The last row's cards keep every other row's
+                                // width rather than stretching to fill it.
+                                repeat(columns - row.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.hasMore) {
+                        item(key = "load-more") {
+                            OutlinedButton(
+                                onClick = viewModel::loadMore,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = MaterialTheme.spacing.large),
+                                shape = MaterialTheme.expressiveShapes.pill
+                            ) {
+                                Text("Show older rides")
+                            }
                         }
                     }
                 }
@@ -225,14 +266,15 @@ private fun DayHeader(day: RideDayGrouping.Day<WorkoutListItem>) {
 private fun RideRow(
     ride: WorkoutListItem,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val time = remember(ride.timestamp) {
         DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(ride.timestamp))
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -365,3 +407,13 @@ private fun EmptyHistory(title: String, body: String, modifier: Modifier = Modif
 }
 
 private val MIN_TOUCH_TARGET = 48.dp
+
+/**
+ * Two ride cards across the bike's panel, one on a phone.
+ *
+ * 480 rather than something narrower: the metrics line — time, duration,
+ * output, average power and distance — is what makes this list scannable
+ * without opening anything, and at three across it wraps and stops being one
+ * line to read.
+ */
+private val RIDE_CARD_MIN_WIDTH = 480.dp

@@ -25,9 +25,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,7 +73,7 @@ import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.social.HouseholdRiderWeek
 import com.pelonot.ui.components.HouseholdWeekCard
-import com.pelonot.ui.theme.readableColumn
+import androidx.compose.foundation.layout.RowScope
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -125,6 +128,14 @@ fun MainDashboardScreen(
         //
         // The cap is a maximum, not a width: below it the column still fills
         // whatever it is given, so nothing changes on a narrow screen.
+        // 22.4.3 and 22.2.2/22.2.3, settled by the owner's rule of 4 August:
+        // **use the width, and no single card gets all of it.** The cap this
+        // screen had was right about a *line* and wrong about a *screen* — it
+        // left 520 dp of tablet empty on the first surface anybody sees. What
+        // replaces the rails 22.2.2 imagined is simpler than they were: cards
+        // in pairs and threes, and the two lone cards below held to a column's
+        // width so they line up with the grid above rather than banner across
+        // it.
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,7 +144,7 @@ fun MainDashboardScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .readableColumn()
+                    .fillMaxWidth()
                     .padding(horizontal = MaterialTheme.spacing.large)
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
@@ -143,25 +154,31 @@ fun MainDashboardScreen(
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
-                // ── 2️⃣ FTP Hero Card ────────────────────────────────────
-                FtpHeroCard(
-                    ftp = ftp,
-                    trend = ftpTrend,
-                    // A guest has no profile and therefore no history of one, so
-                    // the card does not invite a tap that lands on an empty
-                    // screen. Nothing is disabled — it simply is not a door.
-                    onClick = onFtpProgress.takeIf { ftpTrend.current != null }
-                )
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-
-                // ── 3️⃣ Primary Action – Just Ride ───────────────────────
-                PrimaryActionCard(
-                    title = "Just Ride",
-                    subtitle = "Jump on the bike and ride free",
-                    icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                    onClick = onJustRide
-                )
+                // ── 2️⃣ Where the rider is, and the way onto the bike ───
+                // Side by side on the panel: the FTP is *who you are* and Just
+                // Ride is *go*, and a rider who opens this app to ride should
+                // not have to scroll past their own number to find the button.
+                WideRow {
+                    FtpHeroCard(
+                        ftp = ftp,
+                        trend = ftpTrend,
+                        // A guest has no profile and therefore no history of
+                        // one, so the card does not invite a tap that lands on
+                        // an empty screen. Nothing is disabled — it simply is
+                        // not a door.
+                        onClick = onFtpProgress.takeIf { ftpTrend.current != null },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PrimaryActionCard(
+                        title = "Just Ride",
+                        subtitle = "Jump on the bike and ride free",
+                        icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                        onClick = onJustRide,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
@@ -199,11 +216,17 @@ fun MainDashboardScreen(
                 // the Settings card because that is where it sends the rider.
                 if (backupReminder.isDue) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-                    BackupReminderCard(
-                        reminder = backupReminder,
-                        onBackup = onSettings,
-                        onDismiss = onDismissBackupReminder
-                    )
+                    WideRow {
+                        BackupReminderCard(
+                            reminder = backupReminder,
+                            onBackup = onSettings,
+                            onDismiss = onDismissBackupReminder,
+                            modifier = Modifier.weight(1f)
+                        )
+                        // A card on its own keeps a column's width rather than
+                        // stretching across the panel — the owner's rule.
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
@@ -217,7 +240,14 @@ fun MainDashboardScreen(
                 // training first, and everyone else's second.
                 if (householdWeek.size >= 2) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-                    HouseholdWeekCard(riders = householdWeek, youId = youId)
+                    WideRow {
+                        HouseholdWeekCard(
+                            riders = householdWeek,
+                            youId = youId,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
@@ -287,9 +317,14 @@ private fun GreetingHeader(userName: String) {
 // FTP Hero Card
 // =========================================================================
 @Composable
-private fun FtpHeroCard(ftp: Int, trend: FtpTrend, onClick: (() -> Unit)? = null) {
+private fun FtpHeroCard(
+    ftp: Int,
+    trend: FtpTrend,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .let { base ->
                 if (onClick == null) base
@@ -389,10 +424,11 @@ private fun PrimaryActionCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -508,10 +544,11 @@ private fun SecondaryActionCard(
 private fun BackupReminderCard(
     reminder: BackupReminder,
     onBackup: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -592,31 +629,71 @@ private fun ProgressSection(
         // riding, and 22.1.2 has been saying so since the sixth sitting. This is
         // not that item — the kJ cards below are still what they were — but it
         // is the number that item asked for, in the place it asked for it.
-        RecentRidingCard(
-            recent = riding.recent,
-            streakWeeks = riding.streakWeeks,
-            onClick = onRiding
-        )
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        ProgressMetricCard(
-            label = "Today's Output",
-            value = Formatters.kilojoulesValue(stats.todayOutputKj),
-            unit = "kJ",
-            icon = Icons.AutoMirrored.Filled.TrendingUp,
-            accentColor = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-
-        stats.lastRide?.let { lastRide ->
-            ProgressMetricCard(
-                label = "Recent Ride",
-                value = Formatters.kilojoulesValue(lastRide.totalOutputKj),
-                unit = "kJ",
-                icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                accentColor = MaterialTheme.colorScheme.tertiary
+        WideRow {
+            RecentRidingCard(
+                recent = riding.recent,
+                streakWeeks = riding.streakWeeks,
+                onClick = onRiding,
+                modifier = Modifier.weight(1f)
             )
+            ProgressMetricCard(
+                label = "Today's Output",
+                value = Formatters.kilojoulesValue(stats.todayOutputKj),
+                unit = "kJ",
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
+                accentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            stats.lastRide?.let { lastRide ->
+                ProgressMetricCard(
+                    label = "Recent Ride",
+                    value = Formatters.kilojoulesValue(lastRide.totalOutputKj),
+                    unit = "kJ",
+                    icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                    accentColor = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Cards abreast where there is room for them, stacked where there is not.
+ *
+ * The dashboard's answer to the owner's rule of 4 August — *use the width, and
+ * no one card takes all of it*. A `Row` on a phone would squeeze three cards
+ * into 130 dp each; a `Column` on the bike would be the banner this replaces.
+ *
+ * The children take `Modifier.weight(1f)` either way: in the stacked case the
+ * weights are ignored, which is exactly what is wanted and is why this is a
+ * layout rather than two copies of the call site.
+ */
+@Composable
+private fun WideRow(content: @Composable RowScope.() -> Unit) {
+    BoxWithConstraints {
+        if (maxWidth >= CARDS_ABREAST_BREAKPOINT) {
+            // `IntrinsicSize.Min` so the cards in a row are the same height as
+            // each other. Without it a short card sits at the top of its column
+            // with a hole under it, which reads as something failing to load
+            // rather than as a card that had less to say.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                content = content
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            ) {
+                // `RowScope` is what the content is written against; a column
+                // that provides it is a small lie with no consequence, since
+                // `weight` is the only member any of these callers uses.
+                Row(Modifier.fillMaxWidth()) { content() }
+            }
         }
     }
 }
@@ -641,7 +718,12 @@ private fun ProgressSection(
  * still, often, one weekend.
  */
 @Composable
-private fun RecentRidingCard(recent: RidingWindow, streakWeeks: Int, onClick: () -> Unit) {
+private fun RecentRidingCard(
+    recent: RidingWindow,
+    streakWeeks: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val detail = buildList {
         add(if (recent.rides == 1) "1 ride" else "${recent.rides} rides")
         if (recent.rides > 0) add("${recent.minutes} min")
@@ -652,7 +734,7 @@ private fun RecentRidingCard(recent: RidingWindow, streakWeeks: Int, onClick: ()
     }.joinToString(" · ")
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .semantics {
@@ -718,10 +800,11 @@ private fun ProgressMetricCard(
     value: String,
     unit: String,
     icon: ImageVector,
-    accentColor: androidx.compose.ui.graphics.Color
+    accentColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -897,3 +980,12 @@ private fun FtpSparkline(trend: FtpTrend, color: Color, modifier: Modifier = Mod
 // input — it read "FTP Stable" whether the rider had ridden once or a hundred
 // times, and whether their FTP had just jumped or not. FTP changes are now
 // surfaced where they are actually detected, in the post-ride summary.
+
+/**
+ * Below this a row of three cards is three slivers, so they stack instead.
+ *
+ * 900 dp is the same figure the ride detail charts and *Your riding* use — one
+ * number for "this screen has room for more than one thing", not a different
+ * guess per surface.
+ */
+private val CARDS_ABREAST_BREAKPOINT = 900.dp

@@ -3,6 +3,7 @@ package com.pelonot.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingWeek
 import com.pelonot.ui.theme.expressiveShapes
-import com.pelonot.ui.theme.readableColumn
+import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -96,11 +97,13 @@ fun RidingScreen(
             )
         }
     ) { padding ->
+        // 22.4.3, and the owner's rule of 4 August: this screen is two charts
+        // and a sentence, and a chart is not a paragraph. Uncapped, with the
+        // prose keeping the measure for itself.
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .padding(padding)
-                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large)
         ) {
@@ -112,7 +115,8 @@ fun RidingScreen(
                     text = "No rides yet. Once you have ridden, this is where " +
                         "your weeks and your ride days appear.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.readableText()
                 )
                 return@Column
             }
@@ -121,11 +125,30 @@ fun RidingScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
-            WeeklyVolumeCard(history)
-
-            Spacer(Modifier.size(MaterialTheme.spacing.large))
-
-            RideDaysCard(history)
+            // Volume and consistency beside each other where there is room:
+            // they are the two halves of one question (16.3.2 / 16.3.5), and a
+            // rider comparing them should not have to scroll between them.
+            BoxWithConstraints {
+                if (maxWidth >= TWO_CARD_BREAKPOINT) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.large
+                        )
+                    ) {
+                        WeeklyVolumeCard(history, Modifier.weight(1f))
+                        RideDaysCard(history, Modifier.weight(1f))
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.large
+                        )
+                    ) {
+                        WeeklyVolumeCard(history, Modifier.fillMaxWidth())
+                        RideDaysCard(history, Modifier.fillMaxWidth())
+                    }
+                }
+            }
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -203,11 +226,12 @@ private fun ThisWeek(history: RidingHistory) {
  * comparison is still there to be read and nothing has been asserted.
  */
 @Composable
-private fun WeeklyVolumeCard(history: RidingHistory) {
+private fun WeeklyVolumeCard(history: RidingHistory, modifier: Modifier = Modifier) {
     val minutesPeak = maxOf(history.busiestFinishedMinutes, 1)
     val outputPeak = maxOf(history.busiestFinishedOutputKj, 1.0)
 
     TrendCard(
+        modifier = modifier,
         title = "Every week",
         summary = "${history.totalRides} rides across " +
             "${history.weeks.size} weeks, in ${history.weeksRiddenIn} of which " +
@@ -313,7 +337,7 @@ private fun BarRow(
  * easy week has not had a fainter day, they have had a shorter one.
  */
 @Composable
-private fun RideDaysCard(history: RidingHistory) {
+private fun RideDaysCard(history: RidingHistory, modifier: Modifier = Modifier) {
     val peak = maxOf(history.busiestDayMinutes, 1)
     val ridden = history.weeks.flatMap { it.days }.count { it?.ridden == true }
     val accent = MaterialTheme.colorScheme.primary
@@ -324,6 +348,7 @@ private fun RideDaysCard(history: RidingHistory) {
     val empty = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
 
     TrendCard(
+        modifier = modifier,
         title = "Ride days",
         summary = "$ridden days ridden in the last ${history.weeks.size} weeks" +
             if (history.streakDays >= 2) ", ${history.streakDays} of them in a row." else "."
@@ -383,10 +408,11 @@ private fun RideDaysCard(history: RidingHistory) {
 private fun TrendCard(
     title: String,
     summary: String,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -433,3 +459,6 @@ private fun monthLabel(epochMs: Long): String =
 private const val MIN_DAY_ALPHA = 0.35f
 
 private val BAR_HEIGHT = 90.dp
+
+/** Below this the two trend cards' charts get too narrow to read; they stack. */
+private val TWO_CARD_BREAKPOINT = 900.dp

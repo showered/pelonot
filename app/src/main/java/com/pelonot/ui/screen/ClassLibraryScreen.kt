@@ -3,6 +3,7 @@ package com.pelonot.ui.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -44,7 +45,7 @@ import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.ui.theme.expressiveShapes
-import com.pelonot.ui.theme.readableColumn
+import com.pelonot.ui.theme.columnsFor
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -85,11 +86,14 @@ fun ClassLibraryScreen(
             )
         }
     ) { padding ->
+        // 22.4.3, and the owner's rule of 4 August. 72 classes in one 760 dp
+        // column is a lot of scrolling past a lot of empty tablet; three across
+        // shows most of a category at once, which is what choosing a class
+        // actually needs.
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .padding(padding)
-                .readableColumn()
         ) {
             if (categories.size > 1) {
                 FlowRow(
@@ -119,16 +123,40 @@ fun ClassLibraryScreen(
             if (visibleClasses.isEmpty()) {
                 EmptyLibraryMessage(hasFilter = selectedCategory != null)
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = MaterialTheme.spacing.large,
-                        vertical = MaterialTheme.spacing.small
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    items(visibleClasses, key = { it.id }) { plan ->
-                        ClassCard(plan = plan, onClick = { onClassSelected(plan) })
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val columns = columnsFor(
+                        available = maxWidth - MaterialTheme.spacing.large * 2,
+                        minCellWidth = CLASS_CARD_MIN_WIDTH,
+                        spacing = MaterialTheme.spacing.small
+                    )
+                    val rows = visibleClasses.chunked(columns)
+
+                    LazyColumn(
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = MaterialTheme.spacing.large,
+                            vertical = MaterialTheme.spacing.small
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        // Row-major: the order across a row is the order down a
+                        // phone's single column, so the library reads the same
+                        // way at every width (see `WideGrid`).
+                        items(rows, key = { row -> row.first().id }) { row ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    MaterialTheme.spacing.small
+                                )
+                            ) {
+                                row.forEach { plan ->
+                                    ClassCard(
+                                        plan = plan,
+                                        onClick = { onClassSelected(plan) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
                     }
                 }
             }
@@ -160,9 +188,9 @@ private fun EmptyLibraryMessage(hasFilter: Boolean) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ClassCard(plan: ClassPlan, onClick: () -> Unit) {
+private fun ClassCard(plan: ClassPlan, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .semantics {
                 contentDescription =
@@ -221,3 +249,11 @@ private fun ClassCard(plan: ClassPlan, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * Three class cards across the bike's panel, one on a phone.
+ *
+ * A card here is a title, a category and a duration pill — it reads fine at a
+ * third of the width, and 72 classes in one column is mostly scrolling.
+ */
+private val CLASS_CARD_MIN_WIDTH = 340.dp

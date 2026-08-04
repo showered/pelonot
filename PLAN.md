@@ -75,6 +75,10 @@ every screen rather than a job on one).
 
 It's 1-10 which is good but honestly it causes me anxiety, wondering if i'm selecting the right option. Please change it to three options. Use better labels than i'm suggesting but basically it should be a) that was easy b) that was a good workout c) i'm exhausted. Under the hood these can still map to 1-10 if that makes data migration easier. Whatever you think.
 
+### "Card" max width
+
+Ride summary screen the "time in zone" card is stretching full width. This violates a design rule. If the rule doesn't exist, please make the rule. No single card should stretch the full width of the screen. We can use the full width using grid layout but we shouldn't stretch one item that far, it doesn't look good. I believe we already have a design token for the general max width of a column -- let's use it and enforce it.
+
 ---
 
 ## Where the rest of this plan lives

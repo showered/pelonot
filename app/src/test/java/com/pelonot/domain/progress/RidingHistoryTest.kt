@@ -199,4 +199,83 @@ class RidingHistoryTest {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+
+    // ── The rolling window the dashboard reports (22.5.1) ───────────
+
+    @Test
+    fun `the window is inclusive of today`() {
+        val window = RidingHistoryBuilder.window(
+            rides = listOf(ride(at(2026, 8, 4, hour = 7))),
+            days = 30,
+            now = at(2026, 8, 4, hour = 22),
+            timeZone = london
+        )
+
+        assertEquals(1, window.rides)
+    }
+
+    @Test
+    fun `thirty days means today and the twenty-nine before it`() {
+        val rides = listOf(
+            ride(at(2026, 7, 6)),   // 30 days back — the first day inside
+            ride(at(2026, 7, 5)),   // 31 days back — outside
+            ride(at(2026, 8, 4))    // today
+        )
+
+        val window = RidingHistoryBuilder.window(
+            rides = rides,
+            days = 30,
+            now = at(2026, 8, 4),
+            timeZone = london
+        )
+
+        assertEquals(2, window.rides)
+    }
+
+    @Test
+    fun `it totals minutes and output over the window`() {
+        val window = RidingHistoryBuilder.window(
+            rides = listOf(
+                ride(at(2026, 8, 1), minutes = 20, kj = 100.0),
+                ride(at(2026, 8, 3), minutes = 40, kj = 250.0),
+                // Outside the window; must not be counted.
+                ride(at(2026, 6, 1), minutes = 90, kj = 900.0)
+            ),
+            days = 30,
+            now = at(2026, 8, 4),
+            timeZone = london
+        )
+
+        assertEquals(2, window.rides)
+        assertEquals(60, window.minutes)
+        assertEquals(350.0, window.outputKj, 0.001)
+        assertTrue(window.hasAnything)
+    }
+
+    @Test
+    fun `a rider with nothing recent has an empty window rather than no window`() {
+        val window = RidingHistoryBuilder.window(
+            rides = listOf(ride(at(2026, 1, 1))),
+            days = 30,
+            now = at(2026, 8, 4),
+            timeZone = london
+        )
+
+        assertEquals(0, window.rides)
+        assertFalse(window.hasAnything)
+        assertNull(window.lastRideDayMs)
+    }
+
+    @Test
+    fun `build carries the window on the history`() {
+        val history = RidingHistoryBuilder.build(
+            rides = listOf(ride(at(2026, 8, 3)), ride(at(2026, 5, 1))),
+            now = at(2026, 8, 4),
+            timeZone = london,
+            weeks = 17
+        )
+
+        assertEquals(RECENT_WINDOW_DAYS, history.recent.days)
+        assertEquals(1, history.recent.rides)
+    }
 }

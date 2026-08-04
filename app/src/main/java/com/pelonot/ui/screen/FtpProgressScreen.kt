@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,7 +60,6 @@ import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.ui.components.ChartFrame
 import com.pelonot.ui.viewmodel.PersonalBestsViewModel
 import com.pelonot.ui.theme.expressiveShapes
-import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
 import java.text.DateFormat
 import java.util.Date
@@ -117,11 +117,12 @@ fun FtpProgressScreen(
             )
         }
     ) { padding ->
+        // 22.4.3, and the owner's rule of 4 August: a trend chart, a table of
+        // bests and a list of changes are all looked at rather than read.
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .padding(padding)
-                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large)
         ) {
@@ -141,11 +142,30 @@ fun FtpProgressScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
-            FtpTrendChart(trend)
-
-            Spacer(Modifier.size(MaterialTheme.spacing.large))
-
-            PersonalBestsCard(bests, onOpenRide)
+            // The chart and the bests beside each other where there is room:
+            // both are about how strong this rider is, and the list of changes
+            // below is the evidence for the first of them.
+            BoxWithConstraints {
+                if (maxWidth >= TWO_CARD_BREAKPOINT) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.large
+                        )
+                    ) {
+                        FtpTrendChart(trend, Modifier.weight(1f))
+                        PersonalBestsCard(bests, onOpenRide, Modifier.weight(1f))
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.large
+                        )
+                    ) {
+                        FtpTrendChart(trend, Modifier.fillMaxWidth())
+                        PersonalBestsCard(bests, onOpenRide, Modifier.fillMaxWidth())
+                    }
+                }
+            }
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
@@ -199,7 +219,7 @@ private fun CurrentValue(current: Int, trend: FtpTrend) {
  * seconds of a ride — the clock row would be a lie about what the axis is.
  */
 @Composable
-private fun FtpTrendChart(trend: FtpTrend) {
+private fun FtpTrendChart(trend: FtpTrend, modifier: Modifier = Modifier) {
     val range = trend.range ?: return
     val points = trend.points
     val accent = MaterialTheme.colorScheme.primary
@@ -213,7 +233,7 @@ private fun FtpTrendChart(trend: FtpTrend) {
     val span = trend.spanToNow(now)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -530,9 +550,13 @@ private val MARK_RADIUS = 5.dp
  * than left to conclude they have never ridden.
  */
 @Composable
-private fun PersonalBestsCard(bests: PersonalBests, onOpenRide: (String) -> Unit) {
+private fun PersonalBestsCard(
+    bests: PersonalBests,
+    onOpenRide: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -654,3 +678,6 @@ private fun BestRow(effort: PersonalBest, peakWatts: Double, onOpenRide: (String
         )
     }
 }
+
+/** Below this the trend chart and the bests table are both too narrow; they stack. */
+private val TWO_CARD_BREAKPOINT = 900.dp
