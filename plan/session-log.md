@@ -8,6 +8,95 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-fourth sitting): nine notes, and the first ride nobody has to survive
+
+**The owner left nine notes between sittings and the sitting was mostly about
+them.** 576 JVM tests, 0 failures. Eight were in the inbox at the start and a
+ninth arrived while the work ran; all nine are written up and the section is
+empty, which is the rule.
+
+**Two of the nine were answers to questions this plan had asked *them*, and both
+are worth keeping as decisions rather than ticks.** 22.6.3 wanted a build-time
+fence around "no single card takes the panel", and the answer was no —
+*"don't enforce it deterministically, just bear it in mind"* — which is right,
+and the reasoning generalises: this project's three fences all guard things that
+are **invisible when broken**, and a card banded across 1232 dp is visible from
+the other side of the room. 26.3.3 asked whether *Everything I had* is the wrong
+label for somebody who quit early, and the answer answered the objection rather
+than waving it off: a rider who stops early does not rate the ride at all.
+
+**The first ride anybody takes was the worst ride the app gives, and it is the
+one nobody had watched.** The countdown lands on zero, `startRide` runs, and
+*then* Android's overlay permission is asked for — so the ten seconds a rider
+spends clipping in buy them a modal, a trip to the system settings app, and a
+class whose clock has been running the whole time. It is 11.6.13's own argument
+one layer up. The prompt is inside the countdown now and **the count stops while
+the question is outstanding** — through the dialog *and* through the trip out of
+the app. Measured: the prompt over *Get set* with the count at 10, ninety
+seconds away granting it, and the count still at 10 on the way back (11.6.14).
+
+**The defect inside that fix is the one to carry forward.**
+`requestOverlayPermission` called `dismissOverlayPrompt`, which is to say it
+marked the question **answered at the moment the rider left to answer it**. The
+countdown would have restarted the instant they were sent away — the exact thing
+the owner asked to fix, reintroduced by the obvious implementation. The dialog
+closing and the question being answered are different events, and the state has
+to say so.
+
+**The line across the film is gone.** The owner reported the same hairline twice
+— once grey, once orange — and that is the answer rather than two bug reports: a
+rule drawn edge to edge across somebody's film **is** a rule, whatever colour it
+is. One alpha, `0.45` → `0`. It still thickens and pulses before an interval
+change, which is the only part that was earning its place (11.1b.10).
+
+**The summary is the record now.** *"This should be pretty much the same as when
+you view it from history, right?"* — nearly, and the difference was not
+principled: charts were private to `RideDetailScreen` because 16.1 landed there
+first, so a rider who had just stopped pedalling got six figures and half a
+screen of black. Both screens share the section now, and **the extraction that
+mattered was the second one**: `buildRideCharts` came out with it, because the
+rule deciding which FTP draws the zone bands (7.8) was inside a ViewModel, and a
+second copy of that is a second answer to the one question this app has already
+got wrong once (12.6.1).
+
+**And a ride ended by accident can be carried on.** 8.3d built all of this for a
+crash, and none of it had met a ride that was *finished*: the reopen now clears
+`is_complete` — left set, a ride still being ridden sits in history and in the
+leaderboards — and `synced_at`, or the cloud keeps the short version of a ride
+that got longer. Checked in the database rather than on the screen, because a
+resumed series comes back contiguous and cannot show any of it: 153 samples, one
+per second, `resume_count = 1` surviving the second finalise (12.6.2).
+
+**The last two are the same discovery arriving twice, and it is 22.5's.** The
+owner's *"panels need to be centrally aligned — look in particular at the
+bottom"* is not really about the bottom of a list: at one ride a week, **most
+days hold exactly one ride**, so the half-empty row that looks like an edge case
+against dense fixture data is the ordinary reading of the screen. A day that
+does not fill the row centres what it has (22.7.1). Then the household panel,
+which counted a *week* — and there the same assumption did something worse than
+look wrong: a rider with no rides in the window has no row at all, so a housemate
+riding once a week was **absent from the household** rather than shown with a
+zero (22.5.4).
+
+**The ninth note arrived mid-sitting and was built too.** *"Any chart that shows
+heart rate over time should include visual indicator for heart rate zones"* — and
+the scope is right, because the power trace has carried its bands since 16.1.1,
+so an unbanded heart-rate trace beside a banded one is the app being inconsistent
+about its own idea. What made it more than an afternoon's drawing is that the
+bands need a denominator, and **nothing recorded the maximum heart rate a ride
+was ridden at**: `workouts.max_hr_bpm` is migration 12 → 13, and a ride from
+before it draws its bands from the rider's maximum today *and says so*. That is
+7.8 exactly, one column along, and it was already written down as 21.2.3 waiting
+for the first thing that would trip it (21.4.2, 21.4.2a).
+
+**The thing worth taking from this sitting**: every one of the four defects above
+was invisible to `assembleDebug`, to the JVM tests, and to a screenshot of the
+screen at rest. Two needed a stopwatch and a trip out of the app, one needed
+`sqlite3`, and two needed a database with a *realistic* rider in it rather than a
+busy one. 22.5.5 said that last one in advance and it has now been true twice.
+
+---
+
 ### 4 August 2026 (twenty-third sitting): the panel, used
 
 **A design sitting, and the owner was in it — five inbox notes arrived while it
