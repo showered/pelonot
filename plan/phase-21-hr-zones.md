@@ -296,6 +296,14 @@ asks less about the person, which is a rare combination and worth taking.
       *One thing deliberately not done: only the zones the ride actually reached
       are drawn, so a rider who never left H2 gets one band rather than five
       slivers of which four are off the top of the chart.*
+
+      ***The migration was exercised against a real database rather than only a
+      test.** The AVD's own store went from `user_version = 12` to 13 on launch
+      with 11 rides and 2,353 metric rows intact and every old ride's
+      `max_hr_bpm` null. The `MigrationTestHelper` test for 12 → 13 is written
+      and **has not been run**: `connectedDebugAndroidTest` uninstalls the app,
+      which would take that database with it, and CLAUDE.md's rule is to run the
+      instrumented suite before driving the UI rather than after.*
 - [ ] **21.4.2b** **The cloud copy of a ride has neither denominator.**
       `WorkoutDto` carries no `ftp_watts` and now no `max_hr_bpm`, so the web
       app (17) draws every ride's zones from whatever the *reader's* profile
