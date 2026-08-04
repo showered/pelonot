@@ -14,7 +14,7 @@ import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RidingHistory
-import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -69,11 +69,11 @@ data class AppUiState(
     val classes: List<ClassPlan> = emptyList(),
     val dashboardStats: DashboardStats = DashboardStats(),
     /**
-     * Who else on this bike has ridden this week (PLAN 24.2). Empty for a
+     * Who else on this bike has ridden in the last 30 days (24.2, 22.5.4). Empty for a
      * household of one, for a household that has opted out, and for a week
      * nobody rode — all of which draw nothing.
      */
-    val householdWeek: List<HouseholdRiderWeek> = emptyList(),
+    val householdRecent: List<HouseholdRider> = emptyList(),
     /**
      * The selected rider's FTP over time (PLAN 7.10.2 / 22.1.4). Empty for a
      * guest, and a single point for a rider whose FTP has never moved — both of
@@ -220,7 +220,7 @@ class AppViewModel(
 
     private val dashboard = combine(
         dashboardStats,
-        workoutRepository.observeHouseholdWeek(),
+        workoutRepository.observeHousehold(),
         ftpTrend,
         backupReminder,
         ridingHistory
@@ -237,7 +237,7 @@ class AppViewModel(
      */
     private data class DashboardState(
         val stats: DashboardStats,
-        val household: List<HouseholdRiderWeek>,
+        val household: List<HouseholdRider>,
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory
@@ -255,7 +255,7 @@ class AppViewModel(
             profiles = profiles,
             classes = classes,
             dashboardStats = dashboard.stats,
-            householdWeek = dashboard.household,
+            householdRecent = dashboard.household,
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,

@@ -16,11 +16,12 @@ import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.progress.MeanMaximalPower
 import com.pelonot.domain.progress.PersonalBest
 import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.domain.progress.PowerSample
+import com.pelonot.domain.progress.RECENT_WINDOW_DAYS
 import com.pelonot.domain.progress.RideRecord
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
@@ -522,19 +523,35 @@ class WorkoutRepository(
         }
     }
 
-    fun observeHouseholdWeek(): Flow<List<HouseholdRiderWeek>> =
-        workoutDao.observeAnyCompletedCount().map { householdWeek() }
+    fun observeHousehold(): Flow<List<HouseholdRider>> =
+        workoutDao.observeAnyCompletedCount().map { householdRecent() }
 
-    suspend fun householdWeek(now: Long = System.currentTimeMillis()): List<HouseholdRiderWeek> {
-        val weekAgo = now - WEEK_MS
-        return workoutDao.householdWeek(weekAgo).map { row ->
-            HouseholdRiderWeek(
+    /**
+     * Who on this bike has ridden **in the last 30 days** (24.2, 22.5.4).
+     *
+     * It counted a *week* until 22.5.4, and that was the same defect the
+     * dashboard's own card had: on the owner's stated cadence — at most one
+     * ride a week each — a household of three shows an empty board most days,
+     * and the panel whose job is *other people are riding too* spends six days
+     * in seven saying nobody is. The window is the same rolling 30 days
+     * `RidingWindow` uses, for the same reason: it never resets, so it never
+     * hands anybody a zero the morning after they rode.
+     *
+     * The streak comes with it. A run of *days* is meaningless at this cadence
+     * (22.5.2) — a rider who has never missed a Sunday scores 1 — so this is a
+     * run of **weeks**, which is the thing a once-a-week rider is actually
+     * keeping up.
+     */
+    suspend fun householdRecent(now: Long = System.currentTimeMillis()): List<HouseholdRider> {
+        val since = now - HOUSEHOLD_WINDOW_MS
+        return workoutDao.householdRecent(since).map { row ->
+            HouseholdRider(
                 localUserId = row.localUserId,
                 name = row.name,
                 rides = row.rides,
                 outputKj = row.outputKj,
                 lastRideAt = row.lastRideAt,
-                streakDays = StreakCalculator.currentStreak(
+                streakWeeks = StreakCalculator.currentWeeklyStreak(
                     rideTimestamps = workoutDao.rideTimestampsSince(
                         userId = row.localUserId,
                         sinceMs = now - STREAK_WINDOW_MS
@@ -558,6 +575,17 @@ class WorkoutRepository(
 
         private const val DURATION_TOLERANCE = 0.10
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+
+        /**
+         * How far back the household panel looks (22.5.4).
+         *
+         * `RECENT_WINDOW_DAYS`, so the panel and the rider's own *Last 30 days*
+         * card answer over the same window — two figures on one screen that
+         * disagree about what "recently" means is worse than either window
+         * alone.
+         */
+        private const val HOUSEHOLD_WINDOW_MS =
+            RECENT_WINDOW_DAYS * 24L * 60 * 60 * 1000
 
         /**
          * How far back a streak is allowed to reach. Long enough that no real

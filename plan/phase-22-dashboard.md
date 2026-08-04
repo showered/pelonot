@@ -309,12 +309,45 @@ is a decision handed over rather than a shrug:**
 
       *Done: "8 rides in the last 30 days · 124 minutes, 835 kJ". The 17-week
       calendar was already wide enough and is untouched.*
-- [ ] **22.5.4** **Check every other surface that assumes a busy week** before
+- [x] **22.5.4** **Check every other surface that assumes a busy week** before
       calling this done — it is the assumption, not the card, that is being
       fixed. The household panel (24.2) counts the household's *week*, and at
       one ride each per week a household of three shows an empty board most
       days. The backup reminder counts rides rather than days and is fine
       (23.3.1). The audit is the deliverable
+
+      *Done, and the audit found three surfaces rather than one.*
+
+      ***The household panel** is the one this item predicted and it was worse
+      than predicted, because the panel's row does not exist for a rider with no
+      rides in the window (24.2.4, made structural by an inner join) — so a
+      housemate riding once a week was not shown with a zero, they were **absent
+      from the household**. Now the same rolling 30 days the rider's own card
+      uses, off the same `RECENT_WINDOW_DAYS`, because two figures on one screen
+      disagreeing about what "recently" means is worse than either window alone.
+      **Observed on the tablet AVD**: with the two oldest rides reassigned to a
+      second profile by hand, the panel reads* Simon (you) 9 rides · 612 kJ *and*
+      Cl 2 rides · 310 kJ *— and under the old week both of Cl's rides were
+      outside it, so Cl was not on the board at all.*
+
+      ***Its streak went with it**, for 22.5.2's reason applied to somebody
+      else's riding: it counted days, so it could only ever have said "2-day
+      streak" about a housemate who rode two days running, and never anything at
+      all about the one who has ridden every week since March. It says "6 weeks
+      in a row" now.*
+
+      ***And the names were lying.*** `HouseholdRiderWeek`, `householdWeek`,
+      `HouseholdWeekCard`, `HouseholdWeekRow` — four types and functions naming
+      a window that is no longer a week. Renamed to `HouseholdRider`,
+      `householdRecent`, `HouseholdPanelCard`, `HouseholdRiderRow`: the window
+      is a parameter and the name should not claim one. This project has already
+      spent a session on a name that outlived its meaning (25.4.2).*
+
+      *Two surfaces checked and **left alone**, which is the other half of an
+      audit: the weekly bars and the day-square calendar on* Your riding *are
+      right at this cadence — a calendar with one square lit a week is a good
+      picture of a once-a-week rider (22.5.3) — and the backup reminder counts
+      rides, not days.*
 - [ ] **22.5.5** **The empty state is the case to design for, not the exception.**
       At this cadence the card spends most of its life with a small number on
       it, so "4 rides · 96 min · last Sunday" is the *normal* reading and

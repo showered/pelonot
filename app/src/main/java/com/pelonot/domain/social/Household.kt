@@ -4,7 +4,13 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * One rider's week, for the dashboard's household panel (PLAN 24.2).
+ * One rider's recent riding, for the dashboard's household panel (24.2).
+ *
+ * **The window is the last 30 days and it used to be a week** (22.5.4). At the
+ * cadence the owner stated — at most one ride each per week — a household of
+ * three showed an empty board six days out of seven, so the panel whose entire
+ * job is *other people are riding too* spent most of its life saying nobody
+ * was.
  *
  * Note what is *not* here: anybody who has not ridden. That is 24.2.4 made
  * structural rather than remembered — "Sam hasn't ridden this week" is a
@@ -12,14 +18,20 @@ import java.util.TimeZone
  * no row that could carry it. A rider with no rides in the window is absent
  * from the list, not present with a zero.
  */
-data class HouseholdRiderWeek(
+data class HouseholdRider(
     val localUserId: Int,
     val name: String,
     val rides: Int,
     val outputKj: Double,
     val lastRideAt: Long,
-    /** Consecutive days ending today or yesterday, or 0. See [StreakCalculator]. */
-    val streakDays: Int
+    /**
+     * Consecutive **weeks** with a ride in them, or 0 (22.5.2, 22.5.4).
+     *
+     * Weeks rather than days for the reason the whole window changed: at one
+     * ride a week a perfect year of Sundays is a day-streak of 1, which is not
+     * worth showing and is not what the rider did.
+     */
+    val streakWeeks: Int
 )
 
 /**

@@ -9,8 +9,8 @@ import androidx.room.Upsert
 import com.pelonot.data.local.entity.WorkoutEntity
 import kotlinx.coroutines.flow.Flow
 
-/** One rider's week on the dashboard's household panel — see [WorkoutDao.householdWeek]. */
-data class HouseholdWeekRow(
+/** One rider's week on the dashboard's household panel — see [WorkoutDao.householdRecent]. */
+data class HouseholdRiderRow(
     val localUserId: Int,
     val name: String,
     val rides: Int,
@@ -498,7 +498,7 @@ interface WorkoutDao {
         ORDER BY rides DESC, outputKj DESC
         """
     )
-    suspend fun householdWeek(sinceMs: Long): List<HouseholdWeekRow>
+    suspend fun householdRecent(sinceMs: Long): List<HouseholdRiderRow>
 
     /**
      * A change signal for the household panel, not a number anyone displays.

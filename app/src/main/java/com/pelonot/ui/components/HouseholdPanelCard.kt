@@ -15,12 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.pelonot.domain.social.HouseholdRiderWeek
+import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 
 /**
- * Who on this bike has ridden this week (PLAN 24.2).
+ * Who on this bike has ridden in the last 30 days (24.2, 22.5.4).
  *
  * Rule 3 of the connectivity model: everyone with a profile on this tablet is a
  * household, and this is a Room query. No account, no network, nothing to
@@ -29,18 +29,18 @@ import com.pelonot.ui.theme.spacing
  * **Two things it deliberately does not do.**
  *
  * It never names somebody who has not ridden — 24.2.4, and the reason there is
- * no "0 rides" row to render is that `WorkoutDao.householdWeek` inner-joins, so
- * the row does not exist. "Sam hasn't ridden this week" is a feature that
+ * no "0 rides" row to render is that `WorkoutDao.householdRecent` inner-joins, so
+ * the row does not exist. "Sam has not ridden" is a feature that
  * starts arguments, and the way not to ship it is to have nothing to ship it
  * with.
  *
  * And it does not rank. The per-class board (24.1) is a comparison because the
- * class is the same; a week is not the same thing for two people, and turning
+ * class is the same; a month of somebody else’s riding is not, and turning
  * it into a table with places in it would invent a competition nobody entered.
  */
 @Composable
-fun HouseholdWeekCard(
-    riders: List<HouseholdRiderWeek>,
+fun HouseholdPanelCard(
+    riders: List<HouseholdRider>,
     youId: Int?,
     modifier: Modifier = Modifier
 ) {
@@ -57,7 +57,7 @@ fun HouseholdWeekCard(
     ) {
         Column(Modifier.padding(MaterialTheme.spacing.large)) {
             Text(
-                text = "On this bike this week",
+                text = "On this bike, last 30 days",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -78,11 +78,15 @@ fun HouseholdWeekCard(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // A streak of one is "they rode today", which the ride count
-                    // beside it already says. It becomes worth a word at two.
-                    if (rider.streakDays >= 2) {
+                    // A streak of one is "they rode this week", which the ride
+                    // count beside it already says. It becomes worth a word at
+                    // two — and it counts weeks now (22.5.4), because at one
+                    // ride a week a run of days is never more than 1 and the
+                    // most consistent rider in the house was the one this
+                    // never said anything about.
+                    if (rider.streakWeeks >= 2) {
                         Text(
-                            text = "${rider.streakDays}-day streak",
+                            text = "${rider.streakWeeks} weeks in a row",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )

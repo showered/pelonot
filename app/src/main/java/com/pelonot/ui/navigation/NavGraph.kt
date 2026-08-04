@@ -201,7 +201,7 @@ fun PelonotNavGraph(
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 ftpTrend = uiState.ftpTrend,
                 stats = uiState.dashboardStats,
-                householdWeek = uiState.householdWeek,
+                householdRecent = uiState.householdRecent,
                 youId = uiState.selectedProfile?.localUserId,
                 backupReminder = uiState.backupReminder,
                 onDismissBackupReminder = onDismissBackupReminder,

@@ -71,8 +71,8 @@ import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.data.repository.DashboardStats
-import com.pelonot.domain.social.HouseholdRiderWeek
-import com.pelonot.ui.components.HouseholdWeekCard
+import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.ui.components.HouseholdPanelCard
 import androidx.compose.foundation.layout.RowScope
 import com.pelonot.ui.theme.spacing
 
@@ -95,8 +95,8 @@ fun MainDashboardScreen(
     ftp: Int,
     ftpTrend: FtpTrend,
     stats: DashboardStats,
-    /** Who else on this bike has ridden this week (24.2.1). */
-    householdWeek: List<HouseholdRiderWeek> = emptyList(),
+    /** Who else on this bike has ridden in the last 30 days (24.2.1, 22.5.4). */
+    householdRecent: List<HouseholdRider> = emptyList(),
     youId: Int? = null,
     /** How much riding a backup would protect (23.3.1). Draws nothing until it is due. */
     backupReminder: BackupReminder = BackupReminder.None,
@@ -238,11 +238,11 @@ fun MainDashboardScreen(
                 // Below the rider's own numbers and never above them: 18.2's
                 // rule, applied here (24.2.1). This screen is about their
                 // training first, and everyone else's second.
-                if (householdWeek.size >= 2) {
+                if (householdRecent.size >= 2) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
                     WideRow {
-                        HouseholdWeekCard(
-                            riders = householdWeek,
+                        HouseholdPanelCard(
+                            riders = householdRecent,
                             youId = youId,
                             modifier = Modifier.weight(1f)
                         )
