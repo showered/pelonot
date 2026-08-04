@@ -435,62 +435,66 @@ account, and gets to a usable FTP without a text box. Building 15.8 on top of
 the current dialog and then rebuilding it for 20.3 is two designs for one
 screen, and this project has an item about that (18.9).
 
-- [ ] **15.8.1** **The QR at profile creation, offered and never required.**
-      After the profile exists locally — never before, because the local profile
-      is the source of truth (15.2.1) and a rider who walks away mid-flow must
-      still have a rideable bike — the screen offers *"Back this up? Scan this
-      with your phone."* with the same QR the account screen already draws
-      (15.6). **Skip is a first-class answer, sized and placed like one**, not a
-      grey link under a primary button: offline is the mode, not a failure to
-      complete sign-up
-- [ ] **15.8.2** **Sign *up* through the QR, not just sign in** — this is
-      15.6.7, and the owner's note is what makes it worth building rather than
-      the easier half being enough. A rider creating their first profile has no
-      account by definition, so a pairing page that only offers *Sign in* sends
-      them to the bike's own keyboard for the one flow where they least want it:
-      email, password, password again. The phone already has the password
-      manager. **`link.html` must therefore reach the confirm step from a
-      brand-new account in one sitting**, which is 17.16.6's restructure and is
-      the reason that item is a prerequisite rather than a tidy-up
-- [ ] **15.8.3** **Linking is automatic and the rider is never asked which
-      profile.** The bike knows: it started the pairing from a specific profile,
-      so the profile id travels with the pairing in the app's own memory — never
-      in `device_link`, which 15.6.10 keeps free of anything identifying a
-      rider until a claim happens. When the session arrives it attaches to
-      *that* profile. The failure this prevents is the one 15.2.7 is written
-      about: a session that lands with nothing attached is a tablet that looks
-      signed in and will never send anything
-- [ ] **15.8.4** **The prompt for a profile that has ridden offline, and the
-      dismissal that sticks.** The owner asked for it on selecting a
-      previously-created offline profile, dismissable with *don't remind me
-      again*. Three constraints, all of which this project has already learned
-      somewhere else:
-      - **It is a card on the dashboard, not a modal over the profile
-        selector.** A modal between a rider and the bike is 11.6.14's defect —
-        the first ride nobody had watched — arriving one screen earlier
-      - **"Don't remind me again" is written down, not remembered.** A
-        preference per profile, because the answer is one rider's and a
-        household bike has several. Same shape as `ftp_proposal_declined`
-        (7.10.5): a declined thing that stays declined is a different feature
-        from a thing nobody asked twice by luck
-      - **It never appears for a profile that already has an account**, and it
-        never appears during a ride
+**And that is exactly how it landed.** 20.3 built the screen with `Step
+.Account` and an `accountOffer` slot already in it, null on a build with no
+cloud; this sitting filled that slot in rather than adding a second flow
+beside it.
+
+- [x] **15.8.1** **The QR at profile creation, offered and never required.**
+      **Done and observed on the tablet AVD.** `ProfileCreationScreen` writes
+      the profile the moment the rider leaves the result step — `finish()`
+      runs before `Step.Account` is ever composed, not inside it — so a rider
+      who force-stops mid-offer still has a real, rideable profile; checked in
+      `sqlite3` while still sitting on the offer screen, not taken on trust.
+      `ProfileAccountOfferStep` draws the cost line, the QR (`ScanToSignIn`,
+      reused rather than copied from the Settings account screen) and the
+      typed form beneath it, with **"Not now" the same width and weight as the
+      controls above it** rather than a grey link. Tapping it lands on the
+      dashboard exactly as a build with no cloud does
+- [x] **15.8.2** **Sign *up* through the QR, not just sign in.** Already done
+      — this is 17.16.6, closed in the twenty-fifth sitting: `link.html`
+      offers *Create an account* beside *Sign in* and reaches the confirm step
+      from a brand-new account in one sitting. Nothing further needed here
+- [x] **15.8.3** **Linking is automatic and the rider is never asked which
+      profile.** **Done, and it needed no new plumbing.** `AccountViewModel`
+      already scopes every screen it drives to
+      `SettingsRepository.settings.lastProfileId`, and `createProfile` sets
+      that id — via the same `onCreated` callback `UserRepository.save` has
+      always returned — before `Step.Account` composes. So the QR offer at
+      profile creation is automatically scoped to the profile just made, the
+      same mechanism 15.6's pairing already used from Settings; there is no
+      second copy of "which profile" to keep in step
+- [x] **15.8.4** **The prompt for a profile that has ridden offline, and the
+      dismissal that sticks.** **Done and observed**, including the dismissal
+      surviving a relaunch. `AccountOfferCard` on the dashboard, gated on
+      `authUserId == null`, `!accountOfferDismissed` and `stats.hasRidden`
+      — never during a ride, because the dashboard is not shown during one.
+      "Not now" writes `profiles.account_offer_dismissed` (migration 14 → 15,
+      `UserRepository.dismissAccountOffer`) rather than holding it in memory:
+      checked in `sqlite3` after a force-stop, one profile's dismissal `1`
+      and another's still `0`, then confirmed the card stayed gone for the
+      dismissed profile after a fresh launch
 - [ ] **15.8.5** **Reconcile with 23.3.1 rather than shipping a second
-      reminder.** The backup reminder already fires after ten unprotected rides
-      and already has a *"Not now"* that moves the line. Two mechanisms nagging
-      about the same thing is worse than either, and the one to keep is
-      whichever can express *never*: 23.3.1's snooze cannot, 15.8.4's dismissal
-      must. Fold them into one, with 23.3.1's count as the trigger for a
-      *second* showing and 15.8.4's dismissal ending both. **23.3.1a is in the
-      way** — the ten-ride count is per tablet and backup is per profile
-- [ ] **15.8.6** **Say what it costs, in one line, at the moment of offering.**
-      The rider is being asked to create an account on somebody's server from a
-      bike in a garage. *"Your rides get copied to your account. Everything
-      keeps working without one."* — the second half is the part that makes the
-      first half safe to say, and it is rule 1 in the rider's own words rather
-      than in the plan's
-- [ ] **15.8.7** **Neither prompt may appear on a build with no cloud
-      configured.** 15.6.8's rule, restated because 15.8 puts the offer on the
-      two screens *every* rider sees rather than on one they went looking for —
-      so a self-hoster's build with an empty `cloud.properties` would advertise
-      a thing it cannot do, on first run, to everybody
+      reminder.** **Half done.** The two cards cannot both show — the
+      dashboard checks the account offer first and falls back to
+      `BackupReminderCard` only when it does not apply — so a rider is never
+      shown two nags about the same risk at once. **What is not done is the
+      trigger itself.** The plan asked for 23.3.1's ten-ride count to govern
+      *both* cards; this uses a simpler one instead — any completed ride at
+      all (`DashboardStats.hasRidden`) — because 23.3.1a is still open: the
+      count that exists is per-tablet (`SettingsRepository`) and this offer is
+      per-profile, and wiring one to the other now would give a second
+      profile's rides a say in whether *this* profile gets asked. Revisit once
+      23.3.1a moves the count to sit beside `account_offer_dismissed`
+- [x] **15.8.6** **Say what it costs, in one line, at the moment of offering.**
+      **Done**, in both places 15.8 offers an account: *"Your rides get
+      copied to your account. Everything keeps working without one"* on the
+      profile-creation step, and the dashboard card's own wording of the same
+      argument
+- [x] **15.8.7** **Neither prompt may appear on a build with no cloud
+      configured.** **Done and observed the negative** — `cloudConfigured` is
+      read once from `ServiceLocator.accountRepository.cloudConfigured` in
+      `PelonotNavGraph` and gates both `accountOffer` at profile creation and
+      `showAccountOffer` on the dashboard from the same value, so a
+      self-hoster's build shows neither by construction rather than by two
+      separate checks that could drift

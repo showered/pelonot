@@ -8,6 +8,184 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-sixth sitting): the first question the app asks
+
+**The screen the owner said "can't go into production" is gone.** 599 JVM
+tests, 0 failures, and the migration ran against the bike's own 7-ride
+database rather than only against a test.
+
+**One inbox entry, and it closed the loop the last sitting opened.** *"The live
+URL is now up to date"* — confirmed rather than taken on trust, which is the
+entire point of having built `check-deployed.sh` the sitting before: seven files
+the same, exit 0, against two drifted twenty-four hours earlier (**17.16.8**).
+So 17.16.6's fix is on the internet and the state that produced the bug report
+no longer exists. **17.16.2 is what it hands forward**: the deploy is still
+written down nowhere, and the gap was open for exactly one drift because the
+*check* exists, not because the deploy got reliable.
+
+**18.11.1 is closed as *not* to be done, and the way it closed is the thing to
+remember.** The owner asked the right question — *"If we switch it off then how
+do legit users sign up?"* — and checking it turned up a collision neither item
+had spotted: **18.11.1 and 15.8.2 are direct contradictions.** 15.8.2 says a
+rider creating their first profile has no account *by definition* and must be
+able to sign up from their phone; invite-only makes that impossible. Not a
+security item that lost to convenience — two items that could not both be built,
+and the one that serves the rider won. The owner's reason stands on measurement
+too (`mailer_autoconfirm` is `false`, so an account needs a real inbox). **15.8.2
+is unblocked and 17.16.3 matters more now**: if the door is deliberately open,
+which key is on the internet is the question worth being careful about.
+
+**Then the work: 20.3, which is Route B and a screen.** The decision was
+genuinely close on the item's own three-way balance, and what made it one-sided
+was a fact about `PostWorkoutAnalyzer` that nobody had brought to the question —
+**auto-FTP can only ever propose a rider's FTP *upward*** (`proposal >=
+currentFtp × 1.02`). So the two errors are not alike: an estimate that starts
+**low** is deleted by the first hard ride; one that starts **high** is
+permanent, because no breakthrough ever clears the threshold and every ride sits
+in Zone 2 for ever. Route A cannot express that asymmetry and Route B can — so
+every coefficient is pitched *below* the published mid-range, and
+`FtpEstimatorTest.estimateIsBelowPublishedMidRange` is where a future change has
+to argue against it. The same bias covers the field this app deliberately does
+not have: published W/kg tables differ ~15% on sex and nothing here collects it.
+
+**There is no Skip, and that is the sub-decision 20.3.2 asked to be made by
+looking.** A skip in front of the questions makes them optional and hands Route
+A to everybody in a hurry. The escape sits on the *answer* instead — *"I know my
+FTP — set it myself"* — so it is reached only by a rider who has seen the
+estimate and disagrees, which is exactly the rider who should be typing.
+
+**The owner's own call landed mid-sitting and it was right: ask for the year,
+not the date.** Checkable rather than a matter of taste — the app has exactly
+two consumers for this datum and both reduce it to whole years, so 1 January
+costs **0.7 bpm** on Tanaka (against its own admitted 10–12 bpm spread) and
+**0.6%** on the FTP term. Against that, Material's `DatePicker` opened on
+*August 2026*: roughly five hundred presses of the month arrow for a rider born
+in 1985. `BirthYearPicker` is a grid of 48 years on the panel, one tap, opened
+forty years back. **And when the owner wondered whether the caption bug meant a
+date was needed after all, it did not** — that caption said "your age" because
+the year had been *skipped*, and a date picker would have produced the identical
+sentence. *How precise* and *what did we actually use* look alike and are
+unrelated; only the second was a defect (**21.1.1b**).
+
+**Three defects found by looking rather than by building, and all three are
+sentences.** The layout was right first time. `displayName.lowercase()` rendered
+*"i ride now and then"* back at the rider — text a person wrote does not survive
+being case-folded by a machine. The caption named an input the estimate had not
+used. And **Settings offered a full date picker over the column onboarding fills
+with 1 January**, so a rider who answered "1986" was shown "1 January 1986" as
+though they had said it. One control in both places now.
+
+**One defect was in the funnel and would have been invisible.**
+`UserRepository.save` filed every new profile's first FTP as `ProfileCreated`
+*"whatever the caller said about it"* — correct for as long as typing was the
+only way to get a number, and wrong the moment the app estimates one. Verified
+in `sqlite3` rather than on screen: `Estimated` for the estimate,
+`ProfileCreated` for a typed 265.
+
+**What is not built is 15.8**, and the screen was built with its hook in place —
+`accountOffer` is a fourth step the screen already knows how to show, null on a
+build with no cloud (15.8.7). That was the whole reason to read 15.8 and 20.3
+together: one screen, built once.
+
+---
+
+### The twenty-fifth sitting — three notes, and the fix that never reached the internet
+
+**The owner left three more notes and one of them was a bug report on a live
+flow.** 585 JVM tests, 0 failures. All three are written up and the inbox is
+empty, which is the rule; two of them were also built.
+
+**"The 'link my account' doesn't work … there was no way of actually signing
+in."** Checked, and it was two faults stacked. **The first is that yesterday's
+fix was never deployed.** `link.js` on the host is the pre-17.16.5 version —
+`route()` still reading its own DOM, and the error path returning without
+reopening the retry box — so an unrecognised code drew the expiry card and
+*nothing else*. 17.16.5 was observed working against the live endpoint from a
+**local copy**. The repo was fixed; the internet was not. **17.16.2 predicted
+this in the same sitting** — *"nothing checks that the deployed copy is the
+committed one. Today they match, and today is the only day that has been
+checked"* — and it drifted inside a day, straight into the owner's hands.
+
+**The second fault is in the fix itself, and it is the one worth carrying
+forward.** 17.16.5 gated the sign-in form on the pairing code being recognised,
+and that collapsed two different questions. *May a session leave this phone for
+that bike?* has to know which bike — that is 15.6.5, and it is what the confirm
+step is for. *May the rider sign in to Pelonot on their own phone?* is the same
+sign-in `index.html` offers, to the same project, and a five-minute pairing code
+makes it no safer. So an expired code was a dead end **even after the fix**. The
+page inverts now: sign in whenever, confirm separately, the confirm step still
+names the device. All four session/code states measured against the live
+project, including typing `ymmh d7za` — lower case, with the space a person
+reading eight characters off a screen would put in — from the expired card.
+
+**And the thing that let the first fault reach the owner is now one command.**
+`./web/check-deployed.sh` — curl and diff, no credentials, non-zero on drift.
+Its first run *is* the evidence above: five files the same, `link.html` and
+`link.js` not. Same argument as `CloudConfigFenceTest`: the shipped artefact is
+what a rider meets.
+
+**The Start Class screen shows the class now (22.7.2).** The owner's other
+standing note, and the plan's own next item. It was six full-width rows each
+spanning 1872 dp to carry four facts down their left edge, with the seventh
+block of a 30-minute class **below the fold on the one screen whose job is to
+show the whole class**. The visualisation is the class itself — height for zone,
+width for time — and it reads as two different workouts from across the room:
+`The Long Climb 30` is a ramp into one long orange block, `Torque Repeats 4×2
+20` is four spikes with recoveries between them. **No value axis, deliberately**:
+the vertical is a zone *ordering*, and the gap between Z1 and Z2 is not the gap
+between Z6 and Z7 in watts.
+
+**Two facts fell out of drawing it that neither the item nor the plan had.**
+Zone 1 needs a height floor, or a warm-up reads as an empty left-hand edge
+rather than as riding. And **adjacent blocks at the hardest zone are one
+effort** — the library splits a fifteen-minute threshold block in two to change
+the cadence, and calling that two efforts describes a workout with a rest in it
+that nobody gets. The sentence over the chart now agrees with the class's own
+title: *"4 × 2 min at Lactate Threshold"* over `Torque Repeats 4×2 20`.
+
+**The width rules got their first mixed screen**, which is 22.4.3's "capped
+column inside a wider frame" case that no screen had used: the profile and the
+interval grid take the panel, the summary is `readableText`, the leaderboard is
+`loneCard`, and **Start is a 420 dp control rather than a 1872 dp band**.
+
+**The two things found by looking rather than by planning** are the ones to
+remember. The content needed **centring when it does not fill the panel** —
+22.7.1's rule arriving on a third screen, because most classes are seven or
+eight blocks and top-aligning them hangs the screen off the app bar with a hole
+above the button. And `WideGrid` grew an opt-in `equalHeightRows`, because one
+tile carrying a position chip is 20 dp taller than its neighbours and a ragged
+row reads as a mistake. **Opt-in and it has to be**: equal heights need
+`IntrinsicSize.Min` and a `Canvas` throws rather than answering an intrinsic
+query, so every caller with a chart in its cells keeps the layout that works for
+anything.
+
+**The third note is the biggest and none of it was built: the account is a thing
+a rider has to go and find (15.8).** The owner is right about the symptom, and
+the diagnosis worth stating is that this is **omission rather than principle** —
+rule 1 says a rider makes no request to Supabase and 15.2.6 says they see no
+prompt on a screen they did not open, and neither says the account has to be
+hidden. Creating a profile is a bare `AlertDialog` with three text fields and no
+mention that a cloud exists. **It conflicts with 20.3 over one screen** and that
+is said out loud in the item: both notes want profile creation rebuilt, and
+building 15.8 on top of the current dialog then rebuilding it for 20.3 is two
+designs for one screen.
+
+**The other two notes are written up and take their place in the queue.** The
+live ghost (24.3.3–24.3.9, 18.12): half of it was already 24.3.2, and the half
+that is missing is *during* a ride, which is where a ghost lives — everything
+social this app has happens before or after one. `class_ghost` already exists in
+`007` and nothing calls it. And alerts (**Phase 27**), promoted out of 19.3.2's
+one line the way Phase 21 was promoted out of 19.3.3's, with the owner's own
+weighting kept: low priority.
+
+**The thing worth taking from this sitting** is that the pairing defect was not
+in code anybody wrote wrong. The code was right, in the repo, with a note in the
+plan saying nothing checked whether it had shipped. **A fix that has not been
+deployed is indistinguishable, from the rider's side, from one that was never
+written** — and this project now has one command that can tell them apart.
+
+---
+
 ### 4 August 2026 (twenty-fourth sitting): nine notes, and the first ride nobody has to survive
 
 **The owner left nine notes between sittings and the sitting was mostly about
