@@ -158,7 +158,11 @@ object ServiceLocator {
     }
 
     val workoutRepository: WorkoutRepository by lazy {
-        WorkoutRepository(database.workoutDao(), database.workoutMetricDao())
+        WorkoutRepository(
+            database.workoutDao(),
+            database.workoutMetricDao(),
+            database.activeRideRivalDao()
+        )
     }
 
     val classTemplateSeeder: ClassTemplateSeeder by lazy {

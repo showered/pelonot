@@ -384,10 +384,43 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 15 → 16: which rival a ride in progress is racing (PLAN 24.3.8).
+     *
+     * A new table rather than a column on `workouts`, for the reason written
+     * out on [com.pelonot.data.local.entity.ActiveRideRivalEntity]: anything
+     * added to `workouts` for this would be silently reverted by
+     * `stopWorkout`'s fresh rebuild (8.3d.4), and this choice specifically has
+     * to survive the opposite event — a crash *before* the ride ends. No
+     * backfill: no ride in progress at migration time can have a row, because
+     * the app was not running to write one.
+     */
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `active_ride_rival` (
+                    `workout_id` TEXT NOT NULL,
+                    `rival_workout_id` TEXT NOT NULL,
+                    PRIMARY KEY(`workout_id`),
+                    FOREIGN KEY(`workout_id`) REFERENCES `workouts`(`id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`rival_workout_id`) REFERENCES `workouts`(`id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_active_ride_rival_rival_workout_id` " +
+                    "ON `active_ride_rival` (`rival_workout_id`)"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
+        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16
     )
 }

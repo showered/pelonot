@@ -929,6 +929,87 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 15 → 16: the `active_ride_rival` table (PLAN 24.3.8).
+     *
+     * A new table rather than a column, so there is no backfill to check —
+     * what this asserts instead is that the rides that already existed are
+     * untouched, and that the new table's cascade actually fires. The cascade
+     * is the part worth a test: `active_ride_rival` points at `workouts`
+     * twice, and this project has had three separate defects from
+     * foreign-key actions firing where nobody expected them (CLAUDE.md's
+     * REPLACE rule).
+     */
+    @Test
+    fun migrate15To16_addsTheRivalTableAndCascadesFromTheRideItPointsAt() {
+        helper.createDatabase(TEST_DB, 15).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at,
+                                      auth_user_id, household_visible, max_hr_bpm, birth_date,
+                                      fitness_level, account_offer_dismissed)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1, 186, 500, 'regular', 0)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (id, user_id, class_id, duration_sec, total_output_kj,
+                                      total_distance_km, avg_cadence, avg_power, avg_hr,
+                                      intent_modifier, is_complete, timestamp)
+                VALUES ('rival', 1, 'CLB-02', 1800, 240.0, 12.0, 90.0, 200.0, 150.0, 1.0, 1, 2000)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (id, user_id, class_id, duration_sec, total_output_kj,
+                                      total_distance_km, avg_cadence, avg_power, avg_hr,
+                                      intent_modifier, is_complete, timestamp)
+                VALUES ('live', 1, 'CLB-02', 0, 0.0, 0.0, 0.0, 0.0, NULL, 1.0, 0, 3000)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 16, true, AppMigrations.MIGRATION_15_16)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val db = migrated.openHelper.writableDatabase
+            // Both rides survived the migration.
+            db.query("SELECT COUNT(*) FROM workouts").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(2, cursor.getInt(0))
+            }
+
+            db.execSQL("PRAGMA foreign_keys = ON")
+            db.execSQL(
+                "INSERT INTO active_ride_rival (workout_id, rival_workout_id) " +
+                    "VALUES ('live', 'rival')"
+            )
+            db.query("SELECT rival_workout_id FROM active_ride_rival WHERE workout_id = 'live'")
+                .use { cursor ->
+                    assertTrue("the rival choice was not written", cursor.moveToFirst())
+                    assertEquals("rival", cursor.getString(0))
+                }
+
+            // Deleting the rival's ride takes the comparison with it rather
+            // than leaving a row pointing at a ride that no longer exists.
+            db.execSQL("DELETE FROM workouts WHERE id = 'rival'")
+            db.query("SELECT COUNT(*) FROM active_ride_rival").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

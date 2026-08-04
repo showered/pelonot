@@ -1,9 +1,11 @@
 package com.pelonot.data.repository
 
+import com.pelonot.data.local.dao.ActiveRideRivalDao
 import com.pelonot.data.local.dao.HouseholdRivalRow
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
+import com.pelonot.data.local.entity.ActiveRideRivalEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.local.dao.PreviousBestRow
@@ -65,7 +67,8 @@ data class LeaderboardStats(
 
 class WorkoutRepository(
     private val workoutDao: WorkoutDao,
-    private val metricDao: WorkoutMetricDao
+    private val metricDao: WorkoutMetricDao,
+    private val activeRideRivalDao: ActiveRideRivalDao
 ) {
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
@@ -456,6 +459,21 @@ class WorkoutRepository(
         beforeMs: Long
     ): PreviousBestRow? =
         workoutDao.previousBestOfClass(classId, userId, excludingWorkoutId, beforeMs)
+
+    /**
+     * Records which rival a ride in progress is racing, so it can be read
+     * back if the app dies mid-ride (24.3.8). Must not be called before the
+     * `workouts` row exists — the table's foreign key requires it.
+     */
+    suspend fun setActiveRival(workoutId: String, rivalWorkoutId: String) =
+        activeRideRivalDao.set(ActiveRideRivalEntity(workoutId, rivalWorkoutId))
+
+    /** The rival a resumed ride was racing before the crash, if any (24.3.8). */
+    suspend fun getActiveRival(workoutId: String): String? =
+        activeRideRivalDao.get(workoutId)?.rivalWorkoutId
+
+    /** No longer needed once the ride is finished. */
+    suspend fun clearActiveRival(workoutId: String) = activeRideRivalDao.clear(workoutId)
 
     /**
      * Who on this bike has ridden in the last week, with their streaks

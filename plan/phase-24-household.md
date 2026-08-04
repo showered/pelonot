@@ -201,6 +201,40 @@ downgrade — it is why the feature can afford to be interesting.
       record — and 27.2.3 does — the field goes on the session first, or it will
       be silently reverted twenty minutes later by the finalise
 
+- [ ] **24.3.10 A live leaderboard, not just a single gap** — the owner's
+      note, 4 August 2026, live in chat rather than through the inbox.
+      Paraphrased for the numbers: *"let's do what Peloton does and show a
+      live leaderboard (in watts) which includes a live 'as it stands'
+      leaderboard of where YOUR personal best is (on this class) and also
+      your FRIEND's personal best on this class. So if you're on 56 watts and
+      your PB is 65 (at that point in time) you know you need to speed up if
+      you want a new PB. The ghost score should be the score that user had at
+      that exact moment in the class."*
+
+      This is Peloton's own leaderboard shape — several rows, ranked live,
+      rather than one chosen rival — and it directly reopens two things
+      24.3.4/24.3.5 already decided, on purpose:
+      - **24.3.4 says "not a list."** *A leaderboard of two is a number.* A
+        leaderboard of *several* is a leaderboard, and the owner is asking for
+        exactly the thing that ruled out, for a real reason: it is more
+        useful with more than one rival on it — your own PB alongside a
+        friend's, both live.
+      - **24.3.5 says cumulative, not instantaneous, because instantaneous
+        flickers.** 11.6.7 already fixed the ride screen's numbers changing
+        too fast to read, and a raw watts-vs-watts comparison reopens exactly
+        that. The owner's own example — *"you're on 56 watts and your PB is
+        65"* — is instantaneous, not cumulative. The two decisions disagree,
+        and this item does not resolve that disagreement, it records it.
+
+      **Not built as part of 24.3.3–24.3.9**, on the owner's own instruction
+      this sitting — *"let's keep what you're doing so I can see if you've
+      stumbled upon something brilliant"* — so the single cumulative-kJ gap
+      ships first and stands as the comparison. This item is queued behind
+      it, not decided against it: whether the ranked figure is cumulative
+      output or instantaneous watts, and whether the display is one gap or a
+      short ranked list, is the open question for whoever picks this up next,
+      informed by how the single-gap version actually reads on the tablet.
+
 ### 24.4 Honesty, and the column that is now blocking three things
 
 - [x] **24.4.1** No caveat, and the card carries none
