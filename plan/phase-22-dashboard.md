@@ -136,7 +136,7 @@ paragraph. Nothing about `readableWidth` was ever meant to apply to it.
 The rule this phase should end up with, in one line: **cap what is read at arm's
 length, tile what is looked at.**
 
-- [ ] **22.4.1** **Write the two-answer rule down where the token lives.**
+- [x] **22.4.1** **Write the two-answer rule down where the token lives.**
       `Modifier.readableColumn()`'s KDoc currently says what it does and why
       the number exists; it must also say what it is *not* for, and name the
       alternative. Wanted beside it: a companion for the other answer — a
@@ -144,6 +144,18 @@ length, tile what is looked at.**
       is as cheap to reach for as "cap it" and does not get re-invented per
       screen. One token each, not a number per screen (the 22.2.6 argument,
       applied to the case it missed)
+
+      *Done. `WideGrid` in `ui/theme/WideLayout.kt`, and each token's KDoc now
+      names the other and the rule between them. A composable rather than the
+      `Modifier.wideGrid()` this item guessed at — a modifier cannot lay cells
+      out in rows, and pretending otherwise would have put the arithmetic back
+      in the screens. Row-major, so the order survives the fold. **Two pure
+      functions and six tests**, because the failure they guard is silent:
+      `columnsFor` counts the gaps between cells (forget them and the grid is
+      one column too wide and every cell lands under its minimum), and
+      `balancedColumns` stops six figures in a five-wide grid coming out as
+      five and a stray — which is what the AVD drew first, and it reads as a
+      mistake rather than as a layout*
 - [ ] **22.4.2** **Ride detail becomes a grid.** The charts are the case the
       owner named. Two columns at 1280 dp, one below the breakpoint, and the
       **order must survive the fold** — a reader going down column one and back
@@ -170,7 +182,7 @@ length, tile what is looked at.**
       (`HARDWARE.md`, and the same condition as every other item in 22.2). A
       grid that looks right on a phone AVD is a single column, which is the
       thing being replaced
-- [ ] **22.4.6** **The post-ride summary is the worst offender, and it is the
+- [x] **22.4.6** **The post-ride summary is the worst offender, and it is the
       one screen a rider cannot avoid.** `PostRideSummaryScreen` is a centred
       column of six label-value rows — `Duration  24:03`, `Average power  188 W`
       — on a 1280 dp screen, so a ride ends on a spec sheet with 500 dp of black
@@ -180,6 +192,26 @@ length, tile what is looked at.**
       prompt and the leaderboard can sit beside them rather than a scroll below
       them. Do this one with 26.1.2, which is the same six rows judged for their
       *words* rather than their layout — one pass, not two
+
+      *Done and observed on the tablet AVD over two rides, one class and one
+      free. The six figures are one row of tiles across the whole panel, in the
+      metric colours the ride screen already uses; the heading is the class the
+      rider chose (`Torque Repeats 4×2 20`, then `Simon · 10:54 AM`) rather
+      than the words *Ride Summary*, which is 26.1.2's half; the RPE question
+      spreads its ten pills across the width instead of bunching them into one
+      corner of a card that stretches; and **Done and Discard are pinned below
+      the content** rather than scrolling with it. `RideFigures` is shared with
+      ride detail, so 12.2.2 still holds — one set of figures, not two.*
+
+      *Two things the AVD decided rather than the design. The stray sixth tile
+      is in 22.4.1. And **a figure with nothing behind it is left out rather
+      than drawn as `--`** — heart rate is the case, and a dash is a hole in a
+      grid that says less than the missing tile does.*
+
+      *The database is the witness for the half of this that is not layout:
+      `rpe_rating = 7` on the row after one tap, and the tiles agree with the
+      row to the digit — 144 watts against 143.83 recorded, 118 bpm against
+      118.29, `01:01` against 61 seconds.*
 
 ---
 

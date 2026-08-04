@@ -59,11 +59,18 @@ claim (14.4.7, 21.1).
       under the name, or something a person actually recognises themselves by
       — last ride, or rides this month. **Prefer the recognition cue to the
       measurement**; the FTP already has two screens of its own
-- [ ] **26.1.2** **The post-ride summary's six labelled rows** are the clearest
+- [x] **26.1.2** **The post-ride summary's six labelled rows** are the clearest
       case of test 3: `Average power  188 W` twice over in a column reads like a
       spec sheet at the moment a rider is out of breath and wants to know how
       they did. See 26.2 — it is the same work as the layout item and should be
       done in one pass, not two
+
+      *Done in one pass with 22.4.6, which is where the evidence is. What
+      changed in words rather than layout: the value carries the weight and the
+      label sits under it small, the unit is a quiet label beside the number
+      rather than part of it, and **the largest type on the screen is the class
+      the rider chose** — it used to be the words "Ride Summary", which is the
+      one thing a rider who has just stopped pedalling already knows.*
 - [ ] **26.1.3** **Audit for "output" and kilojoules.** `Total output` in kJ is
       on the summary card, the dashboard and the leaderboards. It is the one
       genuinely obscure unit in the app — watts at least appear on every gym
