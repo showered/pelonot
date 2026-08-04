@@ -25,7 +25,7 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 414 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 613 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -250,6 +250,26 @@ Two consequences to know before you are surprised by them:
   chooses.** Never default it. Same family as `heartRateBpm` and
   `power_is_measured`: absent is a claim, and it is a different claim from
   either value. Nothing in the UI may draw an "either" state for it.
+- **Exactly one metric is the instruction on any block, and the block says
+  which.** `Interval.governedBy` — `governed_by` on disk, **optional, and
+  absent means power**. It is *not* the same shape as `target_position` above:
+  there absent is a third claim, here it is simply the ordinary case (840
+  blocks of 1071 write nothing). Three rules follow and breaking any of them
+  puts the app back to answering *"what do I do?"* three times at once:
+  - **Only the governing metric may go amber**, carry the ▲▼ arrow, spell out
+    a `TARGET` line, or produce a spoken cue. The other keeps its shaded band
+    and nothing else — that is `TargetEmphasis.Context`, and the visible
+    invariant is **one `TARGET` line on the ride screen at a time**.
+  - **Resistance never has a target band.** No class prescribes it; the band
+    was `PowerModel` inverted at 66% median error. `RideSnapshot
+    .resistanceTarget` still computes it and nothing draws it — see 11.7.3 for
+    the conditions under which it comes back.
+  - **Governance is authored, never inferred.** It rides on the cadence
+    *intent* in `classlibrary/builder.py` (`GRIND`, `CLIMB`, `SPIN`, `SURGE`
+    govern; `POWER(x)` / `CADENCE(x)` override), because an author who writes
+    `GRIND` has said what they mean. Reading it back off the number band is
+    route (a), which PLAN.md 11.7.2 rejected. R12 in `build.py` and
+    `ClassLibraryAssetsTest` holds the line.
 - **`heartRateBpm` is nullable and null means *unknown*.** Never default it to
   0 — that writes a fake sample into the rider's record and drags averages down.
 - **`PelonotTheme` may be composed from a Service context** (the HUD overlay),
@@ -267,11 +287,13 @@ Two consequences to know before you are surprised by them:
   down at the head of PLAN.md 2.2a.** Do not re-open it; do not capture another
   manual sweep (2.2.5 is closed, superseded). The reason it is safe rests
   entirely on scope: **`PowerModel` has exactly two consumers** —
-  `SimulatedSensorSource` and `RideSnapshot.resistanceForWatts` (the prescribed
-  resistance band). A fiction and a suggestion. **If you are about to add a
-  third, stop**: anything that derives a *recorded* number from the curve
-  breaks the reason calibration is allowed to exist. PLAN.md 2.2a.8 makes this
-  a test.
+  `SimulatedSensorSource` and `RideSnapshot.resistanceTarget` (the prescribed
+  resistance band). A fiction and a suggestion — and since 11.7.3 the
+  suggestion **is not drawn anywhere**, because a curve 66% out at the median
+  was being shown beside two measured numbers with the same authority. The
+  property is kept for the day 2.2a lands. **If you are about to add a third,
+  stop**: anything that derives a *recorded* number from the curve breaks the
+  reason calibration is allowed to exist. PLAN.md 2.2a.8 makes this a test.
 - **Nothing records the FTP a ride was ridden at.** `workouts` has no FTP
   column, so the ride detail chart reads the rider's *current* `ftp_watts` and
   draws every past ride's zone bands and FTP rule from it. Auto-FTP (Phase 7)
@@ -289,7 +311,8 @@ Two consequences to know before you are surprised by them:
 - **On real hardware the watts are measured, not modelled.** The board reports
   power directly, so `PowerModel` does not run during a bike ride and
   `SensorReading.powerIsMeasured` is true. The uncalibrated-coefficients
-  caveat below applies to simulated rides and to the 11.2.1 resistance band.
+  caveat below applies to simulated rides, and to the 11.2.1 resistance band
+  that 11.7.3 has since stopped drawing.
 - **`workout_metrics.power_is_measured` is nullable and null means *nobody
   wrote it down*** — not "modelled". Ask `PowerProvenance`, never the raw
   column: `Unknown` and `Modelled` are different claims and only `Measured`

@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated the same evening (twenty-eighth sitting).**
-Measured, not estimated: `assembleDebug` passes, **606 JVM tests and 62
-instrumented tests, 0 failures**, and **465 of 690 plan boxes** are ticked
+**Written 4 August 2026, updated the same evening (twenty-ninth sitting).**
+Measured, not estimated: `assembleDebug` passes, **613 JVM tests and 62
+instrumented tests, 0 failures**, and **470 of 694 plan boxes** are ticked
 across 27 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -166,11 +166,12 @@ for.
 - **2.2a calibration** — settled as *yes*, and gated on capturing a sweep with
   the coverage `calibration/README.md` specifies. The first fit failed
   cross-validation.
-- **11.7.2** — a decision that is the owner's rather than a session's, written
-  up with the measurements behind it. (11.1b.10 was the other one and it is
-  answered: the owner reported the same hairline twice, once grey and once
-  orange, which settled it — a rule drawn across somebody's film is a rule
-  whatever colour it is.)
+- **24.3.14** — the one open decision that is the owner's rather than a
+  session's, and it is a sentence rather than a design meeting: is the
+  leaderboard's score the running total or the watts right now? Both readings
+  are in the owner's own words and they build different features. (11.7.2 and
+  11.1b.10 were the other two and both are answered — 11.7.2 by the owner
+  choosing to name the governing metric in the catalogue, now built.)
 - **Phase 27 alerts** — records, streaks, and being beaten. Written out at full
   length and deferred on the owner's own weighting: *"definitely nice-to-have
   and low priority for now"*.
@@ -187,12 +188,15 @@ is the standing argument for why, and it has been right so far.
 described above; what is still on this list is **18.12**, the same thing across
 bikes, whose endpoint (`class_ghost`) already exists and has never been called.
 
-**What the owner would rather have is 24.3.10**, and it is the next thing to
-build in this area: Peloton's own shape — a live leaderboard in watts, several
-rows, your personal best and a friend's ranked as you ride, rather than the
-single gap that shipped. It deliberately reopens two decisions the single-gap
-version made, and the plan records the disagreement rather than settling it
-quietly.
+**What the owner would rather have is the leaderboard** (24.3.10–24.3.14), and
+it is the next thing to build anywhere: Peloton's own shape — several rows,
+ranked live, your personal best and a friend's, rather than the single gap that
+shipped. The owner settled the shape through the inbox: **the leaderboard wins
+and the rival goes behind a flag rather than into the bin**, because a rival's
+ceiling is one person and everything under the ghost is a leaderboard with a
+`LIMIT 1` on it. The ride screen shows three rows — you, the one you are
+chasing, the one chasing you — which is what makes it legible at 90 rpm.
+**One question is genuinely open before any of it is built: 24.3.14.**
 
 ---
 
@@ -235,10 +239,15 @@ quietly.
    is rebooted**. What we owe it is 2.7.7 and 2.7.8: say what actually happened,
    and stop rebinding so eagerly.
 5. **The power curve is measurably wrong** — RMSE 137 W against the board's own
-   watts. It is fenced to two consumers (the simulator and a suggested
-   resistance band) and can never reach a recorded number, which is the only
-   reason this is a caveat rather than a defect. Adding a third consumer breaks
-   that.
+   watts, 66% median absolute error. It is fenced to two consumers (the
+   simulator and `RideSnapshot.resistanceTarget`) and can never reach a
+   recorded number, which is the only reason this is a caveat rather than a
+   defect. Adding a third consumer breaks that. **As of the twenty-ninth
+   sitting the second consumer is not drawn anywhere**: 11.7.3 took the
+   resistance band off both the ride screen and the overlay, precisely because
+   a 66%-wrong guess was being shown with the same authority as two measured
+   numbers. The code is kept because 11.7.3 says when it comes back — a bike
+   riding its own calibrated curve (2.2a).
 6. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
    instrumented suite is order-dependent, which is why CI runs only the JVM
    tests. A red run you are trained to re-run is a suite nobody reads.

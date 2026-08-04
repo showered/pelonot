@@ -161,112 +161,125 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 4 August 2026 (twenty-eighth sitting): riding against somebody, and the shape the owner wants instead
+### Latest session — 4 August 2026 (twenty-ninth sitting): one instruction at a time
 
-**The live ghost is built — 24.3.3, 24.3.4, 24.3.5, 24.3.7, 24.3.8 and 24.3.9
-— and the owner has already said the better idea is the one that is not
-built.** Both halves of that matter, and the second is the more useful.
+**11.7 is built, on the owner's own priority, and it is the item that had come
+up three times.** *"What do i do? do i focus on zone, cadence, or
+resistance?"* — the answer is that it was never three instructions. Power is
+not something a rider *does*; it is what happens when you turn the pedals at
+some cadence against some resistance. One outcome, two controls, and the
+screen was giving all three the same size tile, the same gauge and the same
+amber.
 
-**What it does.** A rival is chosen on the class detail screen before the
-class starts — a housemate's best ride of it, or your own — and one number on
-the ride screen says how far ahead of or behind that ride you are *at this
-point in the class*: `+18 kJ`, `−4 kJ`. Not a position, not a percentage, not
-a list. Cumulative rather than instantaneous, on 11.6.7's argument that the
-ride screen's numbers already changed too fast to read. Keyed off the clock
-that excludes paused time, so a bottle stop does not lose a race. Nothing
-about it is written to `workouts`, because 8.3d.4 means the finalise would
-wipe it — the choice lives in `active_ride_rival` (migration 15 → 16), which
-exists purely so a crash mid-ride does not lose it, and is deleted when the
-ride ends. **`RIVALS.md` is the plain-English description**, written because
-the owner asked for one mid-sitting: *"I don't really know what you're
-doing!"*
+**The block now says which axis it is asking for.** 11.7.2 had already chosen
+route (b) — name it in the catalogue — over route (a), derive it from the
+cadence band. The implementation puts governance on the **cadence intent**:
+`GRIND`, `CLIMB`, `SPIN` and `SURGE` govern by cadence and the middle of the
+range does not, with `POWER(x)` and `CADENCE(x)` overriding at the call site.
+That is not route (a) in disguise, and the distinction is the whole reason (b)
+was chosen: an author who writes `GRIND` **has said what they mean**, and the
+50–60 band is a consequence of that intent rather than its source. It seeded
+**231 blocks of 1071** — exactly the 231 the tails measurement found before
+the field existed — and 840 write nothing, because absent means power.
 
-**The measured-power gate is the part worth knowing.** The rival's side is
-excluded by the query, as 24.3.1 already had it. This side cannot be known
-until the watts arrive, so one modelled sample drops the ghost for the rest of
-the ride and it never comes back — `Mixed` fails `isTrustworthyAsMeasured` on
-purpose, and a race that is honest for ten minutes and fiction for the next
-ten is worse than none. The practical consequence is that **the feature does
-not exist on the emulator**, which is exactly what was observed there.
+**What a rider sees.** Resistance loses its band outright, on both surfaces
+and always: no class prescribes it, the band was `PowerModel` inverted, and
+that curve is 66% out at the median against the board's own watts. Of the
+three numbers competing for attention mid-effort it was **the derived guess,
+drawn with the same authority as the two that are measured**. The governing
+metric keeps the gauge, the amber, the arrow and the `TARGET` line; the other
+keeps its shaded band and loses every signal that says the rider is wrong.
+The consequence is the thing to judge it by: **exactly one tile carries a
+`TARGET` line at any moment.**
 
-**Observed on the bike, not reasoned about.** Migration 15 → 16 ran against
-the owner's own seven rides with nothing lost; the picker offered *Your best ·
-238 kJ*, their real 30-minute END-03 ride; logcat said `Racing Your best: 238
-kJ over 1800s` with no *Dropping the ghost* after it; the card rendered; the
-`active_ride_rival` row was there in `sqlite3` mid-ride and gone afterwards.
-On the AVD the same gate did the opposite and correctly refused to race at
-all. **Two things were owed and are still owed**: the *"they finished"* state
-(24.3.6, tested but never seen), and the number watched moving under a rider,
-which needs somebody pedalling. Neither box is ticked.
+**Observed on the tablet AVD across both governed states of one class**,
+`CLB-01`, which has both. On the Z2 endurance block a rider at 94 rpm against
+an 80–90 band is quiet cyan — no arrow, no target line — while power carries
+`TARGET 80–108 watts` and the amber; on the Z4 grind the two swap completely.
+The strip's line under the timer said `75–85 RPM · 30–40%` and now says
+`0–80 W` or `50–60 RPM` depending on the block. The next-up preview shows the
+rpm only for a block that is asking for it, seen both ways round in one
+screenshot.
 
-**Two defects found by looking at the tablet rather than at the diff**, which
-is the technique as much as the result. The picker card was capped but not
-filled, so it sat at half the width of the board above it; filled but not
-capped, it spanned the whole 1280 dp panel — 22.6 broken in both directions by
-modifier order alone, invisible in the source. And the gap was drawn in
-`MetricPowerCoral`, which against the dark ride screen reads as **red**: a
-rider one kilojoule down was being told in the colour of a fault that they
-were losing, which is precisely what 24.3.4 rules out.
+**Four surfaces changed, not the two the items named**, and the two extra were
+found by driving the flow rather than reading the diff: the next-up preview
+was naming a cadence directly under the zone name that was the real
+instruction, and the class detail list — the one screen where both halves
+belong, because it is where a class is *studied* — now bolds the governing
+half and dims the other.
 
-**Then the owner's own idea, and it is better.** Verbatim, paraphrased for
-the numbers: *"let's do what Peloton does and show a live leaderboard (in
-watts) which includes a live 'as it stands' leaderboard of where YOUR personal
-best is (on this class) and also your FRIEND's personal best... The ghost
-score should be the score that that user had at that exact moment in the
-class."* That is **24.3.10**, and it deliberately reopens two decisions this
-sitting shipped: 24.3.4's *not a list* (a leaderboard of two is a number — but
-a leaderboard of several is a leaderboard) and 24.3.5's *cumulative, not
-instantaneous* (the owner's own 56-vs-65 W example is instantaneous, and
-11.6.7 is why that was avoided). The item records the tension rather than
-quietly resolving it. The owner's instruction was to finish this first and
-then move: *"I think my live leaderboard idea works better and I'd rather you
-get cracking on that."*
+**And the voice had 11.7.1a's exact twin, which no item named.** `adviceFor`
+checked the cadence first and *returned* on it, so on a threshold block a
+rider spinning a perfectly good 92 rpm against the library's neutral default
+was told to ease back — and the power drift the class actually cared about
+**could never be reached at all**. Same defect as the amber, one channel
+louder.
 
-**And a priority arrived with it.** The owner asked for the *resistance target
-vs cadence target vs power zone target* problem next, "as a priority" — that
-is **11.7**, and it is the third time it has come up. 11.7.2 was decided last
-sitting, so 11.7.1a, 11.7.3 and 11.7.4 are unblocked and waiting on nothing.
+**On the bike itself**, which is where the second defect came from. The class
+library re-seeded against the owner's own seven rides with nothing lost — 73
+templates, still one retired, all four ride links intact, 32 of the 72 now
+carrying `governed_by`. And the position chip was drawing **"SIT" as a
+vertical S/I/T**: three letters is not too long for a chip, it is too long for
+the room the chip was left, which is the note `MetricReadout` already carries
+about "BPM". Invisible on the AVD, obvious on the tablet.
 
-606 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite
-was run against `emulator-5554` by serial because the bike was attached the
-whole session and `connectedDebugAndroidTest` would have reached it.
+**The inbox is empty.** *Rivals vs Leaderboard* became **24.3.11–24.3.14**:
+the leaderboard wins on the owner's own reasoning (a rival's ceiling is one
+person), the ghost goes behind a flag rather than into the bin, and
+**24.3.14 is a question back** — *watts* has now been used twice for the
+score, and the two readings of *"as of this point in the class"* build
+different features.
+
+613 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite was
+run with `ANDROID_SERIAL=emulator-5554` because the bike was attached the whole
+session.
+
+**What is owed on 11.7:** the spoken half was not heard, only tested. A cue
+lasts a second or two and CLAUDE.md's own rule is that audio is the rider's to
+confirm, not something to poll `dumpsys` for.
 
 ---
 
 ### What to do next, in order
 
-**The owner set the order directly this sitting, and it is not the queue's own.**
-Two instructions, both in chat, both after seeing the ghost working:
+**The owner set the order directly last sitting; the first of the two is now
+done and the second is next.**
 
-1. **11.7 — one instruction at a time.** *"Please address the 'resistance
-   target' vs 'cadence target' vs 'powerzone target' issue (it's in the plan
-   somewhere) as a priority."* It is 11.7, and this is the **third** time it
-   has arrived — twice through the inbox, once now with a priority attached.
-   Nothing is blocking it: 11.7.2 was decided in the twenty-seventh sitting
-   (name `governed_by` in the catalogue, absent means power), so what is left
-   is building it — `classlibrary/catalogue.py`, `build.py`,
-   `ClassLibraryAssetsTest`, then 11.7.1a's small amber fix, and 11.7.3 /
-   11.7.4 on the ride screen and the overlay. **Read 11.7.4 before building
-   11.7.3**: the strip is the harder half and the two must not be designed
-   apart.
-2. **24.3.10 — the live leaderboard the owner actually wants.** *"I think my
-   live leaderboard idea works better and I'd rather you get cracking on
-   that."* Peloton's shape: several rows, ranked live, your PB and a friend's
-   PB. It reopens 24.3.4 and 24.3.5 on purpose and the item says so — whether
-   the ranked figure is cumulative output or instantaneous watts is the open
-   question, and the single-gap version that shipped this sitting is the thing
-   to judge it against.
+1. **24.3.10–24.3.14 — the live leaderboard the owner actually wants.** *"I
+   think my live leaderboard idea works better and I'd rather you get cracking
+   on that."* Peloton's shape: several rows, ranked live, your PB and a
+   friend's PB. The inbox filled in the rest of it this sitting — **24.3.11**
+   puts the single rival behind a flag rather than deleting it (everything
+   under the ghost is a leaderboard with a `LIMIT 1` on it; only the
+   presentation is single-rival), **24.3.12** is the four kinds of row,
+   **24.3.13** is the window that makes it legible at 90 rpm (the row above
+   you and the row below), and **24.3.14 is a question for the owner before
+   any of it is built** — see below.
+2. **15.7 — the Supabase emails.** Written up in full, and the templates are
+   ours to replace through the Management API with the token already in
+   `local.properties`. Two of the six matter, the From line needs a domain that
+   does not exist yet (15.7.3), and it changes the owner's live auth config,
+   which is the one place in this project where being careless is a breach
+   rather than a bug.
 
-**Then, in order:**
-- ~~**24.3.3–24.3.9 — the live ghost.**~~ **Done this sitting**, except
-  24.3.6 and the pedalling observation — see the note under 24.3 for exactly
-  what was seen and what is owed. `RIVALS.md` describes it in plain English.
-- **15.7 — the Supabase emails.** Written up in full, and the templates are ours
-  to replace through the Management API with the token already in
-  `local.properties`. It is **not** next: two of the six templates matter, the
-  From line needs a domain that does not exist yet (15.7.3), and it changes the
-  owner's live auth config, which is the one place in this project where being
-  careless is a breach rather than a bug.
+**One question is blocking the top of that list, and it is short.** 24.3.14:
+the owner has said *"score being the current number of Watts as of this point
+in the class"*, and the sentence has two readings that build different
+features. **Rank by cumulative output** (what the ghost already does, cannot
+flicker, and is what Peloton's own board does) or **rank by live watts** (the
+owner's own 56-vs-65 example, and instantaneous — which reopens 11.6.7, the
+numbers changing too fast to read). A third answer may be the real one: rank by
+the total, show the live watts beside it. This wants an answer rather than an
+assumption.
+
+**Already done and not to be re-picked:**
+- ~~**11.7 — one instruction at a time.**~~ **Done this sitting**, all five
+  items, observed on the AVD in both governed states and on the bike for the
+  re-seed. What is owed is the spoken half, which is the rider's to confirm.
+- ~~**24.3.3–24.3.9 — the live ghost.**~~ **Done in the twenty-eighth
+  sitting**, except 24.3.6 and the pedalling observation. **24.3.11 supersedes
+  its presentation** — the picker and the single-gap card go behind a flag —
+  but nothing under it is wasted. `RIVALS.md` describes it in plain English.
 
 **26.4 and Phase 27 are the two to leave.** The owner offered to leave 26.4 —
 *"happy to leave it"* — and the honest answer is that a "score" built on FTP is
@@ -372,14 +385,14 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**21.3.4** The heart beats~~ | **Done and measured** — the glyph swells 110 → 132 px and rests between beats. The period is re-read at the top of each beat, and it stops dead when the reading does |
 | ~~**21.1 / 21.2 / 21.3.1** Heart-rate zones~~ | **Phase 21 opens, and the owner's colour ask lands.** The honest answer to *"pretty sure this is already covered"* was no: the app had no maximum heart rate for anybody. Measured number first, Tanaka as the fallback, migration 11 → 12 with both columns nullable — a default maximum is a guess about a body. **21.2.3 is the one to read before 21.4.2**: nothing yet draws an HR zone for a *past* ride, which is the only reason the 7.8 trap has not bitten |
 
-**Three of the owner's own are open, and all three want the owner rather than a
+**Two of the owner's own are open, and both want the owner rather than a
 session:**
 
 | Next | Why now |
 |------|---------|
-| **11.7.2** Which metric governs a block | **The nineteenth sitting's write-up of the owner's own question**, with the recommendation made and the measurements behind it (1071 intervals, 574 neutral, 231 in the tails). Derive it or name it in the catalogue — naming it is recommended, and the argument is 25.4.2's. Read 11.7.1 first; it reframes the question |
-| **11.7.1a** Amber on a metric nobody asked for | **Not blocked on 11.7.2 and worth doing either way.** `MetricStatus.isOffTarget` fires on every tile equally, so an endurance block tells a rider spinning a good 92 rpm that they are wrong. Seen live in the nineteenth sitting's own test ride. Small, and it removes most of the felt confusion on its own |
+| **24.3.14** What the leaderboard's score is | **The one thing blocking the top of the queue**, and it is a sentence rather than a design session. *Watts* has now been used twice for the score, and *"as of this point in the class"* reads both as a running total and as right-now. Cumulative cannot flicker and is what Peloton ranks by; instantaneous is the owner's own 56-vs-65 example and reopens 11.6.7 |
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
+| ~~**11.7.2 / 11.7.1a** Which metric governs, and the amber~~ | **Both done and observed.** The owner chose (b) — name it — and it is `governed_by` in the catalogue, seeded off the cadence intent. 231 blocks of 1071. Amber, the arrow, the `TARGET` line and the spoken cue now belong to the governing metric alone, and resistance has no band at all |
 
 Then the table below, which was written before the fifth sitting and is kept
 because its reasoning is still good:

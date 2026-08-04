@@ -8,6 +8,78 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-eighth sitting): riding against somebody, and the shape the owner wants instead
+
+**The live ghost is built — 24.3.3, 24.3.4, 24.3.5, 24.3.7, 24.3.8 and 24.3.9
+— and the owner has already said the better idea is the one that is not
+built.** Both halves of that matter, and the second is the more useful.
+
+**What it does.** A rival is chosen on the class detail screen before the
+class starts — a housemate's best ride of it, or your own — and one number on
+the ride screen says how far ahead of or behind that ride you are *at this
+point in the class*: `+18 kJ`, `−4 kJ`. Not a position, not a percentage, not
+a list. Cumulative rather than instantaneous, on 11.6.7's argument that the
+ride screen's numbers already changed too fast to read. Keyed off the clock
+that excludes paused time, so a bottle stop does not lose a race. Nothing
+about it is written to `workouts`, because 8.3d.4 means the finalise would
+wipe it — the choice lives in `active_ride_rival` (migration 15 → 16), which
+exists purely so a crash mid-ride does not lose it, and is deleted when the
+ride ends. **`RIVALS.md` is the plain-English description**, written because
+the owner asked for one mid-sitting: *"I don't really know what you're
+doing!"*
+
+**The measured-power gate is the part worth knowing.** The rival's side is
+excluded by the query, as 24.3.1 already had it. This side cannot be known
+until the watts arrive, so one modelled sample drops the ghost for the rest of
+the ride and it never comes back — `Mixed` fails `isTrustworthyAsMeasured` on
+purpose, and a race that is honest for ten minutes and fiction for the next
+ten is worse than none. The practical consequence is that **the feature does
+not exist on the emulator**, which is exactly what was observed there.
+
+**Observed on the bike, not reasoned about.** Migration 15 → 16 ran against
+the owner's own seven rides with nothing lost; the picker offered *Your best ·
+238 kJ*, their real 30-minute END-03 ride; logcat said `Racing Your best: 238
+kJ over 1800s` with no *Dropping the ghost* after it; the card rendered; the
+`active_ride_rival` row was there in `sqlite3` mid-ride and gone afterwards.
+On the AVD the same gate did the opposite and correctly refused to race at
+all. **Two things were owed and are still owed**: the *"they finished"* state
+(24.3.6, tested but never seen), and the number watched moving under a rider,
+which needs somebody pedalling. Neither box is ticked.
+
+**Two defects found by looking at the tablet rather than at the diff**, which
+is the technique as much as the result. The picker card was capped but not
+filled, so it sat at half the width of the board above it; filled but not
+capped, it spanned the whole 1280 dp panel — 22.6 broken in both directions by
+modifier order alone, invisible in the source. And the gap was drawn in
+`MetricPowerCoral`, which against the dark ride screen reads as **red**: a
+rider one kilojoule down was being told in the colour of a fault that they
+were losing, which is precisely what 24.3.4 rules out.
+
+**Then the owner's own idea, and it is better.** Verbatim, paraphrased for
+the numbers: *"let's do what Peloton does and show a live leaderboard (in
+watts) which includes a live 'as it stands' leaderboard of where YOUR personal
+best is (on this class) and also your FRIEND's personal best... The ghost
+score should be the score that that user had at that exact moment in the
+class."* That is **24.3.10**, and it deliberately reopens two decisions this
+sitting shipped: 24.3.4's *not a list* (a leaderboard of two is a number — but
+a leaderboard of several is a leaderboard) and 24.3.5's *cumulative, not
+instantaneous* (the owner's own 56-vs-65 W example is instantaneous, and
+11.6.7 is why that was avoided). The item records the tension rather than
+quietly resolving it. The owner's instruction was to finish this first and
+then move: *"I think my live leaderboard idea works better and I'd rather you
+get cracking on that."*
+
+**And a priority arrived with it.** The owner asked for the *resistance target
+vs cadence target vs power zone target* problem next, "as a priority" — that
+is **11.7**, and it is the third time it has come up. 11.7.2 was decided last
+sitting, so 11.7.1a, 11.7.3 and 11.7.4 are unblocked and waiting on nothing.
+
+606 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite
+was run against `emulator-5554` by serial because the bike was attached the
+whole session and `connectedDebugAndroidTest` would have reached it.
+
+---
+
 ### 4 August 2026 (twenty-seventh sitting): the account fills the slot 20.3 left for it
 
 **Two owner notes arrived and both were already in the plan.** Auto-FTP going
