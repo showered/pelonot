@@ -79,6 +79,31 @@ data class WorkoutEntity(
     @ColumnInfo(name = "ftp_watts")
     val ftpWatts: Int? = null,
 
+    /**
+     * The maximum heart rate this ride's zones were judged against (21.2.3).
+     *
+     * Exactly [ftpWatts]'s argument, for the other denominator. A rider who
+     * measures a real 186 in September and replaces the estimate of 177 would
+     * otherwise silently redraw every ride they did in August — the record
+     * editing itself behind them, which is 7.8 and the `avg_*` trap and this,
+     * three instances of one mistake.
+     *
+     * **Nullable, and null means nobody wrote it down.** Every ride recorded
+     * before this column existed is one, and every ride by a rider who has
+     * never given the app a maximum. A reader falls back to the rider's
+     * maximum *today* and **says that it is doing so** (21.4.2a); it does not
+     * backfill, because a backfill would bake today's number into last
+     * summer's rides while looking exactly like a measurement.
+     *
+     * Resolved rather than copied: it is whatever `MaxHeartRate.resolve` gave
+     * at the start of the ride, so a Tanaka estimate is stored the same way a
+     * measured number is. The provenance of the *estimate* is not kept here —
+     * `profiles` still has both columns, and the estimate is recomputed from
+     * the same birth date it always was.
+     */
+    @ColumnInfo(name = "max_hr_bpm")
+    val maxHrBpm: Int? = null,
+
     @ColumnInfo(name = "rpe_rating")
     val rpeRating: Int? = null,
 

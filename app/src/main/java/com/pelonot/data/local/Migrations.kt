@@ -314,9 +314,30 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 12 → 13: the maximum heart rate a ride was ridden at (21.2.3).
+     *
+     * The twin of 6 → 7, which added `workouts.ftp_watts` for exactly this
+     * reason: a zone drawn from a denominator that has moved since is a record
+     * editing itself behind the rider. 11 → 12 gave `profiles` a maximum heart
+     * rate, and the moment anything draws a heart-rate zone for a *past* ride
+     * (21.4.2) that number becomes the same trap the FTP was.
+     *
+     * Nullable, and **not backfilled**, for 11 → 12's reason repeated one table
+     * along: filling last summer's rides with the number the rider gave the app
+     * this morning would look exactly like data and be a guess. A ride with no
+     * maximum of its own is drawn from the rider's current one *and says so*.
+     */
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `max_hr_bpm` INTEGER")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12
+        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+        MIGRATION_12_13
     )
 }

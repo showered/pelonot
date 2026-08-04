@@ -232,7 +232,7 @@ asks less about the person, which is a rare combination and worth taking.
 - [ ] **21.4.1** Time in each HR zone for a ride, computed from the samples
       exactly as 16.1.4 does for power. With 21.2.3 in place this needs no new
       table — the samples and the boundaries are both already there
-- [ ] **21.4.2** Post-ride: an HR-zone distribution beside the power one, and
+- [x] **21.4.2** Post-ride: an HR-zone distribution beside the power one, and
       the HR trace (16.1.2) banded by zone. Note 16.1.2 deliberately breaks the
       line across gaps; the banding must not paper over them
 
@@ -246,7 +246,7 @@ asks less about the person, which is a rare combination and worth taking.
       12.6.1 puts the charts there, and the web app's ride view (17), which
       draws its own charts from the same payload and will not inherit this for
       free
-- [ ] **21.4.2a** **What the bands are drawn *from* is the decision, and it is
+- [x] **21.4.2a** **What the bands are drawn *from* is the decision, and it is
       21.2.3 wearing a different hat.** Zone boundaries come from the rider's
       maximum heart rate, `workouts` has no column for it, and the maximum
       moves — a rider who measures a real 186 in September and replaces the
@@ -269,6 +269,40 @@ asks less about the person, which is a rare combination and worth taking.
         them, and the sentence is the entire cost.
       Recommended: the column *and* the caption — new rides are exact, old ones
       are drawn and labelled. Do not ship the bands with neither
+
+      *Both done, and it is the recommendation as written. **`workouts.max_hr_bpm`,
+      migration 12 → 13**, nullable and not backfilled — the twin of 6 → 7 for
+      the other denominator, and the same argument 11 → 12 made one table along:
+      filling last summer's rides with the number the rider gave this morning
+      would look exactly like data and be a guess.*
+
+      ***Observed on the tablet AVD, both ways.** A ride recorded before the
+      column existed draws its bands and says* "zones from %HRmax · your maximum
+      today — this ride did not record its own"*; a ride recorded after it says*
+      "zones from %HRmax" *and nothing else, and its row carries
+      `max_hr_bpm = 190` — the rider's own measured maximum, stamped at the
+      start of the ride rather than recovered afterwards from a profile that may
+      have moved.*
+
+      *Three things worth carrying forward. **The session had to carry it**, or
+      the finalise writes the default back twenty minutes later — CLAUDE.md's
+      rule, and this is the third column to need it after `ftp_watts` and
+      `resume_count`. **The resume reads it off the row**, like the FTP, so a
+      maximum changed between a crash and a resume cannot rescore the ride being
+      picked up. And **the bands are painted behind the trace, never as a fill
+      under it**, because 16.1.2 deliberately breaks the line where the strap
+      dropped out and an area fill would paper over exactly that gap.*
+
+      *One thing deliberately not done: only the zones the ride actually reached
+      are drawn, so a rider who never left H2 gets one band rather than five
+      slivers of which four are off the top of the chart.*
+- [ ] **21.4.2b** **The cloud copy of a ride has neither denominator.**
+      `WorkoutDto` carries no `ftp_watts` and now no `max_hr_bpm`, so the web
+      app (17) draws every ride's zones from whatever the *reader's* profile
+      says — which is 7.8 and 21.2.3 again, on the surface where they were never
+      fixed. Not urgent and not free: it is a payload change (14.4) and a column
+      on the cloud table, and the honest interim is that the web app draws no
+      zone bands at all rather than wrong ones
 - [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
       actually drives a training decision — "how much easy riding did I do this
       month" — and it is the honest answer to what the dashboard's progress

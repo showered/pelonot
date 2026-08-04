@@ -273,10 +273,20 @@ private fun RivalPicker(
 @Composable
 private fun HeartCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     title = "Heart rate",
+    // 21.4.2a. Said only when it is true, and it is true only of rides recorded
+    // before the app kept the number — exactly the sentence the power card
+    // carries about the FTP, for exactly the same reason. Bands drawn from a
+    // maximum the ride never saw are a re-derivation from a source that has
+    // moved since, and they must not sit here looking like a record.
+    caption = listOfNotNull(
+        "zones from %HRmax".takeIf { charts.maxHrBpm != null },
+        "your maximum today — this ride did not record its own"
+            .takeIf { charts.maxHrBpm != null && !charts.maxHrIsTheRides }
+    ).joinToString(" · ").takeIf { it.isNotEmpty() },
     summary = RideChartSummaries.heartRate(charts.heartRate),
     modifier = modifier
 ) {
-    HeartRateTraceChart(trace = charts.heartRate)
+    HeartRateTraceChart(trace = charts.heartRate, maxHrBpm = charts.maxHrBpm)
 }
 
 @Composable

@@ -18,6 +18,7 @@ import com.pelonot.domain.export.ExportRide
 import com.pelonot.domain.export.ExportSample
 import com.pelonot.domain.export.RideExport
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -107,12 +108,16 @@ class RideDetailViewModel(
      * which is the part that must not exist twice (7.8).
      */
     private suspend fun buildCharts(workout: WorkoutEntity, intervals: List<Interval>) {
+        // Read once, outside the CPU-bound block: it is two fallbacks for a
+        // ride that recorded neither denominator of its own (7.8.3, 21.4.2a).
+        val rider = workout.userId?.let { userRepository.getUser(it) }
         val charts = withContext(Dispatchers.Default) {
             buildRideCharts(
                 workout = workout,
                 metrics = workoutRepository.getMetrics(workout.id),
                 intervals = intervals,
-                riderFtp = workout.userId?.let { userRepository.getUser(it)?.ftpWatts }
+                riderFtp = rider?.ftpWatts,
+                riderMaxHr = rider?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate)?.bpm }
             )
         }
         _uiState.update { it.copy(charts = charts) }

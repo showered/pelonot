@@ -24,6 +24,16 @@ data class WorkoutSession(
     val elapsedSeconds: Int = 0,
     val intent: RideIntent = RideIntent.DEFAULT,
     val ftpWatts: Int = DEFAULT_FTP,
+    /**
+     * The maximum heart rate this ride's zones are judged against (21.2.3), or
+     * null when the rider has never given the app one.
+     *
+     * On the session for the same reason [resumeCount] is, and it is the rule
+     * in CLAUDE.md: `stopWorkout` finalises a ride by building a **fresh**
+     * entity out of this object, so a column the session does not carry gets
+     * its default written back over the fact twenty minutes later.
+     */
+    val maxHrBpm: Int? = null,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
     val avgPower: Double = 0.0,

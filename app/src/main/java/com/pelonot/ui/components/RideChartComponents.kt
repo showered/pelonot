@@ -41,6 +41,7 @@ import com.pelonot.domain.chart.ChartScale
 import com.pelonot.domain.chart.PrescribedPlan
 import com.pelonot.domain.chart.RideTrace
 import com.pelonot.domain.chart.TimeInZone
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.ui.theme.MetricCadenceCyan
 import com.pelonot.ui.theme.MetricHeartRateGreen
@@ -403,16 +404,24 @@ private fun DrawScope.drawFtpLine(atY: Float) {
 }
 
 /**
- * Heart rate over time, **drawn only where samples exist** (16.1.2).
+ * Heart rate over time, **drawn only where samples exist** (16.1.2), against
+ * the rider's own heart-rate zones (21.4.2).
  *
  * Null means the strap was not reporting. A line that dips to the axis across
  * that gap says the rider's heart stopped, so each contiguous run of samples is
- * its own path and the gaps are simply not drawn.
+ * its own path and the gaps are simply not drawn — **and the bands must not
+ * paper over them**, which is why they are painted behind the trace rather than
+ * as a filled area under it.
+ *
+ * [maxHrBpm] null draws no bands at all. That is the same rule
+ * `HeartRateZone.forHeartRate` follows and the reason 21.1 exists: zones come
+ * from a maximum, and a maximum nobody gave the app is a guess about a body.
  */
 @Composable
 fun HeartRateTraceChart(
     trace: RideTrace,
     modifier: Modifier = Modifier,
+    maxHrBpm: Int? = null,
     height: androidx.compose.ui.unit.Dp = CHART_HEIGHT
 ) {
     if (trace.isEmpty) {
@@ -424,6 +433,28 @@ fun HeartRateTraceChart(
     // the top of the box.
     val low = (trace.minValue - 10).coerceAtLeast(0.0)
     val high = (trace.maxValue + 10).coerceAtLeast(low + 1)
+
+    // Only the zones this ride actually reached, in the window the axis shows.
+    // A rider who never left H2 gets one band rather than five slivers, four of
+    // which are off the top of the chart and none of which they rode in.
+    val zoneBands = if (maxHrBpm != null && maxHrBpm > 0) {
+        HeartRateZone.entries.mapNotNull { zone ->
+            val range = zone.bpmRange(maxHrBpm)
+            val bottom = range.first.toDouble().coerceAtLeast(low)
+            // H5 is quoted up to the maximum itself; a rider above their own
+            // stated maximum is a real thing, so the top band runs to the top
+            // of the axis rather than stopping at the number.
+            val top = if (zone == HeartRateZone.H5) high else (range.last + 1).toDouble()
+            if (top <= low || bottom >= high) return@mapNotNull null
+            Triple(
+                zone.color,
+                (bottom - low) / (high - low),
+                (top.coerceAtMost(high) - low) / (high - low)
+            )
+        }
+    } else {
+        emptyList()
+    }
 
     ChartFrame(
         scale = ChartScale(low, high),
@@ -439,6 +470,23 @@ fun HeartRateTraceChart(
     ) {
         val x = { sec: Int -> size.width * (sec.toFloat() / trace.durationSec.coerceAtLeast(1)) }
         val y = { bpm: Double -> size.height * (1f - ((bpm - low) / (high - low)).toFloat()) }
+
+        // 21.4.2. Painted first and faint, at the same 13% the power chart's
+        // bands use: this is the backdrop the trace is read against and not a
+        // thing to look at in its own right. The two charts sit side by side on
+        // the same screen, so a heavier hand here would make heart rate look
+        // like the more important of the two.
+        zoneBands.forEach { (color, bandLow, bandHigh) ->
+            val top = size.height * (1f - bandHigh.toFloat()).coerceIn(0f, 1f)
+            val bottom = size.height * (1f - bandLow.toFloat()).coerceIn(0f, 1f)
+            if (bottom > top) {
+                drawRect(
+                    color = color.copy(alpha = 0.13f),
+                    topLeft = Offset(0f, top),
+                    size = Size(size.width, bottom - top)
+                )
+            }
+        }
 
         // A gap wider than a couple of buckets is a strap that dropped out, and
         // gets a break in the line rather than a straight segment across it.

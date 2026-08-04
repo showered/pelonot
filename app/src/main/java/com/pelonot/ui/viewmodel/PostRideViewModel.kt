@@ -15,6 +15,7 @@ import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.MaxHeartRate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -107,7 +108,8 @@ class PostRideViewModel(
         viewModelScope.launch {
             val workout = workoutRepository.getWorkout(workoutId)
             val profileId = settingsRepository.settings.first().lastProfileId
-            val currentFtp = profileId?.let { userRepository.getUser(it)?.ftpWatts } ?: 0
+            val rider = profileId?.let { userRepository.getUser(it) }
+            val currentFtp = rider?.ftpWatts ?: 0
 
             // Read once and used twice — the breakthrough analysis and the
             // charts (12.6.1) both want the whole series, and it is a few
@@ -163,7 +165,10 @@ class PostRideViewModel(
                         workout = it,
                         metrics = metrics,
                         intervals = plan?.intervals.orEmpty(),
-                        riderFtp = currentFtp.takeIf { ftp -> ftp > 0 }
+                        riderFtp = currentFtp.takeIf { ftp -> ftp > 0 },
+                        riderMaxHr = rider?.let { r ->
+                            MaxHeartRate.resolve(r.maxHrBpm, r.birthDate)?.bpm
+                        }
                     )
                 }
             }

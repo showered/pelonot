@@ -760,6 +760,66 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 12 → 13: `workouts.max_hr_bpm` (21.2.3).
+     *
+     * The twin of 6 → 7 and the same claim as 11 → 12 one table along: a ride
+     * recorded before this column existed comes out **null**, not filled with
+     * whatever maximum the rider has today. Backfilling would put this
+     * morning's number on last summer's rides while looking exactly like a
+     * measurement — which is the trap 7.8 exists to describe, and the reason
+     * `RideCharts.maxHrIsTheRides` says which of the two is being drawn.
+     */
+    @Test
+    fun migrate12To13_leavesOldRidesWithNoMaximumRatherThanTodaysGuess() {
+        helper.createDatabase(TEST_DB, 12).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at,
+                                      auth_user_id, household_visible, max_hr_bpm, birth_date)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1, 186, 500)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (id, user_id, timestamp, duration_sec, total_output_kj,
+                                      total_distance_km, avg_cadence, avg_power, avg_hr,
+                                      intent_modifier, is_complete, was_recovered,
+                                      ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('ride-1', 1, 1000, 1200, 180.0, 8.0, 85.0, 150.0, 132.0,
+                        1.0, 1, 0, 0, 0, 0)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 13, true, AppMigrations.MIGRATION_12_13)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query("SELECT max_hr_bpm, avg_hr FROM workouts WHERE id = 'ride-1'")
+                .use { cursor ->
+                    assertTrue("the ride that existed before the migration is gone", cursor.moveToFirst())
+                    assertTrue(
+                        "the rider's maximum today was written onto an old ride",
+                        cursor.isNull(0)
+                    )
+                    // Untouched otherwise, which is the other half of what an
+                    // ADD COLUMN has to leave true.
+                    assertEquals(132.0, cursor.getDouble(1), 0.001)
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

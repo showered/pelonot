@@ -222,6 +222,25 @@ data class RideCharts(
      * be presented with the same authority as the real thing.
      */
     val ftpIsTheRides: Boolean = false,
+    /**
+     * The maximum heart rate the heart-rate zone bands are drawn from (21.4.2),
+     * or null when the app has none for this rider.
+     *
+     * Null means **no bands at all**, never a default: a maximum nobody gave is
+     * a guess about a body, and it is the same rule `HeartRateZone.forHeartRate`
+     * follows (21.2.4).
+     */
+    val maxHrBpm: Int? = null,
+    /**
+     * True when [maxHrBpm] is the maximum **this ride was judged against**,
+     * false when it is the rider's current one standing in for a ride recorded
+     * before `workouts.max_hr_bpm` existed (21.4.2a).
+     *
+     * Exactly [ftpIsTheRides]'s distinction, for the other denominator: bands
+     * drawn from a number the ride never saw are a re-derivation rather than a
+     * record, and the screen says so instead of presenting both alike.
+     */
+    val maxHrIsTheRides: Boolean = false,
     /** Where these watts came from — the board, the model, or both (16.1.6). */
     val powerProvenance: PowerProvenance = PowerProvenance.Unknown,
     /**
@@ -255,10 +274,19 @@ object RideChartBuilder {
         intentMultiplier: Double = 1.0,
         /** See [RideCharts.ftpIsTheRides]. */
         ftpIsTheRides: Boolean = false,
+        /** See [RideCharts.maxHrBpm] — null draws no heart-rate zone bands. */
+        maxHrBpm: Int? = null,
+        /** See [RideCharts.maxHrIsTheRides]. */
+        maxHrIsTheRides: Boolean = false,
         buckets: Int = DEFAULT_BUCKETS
     ): RideCharts {
         if (samples.isEmpty()) {
-            return RideCharts(ftpWatts = ftpWatts, ftpIsTheRides = ftpIsTheRides)
+            return RideCharts(
+                ftpWatts = ftpWatts,
+                ftpIsTheRides = ftpIsTheRides,
+                maxHrBpm = maxHrBpm,
+                maxHrIsTheRides = maxHrIsTheRides
+            )
         }
 
         // 2.7.5. A sample the fence would have rejected is left out of every
@@ -273,6 +301,8 @@ object RideChartBuilder {
             return RideCharts(
                 ftpWatts = ftpWatts,
                 ftpIsTheRides = ftpIsTheRides,
+                maxHrBpm = maxHrBpm,
+                maxHrIsTheRides = maxHrIsTheRides,
                 integrity = integrity
             )
         }
@@ -286,6 +316,8 @@ object RideChartBuilder {
             prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
             ftpWatts = ftpWatts,
             ftpIsTheRides = ftpIsTheRides,
+            maxHrBpm = maxHrBpm,
+            maxHrIsTheRides = maxHrIsTheRides,
             powerProvenance = powerProvenance,
             integrity = integrity
         )

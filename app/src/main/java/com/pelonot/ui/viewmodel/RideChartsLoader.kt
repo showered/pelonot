@@ -37,7 +37,13 @@ internal fun buildRideCharts(
     metrics: List<WorkoutMetricEntity>,
     intervals: List<Interval>,
     /** The rider's FTP *today*, used only when the ride did not record its own. */
-    riderFtp: Int?
+    riderFtp: Int?,
+    /**
+     * The rider's maximum heart rate *today* (21.4.2a), used only when the ride
+     * did not record its own — and null when the app has none, which draws no
+     * heart-rate zones rather than inventing a denominator.
+     */
+    riderMaxHr: Int? = null
 ): RideCharts = RideChartBuilder.build(
     samples = metrics.map { metric ->
         ChartSample(
@@ -57,7 +63,13 @@ internal fun buildRideCharts(
     powerProvenance = powerProvenanceOf(metrics),
     intervals = intervals,
     intentMultiplier = workout.intentModifier,
-    ftpIsTheRides = workout.ftpWatts != null
+    ftpIsTheRides = workout.ftpWatts != null,
+    // 21.4.2a, and deliberately the same two-line shape as the FTP above: the
+    // ride's own maximum, the rider's current one as a fallback, and a flag
+    // saying which — so the screen can label a re-derivation rather than
+    // presenting it as a record.
+    maxHrBpm = workout.maxHrBpm ?: riderMaxHr,
+    maxHrIsTheRides = workout.maxHrBpm != null
 )
 
 /**

@@ -23,6 +23,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.ResumedRide
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.PowerModel
@@ -40,6 +41,7 @@ import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.overlay.HudOverlayManager
@@ -98,6 +100,7 @@ class WorkoutService : Service() {
     private lateinit var classRepository: ClassRepository
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var calibrationRepository: CalibrationRepository
+    private lateinit var userRepository: UserRepository
     private val metricsCalculator = WorkoutMetricsCalculator()
 
     private var hudOverlay: HudOverlayManager? = null
@@ -160,6 +163,7 @@ class WorkoutService : Service() {
         classRepository = ServiceLocator.classRepository
         settingsRepository = ServiceLocator.settingsRepository
         calibrationRepository = ServiceLocator.calibrationRepository
+        userRepository = ServiceLocator.userRepository
 
         hudOverlay = HudOverlayManager(this).apply {
             onDockChanged = { dock ->
@@ -268,8 +272,26 @@ class WorkoutService : Service() {
         startForegroundNotification()
 
         serviceScope.launch {
+            // 21.2.3. Resolved here and stamped on the session **before** the
+            // row is written, so the ride carries the maximum its heart-rate
+            // zones are judged against rather than borrowing whatever the
+            // profile says the next time somebody opens the ride. Null is a
+            // real answer — a rider who has given the app neither a measured
+            // maximum nor a date of birth has no zones, and inventing one would
+            // be a guess about their body (21.1).
+            //
+            // Read from the profile rather than passed in the intent: the ride
+            // screen resolves this too, but asynchronously, and a first ride
+            // started before that landed would record null for no reason.
+            val max = userId?.let { id ->
+                userRepository.getUser(id)?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate) }
+            }
+            _currentSession.update { it?.copy(maxHrBpm = max?.bpm) }
+
             // The workout row must exist before any metric references it.
-            workoutRepository.beginWorkout(session.toEntity())
+            workoutRepository.beginWorkout(
+                (_currentSession.value ?: session).toEntity()
+            )
         }
 
         if (classId != null) loadClass(classId)
@@ -371,6 +393,10 @@ class WorkoutService : Service() {
             startedAtEpochMs = workout.timestamp,
             intent = intent,
             ftpWatts = ftpWatts,
+            // 21.2.3, and the same rule as `ftpWatts` above: off the row, so a
+            // maximum the rider changed between the crash and the resume does
+            // not rescore the ride they are picking back up.
+            maxHrBpm = workout.maxHrBpm,
             // From the row the repository has just stamped, so the finalise at
             // the end of this ride writes the interruption back rather than
             // over (8.3d.2).
@@ -823,6 +849,11 @@ class WorkoutService : Service() {
         // the number the ride was actually judged against rather than one
         // reconstructed afterwards from a profile that may have moved.
         ftpWatts = ftpWatts,
+        // 21.2.3, and the same sentence as the line above: the maximum this
+        // ride's heart-rate zones are judged against, written at the start so
+        // it is the number the rider actually had rather than one recovered
+        // later from a profile that has moved.
+        maxHrBpm = maxHrBpm,
         timestamp = startedAtEpochMs,
         // 8.3d.2. Carried through the session or the finalise silently writes
         // 0 over a resumed ride's own history of being resumed.
