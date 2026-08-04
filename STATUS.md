@@ -118,7 +118,7 @@ for.
 | # | What | Why it blocks |
 |---|------|--------------|
 | **18.11.1** | Public sign-up is on | Not a feature — a live setting. See *What is wrong today* |
-| **20.3** | The initial FTP | Profile creation asks for an FTP in a text box prefilled with `200`. The owner's own words: it **cannot go into production**. FTP is the denominator of every zone in the app |
+| **20.3** | The initial FTP | Profile creation asks for an FTP in a text box a new rider cannot answer. The owner's own words: it **cannot go into production**. FTP is the denominator of every zone in the app. (20.3.6 is closed — the box and its fallback both said `200` while the rest of the app said 150 — which fixes a real defect and leaves the question standing) |
 | **19.1.6** | The first run explains nothing | A new rider is dropped on the profile picker; the overlay permission — the thing the product is built on — is first mentioned at ride start; a heart-rate strap is discoverable only in Settings |
 | **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
 | **15.4.1–15.4.3** | Sign out, delete cloud data, delete the account | GDPR applies to a hobby project, and sign-out must keep every local ride |
