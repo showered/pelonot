@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -50,6 +53,18 @@ fun <T> WideGrid(
     minCellWidth: Dp = 220.dp,
     maxColumns: Int = Int.MAX_VALUE,
     spacing: Dp = MaterialTheme.spacing.medium,
+    /**
+     * Stretch every cell in a row to the tallest one (22.7.2).
+     *
+     * **Opt-in, and it has to be.** Equal heights need the row measured at
+     * `IntrinsicSize.Min`, and intrinsic measurement is not something every
+     * composable can answer — a `Canvas` throws rather than guessing, and half
+     * this grid's callers put charts in their cells. So the default stays the
+     * layout that works for anything, and a caller whose cells are text turns
+     * it on: the class detail screen's interval tiles, where one tile carrying
+     * a position chip made its whole row ragged.
+     */
+    equalHeightRows: Boolean = false,
     itemContent: @Composable (T) -> Unit
 ) {
     if (items.isEmpty()) return
@@ -57,12 +72,14 @@ fun <T> WideGrid(
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val fits = columnsFor(maxWidth, minCellWidth, spacing, maxColumns)
         val columns = balancedColumns(items.size, fits)
+        val rowHeight = if (equalHeightRows) Modifier.height(IntrinsicSize.Min) else Modifier
+        val cellHeight = if (equalHeightRows) Modifier.fillMaxHeight() else Modifier
 
         Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
             items.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                Row(rowHeight, horizontalArrangement = Arrangement.spacedBy(spacing)) {
                     row.forEach { item ->
-                        Box(Modifier.weight(1f)) { itemContent(item) }
+                        Box(Modifier.weight(1f).then(cellHeight)) { itemContent(item) }
                     }
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }

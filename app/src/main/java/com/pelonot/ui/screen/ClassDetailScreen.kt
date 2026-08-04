@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,24 +29,29 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
+import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.PositionChip
+import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.color
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.loneCard
+import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -104,76 +110,133 @@ fun ClassDetailScreen(
             return@Scaffold
         }
 
+        val profile = remember(plan.intervals) { ClassProfile.of(plan.intervals) }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Text(
-                text = "${Formatters.minutes(plan.durationSec)} · ${plan.category} · " +
-                    "${plan.intervals.size} intervals",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large)
-            )
-
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-            // Above the interval list rather than below it: this is the screen
-            // where a rider is choosing what to ride, and "your housemate did
-            // 214 kJ on this one" is the reason to pick it. The interval
-            // breakdown is what they read once they already have.
-            leaderboard?.let {
-                ClassLeaderboardCard(
-                    leaderboard = it,
-                    modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.large,
-                        vertical = MaterialTheme.spacing.small
-                    )
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(
+                    start = MaterialTheme.spacing.large,
+                    end = MaterialTheme.spacing.large,
+                    bottom = MaterialTheme.spacing.large
+                ),
+                // Centred when it does not fill the panel, which is 22.7.1's
+                // rule arriving on a third screen: most classes are seven or
+                // eight blocks and leave a third of a 720 dp tablet empty, so
+                // top-aligning them hangs the whole screen off the app bar with
+                // a hole above the Start button. A long class overflows and
+                // scrolls exactly as before.
+                verticalArrangement = Arrangement.spacedBy(
+                    MaterialTheme.spacing.large,
+                    Alignment.CenterVertically
                 )
-            }
-
-            if (plan.intervals.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(MaterialTheme.spacing.doubleExtraLarge),
-                    contentAlignment = Alignment.Center
-                ) {
+            ) {
+                // How long, how hard, what shape — one line, and the profile
+                // under it says the same thing without a word (22.7.2). The
+                // interval count is gone from here: the picture shows every
+                // block and the list below names them, which is three answers
+                // to one question (Phase 26).
+                item {
                     Text(
-                        text = "This class has no readable interval data, so targets " +
-                            "cannot be shown. You can still ride it as a free ride.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
+                        text = listOfNotNull(
+                            if (profile.blocks.isEmpty()) {
+                                Formatters.minutes(plan.durationSec)
+                            } else {
+                                profile.minutesLabel
+                            },
+                            plan.category,
+                            profile.shape
+                        ).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // A sentence is read, so it is capped where it stands
+                        // rather than centred over left-aligned content.
+                        modifier = Modifier.readableText()
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.large),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    items(plan.intervals) { interval ->
-                        IntervalCard(interval = interval, ftp = ftp)
+
+                if (plan.intervals.isEmpty()) {
+                    item {
+                        Text(
+                            text = "This class has no readable interval data, so targets " +
+                                "cannot be shown. You can still ride it as a free ride.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.readableText()
+                        )
+                    }
+                } else {
+                    // The one thing here that is looked at rather than read, so
+                    // it takes the panel: time is the horizontal axis and a
+                    // 30-minute class capped at 760 dp loses the proportion
+                    // between the work and the recoveries (22.4).
+                    item { ClassProfileChart(profile = profile) }
+                }
+
+                // Above the interval list rather than below it: this is the
+                // screen where a rider is choosing what to ride, and "your
+                // housemate did 214 kJ on this one" is the reason to pick it.
+                // The interval breakdown is what they read once they already
+                // have. A card with nothing beside it is capped (22.6).
+                leaderboard?.let {
+                    item { ClassLeaderboardCard(leaderboard = it, modifier = Modifier.loneCard()) }
+                }
+
+                if (plan.intervals.isNotEmpty()) {
+                    // Tiles, not a stack of full-width rows. Each row used to
+                    // carry four facts down its left edge with 1200 dp of empty
+                    // panel beside them, and the seventh block of a 30-minute
+                    // class fell below the fold — on the one screen whose job
+                    // is to show the whole class (22.6, 22.4).
+                    item {
+                        WideGrid(
+                            items = plan.intervals,
+                            minCellWidth = 300.dp,
+                            spacing = MaterialTheme.spacing.small,
+                            // One tile carrying a position chip is taller than
+                            // its neighbours, and a row of four where the
+                            // fourth is 20 dp taller reads as a mistake.
+                            equalHeightRows = true
+                        ) { interval ->
+                            IntervalCard(interval = interval, ftp = ftp)
+                        }
                     }
                 }
             }
 
-            Button(
-                onClick = onStart,
+            // One control, not a card the width of the room. It keeps the
+            // height it had — this is a button pressed by somebody already
+            // clipped in — and loses only the 1100 dp of pill either side.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(MaterialTheme.spacing.large)
-                    .height(56.dp),
-                shape = MaterialTheme.expressiveShapes.pill
+                    .padding(MaterialTheme.spacing.large),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Start class")
+                Button(
+                    onClick = onStart,
+                    modifier = Modifier
+                        .width(START_BUTTON_WIDTH)
+                        .height(56.dp),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text("Start class")
+                }
             }
         }
     }
 }
+
+/**
+ * Wide enough to be the obvious thing on the screen, narrow enough not to be a
+ * band across it. Judged on the tablet AVD at 1280 dp, which is the only place
+ * this question has an answer (22.4.5).
+ */
+private val START_BUTTON_WIDTH = 420.dp
 
 @Composable
 private fun IntervalCard(interval: Interval, ftp: Double) {
@@ -183,6 +246,7 @@ private fun IntervalCard(interval: Interval, ftp: Double) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .semantics {
                 contentDescription = "Zone ${zone.number}, ${zone.displayName}, " +
                     "${Formatters.duration(interval.durationSec)}, " +

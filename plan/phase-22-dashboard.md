@@ -466,7 +466,7 @@ one is a screen the audit never reached.
       edge case at the bottom of a dense fixture list is the ordinary reading
       of this screen. That is 22.5.5's warning arriving on a second surface,
       and it is the reason this is worth a change rather than a shrug.*
-- [ ] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
+- [x] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
       *"I'm sure this is already on the todo list but it needs some work.
       Visualisation should be much more beautiful and also adhere to the rules
       of sticking inside a max-width container, unless full-width is necessary
@@ -500,3 +500,64 @@ one is a screen the audit never reached.
         profile tile.
 
       Do it **after** 22.7.1, which is small, and judge it on the AVD (22.4.5)
+
+      ***Done and observed on the tablet AVD, and the three questions are
+      answered in the order they were asked.***
+
+      **The visualisation is the class itself — height for zone, width for
+      time.** `ClassProfile` (pure, `domain/chart`, nine tests) and
+      `ClassProfileChart`. It is the one thing on the screen that is *looked
+      at*, so it takes the panel: time is the horizontal axis and a 30-minute
+      class capped at 760 dp loses the proportion between the work and the
+      recoveries, which is the whole question. **No value axis, deliberately**
+      — the vertical is a zone *ordering*, and the gap between Z1 and Z2 is not
+      the gap between Z6 and Z7 in watts, so gridlines would claim something
+      untrue. Three clock labels underneath, matching `ChartFrame`'s idiom.
+
+      *Measured against two real classes and they read as different workouts
+      from across the room:* `The Long Climb 30` is a ramp into one long orange
+      block; `Torque Repeats 4×2 20` is four spikes with recoveries between
+      them. Two facts fell out of building it that are worth keeping. **Zone 1
+      needs a floor** — strictly proportional it is a seventh of the plot, and a
+      warm-up then reads as an empty left-hand edge rather than as riding.
+      **And adjacent blocks at the hardest zone are one effort**: the library
+      splits a fifteen-minute threshold block in two to change the cadence, and
+      calling that two efforts describes a workout with a rest in it that
+      nobody gets.
+
+      **The sentence says the same thing in words, and it agrees with the
+      title.** *"20 min · Climbs · 4 × 2 min at Lactate Threshold"* over a class
+      called `Torque Repeats 4×2 20`, and *"30 min · Climbs · one 15 min effort
+      at Lactate Threshold"* over `The Long Climb 30`. Minutes rather than
+      `mm:ss`: a clock format is for reading a measurement, and this is
+      describing a shape to somebody deciding what to ride (Phase 26). The
+      interval count is gone from the header — the picture shows every block and
+      the list names them, which was three answers to one question.
+
+      **Which rule applies where, which is 22.4.3's "capped column inside a
+      wider frame" case finally used.** The profile and the interval grid take
+      the width; the summary sentence is `readableText()`; the leaderboard is
+      `loneCard()`; and **Start is a control rather than a card the width of the
+      room** — 420 dp, centred, the same height it had. Before this, six
+      interval rows each spanned 1872 dp to carry four facts down their left
+      edge, and the seventh block of a 30-minute class was **below the fold on
+      the one screen whose job is to show the whole class**. It is a `WideGrid`
+      now: seven tiles as 4 + 3, all of them on screen.
+
+      *Two things found while looking rather than while planning.* The content
+      needed **centring when it does not fill the panel** — 22.7.1's rule
+      arriving on a third screen, because most classes are seven or eight blocks
+      and top-aligning them hangs everything off the app bar with a hole above
+      the button. And `WideGrid` grew an opt-in `equalHeightRows`: one tile
+      carrying a position chip (25.3) is 20 dp taller than its neighbours and a
+      ragged row reads as a mistake. **Opt-in and it has to be** — equal heights
+      need `IntrinsicSize.Min`, and a `Canvas` throws rather than answering an
+      intrinsic query, so the callers with charts in their cells must keep the
+      layout that works for anything. History was re-checked after the change
+      and is unmoved.
+
+      **One path was not seen and should not be claimed**: the household
+      leaderboard card above the grid. It needs two riders with *measured*
+      rides of the same class (24.1.6, 24.4.2) and this AVD's database has one
+      rider and simulated watts, so the card does not draw at all — correctly.
+      The change to it is a width cap and nothing else
