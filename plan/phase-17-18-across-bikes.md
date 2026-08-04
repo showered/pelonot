@@ -177,13 +177,40 @@ keyboard should be possible on the web and optional on the bike.**
       somewhere that is not running — and 15.1's "signed up, not confirmed, no
       session" state is exactly where that rider is stranded. `web/README.md`
       already warns about this in the abstract; it is concrete now
-- [ ] **17.16.5** **A copy defect on the live pairing page.** With an unknown
-      or expired code the card reads *"This will sign in"* above *"That code
-      has expired"* — the caption is a promise about a device the page has
-      just said it cannot find. `link.js` replaces the device label and leaves
-      the `figure-label` above it alone. Small, and it is on the one page a
-      rider meets before they trust this app with a password, which is the
-      argument for fixing it rather than filing it
+- [x] **17.16.5** **A copy defect on the live pairing page — and underneath it
+      a state bug, which is why it was worth opening the file for.** With an
+      unknown or expired code the card read *"This will sign in"* above *"That
+      code has expired"*: a promise about a device the page had just said it
+      could not find.
+
+      **The form was showing too, and that is the part that matters.** `route()`
+      decided whether the code was known by **reading the rendered text** —
+      `el('device-label').textContent !== 'That code has expired'` — and
+      `onAuthStateChange` fires its first event immediately, usually while the
+      label still reads `…`. So the page asked an unknown code's rider for an
+      email and a password, directly under a card saying it could not find the
+      bike. **That is the exact thing 15.6.5 exists to prevent**: this is a
+      page a QR code can point anybody at, and *naming what is asking, before
+      anything is asked for*, is the whole of its defence against being a
+      phishing primitive. A protection that reads its own DOM loses a race it
+      has no reason to be in.
+
+      `described` is now a variable — `null` until the server answers, then
+      true or false — and nothing is offered until it is true, which also
+      covers the case nobody had thought about: the seconds *before* the first
+      answer. The expired card now says *"Nothing to sign in"*, and it reopens
+      the type-a-code box, so a rider whose code lapsed has a way forward
+      instead of a dead end.
+
+      ***Observed against the live endpoint***, both paths, in a browser. A
+      pairing code minted for the purpose (`device_link_begin`, five-minute
+      life, secret never leaving the shell) is described back under its own
+      label with the form shown and the caption intact; an unknown code gets no
+      form, no confirm, the honest caption and the retry box. One incidental
+      finding, harmless and worth knowing: **changing only the fragment does
+      not re-describe**, because a hash change does not reload a document. The
+      QR always opens a fresh page and the retry box goes through the button,
+      so nothing reaches that path today
 - [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has

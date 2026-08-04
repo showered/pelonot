@@ -18,6 +18,19 @@ const client = pelonotClient(status);
 let code = (location.hash || '').replace(/^#/, '').trim().toUpperCase();
 let mode = 'signin';
 
+/*
+ * Whether the server has told us what this code is pairing: null until it has
+ * answered, then true or false. It is a variable rather than a reading of the
+ * rendered text, and that is the bug it fixes (PLAN 17.16.5). `route()` used to
+ * ask whether the device label said "That code has expired", and
+ * `onAuthStateChange` fires its first event immediately — often while the label
+ * still reads "…" — so an unknown code got the sign-in form anyway. The page
+ * then said it could not find the bike and asked for a password underneath,
+ * which is the exact thing 15.6.5 exists to prevent: nothing is asked for
+ * before the rider is told what is asking.
+ */
+let described = null;
+
 if (client) start();
 
 async function start() {
@@ -58,20 +71,30 @@ function setMode(next) {
 
 /** What is asking, said before the rider commits to anything (15.6.5). */
 async function describe() {
+  described = null;
   el('need-code').classList.add('hidden');
   el('device-card').classList.remove('hidden');
+  el('device-caption').textContent = 'This will sign in';
   el('device-label').textContent = '…';
   el('device-code').textContent = code.replace(/(.{4})(.{4})/, '$1 $2');
 
   const { data, error } = await client.rpc('device_link_describe', { p_code: code });
 
   if (error || !data || data.status !== 'waiting') {
+    described = false;
+    // The caption goes too. Left alone it read "This will sign in" directly
+    // above "That code has expired" — a promise about a device the page has
+    // just said it cannot find.
+    el('device-caption').textContent = 'Nothing to sign in';
     el('device-label').textContent = 'That code has expired';
     el('device-code').textContent =
       'Codes last five minutes. Ask the bike for a new one.';
+    el('need-code').classList.remove('hidden');
+    route();
     return;
   }
 
+  described = true;
   el('device-label').textContent = data.label;
   route();
 }
@@ -79,7 +102,10 @@ async function describe() {
 async function route() {
   const { data } = await client.auth.getSession();
   const signedIn = Boolean(data.session);
-  const known = el('device-label').textContent !== 'That code has expired';
+  // Nothing is offered until the server has said what is being paired — not
+  // the sign-in form on an unknown code, and not before the first answer
+  // arrives either, since `described` is null until then.
+  const known = described === true;
 
   el('signed-out').classList.toggle('hidden', signedIn || !known);
   el('confirm').classList.toggle('hidden', !signedIn || !known);
