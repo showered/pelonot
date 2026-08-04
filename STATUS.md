@@ -39,8 +39,8 @@ currently open and should not be, and one deploy that has not been run.
 | **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done** except one item — a live pace target *during* a ride (24.3.2) |
-| **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). Sign-out, account deletion and pull-to-a-new-device are not built |
-| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | ❌ **The real gap.** See *How close to done*, below |
+| **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **Half a gap now.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, and estimates an FTP rather than demanding one. What it still never mentions is that an account exists (15.8). See *How close to done*, below |
 
 ---
 
@@ -134,13 +134,11 @@ for.
 
 | # | What | Why it blocks |
 |---|------|--------------|
-| **18.11.1** | Public sign-up is on | Not a feature — a live setting. See *What is wrong today* |
-| **20.3** | The initial FTP | Profile creation asks for an FTP in a text box a new rider cannot answer. The owner's own words: it **cannot go into production**. FTP is the denominator of every zone in the app. (20.3.6 is closed — the box and its fallback both said `200` while the rest of the app said 150 — which fixes a real defect and leaves the question standing) |
 | **19.1.6** | The first run explains nothing | A new rider is dropped on the profile picker; the overlay permission — the thing the product is built on — is first mentioned at ride start; a heart-rate strap is discoverable only in Settings |
 | **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
 | **15.4.1–15.4.3** | Sign out, delete cloud data, delete the account | GDPR applies to a hobby project, and sign-out must keep every local ride |
-| **17.16.6** | The pairing page's fix is not deployed | Fixed in the repo, and the internet still serves the version that gave the owner a dead end. `./web/check-deployed.sh` says so; redeploying is the owner's, and **how to do it is written down nowhere** (17.16.2) |
-| **15.8 / 20.3** | The first-run flow | Two notes, one screen. Profile creation is a bare dialog with three text fields that never mentions an account and asks for an FTP a new rider cannot give. Rebuild it once, not twice |
+| **17.16.2** | How the web app is deployed | The fix shipped and the check confirms it (17.16.8), but the command itself lives only in the owner's shell history. `./web/check-deployed.sh` is what catches the next drift, and only if somebody runs it |
+| **15.8** | The account as the front door | **20.3 is done** — profile creation is a proper three-step screen with no watt field. What is missing is the other half of the same note: it still never mentions that an account exists. The screen was built with the hook in place, so this goes in rather than beside |
 
 ### Deliberately deferred, with the reason written down
 
@@ -182,25 +180,32 @@ already exists and has never been called.
 
 ## What is wrong today, ranked
 
-1. **Public sign-up is open on a project whose web app is now hosted
-   (18.11.1).** Measured today: the endpoint answers `"disable_signup": false`,
-   the deployed page draws a *Create an account* tab, and `007` puts every
-   registered account on the household's leaderboard. The blast radius is
-   bounded and worth stating exactly — `workouts` and `profiles` still hold
-   "your own rows and nobody else's", so a stranger who registered would see
-   **leaderboard entries and ghost traces**: display names, class ids,
+1. **Public sign-up is open, and that is now a decision rather than an
+   oversight (18.11.1).** The owner settled it on 4 August — *"Leave on public
+   signup. It doesn't matter — it requires email validation anyway"* — and the
+   measurement supports them: `mailer_autoconfirm` is `false`, so an account is
+   not usable until somebody opens a link in the inbox they claimed. What
+   actually decided it was that **18.11.1 and 15.8.2 could not both be built**:
+   a rider creating their first profile has no account by definition, so
+   invite-only would have made signing up from their own phone impossible.
+
+   The exposure is unchanged and still worth stating, because it is now an
+   accepted risk rather than an open door: `workouts` and `profiles` hold "your
+   own rows and nobody else's", so a stranger who registered would see
+   **leaderboard entries and ghost traces** — display names, class ids,
    durations, output. Not ride dates, not RPE, not heart rate, not anyone's
-   rows. **It is two minutes in the Supabase dashboard and it is the owner's to
-   do** — Authentication → Providers → Email → *Allow new users to sign up*,
-   off.
-2. **The deployed web app is not the committed one (17.16.6, 17.16.2).** A fix
-   to the pairing page was verified against the live endpoint *from a local
-   copy* and never shipped, so the owner scanned a QR the next day and met the
-   unfixed page with no way to sign in. Both faults are fixed in the repo and
-   **neither is fixed on the internet**. There is now a command that answers the
-   question — `./web/check-deployed.sh`, curl and diff, non-zero on drift — and
-   it currently reports two files out of date. What is still missing is the
-   deploy command itself, which lives only in the owner's shell history.
+   rows. The item to care about instead is **17.16.3**: which publishable key is
+   on the internet matters more once the door is deliberately open. And this is
+   the paragraph to re-read the day the project has more than four riders.
+2. **The deploy is written down nowhere (17.16.2)**, which is what is left of a
+   defect that has now been paid for twice. The pairing-page fix was verified
+   against the live endpoint *from a local copy*, never shipped, and the owner
+   scanned a QR the next day into the unfixed page. **That is fixed now** — the
+   owner redeployed and `./web/check-deployed.sh` reports seven files the same,
+   exit 0 (17.16.8). But the gap was open for exactly one drift because the
+   *check* exists, not because the deploy became reliable: it still lives only
+   in the owner's shell history, and the next drift will be found only by
+   somebody choosing to run the script.
 3. **The cloud tier has been alive for two days.** Everything in it has been
    observed once, by one household, mostly on an emulator. This project's
    history is three cloud defects that all returned success codes, plus the one
@@ -235,30 +240,32 @@ already exists and has never been called.
 ## How close to done
 
 **Done for this household: weeks, not months — and mostly not code.** The bike
-works, the record is honest, the backup runs. What stands between here and
-"nobody thinks about it any more" is the sign-up setting, **redeploying the web
-app**, sign-out doing the right thing, and a full-length ride that measures
-battery and heat. Three of those four are a setting or a command rather than
-work.
+works, the record is honest, the backup runs. **Two of the four things on this
+list a week ago are now closed** — the sign-up setting was decided (kept open,
+deliberately) and the web app was redeployed and verified. What is left is
+sign-out doing the right thing, and a full-length ride that measures battery and
+heat.
 
 **Done for a stranger with a Peloton: the seven rows in the table above.** In
 order of what a new rider meets first: a first-run flow that offers an account
-and gets to a usable FTP without a text box — which is **15.8 and 20.3 on one
-screen**, and rebuilding it twice is the mistake to avoid — a first run that
+and gets to a usable FTP without a text box. **Half of that is now built** —
+20.3 is a three-step screen that estimates an FTP from questions a person can
+answer — and the half that is not is 15.8, the offer of an account, which the
+screen was deliberately built with a hook for rather than beside; a first run that
 explains the overlay permission before the ride needs it (19.1.6), and a green
 CI run so the project can take a patch (19.1.4). That is a genuinely short list,
 and it is short because the hard parts — a stock bike, honest telemetry,
 migrations, an overlay that survives Netflix — are behind us.
 
-**Done as the plan is written: 65%, and it will never be 100.** 445 of 682
-boxes, and the remaining 237 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 66%, and it will never be 100.** 453 of 684
+boxes, and the remaining 231 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
-things it had already decided against. **The percentage went *down* this sitting
-while three things were finished**, which is the clearest possible demonstration
-of why not to read it as progress: three of the owner's notes added forty boxes
+things it had already decided against. **It went *down* the sitting before this one while
+three things were finished**, which is the clearest possible demonstration of
+why not to read it as progress: three of the owner's notes added forty boxes
 between them, most of Phase 27's. A closed box and an open one are not the same
-unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 is one box and
-a screen that has to be designed. **Read the percentage as an inventory count,
+unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 was six boxes
+and a screen that had to be designed. **Read the percentage as an inventory count,
 never as a completion estimate.**
 
 **The thing most likely to move that date is not on any list**, and it is worth
