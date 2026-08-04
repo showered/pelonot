@@ -534,6 +534,7 @@ private fun FtpLastChanged(entry: FtpHistoryEntity?, previousWatts: Int?) {
         FtpChangeSource.PulledFromCloud -> "another device"
         FtpChangeSource.AutoBreakthroughReverted -> "you put back the app's change"
         FtpChangeSource.ProfileCreated -> "when the profile was made"
+        FtpChangeSource.Estimated -> "the app's first guess"
         // Every value seeded by migration 7→8, and any write path that changes
         // the number without saying why. The date is still true.
         FtpChangeSource.Unknown -> null

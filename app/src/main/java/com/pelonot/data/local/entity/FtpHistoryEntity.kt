@@ -24,6 +24,25 @@ enum class FtpChangeSource {
     /** The number given when the profile was made. */
     ProfileCreated,
 
+    /**
+     * The app worked it out from the rider's weight, age and their own
+     * description of their riding (20.3.2, `FtpEstimator`).
+     *
+     * **A fourth kind of thing, and 20.3.4 is explicit that it must not be
+     * filed as one of the other three.** [ProfileCreated] means *the rider gave
+     * us this number*, and after 20.3 that is only true of a rider who opened
+     * the escape hatch and typed one. An estimate is neither a claim the rider
+     * made nor evidence the app measured: it is a **guess with a method**, and
+     * a trend line that cannot tell it from either is a trend line that lies
+     * about its own first point.
+     *
+     * The distinction earns its keep on the day it matters most — the first
+     * auto-FTP breakthrough. Replacing a rider's own stated number is the app
+     * contradicting them; replacing this one is the app doing exactly what it
+     * promised at signup (20.3.5).
+     */
+    Estimated,
+
     /** Typed into Settings. A claim about the rider, made by the rider. */
     ManualEdit,
 

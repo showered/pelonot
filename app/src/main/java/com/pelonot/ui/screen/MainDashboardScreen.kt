@@ -905,6 +905,7 @@ private fun FtpTrendLine(trend: FtpTrend) {
         FtpChangeSource.PulledFromCloud -> "another device"
         FtpChangeSource.AutoBreakthroughReverted -> "you put it back"
         FtpChangeSource.ProfileCreated -> null
+        FtpChangeSource.Estimated -> "the app's first guess"
         FtpChangeSource.Unknown -> null
     }
     val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(change.atEpochMs))

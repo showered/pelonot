@@ -526,6 +526,7 @@ private fun FtpChangeSource.describe(): String? = when (this) {
     FtpChangeSource.GuidedTest -> "an FTP test"
     FtpChangeSource.PulledFromCloud -> "another device"
     FtpChangeSource.ProfileCreated -> "when you made this profile"
+    FtpChangeSource.Estimated -> "the app's first guess"
     FtpChangeSource.AutoBreakthroughReverted -> "you put it back"
     FtpChangeSource.Unknown -> null
 }

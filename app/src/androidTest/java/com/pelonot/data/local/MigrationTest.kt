@@ -820,6 +820,63 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 13 → 14: `profiles.fitness_level` (20.3.7).
+     *
+     * 11 → 12's argument once more, and it bites harder here. A profile that
+     * existed before this column was never asked how it rides, so it comes out
+     * **null** rather than `occasional` — and the reason null matters is that
+     * 20.3.4 makes this column *quotable*: the app is meant to be able to say
+     * "you told us you ride regularly" beside an estimated FTP. Writing
+     * `FitnessLevel.DEFAULT` here would let it say that to somebody who told it
+     * nothing.
+     *
+     * The default and the absence are different facts — the same distinction as
+     * a nullable `power_is_measured`, where `Unknown` and `Modelled` are not
+     * the same claim.
+     */
+    @Test
+    fun migrate13To14_leavesAnExistingProfileWithNoSelfAssessmentRatherThanADefault() {
+        helper.createDatabase(TEST_DB, 13).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts, created_at,
+                                      auth_user_id, household_visible, max_hr_bpm, birth_date)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, NULL, 1, 186, 500)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 14, true, AppMigrations.MIGRATION_13_14)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            migrated.openHelper.readableDatabase
+                .query("SELECT fitness_level, ftp_watts, birth_date FROM profiles WHERE local_user_id = 1")
+                .use { cursor ->
+                    assertTrue("the profile that existed before the migration is gone", cursor.moveToFirst())
+                    assertTrue(
+                        "an answer was put in the rider's mouth",
+                        cursor.isNull(0)
+                    )
+                    // And nothing else moved. The estimate is a creation-time
+                    // event (20.3.5) and a migration must not re-run it over a
+                    // rider who has been riding on their own number for months.
+                    assertEquals(210, cursor.getInt(1))
+                    assertEquals(500L, cursor.getLong(2))
+                }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

@@ -96,7 +96,31 @@ data class UserEntity(
      * it is an identity field.
      */
     @ColumnInfo(name = "birth_date")
-    val birthDate: Long? = null
+    val birthDate: Long? = null,
+
+    /**
+     * How the rider described their own riding when the profile was made
+     * (20.3.2, Route B) — the `id` of a `FitnessLevel`, or null.
+     *
+     * The one input to the FTP estimate that is not collected for some other
+     * reason, which is what made Route B affordable: weight was already here
+     * and [birthDate] arrived for heart-rate zones (20.3.9).
+     *
+     * **Nullable, and stored rather than only used**, which are two separate
+     * decisions. Nullable because every profile that already exists was never
+     * asked and a backfilled guess is indistinguishable from an answer —
+     * 11 → 12's argument repeated. Stored because 20.3.4 requires the app to be
+     * able to say where an estimated FTP came from, and *"you told us you ride
+     * regularly"* is that sentence; an estimate whose inputs were thrown away
+     * is a number the rider cannot argue with.
+     *
+     * It is **not** re-read to move the FTP later. The estimate happens once,
+     * at creation, and from then on the riding corrects it (20.3.5). Anything
+     * that recomputed an FTP from this column would be deriving a rider's
+     * recorded denominator from a self-assessment months old.
+     */
+    @ColumnInfo(name = "fitness_level")
+    val fitnessLevel: String? = null
 ) {
 
     /** True when this rider has an account, and therefore a cloud. */

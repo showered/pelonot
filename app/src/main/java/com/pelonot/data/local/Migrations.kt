@@ -334,10 +334,38 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 13 → 14: how the rider describes their own riding (20.3.7).
+     *
+     * The last input the FTP estimate needed and the only one that was not
+     * already being collected for something else — which is 20.3.9's point:
+     * `birth_date` arrived in 11 → 12 for heart-rate zones, `weight_kg` has
+     * been here since the beginning, so Route B cost one column rather than
+     * the two the item budgeted for.
+     *
+     * Nullable and not backfilled, for 11 → 12's reason once more. Every
+     * profile that already exists was never asked this question, and writing
+     * `occasional` onto all of them would put an answer in the rider's mouth
+     * — which matters more here than usual, because 20.3.4 makes this column
+     * *quotable*: the app is meant to be able to say "you told us you ride
+     * regularly", and it must not say that to somebody who told it nothing.
+     *
+     * Note that `FitnessLevel.DEFAULT` exists and is *not* what this migration
+     * writes. The default is what an estimate assumes in the absence of an
+     * answer; null is the record of there having been no answer. Those are
+     * different facts and the same distinction as `power_is_measured` being
+     * nullable — a value nobody wrote down is not a value.
+     */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `profiles` ADD COLUMN `fitness_level` TEXT")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-        MIGRATION_12_13
+        MIGRATION_12_13, MIGRATION_13_14
     )
 }

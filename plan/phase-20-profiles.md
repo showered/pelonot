@@ -120,8 +120,63 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       this item. Nothing else about the dialog is in scope here — name and
       weight are answerable questions and 13.8 already fixed the one that
       wasn't
-- [ ] **20.3.2** **Decide between the two routes, and write down which and
-      why.** Route A: no question at all — seed a default and let the first
+- [x] **20.3.2** **Decide between the two routes, and write down which and
+      why.**
+
+      ***Decided: Route B, and the argument that settled it was not in this
+      item.*** The three-way balance below was genuinely close, and 20.3.9 had
+      already tilted it by making date of birth free. What made it one-sided is
+      a fact about `PostWorkoutAnalyzer` that nobody had brought to this
+      question:
+
+      **auto-FTP can only ever propose a rider's FTP *upward*.** `analyze()`
+      surfaces a proposal only when it clears `currentFtp × MIN_MEANINGFUL_GAIN`
+      — 1.02 — so there is no path anywhere in this app by which a first FTP
+      that is too *high* is ever corrected. That makes the two errors completely
+      unlike each other:
+
+      - **Too low is temporary.** The first hard ride reads high against it, the
+        app proposes the real number, and the estimate is gone. The rider spends
+        a few early rides drawn a zone hot, which feels like generosity.
+      - **Too high is permanent.** Nothing proposes bringing it down, no
+        breakthrough ever clears the threshold, every ride sits in Zone 2, and
+        the rider concludes the app does not work. That is 20.3.4's own stated
+        failure, and it is unrecoverable rather than merely unpleasant.
+
+      **Route A cannot express that asymmetry and Route B can.** A single
+      default is too high for some riders and too low for others *by
+      construction*, and the ones it is too high for are stuck there for ever.
+      An estimate can be deliberately pitched below the published mid-range for
+      every description, so that it is wrong for nearly everybody by a little,
+      **in the direction that fixes itself**. `FtpEstimator`'s class comment is
+      that argument and `FtpEstimatorTest.estimateIsBelowPublishedMidRange`
+      pins it, so a later change to the coefficients has to argue against the
+      asymmetry rather than around it.
+
+      **A second fact pushes the same way and is worth recording, because it is
+      about a field this app deliberately does not have.** Published
+      FTP-per-kilogram tables differ by roughly 15% on sex, and the app does not
+      collect it and should not start — a bike in a garage does not need it, and
+      the ask was for *fewer* unanswerable questions rather than more. Pitching
+      at the mixed mid-range would therefore run high for a large share of
+      riders, in the one direction nothing corrects. Pitching low is how the
+      estimate stays honest without the field.
+
+      ***And the "skip" the synthesis worried about is not built***, which is
+      the sub-decision this item asked 20.3.3 to make by looking. There is no
+      *Skip* on the questions. Instead the questions are made cheap enough not
+      to be worth skipping — a date wheel and three cards, no text box, no
+      keyboard — and **the escape sits on the *answer*, not in front of it**:
+      the rider is shown the number the app worked out and can change it there.
+      That inverts the failure the item named. A skip before the questions makes
+      them feel optional and produces Route A for everybody who is in a hurry; a
+      change-it link after them is only reached by a rider who has seen the
+      estimate and disagrees with it, which is exactly the rider who should be
+      typing a number.
+
+      The original three-way balance, kept because its reasoning still holds:
+
+      Route A: no question at all — seed a default and let the first
       rides move it. Route B: two or three *answerable* questions (age, and a
       self-assessed "how would you describe your riding?") feeding a published
       estimate. The owner offered both and the choice is a real one, so it gets
