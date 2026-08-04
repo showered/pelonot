@@ -749,6 +749,13 @@ private fun EffortColumn(
  * Drawn in the output colour rather than green-for-ahead and red-for-behind,
  * which is the decision worth keeping: a rider behind a stronger housemate is
  * not doing anything wrong, and colouring it as a failure would say they were.
+ *
+ * The output colour is `primary`, the same one the OUTPUT tile directly below
+ * this uses — because kJ is what it is, and a gap in kJ that is not the colour
+ * of kJ is a second colour language on one column. It was `MetricPowerCoral`
+ * on the first pass and that was wrong for a reason only the tablet showed:
+ * against a dark background coral reads as *red*, so a rider two kilojoules
+ * down was being told in the colour of an error that they were losing.
  */
 @Composable
 private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
@@ -790,7 +797,7 @@ private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
                     lineHeight = 36.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
-                    color = MetricPowerCoral,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     modifier = Modifier.weight(1f, fill = false)
                 )
