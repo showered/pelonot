@@ -67,7 +67,12 @@ private const val COUNTDOWN_SECONDS = 10
 fun RideCountdownScreen(
     plan: ClassPlan?,
     onStart: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * Holds the count where it is (11.6.14). Set while the rider is answering
+     * the overlay permission — in the dialog, or away in Android's settings.
+     */
+    paused: Boolean = false
 ) {
     // Survives a rotation without restarting the count — the rider does not get
     // their ten seconds back for turning the tablet.
@@ -77,11 +82,18 @@ fun RideCountdownScreen(
     // Keyed on the count rather than looping inside one effect, so *Start now*
     // — which simply sets the count to zero — cancels the second already in
     // flight instead of waiting for it to elapse.
-    LaunchedEffect(remaining) {
+    //
+    // Keyed on `paused` for the same reason, in the other direction: the second
+    // in flight is cancelled rather than allowed to land while the rider is
+    // away answering the overlay prompt, and starts whole when they come back.
+    // Rounding the rider's way is the right rounding on a beat that exists to
+    // let them get onto a bike.
+    LaunchedEffect(remaining, paused) {
         if (remaining <= 0) {
             start()
             return@LaunchedEffect
         }
+        if (paused) return@LaunchedEffect
         delay(1000)
         remaining -= 1
     }

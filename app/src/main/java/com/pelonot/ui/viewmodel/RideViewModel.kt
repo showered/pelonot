@@ -47,6 +47,17 @@ data class RideUiState(
      */
     val overlayPermissionNeeded: Boolean = false,
     /**
+     * Set while the rider is away in Android's overlay settings answering it
+     * (11.6.14).
+     *
+     * A separate flag from [overlayPermissionNeeded] because the dialog closing
+     * and the question being answered are different events: tapping *Open
+     * settings* takes the prompt down and takes the rider out of the app, and
+     * the countdown must keep waiting through both. Together the two are "the
+     * overlay question is outstanding", which is what holds the count.
+     */
+    val awaitingOverlayGrant: Boolean = false,
+    /**
      * Whether leaving this screen would actually produce a HUD (11.1a.2).
      * Offering "back to the HUD" when the overlay is off or ungranted would
      * drop the rider onto their home screen with nothing.
@@ -264,8 +275,23 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Asks once, at ride start, rather than letting the rider discover
+     * Asks the overlay question again, from the countdown (11.6.14).
+     *
+     * Called on the way into the countdown and every time the rider comes back
+     * to the app, because granting the permission is a trip out of the process
+     * and nothing else would notice them returning. Cheap enough for that: one
+     * `Settings.canDrawOverlays` and one read of a preference, with no service
+     * involved.
+     */
+    fun refreshOverlayPermission() = checkOverlayPermission()
+
+    /**
+     * Asks once, before the ride starts, rather than letting the rider discover
      * mid-class that the HUD they were promised is simply not there.
+     *
+     * Clearing [RideUiState.awaitingOverlayGrant] here is what ends the wait:
+     * whether the rider granted it or backed out, they are looking at this
+     * screen again by the time this runs.
      */
     private fun checkOverlayPermission() {
         viewModelScope.launch {
@@ -274,6 +300,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update {
                 it.copy(
                     overlayPermissionNeeded = wantsHud && !granted,
+                    awaitingOverlayGrant = false,
                     hudAvailable = wantsHud && granted
                 )
             }
@@ -282,11 +309,18 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     fun requestOverlayPermission() {
         OverlayPermissionHelper.requestOverlayPermission(getApplication())
-        dismissOverlayPrompt()
+        // Not `dismissOverlayPrompt`: the prompt goes, but the question does
+        // not — the rider is on their way to Android's settings screen and the
+        // countdown behind this must not resume while they are there (11.6.14).
+        _uiState.update {
+            it.copy(overlayPermissionNeeded = false, awaitingOverlayGrant = true)
+        }
     }
 
     fun dismissOverlayPrompt() {
-        _uiState.update { it.copy(overlayPermissionNeeded = false) }
+        _uiState.update {
+            it.copy(overlayPermissionNeeded = false, awaitingOverlayGrant = false)
+        }
     }
 
     /** "Don't ask again" — the rider is happy riding on the app's own screen. */

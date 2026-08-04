@@ -194,21 +194,26 @@ fun HudOverlayMain(
         1f
     }
 
-    // A hairline of the current zone's colour along the very screen edge. It
-    // stays quiet until a change is coming, then thickens and pulses — the
-    // earliest warning on the whole HUD, and the one that needs no reading at
-    // all. Full strength, never dimmed by the opacity setting: it is an alert,
-    // and it is one pixel band of a screen the rider has otherwise got back.
+    // A hairline of the current zone's colour along the very screen edge, and
+    // **it exists only while a change is coming** (11.1b.10). It thickens and
+    // pulses on approach — the earliest warning on the whole HUD, and the one
+    // that needs no reading at all. Full strength, never dimmed by the opacity
+    // setting: it is an alert, and it is one pixel band of a screen the rider
+    // has otherwise got back.
+    //
+    // At rest it used to sit at `alpha = 0.45`, which is exactly the weight of
+    // a divider — so the owner reported it twice, once as "a weird grey line"
+    // (zone 1's colour is grey) and once as "the HUD orange line". That it read
+    // as a stray rule in two different colours is the answer: a hairline drawn
+    // edge to edge across somebody's film **is** a rule, whatever colour it is.
+    // Nothing is lost by its absence: at rest it was saying only what the zone
+    // badge, the chips' wash and the ladder already say.
     val edge: @Composable () -> Unit = {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(edgeGlow)
-                .background(
-                    accent.copy(
-                        alpha = if (interval.isChangeImminent) glowPulse else 0.45f
-                    )
-                )
+                .background(accent.copy(alpha = if (interval.isChangeImminent) glowPulse else 0f))
         )
     }
 

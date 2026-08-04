@@ -50,6 +50,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -141,8 +142,33 @@ fun RideScreen(
     // really stopped.
     var countdownCleared by rememberSaveable { mutableStateOf(resumeWorkoutId != null) }
     if (!countdownCleared) {
+        // 11.6.14. The overlay permission is asked for *inside* the countdown
+        // rather than by `startRide` on the far side of it. The owner's note is
+        // the whole reasoning: the ten seconds a rider spends clipping in used
+        // to buy them a modal and a trip to Android's settings, and a class
+        // whose clock had already started.
+        //
+        // Asked here and re-asked on every return, because granting it happens
+        // in another app entirely — and this branch returns before the
+        // lifecycle observer below, so it needs its own.
+        LaunchedEffect(Unit) { viewModel.refreshOverlayPermission() }
+        OnResume { viewModel.refreshOverlayPermission() }
+
+        if (state.overlayPermissionNeeded) {
+            OverlayPermissionDialog(
+                onGrant = viewModel::requestOverlayPermission,
+                onNotNow = viewModel::dismissOverlayPrompt,
+                onNever = viewModel::disableHud
+            )
+        }
+
         RideCountdownScreen(
             plan = plan,
+            // The count stops while the question is outstanding — through the
+            // dialog *and* through the trip out of the app to answer it.
+            // Coming back to "2" and then straight into a class is the same
+            // defect wearing the other costume.
+            paused = state.overlayPermissionNeeded || state.awaitingOverlayGrant,
             onStart = { countdownCleared = true },
             modifier = modifier
         )
@@ -235,8 +261,29 @@ fun RideScreen(
 }
 
 /**
- * Asked at ride start, because the alternative is a rider discovering
- * mid-class that the HUD they expected over their film is simply absent.
+ * Runs [block] each time this screen comes back to the foreground.
+ *
+ * Its one caller is the countdown branch (11.6.14), which returns before the
+ * ride's own lifecycle observer is registered and so has no other way to notice
+ * a rider coming back from Android's overlay settings.
+ */
+@Composable
+private fun OnResume(block: () -> Unit) {
+    val current by rememberUpdatedState(block)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) current()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+}
+
+/**
+ * Asked during the pre-ride countdown, because the alternative is a rider
+ * discovering mid-class that the HUD they expected over their film is simply
+ * absent — and, before 11.6.14, being asked at the instant the clock started.
  */
 @Composable
 private fun OverlayPermissionDialog(

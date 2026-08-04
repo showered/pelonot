@@ -243,7 +243,7 @@ less of the screen and less of the attention.
       bright scenes; whether the timeline deserves the same silhouette as the
       chips or a deliberately different one; and whether the zone-change flash
       still reads now that it washes chips rather than a whole band
-- [ ] **11.1b.10** **The grey line across the overlay.** Reported by the owner
+- [x] **11.1b.10** **The grey line across the overlay.** Reported by the owner
       as "a weird grey line on the HUD", and reproduced on the tablet AVD: a
       full-width hairline running edge to edge just below the chips, reading as
       a stray divider rather than as part of anything.
@@ -278,6 +278,14 @@ less of the screen and less of the attention.
       would leave a silent coach with no peripheral warning at all, which is why
       it is not being removed unasked (see `CueBand` and the countdown chip for
       what else covers the same moment)
+
+      *Done — one alpha, `0.45f` → `0f`, and **observed on the tablet AVD**: the
+      overlay docked Top over the launcher with a ride running, and the band
+      below the chips is film. Checked on a free ride, where the resting line
+      was drawn in the theme's primary rather than a zone colour; it is the same
+      single expression on both paths, and the imminent branch is untouched. The
+      2 dp of transparent height stays so the strip does not jump when the alert
+      thickens it to 6.*
 
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
@@ -680,7 +688,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       cost the record nothing. A resume skips it outright. `Start now` sets the
       count to zero and the effect is keyed on the count, so it cancels the
       second already in flight rather than waiting for it.*
-- [ ] **11.6.14** **The overlay permission lands on the wrong side of the
+- [x] **11.6.14** **The overlay permission lands on the wrong side of the
       countdown.** The owner's note, 4 August 2026, verbatim: *"First ride — you
       get the countdown timer of 10 seconds, very exciting! But then when it
       gets to 0 it asks you to allow to show over other apps. This should happen
@@ -710,6 +718,26 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
         so nothing currently re-reads the permission when the rider comes back
         from granting it. The countdown needs its own resume hook, or the
         dialog is still up over a granted permission
+
+      *Done and observed on the tablet AVD, and the measurement is the whole
+      check: the prompt came up over **Just Ride · Get set** with the count
+      showing 10, the rider (me) went out to Android's *Display over other
+      apps*, walked into Pelonot's own page, turned the switch on and came back
+      — **ninety seconds later, and the count was still 10**. Uninterrupted it
+      would have started the ride nine times over. It then ran 10 → 0 and the
+      ride began, with no second prompt.*
+
+      *Two things the implementation needed that the item did not predict.
+      **`requestOverlayPermission` was calling `dismissOverlayPrompt`**, so the
+      question was marked answered at the moment the rider left to answer it —
+      which would have restarted the count the instant they were sent away, the
+      exact defect the owner asked to fix. Hence `awaitingOverlayGrant` beside
+      `overlayPermissionNeeded`: the dialog closing and the question being
+      answered are different events. And the `LaunchedEffect` is keyed on
+      `paused` as well as on the count, so the second in flight is **cancelled**
+      rather than allowed to land, and starts whole on the way back. Rounding
+      the rider's way is the right rounding on a beat that exists to let
+      somebody get onto a bike.*
 - [ ] **11.6.15** **`Don't use the overlay` is answered once and asked for
       ever.** Not the owner's note, found while reading for 11.6.14 and left as
       its own item because it is a different failure: *Not now* clears the flag

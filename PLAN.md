@@ -81,7 +81,9 @@ against the ride record (**12.6**), history's alignment (**22.7.1**), the Start
 Class screen (**22.7.2**), and the line across the overlay (**11.1b.10**, which
 already existed and was waiting on exactly this decision).
 
-*The inbox is empty.*
+### heart rate zones, visualised
+
+Any chart that shows heart rate over time, it should include visual indicator for heart rate zones
 
 ---
 
