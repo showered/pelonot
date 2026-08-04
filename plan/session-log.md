@@ -8,6 +8,92 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-seventh sitting): the account fills the slot 20.3 left for it
+
+**Two owner notes arrived and both were already in the plan.** Auto-FTP going
+down as well as up restates 7.11's own asymmetry argument, arrived at
+independently rather than by reading it; the three-target confusion restates
+11.7 word for word, and the owner flagged their own uncertainty about it
+("might already be in the plan") rather than insisting it was new. Both are
+recorded as confirmation in their items rather than as new instruction, because
+neither supplies what its item is actually blocked on — 7.11.1 needs ride data
+before it can put a number on the evidence window, not a guess dressed as one.
+
+**11.7.2 did get an answer, because it was the one open question actually
+theirs to make.** Asked directly: name the governing metric in the catalogue
+(`governed_by`, optional, absent means power) rather than infer it from the
+cadence band. Decided, not built — it stays in queue order behind what
+follows, but 11.7.1a, 11.7.3 and 11.7.4 no longer wait on a design question.
+
+**A third note landed mid-sitting, live in PLAN.md rather than through
+chat, and it was fixed on the spot.** *"It looks a bit ridiculous... a
+single list that you can scroll. Not a grid."* `BirthYearPicker` was already
+one shared component on both screens that ask (20.3.3, Settings) — nothing to
+deduplicate, only the layout: `LazyVerticalGrid` replaced by a `LazyColumn` of
+full-width rows, opened already scrolled near the rider's likely answer.
+Observed on the tablet AVD — opens centred on 1986, scrolls smoothly, a tap
+selects and closes with no second confirm step (21.1.1b).
+
+**Then the queue's own next item: 15.8, the account as the front door.**
+20.3 built `Step.Account` and an `accountOffer` slot with nothing in it,
+null on a build with no cloud; this sitting filled the slot rather than
+building a second flow beside it, which is exactly what reading 15.8 and
+20.3 together in the twenty-sixth sitting was for.
+
+**The one rule the whole item hangs off — the profile exists before the
+offer, never after it — needed the screen restructured rather than just
+filled in.** The hook as built deferred `onProfileCreated` until the account
+step's own `onDone` fired, which is backwards: a rider who force-stops
+mid-offer would have no profile at all. `ProfileCreationScreen.finish()` now
+runs the moment the rider leaves the result step, and a separate
+`onAccountOfferFinished` callback closes the screen afterward — checked in
+`sqlite3` while still sitting on the offer screen, not taken on trust: the
+row existed, `ftp_watts` matched the estimate shown, `auth_user_id` empty.
+
+**Linking is automatic and it needed no new plumbing.** `AccountViewModel`
+already scopes itself to `SettingsRepository.settings.lastProfileId`, and
+`createProfile` sets that id before `Step.Account` ever composes — the same
+mechanism 15.6's pairing already used from Settings. So `ProfileAccountOfferStep`
+is the existing `ScanToSignIn` / `PairingSection` / `SignInForm` composables
+(promoted from `private` to shared) wired to that ViewModel unchanged, plus
+15.8.6's cost line and a "Not now" the same width and weight as the controls
+above it rather than a grey link underneath them.
+
+**The dashboard got the other half — a card for a profile that has been
+riding offline, dismissable per profile.** `profiles.account_offer_dismissed`
+(migration 14 → 15) rather than a device-wide flag, on the same argument as
+`household_visible`: a household bike has several riders and one of them
+dismissing this must not silence it for the others. Observed twice —
+`sqlite3` after a force-stop showed one profile's dismissal `1` and another's
+still `0`, and the card stayed gone for the dismissed profile after a fresh
+launch. It never doubles up with the existing backup reminder (23.3.1): the
+dashboard checks the account offer first and only falls back to
+`BackupReminderCard` when it does not apply.
+
+**15.8.5's reconciliation is half done, and the honest half at that.** The
+plan asked for 23.3.1's own ten-ride count to trigger both cards. It doesn't
+yet — that count lives in `SettingsRepository`, per tablet, and this offer is
+per profile, so wiring one to the other now would let a housemate's rides
+decide whether *this* profile gets asked. The card triggers on "has ridden at
+all" instead, which is simpler and correct, and 23.3.1a is the item that has
+to move before the two counts can honestly become one.
+
+**Migration 14 → 15 ran against the emulator's own multi-profile database**,
+not only against `MigrationTestHelper` — the instrumented suite (15 tests,
+including the new one) run directly against `emulator-5554` by serial, because
+the real bike was also attached this session and `connectedDebugAndroidTest`
+would have reached it. 599 JVM tests, 0 failures — no new ones needed, since
+nothing in 15.8 is pure logic (`PostRideSummaryScreen`, `ProfileCreationScreen`,
+`AccountViewModel` and the dashboard are all Compose/Room, and the migration
+and the flow it enables are what the instrumented suite is for).
+
+**What is not built is 15.8.2's web half**, and it did not need to be —
+17.16.6 already closed it in the twenty-fifth sitting. Reading an item fully
+before starting it found free work twice this sitting: once in 15.8.2, once
+in 15.8.3's linking.
+
+---
+
 ### 4 August 2026 (twenty-sixth sitting): the first question the app asks
 
 **The screen the owner said "can't go into production" is gone.** 599 JVM

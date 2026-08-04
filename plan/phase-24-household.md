@@ -160,19 +160,19 @@ sixty seconds of pedalling. So the ghost is a **full ride screen** feature, and
 the full ride screen is a thing a rider chooses to look at. That is not a
 downgrade — it is why the feature can afford to be interesting.
 
-- [ ] **24.3.3** **The rival is chosen before the ride, not during it.** The
+- [x] **24.3.3** **The rival is chosen before the ride, not during it.** The
       class detail screen already draws the board (24.1.2), so the tap that
       starts the class is the natural place to pick who you are riding against —
       a housemate's best, your own best, or nobody. Choosing mid-ride is a menu
       over a rider who is pedalling, and 15.1.6's rule about modals during a
       ride applies to everything, not only to auth
-- [ ] **24.3.4** **What is actually shown is a gap, in one number, in the unit
+- [x] **24.3.4** **What is actually shown is a gap, in one number, in the unit
       the board already ranks on.** *"+18 kJ"* or *"−4 kJ"* against the rival at
       this second of the ride, in the ride screen's own colour language: ahead
       is not green-means-good, it is the output colour, because a rider behind a
       stronger housemate is not doing anything wrong. **Not a position, not a
       percentage, not a list.** A leaderboard of two is a number
-- [ ] **24.3.5** **Aligned by elapsed seconds and never stretched**, which is
+- [x] **24.3.5** **Aligned by elapsed seconds and never stretched**, which is
       24.3.1's decision and the same reasoning: the comparison a rider wants is
       *at twelve minutes they were 18 kJ up on me*. It also makes the ghost
       **cumulative rather than instantaneous** — comparing this second's watts
@@ -183,23 +183,54 @@ downgrade — it is why the feature can afford to be interesting.
       after minute 18, and the honest answer is *"they finished"* and a final
       gap, never a line extrapolated forward or a comparison that silently
       freezes. Same family as `isStaleAt` and the gap-not-a-clamp rule
-- [ ] **24.3.7** **The measured-power gate applies to both sides**, exactly as
+- [x] **24.3.7** **The measured-power gate applies to both sides**, exactly as
       24.3.1 has it. A modelled ghost is `PowerModel` at 137 W RMSE presented as
       a race, and the rider cannot tell. If either side is not measured there is
       no ghost — the offer simply is not made on the class detail screen, which
       is 24.1.6's rule about not drawing an empty comparison
-- [ ] **24.3.8** **It must survive a pause, a resume and a crash.** The ride can
+- [x] **24.3.8** **It must survive a pause, a resume and a crash.** The ride can
       be paused (auto-pause), resumed after a crash and reopened after being
       ended by accident (8.3d, 12.6.2), and `elapsedSeconds()` has excluded
       paused time since Phase 3. The ghost reads that clock and nothing else —
       wall-clock anywhere in this feature is a rider who stopped for a phone
       call losing a race they were winning
-- [ ] **24.3.9** **Nothing about the ghost is written to `workouts`**, and the
+- [x] **24.3.9** **Nothing about the ghost is written to `workouts`**, and the
       reason is 8.3d.4's rule: `stopWorkout` builds a fresh row from
       `WorkoutSession`, so any column the session does not carry goes back to
       its default. If a future item wants *"you beat Kilo's best"* on the ride
       record — and 27.2.3 does — the field goes on the session first, or it will
       be silently reverted twenty minutes later by the finalise
+
+> **What was actually observed, twenty-eighth sitting**, since six of those
+> boxes are now ticked and two are not.
+>
+> *On the real bike (`PLTN-RB1VQ`, real measured power, migration 15 → 16
+> applied to the owner's own seven rides with nothing lost):* the picker
+> offering *Your best · 238 kJ* — the owner's real 30-minute END-03 ride —
+> with no leaderboard card beside it, because only one rider has ridden that
+> class and 24.1.6 says a household of one draws nothing. Then
+> `Racing Your best: 238 kJ over 1800s` in logcat with **no** follow-on
+> *Dropping the ghost*, which is the measured-power gate passing; the card
+> rendering on the ride screen as `YOUR BEST / −1 kJ`; the
+> `active_ride_rival` row present in `sqlite3` *while the ride was running*
+> and gone after it ended.
+>
+> *On the tablet AVD, against two hand-seeded measured rides of `CLB-02`:*
+> both chips with the right numbers (*Your best · 228 kJ*, *Grace · 246 kJ*),
+> and — the useful half — `Dropping the ghost at 1s: these watts are
+> modelled`, with no card on the ride screen at all. That is 24.3.7 refusing
+> to race on a simulated ride, which is the case it exists for.
+>
+> **24.3.6 is deliberately not ticked.** The *"they finished"* state has
+> tests but has never been seen, because seeing it needs a ride that outlasts
+> its rival's. **Nor has the number been watched moving under a rider** — that
+> needs somebody pedalling and the owner was not able to at the time. Both are
+> what is owed on this item; everything around them is observed.
+>
+> Two things were got wrong and fixed by looking at the tablet rather than at
+> the diff: the picker card's width (capped and unfilled, then filled and
+> uncapped — 22.6 both ways round), and the gap drawn in a coral that reads as
+> red, which told a rider one kilojoule down that they were failing.
 
 - [ ] **24.3.10 A live leaderboard, not just a single gap** — the owner's
       note, 4 August 2026, live in chat rather than through the inbox.
