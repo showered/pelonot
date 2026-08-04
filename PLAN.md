@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Thirty-four entries have passed through it.** In order: standing and seated
+**Thirty-seven entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -82,9 +82,16 @@ Class screen (**22.7.2**), the line across the overlay (**11.1b.10**, which
 already existed and was waiting on exactly this decision), and heart-rate zones
 on every chart that shows a heart rate (**21.4.2** — which already existed too;
 what the note adds is *any chart*, and **21.4.2a** is the decision it forces
-about what the bands are drawn from).
+about what the bands are drawn from), the account being a thing a rider has to
+go and find (**15.8**), the pairing page with no way to sign in on it
+(**17.16.6** — two faults stacked, and **17.16.7** for the one that let the
+first reach the owner), the live ghost (**24.3.3–24.3.9** for the household
+half and **18.12** for the network's — the note is right that nothing social
+happens *during* a ride today), and alerts worth being given (**Phase 27**,
+promoted out of 19.3.2's one line the way Phase 21 was promoted out of
+19.3.3's).
 
-*The inbox is empty.*
+**The inbox is empty.**
 
 ---
 
@@ -127,6 +134,7 @@ file to open for each.
 | [plan/phase-24-household.md](plan/phase-24-household.md) | **Phase 24** — household social, the tier that needs no cloud |
 | [plan/phase-25-position.md](plan/phase-25-position.md) | **Phase 25** — out of the saddle |
 | [plan/phase-26-voice.md](plan/phase-26-voice.md) | **Phase 26** — the app's voice: less is more, and where jargon belongs |
+| [plan/phase-27-alerts.md](plan/phase-27-alerts.md) | **Phase 27** — being told something worth knowing: records, streaks, and being beaten |
 | [plan/reference.md](plan/reference.md) | The Coggan zone table and the ride-intent multipliers |
 
 **Adding to the plan:** put the item in its phase's file. Only the four

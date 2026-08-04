@@ -190,7 +190,14 @@ has simply never been written down.
 
 ### 19.3 Worth doing eventually
 - [ ] **19.3.1** Multi-week training programmes
-- [ ] **19.3.2** Achievements and streaks (pairs with 16.3.5)
+- [ ] **19.3.2** ~~Achievements and streaks (pairs with 16.3.5)~~ — **moved to
+      Phase 27** by the owner's note of 4 August 2026, which is what this one
+      line actually is: a table that remembers what has already been said, three
+      families of alert that are not the same feature, a frequency rule without
+      which the whole thing dies in a fortnight, and the same
+      measured-power/moving-denominator honesty gates the FTP proposal and the
+      household board already carry. Same promotion as 19.3.3 → Phase 21, and
+      the owner's weighting stands: **low priority**
 - [ ] **19.3.3** ~~Heart-rate zones and HR-based targets~~ — **moved to Phase 21**, which is what this one line actually is: a profile schema change, a zone model, live display, per-ride tracking and HR-targeted classes
 - [ ] **19.3.4** Localisation, once the string catalogue is stable
 - [ ] **19.3.5** Wear OS or a phone companion as a second HR source

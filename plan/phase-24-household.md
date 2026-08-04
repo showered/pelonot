@@ -128,6 +128,79 @@ differences. This one carries none, because there is nothing to caveat.
       target gauge and a zone ladder on it and this must not become a third
       thing competing for the same glance
 
+---
+
+**The live ghost — the owner's note, 4 August 2026.** Verbatim: *"Maybe this is
+all already in the plan but i'm not seeing much social 'gamification' anywhere.
+Please add appropriate tasks to the plan if they aren't already created. If you
+start a class that someone else (or yourself) has already created then there
+should be a live leaderboard (aka 'ghost')."*
+
+**Half of it is in the plan and the half that is missing is the half the note is
+actually about.** What exists: a per-class board on class detail and the
+post-ride summary (24.1), the household's last 30 days with streaks (24.2), a
+housemate's trace drawn behind yours on ride detail (24.3.1), and one
+everyone-registered board across bikes (18.11). Every one of those is **after**
+or **before** the ride. Nothing at all happens *during* one, and that is where a
+ghost lives — so the owner is right that it is missing, and right that it is the
+motivating version. 24.3.2 above is the item, written in the seventeenth sitting
+and never built; it is one line, and the note deserves more than one line.
+
+**"Or yourself" is the part that makes it cheap and the part that makes it
+work.** A rider on a household bike will often be the only person who has ridden
+a given class, and racing your own previous best needs no second rider, no
+account and no network — the same Room query as 24.3.1 with the rider's own id.
+It is also the honest floor: a ghost that only appears when a housemate happens
+to have ridden the same class is a feature most riders would never see.
+
+**The constraint that shapes all of it is the overlay's.** 24.1.5 and 18.6 both
+say nothing social goes on the strip, and they are right for the reason 19.4
+gives: the overlay has half a second of attention and it belongs to the next
+sixty seconds of pedalling. So the ghost is a **full ride screen** feature, and
+the full ride screen is a thing a rider chooses to look at. That is not a
+downgrade — it is why the feature can afford to be interesting.
+
+- [ ] **24.3.3** **The rival is chosen before the ride, not during it.** The
+      class detail screen already draws the board (24.1.2), so the tap that
+      starts the class is the natural place to pick who you are riding against —
+      a housemate's best, your own best, or nobody. Choosing mid-ride is a menu
+      over a rider who is pedalling, and 15.1.6's rule about modals during a
+      ride applies to everything, not only to auth
+- [ ] **24.3.4** **What is actually shown is a gap, in one number, in the unit
+      the board already ranks on.** *"+18 kJ"* or *"−4 kJ"* against the rival at
+      this second of the ride, in the ride screen's own colour language: ahead
+      is not green-means-good, it is the output colour, because a rider behind a
+      stronger housemate is not doing anything wrong. **Not a position, not a
+      percentage, not a list.** A leaderboard of two is a number
+- [ ] **24.3.5** **Aligned by elapsed seconds and never stretched**, which is
+      24.3.1's decision and the same reasoning: the comparison a rider wants is
+      *at twelve minutes they were 18 kJ up on me*. It also makes the ghost
+      **cumulative rather than instantaneous** — comparing this second's watts
+      to their second's watts flickers, and 11.6.7 already settled that the ride
+      screen's numbers change too fast to read
+- [ ] **24.3.6** **A ghost that runs out says so and stops.** The rival's ride
+      ends when it ends: a shorter one leaves the ghost with nothing to say
+      after minute 18, and the honest answer is *"they finished"* and a final
+      gap, never a line extrapolated forward or a comparison that silently
+      freezes. Same family as `isStaleAt` and the gap-not-a-clamp rule
+- [ ] **24.3.7** **The measured-power gate applies to both sides**, exactly as
+      24.3.1 has it. A modelled ghost is `PowerModel` at 137 W RMSE presented as
+      a race, and the rider cannot tell. If either side is not measured there is
+      no ghost — the offer simply is not made on the class detail screen, which
+      is 24.1.6's rule about not drawing an empty comparison
+- [ ] **24.3.8** **It must survive a pause, a resume and a crash.** The ride can
+      be paused (auto-pause), resumed after a crash and reopened after being
+      ended by accident (8.3d, 12.6.2), and `elapsedSeconds()` has excluded
+      paused time since Phase 3. The ghost reads that clock and nothing else —
+      wall-clock anywhere in this feature is a rider who stopped for a phone
+      call losing a race they were winning
+- [ ] **24.3.9** **Nothing about the ghost is written to `workouts`**, and the
+      reason is 8.3d.4's rule: `stopWorkout` builds a fresh row from
+      `WorkoutSession`, so any column the session does not carry goes back to
+      its default. If a future item wants *"you beat Kilo's best"* on the ride
+      record — and 27.2.3 does — the field goes on the session first, or it will
+      be silently reverted twenty minutes later by the finalise
+
 ### 24.4 Honesty, and the column that is now blocking three things
 
 - [x] **24.4.1** No caveat, and the card carries none

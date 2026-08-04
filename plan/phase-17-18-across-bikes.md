@@ -163,7 +163,14 @@ keyboard should be possible on the web and optional on the bike.**
       The README should name the host, the command that redeploys it, and the
       one thing a static host adds to this app's threat model — **nothing
       checks that the deployed copy is the committed one**. Today they match,
-      and today is the only day that has been checked
+      and today is the only day that has been checked.
+
+      *And they no longer do. Measured 4 August, the same day: `link.js` on the
+      host is the pre-17.16.5 version and `link.html` is missing the element
+      that fix added. It took under a day, and it cost the owner a broken
+      pairing flow they then had to report — see 17.16.6. The prediction in the
+      paragraph above was right, which is an argument for writing the deploy
+      down rather than a consolation.*
 - [ ] **17.16.3** **Two publishable keys are in play, and the project should
       pick one.** The deployed `config.js` carries the legacy JWT anon key
       (`eyJ…`); the working copy of `web/config.js` carries the newer
@@ -214,6 +221,63 @@ keyboard should be possible on the web and optional on the bike.**
       not re-describe**, because a hash change does not reload a document. The
       QR always opens a fresh page and the retry box goes through the button,
       so nothing reaches that path today
+- [ ] **17.16.6** **"There was no way of actually signing in" — the owner's
+      note, 4 August 2026.** Verbatim: *"The 'link my account' doesn't work. I
+      scanned the QR code and it sent me to the page with the code, but there
+      was no way of actually signing in. Please check this."*
+
+      **Checked, and it is two faults stacked, both measured against the live
+      host rather than reasoned about.**
+
+      **The first is that the fix was never deployed.** `link.js` at
+      https://pelonot.showered.workers.dev/link.js is the **pre-17.16.5**
+      version — no `described` variable, `route()` still reading its own DOM,
+      and `describe()`'s error path returning **without** reopening the
+      type-a-code box. So on a code the server did not recognise, the deployed
+      page rendered the expiry card and *nothing else*: no form, no input, no
+      way forward. That is the owner's sentence exactly. 17.16.5 was observed
+      working, in a browser, against the live endpoint — from a local copy. The
+      repo was fixed; the internet was not. **17.16.2 predicted this in the same
+      sitting** — *"nothing checks that the deployed copy is the committed one.
+      Today they match, and today is the only day that has been checked"* — and
+      it drifted within a day. `lib.js` still matches; `link.html` and `link.js`
+      do not
+
+      **The second is the one worth changing, because 17.16.5's own fix still
+      leaves the rider stuck.** Even on the current repo version, an expired
+      code gets the honest card and the retry box and **still no way to sign
+      in** — the sign-in form is gated on `described === true`. That gate is
+      over-broad, and the reason is worth writing down: 17.16.5 collapsed two
+      different questions into one flag. *May the rider hand a session to this
+      device?* must be gated on the device being named — that is 15.6.5 and it
+      is the page's whole defence against being pointed at a stranger's bike.
+      *May the rider sign in to Pelonot on their own phone?* has nothing to do
+      with any bike. It is the same sign-in `index.html` offers, to the same
+      project, and gating it on a five-minute pairing code buys no safety at all
+
+      **So the page inverts**: signing in is always available, the pairing is
+      confirmed separately, and **the confirm step still names the device** —
+      15.6.5 kept where it actually lives. A rider whose code lapsed signs in,
+      asks the bike for a fresh code, types or re-scans it, and confirms; the
+      session persists, so the second attempt is the fast one
+
+      **And the five minutes is the proximate cause, which is a UX fact rather
+      than a bug.** 15.6.1's TTL is right for an unclaimed pairing sitting in a
+      table. It is short for a human journey that includes unlocking a phone,
+      opening a camera, waiting on a browser, finding a password manager and
+      authenticating to it — especially the *first* time, which is the only time
+      the owner has had. Inverting the page is the fix rather than a longer TTL:
+      after the first sign-in the phone is already signed in, and the remaining
+      journey is two taps well inside five minutes
+- [ ] **17.16.7** **Nothing tells anyone the deployed copy has drifted, and now
+      it has cost something.** 17.16.2 asks for the deploy to be written down;
+      this is the smaller half that should not wait for it. `curl` the deployed
+      files and diff them against the working tree — it is a handful of lines,
+      needs no credentials, and turns *"is the live page the one I fixed?"* from
+      a thing nobody can answer into one command. It is the same argument as
+      `CloudConfigFenceTest` and `ClassLibraryAssetsTest`: **the shipped
+      artefact is what a rider meets, and a generator nobody runs cannot vouch
+      for it**
 - [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has
@@ -327,3 +391,44 @@ Two shapes to keep straight, because they will otherwise be built twice:
 - [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
 - [x] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
 - [ ] **18.10** A friend's numbers arrive over the network, so this phase inherits every rule in the *Corrections* table about failures that are caught and shown nowhere. An empty friend leaderboard must say whether it is empty or unreachable
+
+---
+
+### 18.12 The ghost across bikes — the networked half of the owner's note
+
+**The owner's note is written up in Phase 24** (after 24.3.2), because the
+household half needs no account from anybody and 18.9's rule is that every
+screen here goes *on top of* its 24 equivalent rather than beside it. This
+section is only what the network adds.
+
+**There is a fact worth knowing before starting: the server side is already
+built and nothing calls it.** `007` ships `class_ghost(p_class_id,
+p_account_id)`, a `SECURITY DEFINER` function returning a second-by-second trace
+with heart rate stripped, granted to `authenticated` and verified from a second
+account by `supabase/verify_leaderboard.py`. It was written for 18.11's
+leaderboard and no Android or web caller exists. So the across-bikes ghost is a
+client feature against an endpoint that is already there and already tested —
+which is the opposite of the usual order in this phase and worth not
+rediscovering.
+
+- [ ] **18.12.1** **The rival list is one list, household and cloud together,
+      with the household authoritative.** 18.11's board already merges them and
+      the preamble's rule applies unchanged: a friend who lives in your house
+      appears once, from the Room query, because that side is offline and cannot
+      fail
+- [ ] **18.12.2** **The trace is fetched before the ride starts, never during
+      it.** 15.3.6's rule — sync never runs on the ride's critical path — and
+      the ghost is a worse offender than sync because it is *wanted* mid-ride: a
+      rider on a garage wifi that drops at minute six must lose nothing but the
+      network. Fetch at the moment the rival is chosen (24.3.3), hold it in
+      memory, and a ride that has begun never touches the network again
+- [ ] **18.12.3** **A ghost that could not be fetched says so before the ride,
+      and there is no ghost.** 18.10's rule: empty and unreachable are different
+      sentences. The failure to avoid is a rider who starts a class believing
+      they are racing and finds out at minute two that they are not
+- [ ] **18.12.4** **A cloud ghost cannot be checked for measured power the way
+      24.3.7 checks a household one**, and that is a real gap rather than a
+      detail: `class_ghost` returns a trace, and 14.4.7 puts `pm` in the payload
+      per sample, but the function does not project it. Either it starts to, or
+      the across-bikes ghost carries the caveat 18.7 asks for — on the modelled
+      ones specifically, never as a blanket disclaimer
