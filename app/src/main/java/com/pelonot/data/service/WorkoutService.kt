@@ -44,6 +44,7 @@ import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.RivalTrace
 import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.overlay.HudOverlayManager
@@ -550,7 +551,11 @@ class WorkoutService : Service() {
         }
         rivalTrace = trace
 
-        Log.i(TAG, "Racing $rivalName: ${trace.finalKj.toInt()} kJ over ${trace.finalSecond}s")
+        Log.i(
+            TAG,
+            "Racing $rivalName by ${trace.metric}: " +
+                "${trace.finalValue} over ${trace.finalSecond}s"
+        )
     }
 
     private fun clearRival() {
@@ -829,7 +834,11 @@ class WorkoutService : Service() {
                 // what the rider is told matches what was recorded for the very
                 // same second.
                 telemetryLive = !telemetryStalled,
-                rival = rivalStatus(elapsedSec, outputKj)
+                rival = rivalStatus(
+                    elapsedSec,
+                    outputKj,
+                    session?.distanceKm ?: current.distanceKm
+                )
             )
         }
     }
@@ -842,10 +851,20 @@ class WorkoutService : Service() {
      * and nothing else. 24.3.8's rule: wall-clock anywhere in this feature is
      * a rider who stopped for a phone call losing a race they were winning.
      */
-    private fun rivalStatus(elapsedSec: Int, outputKj: Double) =
+    private fun rivalStatus(elapsedSec: Int, outputKj: Double, distanceKm: Double) =
         rivalTrace
             ?.takeUnless { rivalDiscredited }
-            ?.statusAt(elapsedSec, outputKj, rivalName.orEmpty())
+            ?.let { trace ->
+                // Your side of the comparison has to be the same quantity the
+                // trace accumulated (24.3.14). Asked of the trace rather than
+                // assumed here, so adding a third RaceMetric cannot leave this
+                // silently racing kilojoules against kilometres.
+                val yours = when (trace.metric) {
+                    RaceMetric.Output -> outputKj
+                    RaceMetric.Distance -> distanceKm
+                }
+                trace.statusAt(elapsedSec, yours, rivalName.orEmpty())
+            }
 
     private suspend fun recordMetric(elapsedSec: Int) {
         val session = _currentSession.value ?: return

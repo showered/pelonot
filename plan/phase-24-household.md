@@ -337,30 +337,87 @@ downgrade — it is why the feature can afford to be interesting.
       the state worth designing first because it is the one a rider wants to
       be in.
 
-- [ ] **24.3.14 The score is watts, and that is the one thing here still worth
-      a question.** Verbatim: *"with score being the current number of Watts
-      **as of this point in the class**."* The emphasis is the owner's.
+- [x] **24.3.14 The score is the class total in kilojoules — answered, and the
+      answer came with a second ask attached.** The question was put directly
+      and the owner answered directly: *"I may have chosen the wrong words. I
+      meant kilojoules. I mean the score that the real peloton gives you. The
+      'score' for any class should be total kilojoules for that class. E.g. a
+      20 min class maybe your high score is 200."*
 
-      The sentence carries two readings and they build different features.
-      *Current watts, right now* is instantaneous — the owner's earlier
-      example in 24.3.10 (*"you're on 56 watts and your PB is 65"*) is
-      unambiguously that. *As of this point in the class* is the language of a
-      running total — and Peloton's own leaderboard, which this item is
-      explicitly modelled on, ranks by **total output** rather than by live
-      watts, for the reason 24.3.5 and 11.6.7 give: an instantaneous ranking
-      re-sorts several times a second and cannot be read while breathing hard.
+      So **cumulative, not instantaneous**, and 24.3.5 and 11.6.7 both stand
+      rather than being reopened. The word *watts* in 24.3.10 was loose
+      language for the score, not a request for a board that re-sorts several
+      times a second. Nothing in the ghost changes: `RivalTrace` already
+      integrates exactly this number and already agrees with what the rival's
+      own ride recorded.
 
-      **The recommendation is the total, displayed in watts' own unit only if
-      it stays honest** — i.e. rank by cumulative kJ, exactly as the ghost
-      already does, because that is the number that cannot flicker and it is
-      what "as of this point in the class" measures. But this is the owner's
-      call and it should be asked directly rather than assumed, because the
-      word *watts* has now been used twice and it may well be deliberate: a
-      rider chasing a PB does want to know *right now* whether their legs are
-      enough, which is an instantaneous question. A third answer exists and may
-      be the real one — **rank by the total, show the live watts beside it** —
-      which is two numbers per row and is what makes the row above and below
-      actionable rather than merely informative.
+      **The second ask is the interesting one, and it is about shape rather
+      than about this feature**: *"Let's not rule out racing by OTHER metrics
+      too, such as distance, perhaps structure the data in an agnostic way like
+      that. And you know what, if it's really that trivial to do, consider
+      having a toggle between racing by output or racing by distance. Otherwise
+      just add it to the plan."*
+
+      **The data half was trivial and is built** (see below). **The toggle is
+      not, and is 24.3.15.**
+
+- [x] **24.3.14a The race is metric-agnostic, because it was four lines of
+      real change.** The owner asked for the judgement as well as the work —
+      *"if it's really that trivial"* — so here is the measurement behind the
+      answer. A race is **one cumulative series against another, aligned by
+      elapsed second**. That shape does not care what is being accumulated, and
+      `WorkoutAggregates.from` was *already* integrating both kilojoules and
+      kilometres in one pass over the same samples with the same five-second
+      gap clamp — `RivalTrace.from` was duplicating half of that loop. So:
+      `RaceMetric` (`Output` | `Distance`), `RivalTrace` carries which one it
+      is, `RivalStatus.gapKj` becomes `gap` plus a metric, and the ride screen
+      picks its formatter off that instead of assuming kilojoules.
+
+      **It also closed a latent drift rather than adding one.** The distance
+      integration needs metres-per-revolution and the gap clamp, and writing
+      them out a second time would have produced a ghost whose distance
+      disagreed with the distance the ride recorded — the `avg_*` family
+      exactly. `WorkoutAggregates`' three constants are now `internal` and
+      `RivalTrace` borrows them, and the test asserts both integrations agree
+      with `WorkoutAggregates` for the same samples, for both metrics.
+
+      **And one finding worth carrying into 24.3.12**, which is why this earns
+      its place rather than merely anticipating a request: **a distance race
+      does not need measured power.** 24.4.2 excludes any ride with a single
+      non-measured sample from an output comparison, which is why most classes
+      have no ghost at all today. Distance is integrated *cadence*, measured on
+      every ride this app has ever recorded — simulated ones included. So the
+      distance board is populated where the output board is empty.
+      `RaceMetric.requiresMeasuredPower` says so in one place.
+
+      **Only `Output` is reachable today** — nothing selects the other, because
+      selecting it is 24.3.15. The distance path is exercised by tests and by
+      nothing else, which is the honest state of it.
+
+- [ ] **24.3.15 The toggle: race by output, or race by distance.** Deferred on
+      the owner's own *"otherwise just add it to the plan"*, and the reason it
+      is not trivial is not the plumbing — that is done — but **where the
+      control goes**. It is a control on the leaderboard's own surface, and
+      that surface does not exist yet (24.3.12, 24.3.13); the one place it
+      could live today is the rival picker, which 24.3.11 is about to put
+      behind a flag. Building it now would be building UI for a screen that is
+      being replaced.
+
+      Three things to settle when it is picked up, none of them expensive but
+      none of them free either:
+      - **Where the choice lives.** Per-ride, like the rival picker, or a
+        remembered preference? A rider who races distance probably always
+        races distance, which argues for the preference — but 2.4.6's rule
+        applies to anything stored: one writer, and the pipeline follows.
+      - **What it does to the rows already on the board.** Switching metric
+        re-ranks, and 24.3.13's whole point is that your neighbours changing
+        identity must not read as a number jumping. A mid-ride toggle is that
+        problem at its worst; the honest first version may be that the choice
+        is made before the class starts and is fixed for its duration.
+      - **Say which it is, once.** A board showing `+18` with no unit is the
+        one outcome to design against, and it is the same argument as the
+        provenance rule: a number whose meaning has silently changed is worse
+        than a number that is missing.
 
 ### 24.4 Honesty, and the column that is now blocking three things
 

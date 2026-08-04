@@ -79,6 +79,7 @@ import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetEmphasis
@@ -762,8 +763,15 @@ private fun EffortColumn(
 private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
     if (rival == null) return
 
-    val ahead = rival.gapKj >= 0
-    val gap = Formatters.kilojoulesValue(kotlin.math.abs(rival.gapKj))
+    val ahead = rival.gap >= 0
+    val magnitude = kotlin.math.abs(rival.gap)
+    // 24.3.14. The gap is whatever the race is measured in, and only this
+    // layer knows how to say it — the domain deliberately carries a number and
+    // a metric rather than a formatted string.
+    val gap = when (rival.metric) {
+        RaceMetric.Output -> Formatters.kilojoulesValue(magnitude)
+        RaceMetric.Distance -> Formatters.distanceValue(magnitude, MaterialTheme.units)
+    }
 
     Card(
         modifier = modifier,

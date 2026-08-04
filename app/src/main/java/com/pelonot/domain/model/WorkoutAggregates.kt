@@ -47,9 +47,14 @@ data class WorkoutAggregates(
     val isEmpty: Boolean get() = sampleCount == 0
 
     companion object {
-        private const val SECONDS_PER_MINUTE = 60.0
-        private const val KM_PER_REVOLUTION = 0.0021
-        private const val MAX_SAMPLE_GAP_SEC = 5.0
+        // Not private, and deliberately so: `RivalTrace` integrates the same
+        // two quantities over the same samples to build a live ghost, and a
+        // second copy of any of these three numbers is a distance that
+        // disagrees with the distance the ride recorded. Same family as the
+        // `avg_*` trap — one quantity, two derivations, one of them drifting.
+        internal const val SECONDS_PER_MINUTE = 60.0
+        internal const val KM_PER_REVOLUTION = 0.0021
+        internal const val MAX_SAMPLE_GAP_SEC = 5.0
 
         /**
          * @param samples time-ordered `(second, power, cadence, heartRate)`
