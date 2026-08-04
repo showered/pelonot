@@ -249,3 +249,92 @@ exists; nothing creates one. The previous value is overwritten and gone.
       per-profile and the thing a rider would most miss on a new device, but it
       is also a fitness record about a person and 17.7's private-by-default rule
       applies to it before any of it leaves the tablet
+
+### 7.11 Auto-FTP can only ever go up — the owner's question, 4 August 2026
+
+**Verbatim:** *"Can it go down? It should go down. If your BPM is unusually
+high and/or you mark a workout as 'really difficult' and despite this your
+scores are going down, it should probably adjust downwards too?"*
+
+**Checked against the code rather than assumed, and the answer is no —
+nothing anywhere moves FTP down.** `PostWorkoutAnalyzer.analyze`'s gate is
+`proposal >= currentFtp × MIN_MEANINGFUL_GAIN` (1.02), which is `>=` a number
+*above* current FTP by construction: a computed peak *below* current FTP
+simply fails the gate and produces no proposal, not a downward one.
+`FtpChangeSource` has no case for an automatic decrease — `AutoBreakthrough`,
+`GuidedTest`, `Estimated`, `ManualEdit`, `AutoBreakthroughReverted`,
+`ProfileCreated`, `PulledFromCloud`, `Unknown`, and every one of them is
+either upward or rider-initiated. See [AUTO_FTP.md](../AUTO_FTP.md) for the
+full mechanism this sits beside.
+
+**And it is closer to built than it looks — the wrong direction, but the
+right shape.** `detectBiometricDecoupling(metrics, ftp, maxHr)` already
+exists and already asks almost the owner's question, just facing the other
+way: it looks for **low** heart rate at threshold power, which is evidence
+FTP is set **too low**. The owner is asking for its mirror — elevated heart
+rate, or a high RPE, at an output that is not improving, as evidence FTP is
+set **too high**. Today neither direction actually runs: `maxHr` is one of
+three parameters (`maxHr`, `rpe`, `isHardClass`) that the one production call
+site never passes, so `detectBiometricDecoupling` returns `false` before
+touching its own logic and its result is discarded even when it ran with
+faked arguments.
+
+**Why this is a real gap and not a symmetric oversight.** 20.3.2 leaned on
+exactly the asymmetry the owner is now asking to remove: an estimated FTP
+that starts *too low* self-corrects, because the first strong ride clears it.
+An estimated FTP that starts *too high* is **permanent**, because nothing
+lowers it. That argument is only safe *as long as it stays true* — the moment
+7.11 ships a downward path, 20.3.2's estimator no longer needs its low bias
+for the same reason, and the two items should be read together whenever
+either is touched again.
+
+**Why a single ride cannot be the trigger, unlike 7.10.7's ride-at-a-time
+check.** The upward proposal is safe to fire off one ride because a
+20-minute peak *is* direct evidence of what the rider can produce — there is
+no interpretation between the number and the claim. A single hard-feeling
+ride is not the same kind of evidence: an off day, a cold coming on, poor
+sleep, heat, an unfamiliar class template, or simple under-fuelling can all
+produce "high heart rate, high RPE, disappointing watts" with fitness
+untouched. Lowering a rider's FTP — and therefore every zone on the ride
+screen, the overlay and the resistance band — off one bad ride would be a
+worse failure than the one 20.3.2 was written to avoid, because it edits a
+number the rider is actively training against rather than merely starting
+from. **This has to be a trend across several rides, not a per-ride check**,
+which is a materially different computation from anything `PostWorkoutAnalyzer`
+does today — it operates on one ride's `metrics` and returns.
+
+- [ ] **7.11.1** Decide the evidence window and the bar. Candidate shape:
+      over the last *N* rides at Zone 4 or above (say, the last 5–8 such
+      rides, not a calendar window — a rider who rides twice a week needs
+      weeks of calendar time to accumulate the same evidence as one who rides
+      daily), heart rate at a given power has drifted up by some margin, *or*
+      self-reported RPE has been consistently high, while the power those
+      efforts produced has not risen to match. None of this is decidable from
+      first principles — it needs the same kind of measurement 2.2a's
+      calibration work did before it shipped, not a guessed threshold
+- [ ] **7.11.2** RPE alone should not be enough. A rider who rates every ride
+      9/10 is describing their effort, not their fitness, and 26.3.3 already
+      settled that RPE is a coarse three-answer scale for exactly this
+      reason — it is corroborating evidence for a power/heart-rate trend, not
+      a trigger by itself. **This inverts 27's own gate**: alerts (Phase 27)
+      require `PowerProvenance.Measured` before anything can be shown as a
+      *record*; a downward FTP proposal is the same kind of claim about a
+      rider's body and should be held to the same bar — no Simulated-mode
+      ride may contribute evidence either way
+- [ ] **7.11.3** Requires `maxHr` to be known at all — the same nullable gate
+      21.1 already respects (`max_hr_bpm` or `birth_date`, both optional). A
+      rider with neither gets no heart-rate-based signal, same as they get no
+      heart-rate zones today; the RPE-and-declining-power half could in
+      principle stand alone, which is a design question for 7.11.1 to settle
+      rather than assume
+- [ ] **7.11.4** The dialog is the one thing that must not merely mirror
+      `FtpBreakthroughDialog` — see that dialog's own list of problems in
+      [AUTO_FTP.md](../AUTO_FTP.md). A downward proposal is more sensitive to
+      get wrong than an upward one (a rider told their fitness has *dropped*
+      on shaky evidence is a worse experience than one offered a number they
+      can simply decline), so this is the one to design carefully rather than
+      copy the existing dialog's shortcuts forward
+- [ ] **7.11.5** `FtpChangeSource` needs a new case — `AutoDecline` or similar,
+      distinct from `AutoBreakthrough` — so the trend chart (16.3.1, 7.10.1)
+      can draw a downward automatic change differently from a rider's own
+      manual edit, the same distinction 20.3.4 drew for `Estimated`
