@@ -54,6 +54,72 @@ asks less about the person, which is a rare combination and worth taking.
       deriving it at the sync edge costs nothing and means the useful part is
       the only part that travels. Decide this **when the DTO is written**, not
       after: "we sync every column in the row" is a default, not a decision
+
+      ***Largely settled from the other end, 4 August 2026 — the app now only
+      ever asks for a year (21.1.1b), so there is no full date to leak.*** What
+      is left of this item is the DTO decision itself, which is now trivial
+      rather than delicate: `birth_date` holds 1 January of a year, and either
+      the column becomes a year (21.1.1b) or the sync edge takes
+      `millisToBirthYear`. Do not close it until the DTO is written
+- [ ] **21.1.1b** **Should the column be a year? — the owner's question,
+      4 August 2026.** Verbatim: *"Ask for year of birth. Why not? Does it
+      really matter about the exact month/day? It can be resolved to 1st
+      January in the db… perhaps implement just a year now (with a dropdown,
+      not datepicker) and add a PLAN item to come back to this."* And, when the
+      caption defect below made them wonder if the day mattered after all:
+      *"Happy to bow to whatever you think is the best UX on this one. I like
+      to remove barriers to entry. All people want to do is ride."*
+
+      **The UI half is done and the answer is that the year is right.** Both
+      screens that ask — profile creation (20.3.3) and Settings' heart-rate
+      zones — now use one `BirthYearPicker`, a grid of years on the panel, one
+      tap. The arithmetic is why, and it is checkable rather than a matter of
+      taste: **this app has exactly two consumers for the date and both reduce
+      it to age in whole years.** Tanaka moves **0.7 bpm** per year against a
+      formula whose own between-individual error 21.1 puts at 10–12 bpm;
+      `FtpEstimator`'s age term moves **0.6%** on a number deliberately pitched
+      low and expected to be corrected by the first hard ride. Storing 1 January
+      makes a rider at most one year older than they are, and neither consumer
+      can tell.
+
+      **The thing worth recording is why the owner's doubt was not evidence
+      against it.** They wondered whether the "your age" caption bug meant a
+      full date was needed. It did not: that caption named age because the birth
+      year had been **skipped**, and a full date picker would have produced the
+      identical sentence. The two questions — *how precise* and *what did we
+      actually use* — look alike and are unrelated, and only the second was a
+      defect.
+
+      Against that, a full date costs at least three interactions to a year's
+      one, and Material's picker opened on **August 2026**, which is ~500
+      presses of the month arrow for a rider born in 1985. On the owner's own
+      principle — *remove barriers to entry, all people want to do is ride* —
+      the more precise control is strictly more barrier for strictly no gain.
+
+      **What is left is the schema, and it is the part with a real question in
+      it.** `profiles.birth_date` is still epoch milliseconds holding 1 January,
+      which is a column whose type promises more than its contents mean. Two
+      routes, and neither is urgent:
+
+      - **Leave it.** Zero risk, and `millisToBirthYear` / `birthYearToMillis`
+        are the only two places that know. The cost is that the column keeps
+        inviting a future writer to put a real date in it, and 21.1.1a's sync
+        decision has to remember to narrow it.
+      - **Migrate to `birth_year INTEGER`.** Honest, makes 21.1.1a's leak
+        impossible by construction rather than by discipline, and the migration
+        is one `CAST` away since every existing value is either null or a date
+        whose year is all anyone reads. It touches `MaxHeartRate`,
+        `FtpEstimator`, the DTO and two screens.
+
+      **Recommended: migrate, and do it with 21.1.1a's DTO rather than before
+      it** — the two are the same decision seen from the schema and from the
+      wire, and doing them together means one migration instead of a column
+      that changes shape twice.
+
+      One thing this must not do: **a rider who entered a real date before
+      today keeps it.** Nothing in this change rewrote anybody's stored value,
+      and a migration to a year must take the year out of what is there rather
+      than clearing it
 - [x] **21.1.2** *The fallback.* Estimated maximum heart rate from age, using
       **Tanaka (208 − 0.7 × age)** rather than the folk formula 220 − age, which
       overestimates for younger riders and underestimates for older ones. Say on

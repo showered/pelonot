@@ -115,7 +115,7 @@ asking the rider a question they cannot answer, corrected by their riding as
 soon as it has evidence.** Which of the owner's two routes that is depends on
 20.3.2.
 
-- [ ] **20.3.1** **Take the watt field off profile creation.** Whatever replaces
+- [x] **20.3.1** **Take the watt field off profile creation.** Whatever replaces
       it, the literal question "FTP (Watts)" with a text box does not survive
       this item. Nothing else about the dialog is in scope here — name and
       weight are answerable questions and 13.8 already fixed the one that
@@ -195,13 +195,37 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
         "skippable" is the design decision that makes the questions feel
         optional and therefore ignorable, and whether that is right depends on
         how the screen reads, which is 20.3.3's job to find out
-- [ ] **20.3.3** **Design it as a screen, not a dialog.** "Priority is GREAT UX"
+- [x] **20.3.3** **Design it as a screen, not a dialog.** "Priority is GREAT UX"
       is the owner's emphasis and an `AlertDialog` with three stacked
       `OutlinedTextField`s on a 1280 × 720 dp tablet is the opposite of it. This
       is the first thing a rider sees and it is currently the least designed
       surface in the app. Full-bleed, readable at the distance a bike is set up
       from, and it may well be more than one step
-- [ ] **20.3.4** **Whatever number it lands on, say where it came from.** The
+
+      ***Done and observed on the tablet AVD.*** `ProfileCreationScreen`, three
+      steps, and "more than one step" turned out to be the load-bearing part of
+      this item rather than the width: the old dialog's real failure was
+      **five controls in front of a rider who has not yet done anything**, and
+      no amount of layout fixes that. One question at a time does.
+
+      1. *Who's riding?* — a name and nothing else.
+      2. *A bit about you, <name>* — weight with its unit chips (13.8 kept),
+         the birth year, and three cards across the panel for the riding
+         description. `WideGrid` with `equalHeightRows`, which is 22.7.2's
+         opt-in earning its second caller.
+      3. *Here's where we'll start you* — the number, once.
+
+      It is a full-bleed `Dialog` (`usePlatformDefaultWidth = false`) rather
+      than a nav destination, and that is deliberate: **both** call sites raise
+      it conditionally over a screen they must return to — the profile selector
+      and a guest keeping their ride from the post-ride summary — so a
+      destination would need a back-stack entry each and a result channel to
+      carry the answer home, for no gain.
+
+      Two things came out of looking at it rather than building it, and both
+      are copy rather than layout, which is itself the finding: the layout was
+      right first time and **the sentences were not**. See 20.3.4
+- [x] **20.3.4** **Whatever number it lands on, say where it came from.** The
       rider must be able to see that this is an estimate and not something they
       told the app. It matters directly: an estimated FTP that is too high draws
       every early ride in Zone 2 and makes the app feel like it is not working,
@@ -210,7 +234,7 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       — **and it needs a source on `ftp_history`**, which today has
       `AutoBreakthrough`, `AutoBreakthroughReverted` and the rider's own. An
       estimate is a fourth thing and must not be filed as a claim the rider made
-- [ ] **20.3.5** **Then let the riding correct it, and say that it will.** The
+- [x] **20.3.5** **Then let the riding correct it, and say that it will.** The
       estimate's whole defence is that it is temporary. Auto-FTP (7) already
       does the correcting; what is missing is that the rider is never told the
       app is going to do it. A line at signup — *"we'll work this out properly
@@ -236,7 +260,7 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       150 is what the app already believed; the item that decides what a new
       rider's first number *should* be is still open, and the value it lands on
       changes one constant now rather than three literals in two files
-- [ ] **20.3.7** **Route B needs columns, so it needs a migration** (12.5) —
+- [x] **20.3.7** **Route B needs columns, so it needs a migration** (12.5) —
       age or year of birth, and the self-assessed category, both nullable
       because every existing profile has neither and a backfilled guess is
       indistinguishable from an answer. Do not add them until 20.3.2 is decided;

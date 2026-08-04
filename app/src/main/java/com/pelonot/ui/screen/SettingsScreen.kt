@@ -80,7 +80,9 @@ import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
-import com.pelonot.ui.components.BirthDatePickerDialog
+import com.pelonot.ui.components.BirthYearPicker
+import com.pelonot.ui.components.birthYearToMillis
+import com.pelonot.ui.components.millisToBirthYear
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.MaxHeartRate
@@ -743,13 +745,19 @@ private fun HeartRateZonesSection(
     val preview = MaxHeartRate.resolve(typed?.takeIf { !maxError }, date)
 
     if (picking) {
-        // Shared with profile creation (20.3.3): opens forty years back rather
-        // than on today, and refuses a date in the future.
-        BirthDatePickerDialog(
-            currentSelection = date,
-            onSelected = { date = it },
-            onDismiss = { picking = false },
-            title = "Date of birth"
+        // The same control profile creation uses (20.3.3), asking the same
+        // question. Settings used to offer a full date picker over a column
+        // onboarding fills with 1 January, so a rider who answered "1986" on
+        // the way in came here and was shown "1 January 1986" as though they
+        // had said it. Two controls for one question is how they drift, and
+        // this one had already drifted into a claim the app could not support.
+        BirthYearPicker(
+            currentSelection = millisToBirthYear(date),
+            onSelected = {
+                date = birthYearToMillis(it)
+                picking = false
+            },
+            onDismiss = { picking = false }
         )
     }
 
@@ -806,8 +814,8 @@ private fun HeartRateZonesSection(
         ) {
             OutlinedButton(onClick = { picking = true }, shape = MaterialTheme.expressiveShapes.pill) {
                 Text(
-                    date?.let { DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it)) }
-                        ?: "Set date of birth"
+                    millisToBirthYear(date)?.let { "Born in $it" }
+                        ?: "Set year of birth"
                 )
             }
             if (date != null) {
@@ -841,7 +849,7 @@ private fun HeartRateZoneLadder(max: MaxHeartRate?) {
     if (max == null) {
         Text(
             text = "No heart-rate zones yet. Pelonot won't guess a maximum — " +
-                "give it your own number or a date of birth and the zones appear here.",
+                "give it your own number or a year of birth and the zones appear here.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -850,7 +858,7 @@ private fun HeartRateZoneLadder(max: MaxHeartRate?) {
 
     Text(
         text = if (max.isEstimate) {
-            "Zones from ${max.bpm} bpm — estimated from your date of birth"
+            "Zones from ${max.bpm} bpm — estimated from your year of birth"
         } else {
             "Zones from ${max.bpm} bpm — your own number"
         },
