@@ -8,6 +8,79 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-third sitting): the panel, used
+
+**A design sitting, and the owner was in it — five inbox notes arrived while it
+ran and every one of them changed the work.** 576 JVM tests, 0 failures.
+
+**The ride summary was the brief and it was the right place to start.** It was a
+centred column of six label-value rows — `Average power  188 W` — on a screen
+1280 dp wide: *the moment the app has the rider's full attention, saying the
+least it ever says with the most room it ever has.* It is now one row of six
+figure tiles in the metric colours the ride screen already uses, headed by the
+class the rider chose rather than the words "Ride Summary", with Done and
+Discard pinned so that getting off the bike never involves finding the button
+first (22.4.6, 26.1.2).
+
+**The token that made it possible is the point, not the screen.** 22.4.1 asked
+for a companion to `readableColumn` so that *use the width* is as cheap to reach
+for as *cap it*. `WideGrid` is it — row-major so the order survives the fold,
+and **balanced**, because six figures in a grid that fits five wide came out as
+five and a stray, and a lone tile on a second row reads as a mistake rather than
+as a layout. Two pure functions and six tests, since the failure they guard is
+silent: forget the gaps between cells and every cell lands under its minimum.
+
+**Then the owner said the quiet part: *"Make sure you're using the full width of
+the screen... Only constraint should be that no ONE CARD should go full
+screen."*** That is the criterion 22.4.3's audit was going to have to invent,
+handed over before it had to. Seven screens carried the cap. Dashboard, history,
+class library, *Your riding* and *Your FTP* wanted the width; Settings and the
+account screen genuinely wanted the cap, which is what it was always for. The
+dashboard now fits on one screen without scrolling, and the class library shows
+21 classes where it showed 7.
+
+**Two of the notes were corrections to work done an hour earlier, and both were
+right.** The owner saw the ride-detail charts "disappear" — they had not, they
+had been pushed below the fold by the new figures grid inside a 760 dp cap,
+which is 22.4.2 in one observation. And then: *"the 'time in zone' card is
+stretching full width... this violates a design rule. If the rule doesn't exist,
+please make the rule."* It did not exist. **Uncapping a screen is not uncapping a
+card**, and only the first half of that sentence had been written down.
+`Modifier.loneCard()` is the third token and CLAUDE.md now carries all three
+together (22.6).
+
+**Two notes were about the rider rather than the layout, and both invalidated a
+design decision rather than adjusting one.** *This Week* was built on an unstated
+assumption of several rides a week; on the owner's stated assumption of one, it
+reads "0 rides" six days out of seven — the first thing on the dashboard telling
+a rider doing exactly what they meant to do that they have done nothing. It is
+**Last 30 days** now, rolling rather than a calendar month, because a month
+resets on the 1st and hands a rider a zero the day after they rode. **The streak
+was the same defect one level down and worse**: it counted consecutive *days*, so
+a rider who has never missed a Sunday scored 1 — and a streak of 1 is
+deliberately not shown. The most consistent rider the app can have was invisible
+to the feature built to reward consistency (22.5).
+
+**And the RPE scale went from ten answers to three**, because *"it causes me
+anxiety, wondering if I'm selecting the right option."* The column stays 1–10 —
+the owner's own suggestion, and the right one: a ride already recorded keeps its
+exact answer, the cloud payload is untouched, and `EASY_RPE_THRESHOLD` keeps
+working because *Comfortable* stores 3. **That last one is the trap worth
+carrying forward**: had it stored 5, the FTP proposal would have silently stopped
+firing and no screen would have looked any different. It is a test now. Checked
+both ways on the AVD — a new ride answered "A good workout" lands as
+`rpe_rating = 6`, and a ride rated **7 on the old scale opens reading "A good
+workout"** (26.3).
+
+**The thing worth taking from the shape of this sitting**: four of the five notes
+were the owner *looking at a screen*, and two of them caught regressions inside
+the hour. `assembleDebug` passing proves very little here — it never did — but
+neither does a screenshot the author took to confirm what they expected. The
+1280 × 720 AVD is where all of this was decided, and it is the only reason any of
+it is ticked.
+
+---
+
 ### 4 August 2026 (twenty-second sitting): the round trip seen at last, one leaderboard, and a website with the door left open
 
 **Two sittings' worth of work landed on the cloud tier and the narrative never
