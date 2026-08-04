@@ -156,7 +156,13 @@ fun ProfileSelectorScreen(
                 profiles.forEach { user ->
                     ProfileTile(
                         name = user.name,
-                        detail = "${user.ftpWatts} W FTP",
+                        // 26.1.1, the owner's own example. It read
+                        // `150 W FTP`: two pieces of jargon and the least
+                        // useful fact about a rider on a screen whose only
+                        // question is *which of you is it*. Nobody picks their
+                        // profile by their FTP, the number moves on its own
+                        // (Phase 7), and the FTP already has two screens of its
+                        // own. A name and a face is the whole answer.
                         accent = AvatarColors[user.localUserId.absoluteValue % AvatarColors.size],
                         size = tileSize,
                         onClick = { onProfileSelected(user) },
@@ -217,7 +223,6 @@ private fun tileSizeFor(available: Dp, height: Dp, tiles: Int): Dp {
 @Composable
 private fun ProfileTile(
     name: String,
-    detail: String,
     accent: Color,
     size: Dp,
     onClick: () -> Unit,
@@ -237,7 +242,7 @@ private fun ProfileTile(
                 onLongClick = onLongClick,
                 onLongClickLabel = "Rename or remove $name"
             )
-            .semantics { contentDescription = "$name, $detail" },
+            .semantics { contentDescription = "Ride as $name" },
         shape = MaterialTheme.expressiveShapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -277,11 +282,6 @@ private fun ProfileTile(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

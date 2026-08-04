@@ -50,7 +50,7 @@ claim (14.4.7, 21.1).
 
 ### 26.1 The debts that already exist
 
-- [ ] **26.1.1** **The profile selector, which is the owner's own example.**
+- [x] **26.1.1** **The profile selector, which is the owner's own example.**
       Each tile reads `150 W FTP` under the rider's name. Three problems in six
       characters: `W` and `FTP` are both jargon, the number is the *least*
       useful thing about a rider on a screen whose only question is "which of
@@ -59,6 +59,15 @@ claim (14.4.7, 21.1).
       under the name, or something a person actually recognises themselves by
       — last ride, or rides this month. **Prefer the recognition cue to the
       measurement**; the FTP already has two screens of its own
+
+      *Done and observed on the tablet AVD: a name and a face, and nothing
+      else. **Neither of the two options this item offered**, in the end — the
+      recognition cue was going to need a per-profile query for a subtitle
+      nobody had asked for, and the honest answer to "which of you is it" is
+      the face. A profile tile with nothing under the name also puts the two
+      secondary tiles' subtitles to work: Guest and New rider now carry the
+      only explanatory text on the screen, which is 20.1.3's weighting made
+      visible instead of argued.*
 - [x] **26.1.2** **The post-ride summary's six labelled rows** are the clearest
       case of test 3: `Average power  188 W` twice over in a column reads like a
       spec sheet at the moment a rider is out of breath and wants to know how
