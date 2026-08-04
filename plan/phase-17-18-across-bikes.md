@@ -142,7 +142,10 @@ keyboard should be possible on the web and optional on the bike.**
         It is also exactly the condition 18.11.1 was written against, and that
         item stops being hypothetical the moment this URL exists — read it
         next, because as of this note the setting it names is still open
-- [ ] **17.16.1** **The bike's QR still points at the emulator.**
+- [x] **17.16.1** **The bike's QR still points at the emulator.**
+      *Done by the owner in their own `local.properties`, 4 August:
+      `pelonot.webUrl=https://pelonot.showered.workers.dev`. The original ask
+      follows.*
       `pelonot.webUrl` in `local.properties` is `http://10.0.2.2:8000` — the
       dev server's address *as seen from inside an AVD*, which is unreachable
       from a phone and meaningless off that emulator. So the QR the bike draws

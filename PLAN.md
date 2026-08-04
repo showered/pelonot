@@ -130,75 +130,76 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 4 August 2026 (twenty-second sitting): the round trip seen at last, one leaderboard, and a website with the door left open
+### Latest session — 4 August 2026 (twenty-third sitting): the panel, used
 
-**Two sittings' worth of work landed on the cloud tier and the narrative never
-caught up with it, so this entry covers both halves.** 547 JVM tests, 0
-failures.
+**A design sitting, and the owner was in it — five inbox notes arrived while it
+ran and every one of them changed the work.** 576 JVM tests, 0 failures.
 
-**14.1.6 has been open since the third sitting and finally closed, and it could
-never have closed before Phase 15**: `003` revokes the anon key, so the sighting
-needed a real session. A tablet signed itself in by QR, the drain fired, and
-three rides arrived — 332, 50 and 1185 samples, attributed, `class_id` CLB-01,
-`v=1`, 47,890 bytes for the twenty-minute one. Then read back **in the web app**,
-which is the version of that sighting a person can have rather than a query.
-**15.5.4 closed with it**: two real accounts, 21 probes, 0 failures. A cannot
-create, read, rename or delete B's profile; cannot record, see, edit or delete
-B's ride; and cannot hand their own ride to B, which is the
-`WITH CHECK`-without-`USING` hole 15.5.1 was written to close.
+**The ride summary was the brief and it was the right place to start.** It was a
+centred column of six label-value rows — `Average power  188 W` — on a screen
+1280 dp wide: *the moment the app has the rider's full attention, saying the
+least it ever says with the most room it ever has.* It is now one row of six
+figure tiles in the metric colours the ride screen already uses, headed by the
+class the rider chose rather than the words "Ride Summary", with Done and
+Discard pinned so that getting off the bike never involves finding the button
+first (22.4.6, 26.1.2).
 
-**Four defects on the way, and not one of them was catchable by a test.** The
-cloud's class library and the bundled one were **different libraries** (14.2.9):
-23.2.6 renumbered the catalogue, the cloud kept the old series, and
-`workouts.class_id` has a foreign key onto it — so no ride against any bundled
-class could ever have been backed up, by anyone, ever. One unacceptable row
-**blocked every ride behind it for ever** (14.2.7); nothing drained the backlog
-on launch (14.2.10); and the payload's version field never travelled (14.4.3a) —
-`version: Int = VERSION` is omitted by an encoder with `encodeDefaults` off, and
-the tests missed it by encoding with it *on*, so tests and production used
-different encoders and only one was ever checked. The one field whose job is to
-survive into an unknown future was the one field that never left.
+**The token that made it possible is the point, not the screen.** 22.4.1 asked
+for a companion to `readableColumn` so that *use the width* is as cheap to reach
+for as *cap it*. `WideGrid` is it — row-major so the order survives the fold,
+and **balanced**, because six figures in a grid that fits five wide came out as
+five and a stray, and a lone tile on a second row reads as a mistake rather than
+as a layout. Two pure functions and six tests, since the failure they guard is
+silent: forget the gaps between cells and every cell lands under its minimum.
 
-**The owner's leaderboard note replaced a friend graph that had already been
-built and applied.** Verbatim: with three or four riders who already know each
-other, *"everyone should just have visibility over everyone's scores"*. The
-`friendships` table with request / accept / block is dropped — it was the right
-answer to a question nobody had asked. What replaces it is two narrow
-`SECURITY DEFINER` functions, because **"everyone can see everyone's scores" is
-not the same sentence as "everyone can read everyone's rows"**: the policies on
-`workouts` and `profiles` are unchanged, and the ghost even strips heart rate.
-18.9 was applied rather than quoted — this is the household board with more rows
-on it, one type and one renderer, and the failure mode is a shorter board rather
-than a missing one. Verified from two accounts, 15 probes, 0 failures.
+**Then the owner said the quiet part: *"Make sure you're using the full width of
+the screen... Only constraint should be that no ONE CARD should go full
+screen."*** That is the criterion 22.4.3's audit was going to have to invent,
+handed over before it had to. Seven screens carried the cap. Dashboard, history,
+class library, *Your riding* and *Your FTP* wanted the width; Settings and the
+account screen genuinely wanted the cap, which is what it was always for. The
+dashboard now fits on one screen without scrolling, and the class library shows
+21 classes where it showed 7.
 
-**Then the owner's two notes for this sitting, and the first one has a door
-standing open behind it.** *"Website is now running here."* It is: the deployed
-bytes are the repo's, `config.js` is served beside them, and the host's
-`.html` → extensionless **307** carries the QR's fragment intact — measured in a
-browser, ending at `/link#ABCD2345`, reaching the live project and answering
-*"That code has expired"*, which is `device_link_describe` working as `anon`
-from the deployed page. **But hosting it publishes the endpoint and the
-publishable key, which is exactly the condition 18.11.1 was written against**,
-and the project answers **`"disable_signup": false`**. With `007` applied, an
-account created by anyone who finds that URL lands on the household's
-leaderboard. The blast radius is bounded and worth stating rather than
-dramatising — 15.5.4 means it is leaderboard entries and ghost traces, not
-anybody's rows — and the fix is two minutes in a dashboard that is **the owner's
-and not a session's**. It is now the top line of *What to do next*.
+**Two of the notes were corrections to work done an hour earlier, and both were
+right.** The owner saw the ride-detail charts "disappear" — they had not, they
+had been pushed below the fold by the new figures grid inside a 760 dp cap,
+which is 22.4.2 in one observation. And then: *"the 'time in zone' card is
+stretching full width... this violates a design rule. If the rule doesn't exist,
+please make the rule."* It did not exist. **Uncapping a screen is not uncapping a
+card**, and only the first half of that sentence had been written down.
+`Modifier.loneCard()` is the third token and CLAUDE.md now carries all three
+together (22.6).
 
-**The second note is the one this file has needed for a while.** *"There is so
-much plan documentation (this is good!) but it's difficult to get a true
-understanding of where we are."* Correct, and the cause is structural: 7,200
-lines across 25 files, every one written for the session that will *do* the
-work, with the reasoning kept rather than summarised — which is what has stopped
-this project re-litigating settled decisions, and is no help at all to a person
-asking whether it is nearly finished. **[STATUS.md](STATUS.md) is that page**
-(19.1.7), and the thing worth carrying forward is that it defines *done* three
-ways, because the honest answer differs by a lot depending on who asks: done for
-this household is weeks and mostly not code; done for a stranger with a Peloton
-is six rows; done as the plan is written is 410 of 594 boxes and will never be
-100, because the plan is where ideas are kept rather than a queue. **Read the
-percentage as an inventory count, never as a completion estimate.**
+**Two notes were about the rider rather than the layout, and both invalidated a
+design decision rather than adjusting one.** *This Week* was built on an unstated
+assumption of several rides a week; on the owner's stated assumption of one, it
+reads "0 rides" six days out of seven — the first thing on the dashboard telling
+a rider doing exactly what they meant to do that they have done nothing. It is
+**Last 30 days** now, rolling rather than a calendar month, because a month
+resets on the 1st and hands a rider a zero the day after they rode. **The streak
+was the same defect one level down and worse**: it counted consecutive *days*, so
+a rider who has never missed a Sunday scored 1 — and a streak of 1 is
+deliberately not shown. The most consistent rider the app can have was invisible
+to the feature built to reward consistency (22.5).
+
+**And the RPE scale went from ten answers to three**, because *"it causes me
+anxiety, wondering if I'm selecting the right option."* The column stays 1–10 —
+the owner's own suggestion, and the right one: a ride already recorded keeps its
+exact answer, the cloud payload is untouched, and `EASY_RPE_THRESHOLD` keeps
+working because *Comfortable* stores 3. **That last one is the trap worth
+carrying forward**: had it stored 5, the FTP proposal would have silently stopped
+firing and no screen would have looked any different. It is a test now. Checked
+both ways on the AVD — a new ride answered "A good workout" lands as
+`rpe_rating = 6`, and a ride rated **7 on the old scale opens reading "A good
+workout"** (26.3).
+
+**The thing worth taking from the shape of this sitting**: four of the five notes
+were the owner *looking at a screen*, and two of them caught regressions inside
+the hour. `assembleDebug` passing proves very little here — it never did — but
+neither does a screenshot the author took to confirm what they expected. The
+1280 × 720 AVD is where all of this was decided, and it is the only reason any of
+it is ticked.
 
 ---
 
@@ -211,10 +212,19 @@ website going live is what made it live too: the endpoint and its publishable
 key are now on the internet by design, `007` puts every registered account on
 the household's leaderboard, and the project answers `"disable_signup": false`
 as of 4 August. Nothing else on this list is a door standing open. **17.16.1**
-is the same shape and the same size — one line of `local.properties` pointing
-the bike's QR at the live page instead of at `10.0.2.2` — and together they are
-most of what stands between the cloud tier and being usable by the household it
-was built for.
+**is done — the owner did it themselves** on 4 August, so what stands between
+the cloud tier and being usable by the household it was built for is now that
+one setting alone.
+
+**Then, from this sitting: 22.6.3, 22.5.4 and 26.3.3.** All three are small and
+all three are the tail of something already landed. **22.6.3** is the owner's
+word *enforce* — a build-time check that no `Card` takes `fillMaxWidth()`
+outside a grid or a weighted row, because the rule it protects was broken
+inside the single session that wrote it. **22.5.4** is the rest of the
+once-a-week assumption: the household panel still counts a *week*, so at one
+ride each a household of three shows an empty board most days. **26.3.3** is
+the effort labels, which are a first draft against the owner's brief and want
+their eyes on the bike.
 
 **The road to online — settled in the eighteenth sitting.** The owner's stated
 destination is accounts, friends, a leaderboard and a companion web app. Those
@@ -229,7 +239,7 @@ here:
 | 3 | 🔶 **15.1** auth, **15.2** identity, ~~**15.3.1** the drain~~ | **Built and seen making the round trip** — three rides arrived attributed, and were read back in the web app rather than in a query (14.1.6, closed after nineteen sittings open). What is *not* built is the other direction and the exits: pull to a new device (15.3.2), sign out (15.4.1), delete the cloud copy (15.4.2) and delete the account (15.4.3) | The phase that unlocks everything. 15.3.1 is mostly built already — it is 14.2.6's drain with a sign-in trigger on it |
 | 4 | ~~**14.2.3** sync state in Settings~~ | **Done in the same sitting**, because it belongs before riders trust the thing rather than after. Two of three states seen on the AVD; the failing one is tested and will be seen for free the first time 14.2.1a's endpoint refuses something |
 | 4a | ~~**17.1**, **17.13** the web app's first page, **15.6** signing in by QR~~ | **Done, and hosted since 4 August (17.16)** — the owner's note put it at a URL, and the fragment-carrying redirect and the live `device_link_describe` were both measured against it. It did exactly what this row predicted: the round trip was *seen* in the web app, not queried. Original reasoning: | **Moved up from row 6 by the owner's note of 3 August**, and it is not a reshuffle of priorities so much as a correction: the web app was filed as a *destination* when it is also **the only way either of us can see what the bike actually put in the cloud** without writing SQL. Every cloud defect this project has had was found by query rather than by looking. The QR flow (15.6) needs a page to point at, which makes `link.html` the first thing built and the rest of 17 an easy follow-on |
-| 5 | **20.3** the initial FTP, **22.4** use the width | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders. **20.3.9 changed its cost**: date of birth is already on the profile, so Route B is one extra question rather than two, and the same screen answers 21.1.6 |
+| 5 | **20.3** the initial FTP, ~~**22.4** use the width~~ **Done in the twenty-third sitting** — the owner's rule settled it (*use the full width, no one card takes it all*) and seven screens were audited against it | The owner's own two, and 20.3's own words are that the current shape **cannot go into production**. Onboarding is the first thing a new rider meets and the online tier is what brings new riders. **20.3.9 changed its cost**: date of birth is already on the profile, so Route B is one extra question rather than two, and the same screen answers 21.1.6 |
 | 6 | 🔶 **17** the rest of the web app, **18** social across bikes | **18's leaderboard landed early and by itself** (18.5, 18.9, 18.11) because the owner's note removed the friend graph it was waiting on. The rest stands as written | In that order: the bike's tablet is a bad place to type, so the web app is the natural home for friend requests and display names, and 18 is those features arriving back on the bike. **Read Phase 24 first** — the household half is built, needs no account from anybody, and 18.9 says every screen here is built *on top of* its 24 equivalent rather than beside it |
 
 Two things that are **not** blockers and were checked rather than assumed: the
@@ -367,7 +377,7 @@ Two notes worth carrying into the next bike session:
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
 | 11 | **HUD-first experience — the current priority** | 🔶 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |
-| 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain |
+| 12 | Ride history & the rider's own record | 🔶 History, detail, delete and migrations done; export and housekeeping remain. **Both screens were rebuilt for the panel in the twenty-third sitting**: history is a two-across grid with the day headings still spanning it, and ride detail is one row of six figures with the charts two-up behind them (22.4.2, 22.4.3). The owner found the regression on the way — the charts had not disappeared, they had been pushed below the fold by a figures grid inside a 760 dp cap |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. **14.2.1a is applied and 14.1.6 is finally closed** — after nineteen sittings open, a signed-in tablet drained its backlog and three rides arrived attributed (332, 50 and 1185 samples, `v=1`, 47,890 bytes for the twenty-minute one), read back in the web app rather than in a query. **Four defects were found on the way and not one was catchable by a test**: the cloud's class library and the bundled one were different libraries, so no ride against any bundled class could ever have been backed up (14.2.9); one unacceptable row blocked every ride behind it for ever (14.2.7); nothing drained the backlog on launch (14.2.10); and the payload's `v` never travelled, because `encodeDefaults` is off in production and was on in the tests (14.4.3a). What is left is the other direction — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: **gated, not shut** — every call still goes through `CloudAccess`, and a profile with no account still makes no request at all, which is rule 1 doing its job now that there is something on the other end of it. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | 🔶 **Open and largely built.** auth-kt is installed, which is also what makes every request carry the rider's own JWT instead of the anon key — after `003` the anon role can read the class library and nothing else. *Back up my rides* is its own destination off Settings (15.1.4–15.1.6), with four states including the one that gets forgotten: **signed up, not confirmed, no session**. **15.6 is the owner's QR flow and it works up to the hand-off**: the bike invents a secret, sends only its SHA-256, shows a code and a countdown, and the live project describes that code back under the device's own name. **15.2.8 is the design decision to carry forward** — the SDK holds one session and a household holds several riders, so *having an account* and *this tablet carrying that rider's credentials* are different questions and only the second may send. It was also the defect: Settings said "Backed up to your account" on a tablet holding no session at all. **Signing in is now seen working** — a tablet signed itself in by QR against the live project and its rides went up under its own JWT. **And 15.5.4 is closed, the way it asked to be**: from a *second real account*, 21 probes, 0 failures — A cannot create, read, rename or delete B's profile, cannot record, see, edit or delete B's ride, and cannot hand their own ride to B, which is the `WITH CHECK`-without-`USING` hole 15.5.1 existed to close. It is `supabase/verify_rls.py`, scripted off the admin API rather than a password, so it is repeatable instead of something a person once sat and did. **What is missing now is the exits**: sign out (15.4.1), delete the cloud copy (15.4.2), delete the account (15.4.3) and pull to a new device (15.3.2) |
@@ -377,7 +387,7 @@ Two notes worth carrying into the next bike session:
 | 19 | Ideas worth having, ranked | 🔶 Mixed, and not untouched: screen-on lock, auto-pause, local backup/restore and the README are done (19.1.1–19.1.3, 19.1.5), and **CI is written and waiting on its first green run** (19.1.4). **19.1.7 is the owner's own**: [STATUS.md](STATUS.md), one page saying where the project is, with *done* defined three ways because the honest answer differs by a lot depending on who is asking |
 | 20 | Who's riding — profile selector & avatars | 🔶 Selector rebuilt for the tablet (20.1, incl. rename/remove); avatars (20.2) not started. **20.3 is the owner's and still open**: profile creation asks a rider for their FTP in a text box, which by their own words **cannot go into production**. One piece of it is closed — **20.3.6**, the prefill and the fallback both said `200` while the rest of the app said 150, so every profile made on that screen started 50 W high and nothing said so — but the question it opens, what a rider who cannot answer should be given instead, is untouched. The constraint that makes it interesting is that the app cannot simply stop having a number — FTP is the denominator of the whole zone system and is written onto the ride at its start |
 | 21 | Heart-rate zones | 🔶 **Open and useful, from the owner's inbox note.** The honest answer to *"pretty sure this is already covered"* was no — the app had no maximum heart rate for anybody, so it had no boundaries to colour between. Now: `max_hr_bpm` asked for **first** and `birth_date` as the fallback (migration 11 → 12, both nullable, because a default maximum is a guess about a rider's body); Tanaka rather than 220 − age, labelled an estimate wherever it shows; `HeartRateZone`, five zones on its own palette because HR zone 4 and power zone 4 are not the same claim; the ride screen's bpm and its beating heart both take the zone's colour, observed live at the 114 bpm boundary. **21.2.3 is the gate on going further**: nothing draws a zone for a *past* ride yet, which is the only reason 7.8's trap has not bitten, and 21.4.2 must not land before it |
-| 22 | The dashboard | 🔶 **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
+| 22 | The dashboard | 🔶 **The panel is used now, and the rule for using it is written down three ways.** The owner's two notes of 4 August settled it: *use the full width, and no ONE CARD goes full width; grids where they fit.* `readableColumn` caps a column, `WideGrid` tiles a set, `loneCard` caps a card with nothing beside it — and CLAUDE.md carries all three together, because reaching for the wrong one is how this project twice made a whole screen the wrong shape (22.4, 22.6). The dashboard fits on one screen without scrolling; history is two ride cards across, the class library three, *Your riding* and *Your FTP* two; Settings and the account screen keep the cap, which is what it was always for (22.4.3). **22.6.3 is what is left and it is the owner's word**: they said *enforce*, and a rule that lives only in a markdown file is the kind this project has already broken inside one session. **And *This Week* is *Last 30 days* (22.5)** — at one ride a week the old card said "0 rides" six days out of seven, and its streak counted *days*, so the most consistent rider the app can have scored 1 and was shown nothing. The older note follows. **A *This Week* card now opens the progress section** — rides, minutes and the streak, and the door to *Your riding* (16.3.2/16.3.5). It is the number **22.1.2** has been asking for since the sixth sitting, in the place it asked for it, though that item is still open: the two kJ cards below it are unchanged. **The FTP card is now a progress card (22.1.4)** — the number, a stepped sparkline of every value it has held, and how far it moved and who moved it. That is the first thing in the section that is a trend rather than a total; the two kJ cards below it are still what they were (22.1.2). The width cap is a theme token applied across the app rather than one screen's fix (22.2.6); what goes in the rails it opens up (22.2.2, 22.2.3) is still undecided |
 | 23 | Offline by default — making the ungated tier complete | 🔶 **Retention (23.4) is no longer deferred** — the owner asked for old rides condensed to their aggregates rather than kept sample by sample, which is 23.4.2 as written. The design was already right; what is new is **23.4.8**, a hard prerequisite: personal bests are re-scanned from every measured ride's samples on every load, so trimming would silently make a rider's bests worse until 16.3.3a stores them per ride. Calibration is unaffected — checked, not assumed. **The consent gate (23.1), the class library (23.2) and the backup reminder (23.3.1) are done and observed** — rule 1 is true rather than intended, the 72 classes are designed rather than generated (23.2.6) and reach an already-seeded tablet by reconcile-and-retire (23.2.6c), and the offline rider is now told when ten rides have gone by unprotected. The cloud as an update channel (23.2.3/23.2.4) and retention (23.4, deliberately not yet) remain |
 | 24 | Household social — the tier that needs no cloud | 🔶 **24.1, 24.2 and 24.3.1 built and observed** — the per-class board, the household's week with streaks and an opt-out, and a housemate's trace drawn behind your own on ride detail. What remains is **24.3.2**, the live pace target during a ride, which is a ride-screen design problem rather than a data one |
 | 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider). **25.4.3 is closed**: the two near-twins the rename exposed are separated by their work as well as their titles, as `SWT-13` rather than an edited `SWT-05` — the id is the foreign key |

@@ -8,6 +8,76 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-second sitting): the round trip seen at last, one leaderboard, and a website with the door left open
+
+**Two sittings' worth of work landed on the cloud tier and the narrative never
+caught up with it, so this entry covers both halves.** 547 JVM tests, 0
+failures.
+
+**14.1.6 has been open since the third sitting and finally closed, and it could
+never have closed before Phase 15**: `003` revokes the anon key, so the sighting
+needed a real session. A tablet signed itself in by QR, the drain fired, and
+three rides arrived — 332, 50 and 1185 samples, attributed, `class_id` CLB-01,
+`v=1`, 47,890 bytes for the twenty-minute one. Then read back **in the web app**,
+which is the version of that sighting a person can have rather than a query.
+**15.5.4 closed with it**: two real accounts, 21 probes, 0 failures. A cannot
+create, read, rename or delete B's profile; cannot record, see, edit or delete
+B's ride; and cannot hand their own ride to B, which is the
+`WITH CHECK`-without-`USING` hole 15.5.1 was written to close.
+
+**Four defects on the way, and not one of them was catchable by a test.** The
+cloud's class library and the bundled one were **different libraries** (14.2.9):
+23.2.6 renumbered the catalogue, the cloud kept the old series, and
+`workouts.class_id` has a foreign key onto it — so no ride against any bundled
+class could ever have been backed up, by anyone, ever. One unacceptable row
+**blocked every ride behind it for ever** (14.2.7); nothing drained the backlog
+on launch (14.2.10); and the payload's version field never travelled (14.4.3a) —
+`version: Int = VERSION` is omitted by an encoder with `encodeDefaults` off, and
+the tests missed it by encoding with it *on*, so tests and production used
+different encoders and only one was ever checked. The one field whose job is to
+survive into an unknown future was the one field that never left.
+
+**The owner's leaderboard note replaced a friend graph that had already been
+built and applied.** Verbatim: with three or four riders who already know each
+other, *"everyone should just have visibility over everyone's scores"*. The
+`friendships` table with request / accept / block is dropped — it was the right
+answer to a question nobody had asked. What replaces it is two narrow
+`SECURITY DEFINER` functions, because **"everyone can see everyone's scores" is
+not the same sentence as "everyone can read everyone's rows"**: the policies on
+`workouts` and `profiles` are unchanged, and the ghost even strips heart rate.
+18.9 was applied rather than quoted — this is the household board with more rows
+on it, one type and one renderer, and the failure mode is a shorter board rather
+than a missing one. Verified from two accounts, 15 probes, 0 failures.
+
+**Then the owner's two notes for this sitting, and the first one has a door
+standing open behind it.** *"Website is now running here."* It is: the deployed
+bytes are the repo's, `config.js` is served beside them, and the host's
+`.html` → extensionless **307** carries the QR's fragment intact — measured in a
+browser, ending at `/link#ABCD2345`, reaching the live project and answering
+*"That code has expired"*, which is `device_link_describe` working as `anon`
+from the deployed page. **But hosting it publishes the endpoint and the
+publishable key, which is exactly the condition 18.11.1 was written against**,
+and the project answers **`"disable_signup": false`**. With `007` applied, an
+account created by anyone who finds that URL lands on the household's
+leaderboard. The blast radius is bounded and worth stating rather than
+dramatising — 15.5.4 means it is leaderboard entries and ghost traces, not
+anybody's rows — and the fix is two minutes in a dashboard that is **the owner's
+and not a session's**. It is now the top line of *What to do next*.
+
+**The second note is the one this file has needed for a while.** *"There is so
+much plan documentation (this is good!) but it's difficult to get a true
+understanding of where we are."* Correct, and the cause is structural: 7,200
+lines across 25 files, every one written for the session that will *do* the
+work, with the reasoning kept rather than summarised — which is what has stopped
+this project re-litigating settled decisions, and is no help at all to a person
+asking whether it is nearly finished. **[STATUS.md](STATUS.md) is that page**
+(19.1.7), and the thing worth carrying forward is that it defines *done* three
+ways, because the honest answer differs by a lot depending on who asks: done for
+this household is weeks and mostly not code; done for a stranger with a Peloton
+is six rows; done as the plan is written is 410 of 594 boxes and will never be
+100, because the plan is where ideas are kept rather than a queue. **Read the
+percentage as an inventory count, never as a completion estimate.**
+
 ### Latest session — 3 August 2026 (twenty-first sitting): the app goes online, and the endpoint stops being hypothetical
 
 **The owner asked for accounts, and said they were available to help set it up.**

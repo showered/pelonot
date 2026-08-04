@@ -156,7 +156,7 @@ length, tile what is looked at.**
       `balancedColumns` stops six figures in a five-wide grid coming out as
       five and a stray — which is what the AVD drew first, and it reads as a
       mistake rather than as a layout*
-- [ ] **22.4.2** **Ride detail becomes a grid.** The charts are the case the
+- [x] **22.4.2** **Ride detail becomes a grid.** The charts are the case the
       owner named. Two columns at 1280 dp, one below the breakpoint, and the
       **order must survive the fold** — a reader going down column one and back
       up column two is reading the cards in a different order than the phone
@@ -164,13 +164,49 @@ length, tile what is looked at.**
       cadence then heart rate) or are a set, and lay them out as whichever they
       are. Note 16.3.4's housemate picker and the ride's own header stay full
       width: they are controls and context, not cards in the set
-- [ ] **22.4.3** **Audit every screen that took the token in 22.2.6** and say,
+
+      *Done, and the owner found it before the session did — they saw the
+      charts "disappear" and they had not, they had been pushed below the fold.
+      That is this item in one observation: the screen was capped at 760 dp, so
+      the new figures grid came out three wide and two deep and shoved the
+      first chart off the bottom of a panel with room for four. Uncapped, it is
+      one row of six figures and then Power beside Heart rate, both above the
+      fold. The charts already knew how to go two-up at 900 dp; they had never
+      been given 900 dp. The order question this item raised answered itself:
+      the cards are a **set**, laid out row-major, which is the same order a
+      phone's single column gives. **Observed on the tablet AVD.** It also
+      produced `Modifier.readableText()` — a cap that does not move the thing
+      it caps, because `readableColumn` would have centred this screen's two
+      paragraphs of prose over left-aligned cards — and, one note later, 22.6.*
+- [x] **22.4.3** **Audit every screen that took the token in 22.2.6** and say,
       per screen, which answer it wants — cap, tile, or a capped column *inside*
       a wider frame. Settings and the class library are probably genuinely
       capped (form fields and a list of titles). History is a list of rides and
       may well want two columns. The audit is the deliverable: a screen that was
       capped because the token was handy is the failure this item exists to
       find
+
+      *Done, and the owner's second note of 4 August settled the criterion
+      before the audit had to guess at one: **use the full width, and no ONE
+      CARD goes full width; grids where they fit.** Seven screens carried the
+      token. The verdict, per screen:*
+
+      - ***Dashboard** — tile. FTP beside Just Ride, the three actions abreast,
+        the three progress cards abreast; the whole screen now fits without
+        scrolling. `WideRow` stacks below 900 dp. This is what 22.2.2's rails
+        turn out to be in practice, and it is simpler than they were: no rails,
+        just rows. 22.2.2 and 22.2.3 can be read as answered by it.*
+      - ***History** — tile. Two ride cards across, day headings still
+        spanning, equal heights per row so the recovered-after-a-crash note
+        does not leave its neighbour short. Its prediction was right.*
+      - ***Class library** — tile. Three across: 21 classes visible where 7
+        were, which is most of a category at once.*
+      - ***Your riding*, *Your FTP** — tile. Two cards abreast.*
+      - ***Settings**, *the account screen* — **cap, and its prediction was
+        right too**: they are form fields and prose, which is what the cap was
+        always for.*
+
+      *All observed on the 1280 × 720 dp tablet AVD (22.4.5).*
 - [ ] **22.4.4** **A rail is not a grid, and 22.2.2/22.2.3 are still the harder
       question.** This item is about surfaces that have *one kind of thing* and
       too much room for it, which is a layout with an obvious answer. The
@@ -178,7 +214,7 @@ length, tile what is looked at.**
       rails card by card is what 22.2.3 already warns against. Do 22.4.2 first
       and see whether the grid helper it produces is any use to the dashboard
       before deciding
-- [ ] **22.4.5** **Measured on the 1280 × 720 dp AVD, never on a phone**
+- [x] **22.4.5** **Measured on the 1280 × 720 dp AVD, never on a phone**
       (`HARDWARE.md`, and the same condition as every other item in 22.2). A
       grid that looks right on a phone AVD is a single column, which is the
       thing being replaced
@@ -240,7 +276,7 @@ rider the app can have is invisible to the feature built to reward consistency.
 **The recommendation, and the reasoning, because "whatever you think is best"
 is a decision handed over rather than a shrug:**
 
-- [ ] **22.5.1** **Last 30 days, not "this month".** A calendar month resets on
+- [x] **22.5.1** **Last 30 days, not "this month".** A calendar month resets on
       the 1st, so a rider who rode on the 29th and 30th opens the app on the 1st
       to a zero. That is the same defect as the week's, on a 12× longer cycle
       and therefore harder to notice and worse when it lands. A rolling
@@ -250,7 +286,12 @@ is a decision handed over rather than a shrug:**
       `startOfWeek`), so the window is a genuine change to the domain and not a
       string. Keep the weekly buckets — the bars on *Your riding* are right —
       and add the rolling total beside them
-- [ ] **22.5.2** **The streak has to change unit or go.** A streak of *days*
+
+      *Done and observed: "Last 30 days · 8 rides · 124 min" on the tablet AVD.
+      `RidingWindow` is computed at build time from the days the history
+      already holds, so it costs no extra query. Inclusive of today, tested at
+      both edges — 30 days back is inside and 31 is out.*
+- [x] **22.5.2** **The streak has to change unit or go.** A streak of *days*
       cannot survive this assumption. Two candidates: **consecutive weeks with
       a ride in them** (which is the thing a once-a-week rider is actually
       keeping up, and reads as "7 weeks in a row"), or drop the streak and show
@@ -258,13 +299,16 @@ is a decision handed over rather than a shrug:**
       same idea, correctly scaled, and it makes the consistent rider visible
       instead of invisible. `StreakCalculator` is pure and JVM-tested, so this
       is a cheap change with an honest test
-- [ ] **22.5.3** ***Your riding* follows the card.** The screen behind it
+- [x] **22.5.3** ***Your riding* follows the card.** The screen behind it
       (16.3.2 / 16.3.5) is built on weekly bars and a day-square calendar, and
       both are still right at this cadence — a calendar with one square lit a
       week is a *good* picture of a once-a-week rider, which is exactly what
       16.3.5 was for. What must change is the header and any wording that
       implies a week is the unit of progress, and the calendar wants to show
       enough weeks that the pattern is visible rather than the current window
+
+      *Done: "8 rides in the last 30 days · 124 minutes, 835 kJ". The 17-week
+      calendar was already wide enough and is untouched.*
 - [ ] **22.5.4** **Check every other surface that assumes a busy week** before
       calling this done — it is the assumption, not the card, that is being
       fixed. The household panel (24.2) counts the household's *week*, and at
