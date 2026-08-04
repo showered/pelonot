@@ -338,3 +338,21 @@ does today — it operates on one ride's `metrics` and returns.
       distinct from `AutoBreakthrough` — so the trend chart (16.3.1, 7.10.1)
       can draw a downward automatic change differently from a rider's own
       manual edit, the same distinction 20.3.4 drew for `Estimated`
+
+**The owner returned to this exact question from the inbox, 4 August 2026,
+without having seen the write-up above.** Verbatim: *"Let's make a solid and
+wonderful plan to automatically update FTP both up and down... Going UP is a
+different kettle of fish. If you hit a new FTP score, then you have a new FTP
+score, there is no two ways about it, you ARE at least that fit."* That is
+7.11's own asymmetry argument, arrived at independently and in the owner's own
+words rather than the plan's — worth recording as confirmation **rather than
+as new instruction to act on**, because it does not supply what 7.11.1 is
+actually blocked on: a number for the evidence window and the bar. 2.2a's own
+history is the reason not to guess one now — a coefficient fit without real
+measurement behind it is exactly the trap that item exists to warn against —
+so **7.11.1 stays open until it has ride data to be measured against**, the
+same standard 2.2a was held to. What the note does settle is emphasis
+("It's important") rather than design; it does not move 7.11 ahead of 15.8 in
+*What to do next*, because the triage rule an earlier sitting wrote down is
+that an inbox entry is weighed like any other plan item, not promoted for
+arriving twice.

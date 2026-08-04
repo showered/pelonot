@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Thirty-eight entries have passed through it.** In order: standing and seated
+**Forty entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -89,9 +89,16 @@ first reach the owner), the live ghost (**24.3.3–24.3.9** for the household
 half and **18.12** for the network's — the note is right that nothing social
 happens *during* a ride today), and alerts worth being given (**Phase 27**,
 promoted out of 19.3.2's one line the way Phase 21 was promoted out of
-19.3.3's), and the live site being up to date (**17.16.8** — the redeploy the
+19.3.3's), the live site being up to date (**17.16.8** — the redeploy the
 previous sitting asked the owner for, confirmed by the command that sitting
-wrote rather than taken on trust).
+wrote rather than taken on trust), auto-FTP going down as well as up
+(**7.11**, and this entry's own text is the interesting part — the owner
+arrived at 7.11's asymmetry argument independently, without having seen it
+written down, which is confirmation rather than new instruction), and the
+three ride targets being hard to hit at once (**11.7**, flagged uncertainly by
+the owner as possibly-already-covered — it is, word for word, and the new
+sentence about power zone needing no resistance target restates 11.7.3
+exactly).
 
 **The inbox is empty.**
 

@@ -880,3 +880,16 @@ measuring them moves most of the question.
       what it drops when it runs out of width. Read 11.1b.8 and 11.6.2a's
       closing note first: the honest answer there was "numbers on the ride
       screen, segments only on the overlay", and this is the same conversation.
+
+**The owner returned to this from the inbox, 4 August 2026, flagging their own
+uncertainty about it** — *"Pretty sure I already mentioned this so it might
+already be in the plan."* It is: this is 11.7, word for word the same
+complaint ("three targets", "more or less IMPOSSIBLE to hit them all"), and
+the new sentence — *"If the target is powerzone, then no resistance target is
+required... pedal at the target cadence and adjust resistance yourself"* — is
+11.7.3's already-written treatment (resistance loses its band by default,
+present only when it is the governing control) restated from the rider's
+side rather than the parser's. It does not by itself answer 11.7.2, the one
+decision in this item that is the owner's and is still open: derive the
+governing metric from the cadence band (a), or name it in the catalogue (b).
+The recommendation stands at (b).
