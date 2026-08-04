@@ -72,15 +72,23 @@ asks less about the person, which is a rare combination and worth taking.
 
       **The UI half is done and the answer is that the year is right.** Both
       screens that ask — profile creation (20.3.3) and Settings' heart-rate
-      zones — now use one `BirthYearPicker`, a grid of years on the panel, one
-      tap. The arithmetic is why, and it is checkable rather than a matter of
-      taste: **this app has exactly two consumers for the date and both reduce
-      it to age in whole years.** Tanaka moves **0.7 bpm** per year against a
-      formula whose own between-individual error 21.1 puts at 10–12 bpm;
-      `FtpEstimator`'s age term moves **0.6%** on a number deliberately pitched
-      low and expected to be corrected by the first hard ride. Storing 1 January
-      makes a rider at most one year older than they are, and neither consumer
-      can tell.
+      zones — now use one `BirthYearPicker`, one tap. The arithmetic is why,
+      and it is checkable rather than a matter of taste: **this app has
+      exactly two consumers for the date and both reduce it to age in whole
+      years.** Tanaka moves **0.7 bpm** per year against a formula whose own
+      between-individual error 21.1 puts at 10–12 bpm; `FtpEstimator`'s age
+      term moves **0.6%** on a number deliberately pitched low and expected to
+      be corrected by the first hard ride. Storing 1 January makes a rider at
+      most one year older than they are, and neither consumer can tell.
+
+      **The layout underneath it changed on the owner's word, same day.**
+      *"It looks a bit ridiculous to be honest... it should be a single list
+      that you can scroll. Not a grid layout."* The grid's own justification —
+      22.4's "tile what is looked at" — turned out to be the wrong rule
+      applied to a control answered once and never referred back to; a single
+      `LazyColumn`, opened already scrolled near the rider's likely answer,
+      replaced the `LazyVerticalGrid` in the one shared component both screens
+      already used. No duplication to fix, only the layout.
 
       **The thing worth recording is why the owner's doubt was not evidence
       against it.** They wondered whether the "your age" caption bug meant a

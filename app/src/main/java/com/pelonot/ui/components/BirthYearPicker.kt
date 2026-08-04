@@ -5,10 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -20,9 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import com.pelonot.ui.theme.spacing
 import java.util.Calendar
 import java.util.TimeZone
@@ -54,19 +51,22 @@ import java.util.TimeZone
  * display name a full date of birth stops being a fitness input and becomes an
  * identity field. Asking only for the year means there is no full date to leak.
  *
- * ## Why a grid rather than a dropdown
+ * ## A scrolling list, not a grid — the owner's call, 4 August 2026
  *
- * The owner asked for a dropdown and this is one step better on this hardware.
- * A century of years in a dropdown is a hundred-row scroll through a column
- * eight items tall. The bike's panel is 1280 dp wide (HARDWARE.md), so the same
- * hundred years fit as a grid of eight columns and thirteen rows with most of
- * the plausible range on screen at once — the rider's year is usually *visible*
- * rather than scrolled to. That is 22.4's rule applied to a picker: tile what
- * is looked at.
+ * *"It looks a bit ridiculous to be honest. A simple dropdown would suffice.
+ * Or if you want a custom UI then it should be a single list that you can
+ * scroll. Not a grid layout."* The grid's own reasoning (tile what is looked
+ * at, 22.4) turns out to be the wrong rule for this control: 22.4 is about
+ * things that are *compared* — figures, charts, tiles in a set — and a year of
+ * birth is answered once and never looked at again, so there is nothing to
+ * gain by having thirteen rows of it on screen at once. A single column the
+ * rider scrolls, opened already close to their answer, is the plainer control
+ * and the honest one.
  *
- * What this replaces, measured on the tablet AVD: Material's `DatePicker`
- * opened on **August 2026**, so a rider born in 1985 faced roughly five hundred
- * presses of the month arrow to answer a question about a year.
+ * What this still replaces, measured on the tablet AVD: Material's
+ * `DatePicker` opened on **August 2026**, so a rider born in 1985 faced
+ * roughly five hundred presses of the month arrow to answer a question about
+ * a year.
  */
 @Composable
 fun BirthYearPicker(
@@ -79,19 +79,19 @@ fun BirthYearPicker(
     }
     val years = remember(thisYear) { (thisYear downTo EARLIEST_YEAR).toList() }
 
-    val gridState = rememberLazyGridState()
+    val listState = rememberLazyListState()
     LaunchedEffect(Unit) {
-        // Opens on the middle of the plausible range rather than at either end.
-        // Not a guess about this rider — nothing is prefilled and nothing is
-        // stored until they tap — it only decides what is on screen first.
+        // Opens close to the middle of the plausible range rather than at
+        // either end. Not a guess about this rider — nothing is prefilled and
+        // nothing is stored until they tap — it only decides what is on
+        // screen first.
         val target = currentSelection ?: (thisYear - TYPICAL_RIDER_AGE)
         val index = years.indexOf(target).takeIf { it >= 0 } ?: 0
-        gridState.scrollToItem((index - COLUMNS).coerceAtLeast(0))
+        listState.scrollToItem((index - VISIBLE_ROWS / 2).coerceAtLeast(0))
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text("What year were you born?") },
         text = {
             Column {
@@ -104,15 +104,14 @@ fun BirthYearPicker(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(COLUMNS),
-                    state = gridState,
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .padding(top = MaterialTheme.spacing.large)
-                        .height(GRID_HEIGHT)
+                        .height(ROW_HEIGHT * VISIBLE_ROWS)
                 ) {
-                    items(years) { year ->
-                        YearCell(
+                    itemsIndexed(years) { _, year ->
+                        YearRow(
                             year = year,
                             selected = year == currentSelection,
                             onClick = { onSelected(year) }
@@ -135,7 +134,7 @@ fun BirthYearPicker(
  * different thing from answering.
  */
 @Composable
-private fun YearCell(year: Int, selected: Boolean, onClick: () -> Unit) {
+private fun YearRow(year: Int, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         color = if (selected) {
@@ -144,19 +143,20 @@ private fun YearCell(year: Int, selected: Boolean, onClick: () -> Unit) {
             MaterialTheme.colorScheme.surface
         },
         shape = MaterialTheme.shapes.small,
-        modifier = Modifier.padding(MaterialTheme.spacing.extraSmall)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = MaterialTheme.spacing.extraSmall / 2)
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(CELL_HEIGHT)
+                .height(ROW_HEIGHT)
         ) {
             Text(
                 text = year.toString(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                textAlign = TextAlign.Center,
                 color = if (selected) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
@@ -188,12 +188,11 @@ fun millisToBirthYear(millis: Long?): Int? = millis?.let {
         .get(Calendar.YEAR)
 }
 
-/** Where the grid opens. Nothing is prefilled — this only picks the scroll position. */
+/** Where the list opens. Nothing is prefilled — this only picks the scroll position. */
 private const val TYPICAL_RIDER_AGE = 40
 
 /** Old enough that no rider is excluded. */
 private const val EARLIEST_YEAR = 1920
 
-private const val COLUMNS = 8
-private val CELL_HEIGHT = 56.dp
-private val GRID_HEIGHT = 400.dp
+private const val VISIBLE_ROWS = 5
+private val ROW_HEIGHT = 56.dp

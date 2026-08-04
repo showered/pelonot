@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Forty entries have passed through it.** In order: standing and seated
+**Forty-one entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -98,7 +98,9 @@ written down, which is confirmation rather than new instruction), and the
 three ride targets being hard to hit at once (**11.7**, flagged uncertainly by
 the owner as possibly-already-covered — it is, word for word, and the new
 sentence about power zone needing no resistance target restates 11.7.3
-exactly).
+exactly), and the birth-year grid looking ridiculous (**21.1.1b** — already one
+shared component on both screens that use it, so only the layout needed
+fixing, a `LazyColumn` in place of the grid).
 
 **The inbox is empty.**
 
