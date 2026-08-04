@@ -1,8 +1,8 @@
 # Where Pelonot is
 
 **Written 4 August 2026, updated the same evening (twenty-ninth sitting).**
-Measured, not estimated: `assembleDebug` passes, **613 JVM tests and 62
-instrumented tests, 0 failures**, and **470 of 694 plan boxes** are ticked
+Measured, not estimated: `assembleDebug` passes, **616 JVM tests and 62
+instrumented tests, 0 failures**, and **472 of 696 plan boxes** are ticked
 across 27 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -166,12 +166,14 @@ for.
 - **2.2a calibration** — settled as *yes*, and gated on capturing a sweep with
   the coverage `calibration/README.md` specifies. The first fit failed
   cross-validation.
-- **24.3.14** — the one open decision that is the owner's rather than a
-  session's, and it is a sentence rather than a design meeting: is the
-  leaderboard's score the running total or the watts right now? Both readings
-  are in the owner's own words and they build different features. (11.7.2 and
-  11.1b.10 were the other two and both are answered — 11.7.2 by the owner
-  choosing to name the governing metric in the catalogue, now built.)
+- **Nothing, for the first time in a while.** All three of the decisions that
+  were the owner's rather than a session's are answered: 11.7.2 (name the
+  governing metric in the catalogue — built), 11.1b.10 (a rule across
+  somebody's film is a rule whatever colour it is), and 24.3.14 (the
+  leaderboard's score is the class total in kilojoules). **24.3.15**, the
+  toggle between racing by output and racing by distance, is queued rather
+  than open — the data is agnostic already, the control has nowhere to live
+  until the leaderboard exists.
 - **Phase 27 alerts** — records, streaks, and being beaten. Written out at full
   length and deferred on the owner's own weighting: *"definitely nice-to-have
   and low priority for now"*.
@@ -196,7 +198,11 @@ and the rival goes behind a flag rather than into the bin**, because a rival's
 ceiling is one person and everything under the ghost is a leaderboard with a
 `LIMIT 1` on it. The ride screen shows three rows — you, the one you are
 chasing, the one chasing you — which is what makes it legible at 90 rpm.
-**One question is genuinely open before any of it is built: 24.3.14.**
+The score is settled — **total kilojoules for the class** — and the underlying
+race is metric-agnostic, so racing by distance is a presentation decision
+rather than a data one. Worth knowing before it is built: **a distance race
+needs no measured power**, so it is populated on the many rides an output
+race has to exclude.
 
 ---
 

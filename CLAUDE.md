@@ -25,7 +25,7 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 613 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 616 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```

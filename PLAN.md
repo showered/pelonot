@@ -163,6 +163,8 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ### Latest session — 4 August 2026 (twenty-ninth sitting): one instruction at a time
 
+**Two things landed: 11.7, and the answer to the leaderboard's score.**
+
 **11.7 is built, on the owner's own priority, and it is the item that had come
 up three times.** *"What do i do? do i focus on zone, cadence, or
 resistance?"* — the answer is that it was never three instructions. Power is
@@ -223,6 +225,26 @@ vertical S/I/T**: three letters is not too long for a chip, it is too long for
 the room the chip was left, which is the note `MetricReadout` already carries
 about "BPM". Invisible on the AVD, obvious on the tablet.
 
+**And the leaderboard's score is settled** (24.3.14). Asked directly and
+answered directly: **the class total in kilojoules**, *"the score that the real
+peloton gives you"* — so cumulative, and 24.3.5 and 11.6.7 both stand rather
+than being reopened. The owner asked for the data to be **metric-agnostic** in
+the same breath, and left the judgement to me: *"if it's really that trivial"*.
+It was, and the measurement is the reason — `WorkoutAggregates.from` was
+already integrating kilojoules **and** kilometres in one pass over the same
+samples with the same gap clamp, and `RivalTrace.from` was duplicating half of
+that loop. Sharing the constants closed a drift rather than adding one: a
+second copy of metres-per-revolution would have given the ghost a distance that
+disagreed with the distance the ride recorded. **The toggle is 24.3.15**, and
+it is deferred for a stated reason rather than a vague one — it is a control on
+the leaderboard's own surface, and the only place it could live today is the
+picker 24.3.11 is about to hide.
+
+One finding to carry into the build: **a distance race needs no measured
+power.** 24.4.2 excludes any ride with a single non-measured sample, which is
+why most classes have no ghost at all today — but distance is integrated
+*cadence*, measured on every ride this app has ever recorded.
+
 **The inbox is empty.** *Rivals vs Leaderboard* became **24.3.11–24.3.14**:
 the leaderboard wins on the owner's own reasoning (a rival's ceiling is one
 person), the ghost goes behind a flag rather than into the bin, and
@@ -230,7 +252,7 @@ person), the ghost goes behind a flag rather than into the bin, and
 score, and the two readings of *"as of this point in the class"* build
 different features.
 
-613 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite was
+616 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite was
 run with `ANDROID_SERIAL=emulator-5554` because the bike was attached the whole
 session.
 
@@ -262,15 +284,14 @@ done and the second is next.**
    which is the one place in this project where being careless is a breach
    rather than a bug.
 
-**One question is blocking the top of that list, and it is short.** 24.3.14:
-the owner has said *"score being the current number of Watts as of this point
-in the class"*, and the sentence has two readings that build different
-features. **Rank by cumulative output** (what the ghost already does, cannot
-flicker, and is what Peloton's own board does) or **rank by live watts** (the
-owner's own 56-vs-65 example, and instantaneous — which reopens 11.6.7, the
-numbers changing too fast to read). A third answer may be the real one: rank by
-the total, show the live watts beside it. This wants an answer rather than an
-assumption.
+**Nothing is blocking it any more.** 24.3.14 was the one open question and the
+owner answered it this sitting: **the score is the class total in kilojoules**,
+*"the score that the real peloton gives you"*. Cumulative, so 24.3.5 and 11.6.7
+both stand. They also asked for the data to be metric-agnostic so distance
+could race too — **built, because it was four lines of real change** (24.3.14a)
+— and left the *toggle* to the plan, which is 24.3.15. So the leaderboard can
+be started cold: the score is settled, `RivalTrace` already computes it, and
+the open work is presentation.
 
 **Already done and not to be re-picked:**
 - ~~**11.7 — one instruction at a time.**~~ **Done this sitting**, all five
@@ -390,8 +411,8 @@ session:**
 
 | Next | Why now |
 |------|---------|
-| **24.3.14** What the leaderboard's score is | **The one thing blocking the top of the queue**, and it is a sentence rather than a design session. *Watts* has now been used twice for the score, and *"as of this point in the class"* reads both as a running total and as right-now. Cumulative cannot flicker and is what Peloton ranks by; instantaneous is the owner's own 56-vs-65 example and reopens 11.6.7 |
 | **11.1b.10** The grey line on the overlay | Diagnosed, not decided. One of three candidate fixes, and picking is the owner's call — read the item |
+| ~~**24.3.14** What the leaderboard's score is~~ | **Answered this sitting: total kilojoules for the class.** Cumulative, so nothing reopens. The metric-agnostic shape they asked for alongside it is built (24.3.14a) and the toggle is queued as 24.3.15 |
 | ~~**11.7.2 / 11.7.1a** Which metric governs, and the amber~~ | **Both done and observed.** The owner chose (b) — name it — and it is `governed_by` in the catalogue, seeded off the cadence intent. 231 blocks of 1071. Amber, the arrow, the `TARGET` line and the spoken cue now belong to the governing metric alone, and resistance has no band at all |
 
 Then the table below, which was written before the fifth sitting and is kept
