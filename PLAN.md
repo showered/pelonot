@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Thirty-three entries have passed through it.** In order: standing and seated
+**Thirty-four entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -78,12 +78,13 @@ asked the owner (**22.6.3**, closed as *not* to be enforced, and **26.3.3**,
 settled as written), the overlay prompt landing after the countdown instead of
 during it (**11.6.14**, and **11.6.15** found beside it), the ride summary
 against the ride record (**12.6**), history's alignment (**22.7.1**), the Start
-Class screen (**22.7.2**), and the line across the overlay (**11.1b.10**, which
-already existed and was waiting on exactly this decision).
+Class screen (**22.7.2**), the line across the overlay (**11.1b.10**, which
+already existed and was waiting on exactly this decision), and heart-rate zones
+on every chart that shows a heart rate (**21.4.2** — which already existed too;
+what the note adds is *any chart*, and **21.4.2a** is the decision it forces
+about what the bands are drawn from).
 
-### heart rate zones, visualised
-
-Any chart that shows heart rate over time, it should include visual indicator for heart rate zones
+*The inbox is empty.*
 
 ---
 

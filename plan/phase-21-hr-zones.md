@@ -235,6 +235,40 @@ asks less about the person, which is a rare combination and worth taking.
 - [ ] **21.4.2** Post-ride: an HR-zone distribution beside the power one, and
       the HR trace (16.1.2) banded by zone. Note 16.1.2 deliberately breaks the
       line across gaps; the banding must not paper over them
+
+      **The owner asked for this from the inbox, 4 August 2026**, and widened
+      it: *"Heart rate zones, visualised. Any chart that shows heart rate over
+      time, it should include visual indicator for heart rate zones."* **Any
+      chart** is the operative phrase and it is right — the power trace has
+      carried its zone bands since 16.1.1, so an unbanded heart-rate trace
+      beside a banded power one is the app being inconsistent about its own
+      idea. The surfaces are ride detail today, the post-ride summary once
+      12.6.1 puts the charts there, and the web app's ride view (17), which
+      draws its own charts from the same payload and will not inherit this for
+      free
+- [ ] **21.4.2a** **What the bands are drawn *from* is the decision, and it is
+      21.2.3 wearing a different hat.** Zone boundaries come from the rider's
+      maximum heart rate, `workouts` has no column for it, and the maximum
+      moves — a rider who measures a real 186 in September and replaces the
+      Tanaka estimate of 177 silently redraws every ride they did in August.
+      That is exactly 7.8's trap, and the power chart has it too. Three ways
+      out, in the order they should be considered:
+      - **Store it with the ride** (21.2.3): `workouts.max_hr_bpm`, nullable,
+        written at ride start beside `ftp_watts`. Correct, and it is one
+        migration. **Read 8.3d.4 first** — anything written to `workouts`
+        during a ride must also live on `WorkoutSession` or the finalise puts
+        the default back, silently, twenty minutes later.
+      - **Null means no bands.** Every existing ride has no maximum recorded,
+        so on this rule the feature shows nothing on any ride the app has
+        already — which is honest and is also the whole feature missing for a
+        week. Worth considering *with* the next one rather than against it.
+      - **Fall back to today's maximum and say so.** A caption in the same
+        family as 16.1.6's provenance line: the bands are drawn from the
+        rider's current maximum because the ride did not record one. This is
+        the reading that gets the feature onto old rides without lying about
+        them, and the sentence is the entire cost.
+      Recommended: the column *and* the caption — new rides are exact, old ones
+      are drawn and labelled. Do not ship the bands with neither
 - [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
       actually drives a training decision — "how much easy riding did I do this
       month" — and it is the honest answer to what the dashboard's progress
