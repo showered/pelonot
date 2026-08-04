@@ -401,6 +401,17 @@ downgrade — it is why the feature can afford to be interesting.
       Grace 120` — five rows from six rides, with the 100 kJ ride that is never
       the best of anything correctly absent, and no ride appearing twice.
 
+      *And on the real bike* (`PLTN-RB1VQ`, real measured watts, no lever),
+      which is where the dedupe stopped being a hypothetical: `Racing 1 on
+      END-03: Your best 238`. **One row from three of the rider's own rides**,
+      because their best-ever ride of that class was two days old and is
+      therefore also their best of the last twelve months and of the last
+      thirty days — the exact case `oneRowPerRide` exists for, arriving
+      unprompted on the first real ride it was tried on rather than in a
+      fixture. The two rides it left off are right too: a 14 kJ attempt that is
+      never the best of anything, and a housemate's 14-second ride with no
+      samples at all.
+
 - [ ] **24.3.12a What the opponents are called — the owner's to decide, and
       they have said so.** The note, 5 August 2026, verbatim: *"We're still
       working on the fundamentals so let's no waste time getting hung up on
@@ -461,6 +472,13 @@ downgrade — it is why the feature can afford to be interesting.
       sat below at `−3`), `4TH OF 6` with a neighbour each side, and `LEADING`
       with all three rows below. The neighbours changed identity four times
       and the card never changed size.
+
+      *And the two-row case on the real bike*, which is the one the AVD could
+      not produce: `2ND OF 2 / 1 YOUR BEST +2 / 2 YOU 0 kJ`, a field smaller
+      than the window shown whole. Worth noting what it is **not** — it is not
+      the single-gap card wearing a different hat. It carries the rank, the
+      field size and the rider's own total, all three of which the gap card had
+      no way to say.
 
       **Built, and the answer to both consequences is the same one: the window
       slides, it never shrinks.** Leading gives you the three rows below you;
