@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026.** Measured, not estimated: `assembleDebug` passes,
-**547 JVM tests, 0 failures**, and **410 of 594 plan boxes** are ticked across
-25 phases. It is a summary — every claim below belongs to a phase file and
+**Written 4 August 2026, updated the same evening.** Measured, not estimated:
+`assembleDebug` passes, **576 JVM tests, 0 failures**, and **442 of 644 plan
+boxes** are ticked across 26 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
 
@@ -58,8 +58,13 @@ with it, because a power of 37 W filed as 37% resistance breaks no bound anyone
 can write.
 
 **A ride.** A foreground service, per-second recording into Room, auto-pause
-when the pedals stop, a screen-on lock, and a ride that can be **resumed** after
-a crash rather than merely kept (8.3d). On the bike the watts are *measured by
+when the pedals stop, a screen-on lock, and a ride that can be **resumed** —
+after a crash (8.3d), and now also after being **ended by accident**, which is
+the same machinery meeting a finished ride for the first time (12.6.2). It opens
+on a ten-second countdown, and the overlay permission is asked for *inside* that
+countdown with the count held while the rider is away answering it (11.6.14) —
+before that, the first ride anybody took landed on a modal the moment the clock
+started. On the bike the watts are *measured by
 the board*; the modelled curve only ever drives the simulator and a suggested
 resistance band, and the app never presents a modelled watt as a measured one.
 
@@ -76,9 +81,12 @@ ride never loses the class it points at.
 **The record.** History, ride detail, delete, CSV and TCX export, explicit Room
 migrations with an exported schema and a test each, and a local backup/restore
 through the system file picker. Charts: power against the rider's zones, heart
-rate drawn only where a strap was reporting, cadence against the class's
-prescribed rpm, the ride against your own previous best at the same class, and
-mean-maximal power by duration.
+rate drawn only where a strap was reporting **and banded by the rider's own
+heart-rate zones** (21.4.2), cadence against the class's prescribed rpm, the
+ride against your own previous best at the same class, and mean-maximal power by
+duration. **The same charts appear on the post-ride summary and on a ride from
+March**, out of one component — they are the same ride, and the only differences
+left are the three things that are true only tonight (12.6).
 
 **FTP that corrects itself** — detected from a ride, proposed rather than
 applied, declinable in a way that stays declined, reversible in one action that
@@ -86,11 +94,16 @@ appends rather than erases, never proposed from simulated watts, and recorded
 onto the ride so a later change cannot silently redraw history.
 
 **Heart-rate zones** built on the rider's own maximum, with Tanaka as a labelled
-estimate and both columns nullable, because a default maximum is a guess about
-somebody's body.
+estimate and every column nullable, because a default maximum is a guess about
+somebody's body. **The maximum a ride was ridden at is recorded onto the ride**,
+for the same reason its FTP is: a rider who measures a real 186 in September
+must not silently redraw every ride they did in August (21.2.3).
 
 **The household.** A profile selector built for the tablet, a per-class
-leaderboard, the household's week with streaks and an opt-out, and a housemate's
+leaderboard, the household's **last 30 days** with streaks and an opt-out — a
+week was the wrong window, and it did not merely look wrong: a housemate riding
+once a week was absent from the board rather than shown with a zero (22.5.4) —
+and a housemate's
 trace drawn behind your own — **all of it a Room query, none of it touching the
 network**, which is rule 3 of the connectivity model.
 
