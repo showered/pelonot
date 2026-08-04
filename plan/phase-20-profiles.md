@@ -161,10 +161,26 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       app is going to do it. A line at signup — *"we'll work this out properly
       from your first few rides"* — is most of what makes an estimate
       acceptable rather than an error
-- [ ] **20.3.6** **One default, in one place.** `UserEntity.DEFAULT_FTP` is 150
+- [x] **20.3.6** **One default, in one place.** `UserEntity.DEFAULT_FTP` is 150
       and `ProfileCreationDialog`'s `?: 200` fallback disagrees with it, so a
       rider who clears the field gets a different number than one created any
       other way. Whatever 20.3.2 decides, exactly one constant expresses it
+
+      *Done. It was **twice**, not once — the field opened on the string `"200"`
+      as well as falling back to `200` — so the disagreement was not an edge
+      case a cleared field reached, it was **every profile ever created on this
+      screen**, 50 W above what `UserEntity`, Settings, the ride detail chart
+      and the nav graph all believe. Both are `UserEntity.DEFAULT_FTP` now.*
+
+      ***Observed on the tablet AVD***: the dialog opens on **150**, and a
+      profile created with the field deliberately cleared lands on
+      `ftp_watts = 150` in `profiles` — beside the profile created before this
+      change, still sitting on 200, which is the defect visible in one query.
+
+      **This does not settle 20.3.2 and must not be read as settling it.**
+      150 is what the app already believed; the item that decides what a new
+      rider's first number *should* be is still open, and the value it lands on
+      changes one constant now rather than three literals in two files
 - [ ] **20.3.7** **Route B needs columns, so it needs a migration** (12.5) —
       age or year of birth, and the self-assessed category, both nullable
       because every existing profile has neither and a backfilled guess is

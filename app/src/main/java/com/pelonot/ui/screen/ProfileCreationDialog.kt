@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.theme.units
 
@@ -43,7 +44,13 @@ fun ProfileCreationDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
-    var ftp by remember { mutableStateOf("200") }
+    // One default, in one place (20.3.6). This field used to open on "200" and
+    // fall back to 200 when it was cleared, while every other path in the app —
+    // `UserEntity`'s own default, Settings, the ride detail chart, the nav
+    // graph — used 150. So a rider created here started 50 W above a rider
+    // created anywhere else, and nothing on any screen said which they were.
+    // Whatever 20.3 lands on, exactly one constant expresses it.
+    var ftp by remember { mutableStateOf(UserEntity.DEFAULT_FTP.toString()) }
     // Opens on whatever the rest of the app is using, which on a fresh install
     // is the locale's guess. It is a starting point rather than an answer.
     val preferred = MaterialTheme.units
@@ -106,7 +113,7 @@ fun ProfileCreationDialog(
                             // Converted with the unit the rider chose, not the
                             // one the app guessed for them.
                             weight.toDoubleOrNull()?.let(weightUnits::weightToKg),
-                            ftp.toIntOrNull() ?: 200
+                            ftp.toIntOrNull() ?: UserEntity.DEFAULT_FTP
                         )
                     }
                 }
