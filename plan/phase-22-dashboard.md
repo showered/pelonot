@@ -561,3 +561,61 @@ one is a screen the audit never reached.
       rides of the same class (24.1.6, 24.4.2) and this AVD's database has one
       rider and simulated watts, so the card does not draw at all — correctly.
       The change to it is a width cap and nothing else
+
+- [ ] **22.7.3 The Start Class screen again, with the board on it this time.**
+      The owner's note, 5 August 2026, under *Interim class screen, where you
+      click 'start class'*, verbatim: *"Looks bad. We've added the leaderboard
+      in there and the whole screen doesn't look good. Please totally re-assess
+      how this screen looks. THink about what information is being shown and
+      make it look brilliant with great UX."*
+
+      **This is 22.7.2's own last paragraph coming true, and that is the most
+      useful thing about it.** That item shipped with an explicit admission:
+      *"One path was not seen and should not be claimed — the household
+      leaderboard card above the grid… this AVD's database has one rider and
+      simulated watts, so the card does not draw at all."* The screen was
+      designed and judged **without** the card that is now the complaint. The
+      rule it leaves behind is not "look harder", it is that **a card gated on
+      data the test device cannot produce is a card that has not been
+      designed** — the same class of blind spot as everything gated on measured
+      power (24.4.2), and the bike is where it was finally seen.
+
+      **Do not start by moving the card.** The note says *totally re-assess*
+      and names the information as the question — *"think about what
+      information is being shown"* — so the first pass is an inventory, not a
+      layout. What the screen holds today, in order: a one-line summary
+      sentence; the class profile chart; the household board; the *Ride
+      against* picker (behind `RIVAL_GHOST`, so drawing nothing today); a grid
+      of interval tiles, one per block; and Start. That is **three separate
+      descriptions of the same class** — the sentence, the picture and the
+      tiles — plus a comparison, on a screen whose whole job is *do I want this
+      tonight*. 22.7.2 removed the interval count from the header for exactly
+      that reason and then left the three descriptions in place.
+
+      Four things to settle, and the first is the one the note is really about:
+      - **What the rider came here for.** Two questions, not five: *what is
+        this ride* and *start it*. Everything on the screen either serves one
+        of those or is furniture. The interval grid is the strongest candidate
+        for demotion — it is a spec sheet the profile chart already draws, and
+        a rider reads it once ever, not once a class.
+      - **Where the board belongs, if it belongs.** It is a comparison, and it
+        is genuinely a reason to pick a class (24.1.2's argument, and it is
+        still good). But it is currently a full card in the middle of the
+        vertical flow, between the picture of the class and the list of its
+        blocks, which is the one place it interrupts the description of the
+        class with a description of other people. Beside the profile rather
+        than under it, or below Start rather than above it, are both worth
+        drawing before choosing.
+      - **The board's own height (24.1.8).** The same card, the same unbounded
+        row count, and the same fix. These two items must not each invent a
+        ceiling.
+      - **The screen scrolls and should not have to.** It is a `LazyColumn`
+        with centred arrangement, which is right for a short class and hides
+        how much is on it for a long one. 22.7.2's own success criterion was
+        *the whole class on screen at once*; measure that again with the board
+        drawing, on the bike or on a seeded AVD, before and after.
+
+      **It cannot be judged on an empty AVD.** Seed two profiles with measured
+      rides of the same class — the technique is in CLAUDE.md and the seeding
+      the thirtieth sitting used for the live board is directly reusable — or
+      look at it on the bike, which has the owner's real rides on it

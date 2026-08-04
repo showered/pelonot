@@ -784,6 +784,96 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
         POWER are the numbers a rider looks for without looking, and a row
         that is sometimes there is worse than a row that is smaller.
 
+- [ ] **11.6.17 The totals row overflows when the numbers get big.** The
+      owner's note, 5 August 2026, verbatim: *"The power, distance, output
+      section looks brilliant but i fear it will overflow badly when the numbers
+      get large. Please think about this."*
+
+      **It is the same tile that was rendering `63.` in 11.6.12, and the
+      failure is the same one: it clips in silence.** `SmallStat` draws its
+      value at a fixed 34 sp with `maxLines = 1` and no `overflow`, inside a
+      third of the effort column — 360 dp at 1280 dp wide, so roughly 113 dp a
+      tile before padding. The value is `weight(1f, fill = false)`, which stops
+      it from squeezing the unit label off the tile (11.6.12's fix) but does
+      nothing about the digits themselves: past the tile's width the glyphs are
+      simply cut off, and a `1080` that renders as `108` is not obviously
+      wrong.
+
+      **The numbers that get there are ordinary, not extreme.** OUTPUT is the
+      one to design for: an hour at 300 W is 1080 kJ, and the owner's own rides
+      are already in three figures. AVG POWER is three digits for anybody and
+      DISTANCE is four characters with its decimal point.
+
+      The fix is to let the number shrink to fit rather than be cut — the same
+      trade as 11.6.8 and 11.6.16, where reserving or scaling costs a little of
+      the ordinary case to make the extreme case honest. **Do not fix it by
+      dropping digits**: an output rounded to hundreds mid-ride is a different
+      number, and 11.6.12 was the last time this tile lied about its own value.
+      Check it at four digits on the tablet AVD, not by reading the diff.
+
+- [ ] **11.6.18 The rest of the class scrolls.** The owner's note, 5 August
+      2026, verbatim: *"The 'next' section -- it could be scrollable tbh. Why
+      not!"*
+
+      **Which section it is matters, and it is the *then* list.** There are two
+      things it could mean and only one has anything to scroll: `NextUpBlock` is
+      the single next effort and is one block, while `UpcomingIntervals` is the
+      rest of the class, capped at `max = 3` since 24.3.13b took its column
+      away. It is the cap that the note is asking to be lifted — a rider
+      wanting to know what is coming at minute 8 of a 45-minute class currently
+      sees three blocks and no way to see the fourth.
+
+      **It is also 11.6.16's fix, and the two should be built together.** The
+      effort column is a `Column` with a `Spacer(weight(1f))` absorbing the
+      slack; give the weight to a **scrolling** upcoming-intervals list instead
+      and the column stops having slack that can run out. Anything growing
+      above it — the countdown, a position call, a cue banner — is then paid
+      for by the list shrinking rather than by the totals falling off the
+      bottom. One change answers the note and closes 11.6.16's *"any growth
+      above the totals is paid for by the totals"*.
+
+      Two hazards worth naming before it is picked up:
+      - **A scroll position that follows the ride, not the finger.** The list
+        is a live thing: when the interval changes, the block a rider is
+        looking at stops being the next one. It must re-anchor to the current
+        interval when the ride moves on, or a rider who scrolled to the end at
+        minute 8 is still looking at minute 45 an hour later.
+      - **Nested scrolling on a screen with no other scroll.** The ride screen
+        does not scroll and must not start: the totals and the metric grid are
+        fixed points. Only this list scrolls, inside its own bounded height.
+
+- [ ] **11.6.19 Tap the distance to change its units, for this ride only.** The
+      owner's note, 5 August 2026, verbatim: *"The 'distance' number. Clicking
+      it could switching between imperial and metric (temporarily, not saved in
+      settings) ... why not!?"*
+
+      **"Temporarily" is the whole design and it is what makes this cheap.**
+      13.5 already delivers the unit system to every surface through
+      `LocalUnitSystem` from `PelonotTheme`, so a per-ride override is a
+      `CompositionLocalProvider` around the ride content and a `remember`d flag
+      — **nothing is written, so 2.4.6's one-writer rule is not engaged at
+      all**. Settings stays the single writer of the preference; this is a
+      reading aid, in the same family as tapping a chart to change its axis.
+
+      Three things it must not do:
+      - **Nothing recorded may change.** 13.4's rule: SI on disk, converted at
+        the edge. This changes a label and a division and nothing else.
+      - **It must be reversible by the same gesture.** A rider who taps it by
+        accident mid-effort taps it again. That also makes it discoverable
+        without a hint, which is the only way it can be discovered at all —
+        there is no room on that tile for a caption saying it is tappable.
+      - **Decide, deliberately, whether the overlay follows.** The HUD is
+        composed from the service and reads the same `LocalUnitSystem` from its
+        own `PelonotTheme`, so it will **not** see a ride-screen override and
+        will keep showing the stored preference. The recommendation is to
+        accept that rather than plumb it: the override exists because a rider
+        wanted to read one number a different way for a moment, and a
+        preference that leaks onto a surface they are not looking at is the
+        preference they said not to save.
+
+      Worth noting it is the second thing on that tile now — 11.6.17 is about
+      what it *renders* — so the two are one visit to `SmallStat`.
+
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 
 > The owner, verbatim, from the inbox: *"UX-wise it's difficult to know what to

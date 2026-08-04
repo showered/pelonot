@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Forty-two entries have passed through it.** In order: standing and seated
+**Forty-six entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -111,29 +111,17 @@ fault), what the opponents on the leaderboard should be called (**24.3.12a** —
 session that finds it still open should say so rather than invent an answer),
 and the leaderboard on the overlay (**24.3.16**, which **overrules 24.1.5 and
 18.6** — nothing social on the strip — and the write-up says so plainly rather
-than letting two rules quietly disagree).
+than letting two rules quietly disagree), and the board saying less
+(**24.3.17a–c**, three notes that between them undo two of 24.3.13's three
+decisions — the gap, the unit and the rank), the ride screen's three notes
+(**11.6.17** the totals overflowing, **11.6.18** the rest of the class
+scrolling — which is also 11.6.16's fix — and **11.6.19** tapping the distance
+to change its units for one ride), the Start Class screen with the board on it
+(**22.7.3**, and it is 22.7.2's own admission coming true: that screen was
+designed on an AVD where the card could not draw), and the static board having
+no ceiling (**24.1.8**).
 
-### Leaderboard general improvements in full screen
-
-- The plus/minus numbers make sense, but they don't work. Swap it with just the kj.
-- Only include the number, not the "kj" unit label
-- Even though it's a great idea to have a ranking number, there are honestly going to be so few actual people using this app that most of the "people" are actually going to be targets rather than people, so I don't think "rank" really works. Let's get rid of the ranking, including the "X of Y". I will continue to think about who the opponents are going to be. I believe it will be more of a "target" than real people (although of course we WILL include real people!)
-
-### Full screen ride
-
-The power, distance, output section looks brilliant but i fear it will overflow badly when the numbers get large. Please think about this.
-
-The "next" section -- it could be scrollable tbh. Why not!
-
-The "distance" number. Clicking it could switching between imperial and metric (temporarily, not saved in settings) ... why not!?
-
-### Interim class screen, where you click 'start class'
-
-Looks bad. We've added the leaderboard in there and the whole screen doesn't look good. Please totally re-assess how this screen looks. THink about what information is being shown and make it look brilliant with great UX.
-
-### Post ride summary
-
-Leaderboard has the potential to really throw the screen out of alignment when it grows long. Even just with 3, next to the "how did it feel" section? I'm not sure. Please have a think.
+**The inbox is empty.**
 
 ---
 

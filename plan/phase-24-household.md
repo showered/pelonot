@@ -36,6 +36,50 @@ differences. This one carries none, because there is nothing to caveat.
       deleted profile's rides are `SET NULL`, so they leave the board rather
       than sitting on it attributed to nobody. Their rides survive in history,
       which is what 20.1's dialog already promises
+- [ ] **24.1.8 The static board has no ceiling, and it is the tallest thing on
+      two screens.** The owner's note, 5 August 2026, under *Post ride
+      summary*, verbatim: *"Leaderboard has the potential to really throw the
+      screen out of alignment when it grows long. Even just with 3, next to the
+      'how did it feel' section? I'm not sure. Please have a think."*
+
+      **The note is right and the mechanism is worse than it looks.**
+      `ClassLeaderboard.of` places everybody and `ClassLeaderboardCard` draws
+      every entry — there is no `LIMIT` anywhere between the query and the
+      screen. On the summary the card sits in a `Row` beside `RpeCard` with
+      `weight(1f)` each, so the row is as tall as the taller child: at two rows
+      the board is shorter than the question and the layout is fine, at eight it
+      is a column of names with 200 dp of air beside *how did it feel*. The
+      owner noticed it at **three**, which is the number a household of three
+      produces on the first night anybody rides the same class.
+
+      **And it is unbounded for a reason that is about to get worse.** 18.11
+      removed the friend graph: everyone registered is on everyone's board. So
+      the number of rows is not "how many people live here", it is "how many
+      people use this app", and the two are different by an order of magnitude
+      the moment a second household exists.
+
+      **The answer this plan already owns is 24.3.13's**, and it is worth
+      noticing that the live board solved this exact problem three items ago:
+      *a window, not a list*. The rows that matter are the ones next to you.
+      The static board is not the live one and the window need not be three —
+      the top of the board is genuinely interesting *after* a ride in a way it
+      is not *during* one — so the shape to reach for is **the podium plus your
+      neighbourhood**, with one line saying how many rows are not being drawn.
+      Do not simply truncate to the top N: on a board of twelve that shows a
+      rider nothing about their own ride, which is the one thing this screen is
+      about.
+
+      Three things to check when it is picked up:
+      - **Both screens draw this card**, and they want the same ceiling for
+        different reasons — the summary because of the `Row` above, class
+        detail because 22.7.3 says the whole screen is too busy. One change.
+      - **The window must include you even when you are last**, which is the
+        same rule and the same failure mode as 24.3.13's sliding window.
+      - **Whatever is hidden has to be counted.** *"and 6 more"* is what stops
+        a truncated board from being a false claim about the size of the field
+        — and it is the fact 24.3.17c deliberately drops from the *live* board,
+        so the two boards will disagree on this and should: a rider mid-effort
+        cannot act on the size of the field, and a rider reading a summary can
 
 ### 24.2 The household, seen
 
@@ -667,6 +711,102 @@ downgrade — it is why the feature can afford to be interesting.
         one outcome to design against, and it is the same argument as the
         provenance rule: a number whose meaning has silently changed is worse
         than a number that is missing.
+
+- [ ] **24.3.17 The board says less — three notes, and between them they undo
+      two of 24.3.13's three decisions.** The owner's note, 5 August 2026,
+      under the heading *Leaderboard general improvements in full screen*,
+      verbatim:
+
+      > - *"The plus/minus numbers make sense, but they don't work. Swap it
+      >   with just the kj."*
+      > - *"Only include the number, not the 'kj' unit label"*
+      > - *"Even though it's a great idea to have a ranking number, there are
+      >   honestly going to be so few actual people using this app that most of
+      >   the 'people' are actually going to be targets rather than people, so I
+      >   don't think 'rank' really works. Let's get rid of the ranking,
+      >   including the 'X of Y'. I will continue to think about who the
+      >   opponents are going to be. I believe it will be more of a 'target'
+      >   than real people (although of course we WILL include real people!)"*
+
+      **All three are the same instruction from different angles: the board is
+      read at 90 rpm, and every mark on it that is not a name or a number is
+      costing more than it earns.** Taken together the card becomes three rows
+      of *name* and *number*, and nothing else — which is a smaller thing than
+      what 24.3.13 built and is, on the tablet, an easier thing to read.
+
+- [ ] **24.3.17a Every row carries its own total, not the gap to you.** The
+      first note, and it reverses 24.3.13's *"two number spaces, and the sign
+      tells them apart"*. That decision was defensible and it is worth saying
+      why it loses: a gap is **arithmetic the rider did not ask for**. `+12`
+      means *they are twelve up on you*, which is one subtraction away from the
+      two totals it was computed from, and the rider has to hold their own
+      number in their head to make it mean anything. Four totals in a column
+      are compared by eye with no arithmetic at all, and the ordering already
+      says who is ahead.
+
+      What it costs, and it is real: the gap was the only number on the screen
+      that said *how much* separates two riders **without** being read against
+      another number. At 180 kJ against 178 kJ the eye has to work harder than
+      it did at `−2`. The owner has looked at both and picked; this item exists
+      so that a later session knows the trade was seen rather than missed.
+
+      `LiveStanding.gapToYou` stays on the model — it is one subtraction, it is
+      tested, and 24.3.16's overlay is the surface where a single gap may well
+      still be the right answer. Nothing on the full ride screen draws it.
+
+- [ ] **24.3.17b No unit label on the board.** The second note. Every row is
+      now in the same unit, ranked against each other, and the OUTPUT tile
+      directly below the board spells out `kJ` in full — so the label on the
+      rider's own row was the third place the same fact was being stated.
+      Phase 26's rule agrees and is worth quoting against itself: *a unit
+      belongs where a measurement is being read, not where a choice is being
+      made*. A board is a comparison, not a measurement; the measurement is the
+      tile below it.
+
+      **It contradicts 24.3.15's third bullet and that has to be faced rather
+      than skipped.** That item says *"a board showing `+18` with no unit is the
+      one outcome to design against"*, and the reasoning was sound: a number
+      whose meaning silently changed is worse than one that is missing. What
+      makes it safe today is that **only `Output` is reachable** (24.3.14a) —
+      there is nothing for the number to silently change *into*. So this is not
+      a decision to un-take when 24.3.15 lands: **if the metric ever becomes
+      selectable, the board has to say which it is somewhere**, and the note's
+      instruction is that it must not be on every row. The header is gone
+      (24.3.17c), so that somewhere does not exist yet either. Leave a comment
+      at the drawing site saying so.
+
+- [ ] **24.3.17c No ranking at all — no rank column, no `4TH OF 6`, no
+      `LEADING`.** The third note, and it is the one with an argument about the
+      product in it rather than about the pixels: *"most of the 'people' are
+      actually going to be targets rather than people"*. Four of the row kinds
+      the board already has (24.3.12) are the rider's own past rides. Calling
+      a rider *4th of 6* when four of the six are themselves is not a small
+      overstatement, it is a category error — a position implies a field of
+      competitors, and this field is mostly a rider's own history.
+
+      It deletes 24.3.13's second decision outright: *"the header carries what
+      the window hides"*. That was a real problem and it is now simply
+      **accepted** rather than solved — a rider seeing three rows will not know
+      whether there are two more or twenty, and on the owner's reading that is
+      fine, because the three rows near you are the only ones that were ever
+      actionable.
+
+      Two things survive that it would be easy to delete by accident:
+      - **The ranking itself.** It is what orders the board and picks the
+        window, and `LiveStandings.yourRank` / `fieldSize` stay for the tests
+        and for the overlay (24.3.16 lists *"the position alone"* among its
+        candidates). This is a drawing change and must not become a model
+        change.
+      - **The bounce on `yourRank`.** `attentionBounce(trigger =
+        standings.yourRank)` marks the moment the board moves under the rider,
+        and that moment is *more* worth marking once the number that announced
+        it is gone — passing somebody will otherwise be two rows quietly
+        swapping.
+
+      **And it raises the stakes on 24.3.12a**, which is the owner's own open
+      item: with the rank gone, **the name is the only identity a row has**.
+      `12 months` and `30 days` were weak labels beside a rank and are the
+      whole row without one.
 
 ### 24.4 Honesty, and the column that is now blocking three things
 
