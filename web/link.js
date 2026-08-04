@@ -28,8 +28,19 @@ let mode = 'signin';
  * then said it could not find the bike and asked for a password underneath,
  * which is the exact thing 15.6.5 exists to prevent: nothing is asked for
  * before the rider is told what is asking.
+ *
+ * **What it gates is the hand-off, and only the hand-off** (17.16.6). 17.16.5
+ * gated the sign-in form on it too, and that made an expired code a dead end:
+ * the owner scanned a QR, landed here, and had no way to sign in at all. Those
+ * are two different questions. *May a session leave this phone for that bike?*
+ * has to know which bike, and that is 15.6.5. *May the rider sign in to
+ * Pelonot on their own phone?* is the same sign-in `index.html` offers, to the
+ * same project, and a five-minute pairing code makes it no safer.
  */
 let described = null;
+
+/** Set once the bike has been handed a session; nothing is redrawn after it. */
+let finished = false;
 
 if (client) start();
 
@@ -49,12 +60,21 @@ async function start() {
 
   client.auth.onAuthStateChange(() => route());
 
-  if (code) {
-    await describe();
-  } else {
-    el('device-card').classList.add('hidden');
-    el('need-code').classList.remove('hidden');
-  }
+  // Re-scanning the QR from an already-open page changes only the fragment,
+  // and a hash change does not reload a document — so without this the page
+  // would sit on the stale code it opened with. 17.16.5 found the trap and
+  // nothing reached it; 17.16.6 makes it reachable, because a rider whose code
+  // lapsed is now told to go and get another one.
+  window.addEventListener('hashchange', () => {
+    const next = (location.hash || '').replace(/^#/, '').trim().toUpperCase();
+    if (next && next !== code) {
+      code = next;
+      describe();
+    }
+  });
+
+  if (code) await describe();
+  else route();
 }
 
 function setMode(next) {
@@ -72,11 +92,11 @@ function setMode(next) {
 /** What is asking, said before the rider commits to anything (15.6.5). */
 async function describe() {
   described = null;
-  el('need-code').classList.add('hidden');
   el('device-card').classList.remove('hidden');
   el('device-caption').textContent = 'This will sign in';
   el('device-label').textContent = '…';
   el('device-code').textContent = code.replace(/(.{4})(.{4})/, '$1 $2');
+  route();
 
   const { data, error } = await client.rpc('device_link_describe', { p_code: code });
 
@@ -89,7 +109,6 @@ async function describe() {
     el('device-label').textContent = 'That code has expired';
     el('device-code').textContent =
       'Codes last five minutes. Ask the bike for a new one.';
-    el('need-code').classList.remove('hidden');
     route();
     return;
   }
@@ -99,20 +118,38 @@ async function describe() {
   route();
 }
 
+/**
+ * Four sections, two independent questions (17.16.6).
+ *
+ * Signing in depends on the session and nothing else. Handing a session over
+ * depends on the session *and* on the server having named the device — which
+ * is where 15.6.5 lives, and the only place it needs to.
+ */
 async function route() {
+  // Once the bike has it, this page has nothing left to offer. Without the
+  // guard the fallback's own `signOut()` comes back through here and redraws
+  // the sign-in form underneath the word "Done".
+  if (finished) return;
+
   const { data } = await client.auth.getSession();
   const signedIn = Boolean(data.session);
-  // Nothing is offered until the server has said what is being paired — not
-  // the sign-in form on an unknown code, and not before the first answer
-  // arrives either, since `described` is null until then.
   const known = described === true;
 
-  el('signed-out').classList.toggle('hidden', signedIn || !known);
+  el('signed-out').classList.toggle('hidden', signedIn);
   el('confirm').classList.toggle('hidden', !signedIn || !known);
 
-  if (signedIn) {
-    el('confirm-who').textContent = `Signed in as ${data.session.user.email}`;
-  }
+  // The way forward whenever there is no bike to sign in: no code at all, or
+  // one the server did not recognise. `described === null` is the second or
+  // two before the first answer, and offering a retry box during it would be
+  // asking the rider to fix something that is not yet broken.
+  el('need-code').classList.toggle('hidden', described !== false && code !== '');
+
+  // Who, said once. The device card above says which bike; this says which
+  // account. Between them the confirm button has both halves of what it is
+  // about to do, which is the whole of 15.6.5's requirement.
+  const who = el('signed-in-as');
+  who.classList.toggle('hidden', !signedIn);
+  if (signedIn) who.textContent = `Signed in as ${data.session.user.email}`;
 }
 
 async function submit(event) {
@@ -219,9 +256,13 @@ async function hand0ver() {
 }
 
 function finish(handedOwnSession) {
+  finished = true;
   status.textContent = '';
   el('confirm').classList.add('hidden');
   el('device-card').classList.add('hidden');
+  el('need-code').classList.add('hidden');
+  el('signed-out').classList.add('hidden');
+  el('signed-in-as').classList.add('hidden');
   el('done').classList.remove('hidden');
   if (handedOwnSession) {
     el('done-text').textContent =

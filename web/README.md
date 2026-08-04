@@ -73,6 +73,30 @@ the good version exists is in `004_device_link.sql`: this project has
 refresh-token rotation on, so two devices sharing one token family revoke each
 other.
 
+## Where it is hosted, and checking that the live copy is this one
+
+The owner's deployment is <https://pelonot.showered.workers.dev/> — a static
+host that also **trims `.html`**: `/link.html` answers `307` to `/link`, and the
+QR's fragment survives it, which is the thing that had to be measured rather
+than assumed (17.16).
+
+**Nothing about deploying is automatic, and that has already cost something.**
+A fix to `link.js` landed, was verified against the live endpoint from a local
+copy, and never reached the host; the next day the owner scanned a QR and met
+the unfixed page (17.16.6). So before believing anything about the live app:
+
+```bash
+./web/check-deployed.sh
+```
+
+It fetches every file and diffs it against this working tree, needs no
+credentials, and deploys nothing. `config.js` is skipped on purpose — it is
+git-ignored, so the deployed one is *meant* to differ.
+
+**How the deploy itself is done is still not written down** (17.16.2). It is one
+command in somebody's shell history, which is the same gap `cloud.properties`
+closed on the Android side. Whoever next redeploys should add it here.
+
 ## Redirect URLs
 
 Email confirmation links go to the project's **Site URL** (*Authentication →

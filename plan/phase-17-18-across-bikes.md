@@ -221,7 +221,7 @@ keyboard should be possible on the web and optional on the bike.**
       not re-describe**, because a hash change does not reload a document. The
       QR always opens a fresh page and the retry box goes through the button,
       so nothing reaches that path today
-- [ ] **17.16.6** **"There was no way of actually signing in" — the owner's
+- [x] **17.16.6** **"There was no way of actually signing in" — the owner's
       note, 4 August 2026.** Verbatim: *"The 'link my account' doesn't work. I
       scanned the QR code and it sent me to the page with the code, but there
       was no way of actually signing in. Please check this."*
@@ -269,7 +269,38 @@ keyboard should be possible on the web and optional on the bike.**
       the owner has had. Inverting the page is the fix rather than a longer TTL:
       after the first sign-in the phone is already signed in, and the remaining
       journey is two taps well inside five minutes
-- [ ] **17.16.7** **Nothing tells anyone the deployed copy has drifted, and now
+
+      ***Done, and all four states measured against the live project*** — a
+      pairing minted for the purpose under the bike's own label, and an unknown
+      code beside it:
+
+      | session | code | what the page offers |
+      |---------|------|----------------------|
+      | signed out | live | the bike named, the sign-in form |
+      | signed out | expired | *"Nothing to sign in / That code has expired"*, the retry box, **and the sign-in form** — the owner's case |
+      | signed in | live | the bike named, *"Signed in as …"*, **Sign this bike in** |
+      | signed in | expired | *"Signed in as …"* and the retry box, no confirm |
+
+      The recovery path was driven end to end rather than reasoned about: from
+      the expired card, typing `ymmh d7za` — lower case, with the space a person
+      reading eight characters off a screen would put in — names the bike and
+      clears the retry box.
+
+      *Three things fixed on the way that were not in the note.* The
+      `signOut()` inside the fallback hand-off came back through `route()` and
+      **redrew the sign-in form underneath the word "Done"**, which the old
+      gating had hidden by accident. Who you are is now said once, at the top,
+      rather than duplicated inside the confirm card. And a `hashchange`
+      listener re-describes the code: 17.16.5 found that changing only the
+      fragment does not reload a document and correctly noted nothing reached
+      that path — **this item makes it reachable**, because a rider whose code
+      lapsed is now told to go and fetch another one and may well re-scan into
+      the open page.
+
+      **It is fixed in the repo and not on the internet.** Redeploying is the
+      owner's, and `./web/check-deployed.sh` (17.16.7) says whether it has
+      happened
+- [x] **17.16.7** **Nothing tells anyone the deployed copy has drifted, and now
       it has cost something.** 17.16.2 asks for the deploy to be written down;
       this is the smaller half that should not wait for it. `curl` the deployed
       files and diff them against the working tree — it is a handful of lines,
@@ -278,6 +309,14 @@ keyboard should be possible on the web and optional on the bike.**
       `CloudConfigFenceTest` and `ClassLibraryAssetsTest`: **the shipped
       artefact is what a rider meets, and a generator nobody runs cannot vouch
       for it**
+
+      ***Done — `web/check-deployed.sh`, and its first run is the evidence for
+      17.16.6.*** Seven files fetched and diffed, `config.js` skipped because it
+      is git-ignored by design and the deployed one is *meant* to differ.
+      Against the live host today: `index.html`, `app.css`, `tokens.css`,
+      `lib.js` and `rides.js` the same, `link.html` and `link.js` drifted. It
+      exits non-zero when they differ, so it can be a CI step (19.1.4) the day
+      the deploy is written down
 - [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has

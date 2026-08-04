@@ -15,17 +15,21 @@
   </header>
 
   <p id="status" class="small"></p>
+  <p id="signed-in-as" class="small muted hidden"></p>
 
   <!-- The device being paired, named before anything is committed to.
        A pairing page that does not say what it is pairing is a phishing
-       primitive: the QR is a URL and anyone can print a URL. PLAN 15.6.5. -->
-  <div class="card" id="device-card">
+       primitive: the QR is a URL and anyone can print a URL. PLAN 15.6.5.
+       Note where that protection actually lives: on the confirm step below,
+       which is the only place a session leaves this phone. Signing in is not
+       gated on it — see 17.16.6. -->
+  <div class="card hidden" id="device-card">
     <p class="figure-label" id="device-caption">This will sign in</p>
     <p class="figure" id="device-label">…</p>
     <p class="small muted" id="device-code"></p>
   </div>
 
-  <!-- No code in the URL: the rider opened this page directly. -->
+  <!-- No code in the URL, or one the server did not recognise. -->
   <section id="need-code" class="hidden">
     <div class="card">
       <label for="code">Code from the bike's screen</label>
@@ -54,7 +58,6 @@
 
   <section id="confirm" class="hidden">
     <div class="card">
-      <p id="confirm-who" class="small muted"></p>
       <p id="fallback-warning" class="small hidden">
         This deployment hands the bike your own session, which means
         <strong>you will be signed out on this phone</strong> once the bike picks
