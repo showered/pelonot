@@ -72,6 +72,51 @@ object StreakCalculator {
         return streak
     }
 
+    /**
+     * The rider's current run of consecutive **weeks** with a ride in them
+     * (PLAN 22.5.2).
+     *
+     * The unit matters more than the arithmetic. [currentStreak] counts days,
+     * and on the owner's own stated assumption — a rider uses the bike at most
+     * once a week — a perfect year of Sundays is a day-streak of **1**, which
+     * the dashboard does not even show, on the grounds that calling a single
+     * ride a streak is flattery. So the feature built to reward consistency was
+     * blind to the most consistent rider it can have. Counted in weeks it reads
+     * "7 weeks in a row", which is both true and worth keeping up.
+     *
+     * **A streak that ended last week still counts this week**, for exactly the
+     * reason the daily one gives a rider until the end of today: somebody who
+     * rode last Sunday and has not yet ridden this week has not stopped, and
+     * telling them they have is how a person gives up. It ends when a whole
+     * week passes with no ride in it.
+     */
+    fun currentWeeklyStreak(
+        rideTimestamps: List<Long>,
+        now: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Int {
+        if (rideTimestamps.isEmpty()) return 0
+
+        val weeks = rideTimestamps.map { startOfWeek(it, timeZone) }
+            .toSortedSet().toList().reversed()
+        val thisWeek = startOfWeek(now, timeZone)
+        val lastWeek = previousWeek(thisWeek, timeZone)
+
+        var expected = when (weeks.first()) {
+            thisWeek -> thisWeek
+            lastWeek -> lastWeek
+            else -> return 0
+        }
+
+        var streak = 0
+        for (week in weeks) {
+            if (week != expected) break
+            streak++
+            expected = previousWeek(expected, timeZone)
+        }
+        return streak
+    }
+
     private fun startOfDay(epochMs: Long, timeZone: TimeZone): Long =
         Calendar.getInstance(timeZone).apply {
             timeInMillis = epochMs
@@ -80,6 +125,23 @@ object StreakCalculator {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+
+    /** The locale's first day of the week, so the boundary matches the calendar. */
+    private fun startOfWeek(epochMs: Long, timeZone: TimeZone): Long {
+        val calendar = Calendar.getInstance(timeZone).apply { timeInMillis = epochMs }
+        val first = calendar.firstDayOfWeek
+        val offset = (calendar.get(Calendar.DAY_OF_WEEK) - first + DAYS_IN_WEEK) % DAYS_IN_WEEK
+        return startOfDay(calendar.timeInMillis, timeZone).let { startOfDayMs ->
+            // Back one day at a time rather than by `offset × 86_400_000`, for
+            // the same daylight-saving reason as `previousDay`.
+            (0 until offset).fold(startOfDayMs) { day, _ -> previousDay(day, timeZone) }
+        }
+    }
+
+    private fun previousWeek(startOfWeekMs: Long, timeZone: TimeZone): Long =
+        (0 until DAYS_IN_WEEK).fold(startOfWeekMs) { day, _ -> previousDay(day, timeZone) }
+
+    private const val DAYS_IN_WEEK = 7
 
     /**
      * Not `day - 86_400_000`: a day is 23 or 25 hours long twice a year in most

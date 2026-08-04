@@ -149,6 +149,18 @@ fun Modifier.readableColumn(): Modifier {
         .fillMaxWidth()
 }
 
+/**
+ * Caps a *line* at [Layout.readableWidth] without moving it (22.4.2).
+ *
+ * The third answer, and the one a mixed screen actually wants: ride detail is
+ * charts and cards across the whole panel with two paragraphs of prose in among
+ * them, and [readableColumn] would centre those paragraphs over left-aligned
+ * cards, which reads as a mistake. This constrains and leaves them where they
+ * are.
+ */
+@Composable
+fun Modifier.readableText(): Modifier = this.widthIn(max = MaterialTheme.layout.readableWidth)
+
 val MaterialTheme.elevationTokens: Elevation
     @Composable @ReadOnlyComposable get() = LocalElevation.current
 

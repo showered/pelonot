@@ -59,6 +59,28 @@ data class RidingWeek(
 }
 
 /**
+ * A rolling window of days, ending today (PLAN 22.5.1).
+ *
+ * **Rolling, and deliberately not a calendar month.** A month resets on the
+ * 1st, so a rider who rode on the 29th and the 30th opens the app on the 1st
+ * and is told they have done nothing — the same defect as the week's, on a
+ * twelve-times-longer cycle and therefore both harder to notice and worse when
+ * it lands. Thirty days never resets.
+ */
+data class RidingWindow(
+    val days: Int,
+    val rides: Int,
+    val durationSec: Int,
+    val outputKj: Double,
+    /** The most recent ride inside the window, or null if there was none. */
+    val lastRideDayMs: Long? = null
+) {
+    val minutes: Int get() = (durationSec / 60.0).roundToInt()
+
+    val hasAnything: Boolean get() = rides > 0
+}
+
+/**
  * How much a rider has ridden, and how often, over a window of whole weeks.
  *
  * Two questions that are really one, which is why they are one object and end up
@@ -70,7 +92,18 @@ data class RidingWeek(
 data class RidingHistory(
     val weeks: List<RidingWeek> = emptyList(),
     /** Consecutive riding days ending today or yesterday. See `StreakCalculator`. */
-    val streakDays: Int = 0
+    val streakDays: Int = 0,
+    /**
+     * Consecutive **weeks** with a ride in them (22.5.2).
+     *
+     * The unit the dashboard reports, because [streakDays] cannot survive a
+     * rider who rides once a week: their run of consecutive days is 1, and a
+     * streak of 1 is not shown at all, so the most consistent rider the app can
+     * have was invisible to the feature built to reward consistency.
+     */
+    val streakWeeks: Int = 0,
+    /** The last 30 days, which is what the dashboard's card reports (22.5.1). */
+    val recent: RidingWindow = RidingWindow(RECENT_WINDOW_DAYS, 0, 0, 0.0)
 ) {
     val hasAnything: Boolean get() = weeks.any { it.rides > 0 }
 
@@ -111,6 +144,15 @@ data class RidingHistory(
  * `java.util.Calendar` rather than `java.time`, because `minSdk` is 24 and the
  * project does not enable core library desugaring.
  */
+/**
+ * The rolling window the dashboard reports over (22.5.1).
+ *
+ * Thirty rather than twenty-eight: it is the number a person means by "the last
+ * month", and nothing here needs it to be a whole number of weeks — the bars on
+ * *Your riding* are still weekly and are built separately.
+ */
+const val RECENT_WINDOW_DAYS = 30
+
 object RidingHistoryBuilder {
 
     const val DEFAULT_WEEKS = 17
@@ -128,9 +170,17 @@ object RidingHistoryBuilder {
         now: Long = System.currentTimeMillis(),
         timeZone: TimeZone = TimeZone.getDefault(),
         weeks: Int = DEFAULT_WEEKS,
-        streakDays: Int = 0
+        streakDays: Int = 0,
+        streakWeeks: Int = 0
     ): RidingHistory {
-        if (weeks <= 0) return RidingHistory(streakDays = streakDays)
+        val recent = window(rides, RECENT_WINDOW_DAYS, now, timeZone)
+        if (weeks <= 0) {
+            return RidingHistory(
+                streakDays = streakDays,
+                streakWeeks = streakWeeks,
+                recent = recent
+            )
+        }
 
         val today = startOfDay(now, timeZone)
         val thisWeek = startOfWeek(now, timeZone)
@@ -162,7 +212,39 @@ object RidingHistoryBuilder {
                     }
                 )
             },
-            streakDays = streakDays
+            streakDays = streakDays,
+            streakWeeks = streakWeeks,
+            recent = recent
+        )
+    }
+
+    /**
+     * The last [days] days of riding, counted in whole days back from today.
+     *
+     * Inclusive of today, so a 30-day window is today plus the 29 before it —
+     * a rider who rode this morning is inside their own window, which is the
+     * only reading of "the last 30 days" anybody would expect.
+     */
+    fun window(
+        rides: List<RideRecord>,
+        days: Int,
+        now: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): RidingWindow {
+        if (days <= 0) return RidingWindow(days.coerceAtLeast(0), 0, 0, 0.0)
+
+        val today = startOfDay(now, timeZone)
+        val from = addDays(today, -(days - 1), timeZone)
+        // A ride timestamped later today is still today's — the future is only
+        // excluded a whole day at a time, the same rule the calendar uses.
+        val inWindow = rides.filter { startOfDay(it.atEpochMs, timeZone) in from..today }
+
+        return RidingWindow(
+            days = days,
+            rides = inWindow.size,
+            durationSec = inWindow.sumOf { it.durationSec },
+            outputKj = inWindow.sumOf { it.outputKj },
+            lastRideDayMs = inWindow.maxOfOrNull { startOfDay(it.atEpochMs, timeZone) }
         )
     }
 

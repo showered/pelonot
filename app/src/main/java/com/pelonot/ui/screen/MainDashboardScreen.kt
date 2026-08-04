@@ -7,7 +7,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RidingHistory
-import com.pelonot.domain.progress.RidingWeek
+import com.pelonot.domain.progress.RidingWindow
 import com.pelonot.data.local.entity.FtpChangeSource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -592,10 +592,12 @@ private fun ProgressSection(
         // riding, and 22.1.2 has been saying so since the sixth sitting. This is
         // not that item — the kJ cards below are still what they were — but it
         // is the number that item asked for, in the place it asked for it.
-        riding.currentWeek?.let { week ->
-            ThisWeekCard(week = week, streakDays = riding.streakDays, onClick = onRiding)
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-        }
+        RecentRidingCard(
+            recent = riding.recent,
+            streakWeeks = riding.streakWeeks,
+            onClick = onRiding
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
 
         ProgressMetricCard(
             label = "Today's Output",
@@ -620,29 +622,42 @@ private fun ProgressSection(
 }
 
 /**
- * This week, and the way through to every other one (16.3.2, 16.3.5).
+ * The last 30 days, and the way through to every other one (16.3.2, 16.3.5).
  *
  * Rides rather than kilojoules, because "have I been riding" is answered by a
  * count and not by a total — a rider who did one enormous session and then
  * nothing for ten days has a good kJ number and a bad fortnight.
  *
- * The streak is only mentioned once there is one. A "1-day streak" is a ride,
- * and calling it a streak is flattery, which is how the rest of the numbers on
- * this screen stop being believed.
+ * **It was *This Week* until 22.5**, and the owner's note is what changed it:
+ * assume the bike gets ridden at most once a week, and a weekly card reads
+ * "0 rides" six days out of seven — the first thing on the dashboard telling a
+ * rider who is doing exactly what they meant to do that they have done nothing.
+ * A rolling 30 days always has four or five in it, and never resets, which a
+ * calendar month would do on the 1st.
+ *
+ * **The streak is counted in weeks for the same reason** (22.5.2): a perfect
+ * year of Sundays is a day-streak of 1, and by the rule below that is not shown
+ * at all. Two weeks running is a real thing a rider is keeping up; two days is
+ * still, often, one weekend.
  */
 @Composable
-private fun ThisWeekCard(week: RidingWeek, streakDays: Int, onClick: () -> Unit) {
+private fun RecentRidingCard(recent: RidingWindow, streakWeeks: Int, onClick: () -> Unit) {
     val detail = buildList {
-        add(if (week.rides == 1) "1 ride" else "${week.rides} rides")
-        if (week.rides > 0) add("${week.minutes} min")
-        if (streakDays >= 2) add("$streakDays days in a row")
+        add(if (recent.rides == 1) "1 ride" else "${recent.rides} rides")
+        if (recent.rides > 0) add("${recent.minutes} min")
+        // Still only mentioned once there is one, and the same argument: a
+        // "1-week streak" is a ride, and calling it a streak is flattery, which
+        // is how the rest of the numbers on this screen stop being believed.
+        if (streakWeeks >= 2) add("$streakWeeks weeks in a row")
     }.joinToString(" · ")
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .semantics { contentDescription = "This week: $detail. Opens your riding." },
+            .semantics {
+                contentDescription = "Last 30 days: $detail. Opens your riding."
+            },
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -674,7 +689,7 @@ private fun ThisWeekCard(week: RidingWeek, streakDays: Int, onClick: () -> Unit)
             Spacer(modifier = Modifier.size(MaterialTheme.spacing.large))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "This Week",
+                    text = "Last 30 days",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -71,7 +71,9 @@ being the wrong window for a rider who rides once of them (**22.5**), and *less
 is more* (**Phase 26**, and a line in CLAUDE.md — it is a standing rule about
 every screen rather than a job on one).
 
-*The inbox is empty.*
+### How did that ride feel?
+
+It's 1-10 which is good but honestly it causes me anxiety, wondering if i'm selecting the right option. Please change it to three options. Use better labels than i'm suggesting but basically it should be a) that was easy b) that was a good workout c) i'm exhausted. Under the hood these can still map to 1-10 if that makes data migration easier. Whatever you think.
 
 ---
 

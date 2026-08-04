@@ -494,6 +494,14 @@ class WorkoutRepository(
                 streakDays = StreakCalculator.currentStreak(
                     rideTimestamps = rows.map { it.timestamp },
                     now = at
+                ),
+                // 22.5.2. Both are computed from the same timestamps rather
+                // than one from the other: a run of weeks is not a run of days
+                // divided by seven, and deriving it that way would report a
+                // rider who rode Sunday and Monday as two weeks.
+                streakWeeks = StreakCalculator.currentWeeklyStreak(
+                    rideTimestamps = rows.map { it.timestamp },
+                    now = at
                 )
             )
         }

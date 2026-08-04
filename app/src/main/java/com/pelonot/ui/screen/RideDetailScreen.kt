@@ -73,7 +73,7 @@ import com.pelonot.ui.components.PowerTraceChart
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
-import com.pelonot.ui.theme.readableColumn
+import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.RideDetailUiState
@@ -227,11 +227,17 @@ fun RideDetailScreen(
             return@Scaffold
         }
 
+        // 22.4.2. **Not** `readableColumn()` any more. This screen is figures,
+        // charts and a set of cards — things that are looked at — and capping
+        // the whole of it at 760 dp was the failure 22.4 describes: four charts
+        // stacked in one narrow column on a panel with room for all of them,
+        // and the figures grid pushing the first chart off the bottom of the
+        // screen. What is genuinely *read* here is prose, and prose keeps the
+        // cap for itself — `Modifier.readableText()` below.
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .padding(padding)
-                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large)
         ) {
@@ -251,7 +257,8 @@ fun RideDetailScreen(
             Text(
                 text = recorded,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.readableText()
             )
 
             if (workout.wasRecovered) {
@@ -261,7 +268,8 @@ fun RideDetailScreen(
                         "below was rebuilt from the samples that reached the database, " +
                         "so however long the ride carried on after that is not in it.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.tertiary
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.readableText()
                 )
             }
 

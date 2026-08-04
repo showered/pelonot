@@ -133,25 +133,38 @@ fun RidingScreen(
 }
 
 /**
- * The week in progress, said in words before anything is drawn.
+ * The last 30 days, said in words before anything is drawn.
  *
- * The number a rider wants first is *this* week, and a sentence answers it
- * faster than a chart they have to find the right-hand end of.
+ * A sentence answers *have I been riding* faster than a chart whose right-hand
+ * end the rider has to find first.
+ *
+ * **It said "this week" until 22.5.** On the owner's stated assumption — the
+ * bike gets ridden at most once a week — the first thing on this screen was a
+ * 0 for six days out of seven, and the streak beneath it counted days, so the
+ * rider who has never missed a Sunday scored 1 and was told nothing at all.
+ * The window below matches the dashboard card that opens this screen; the bars
+ * and the calendar underneath are still weekly, and are still right, because a
+ * calendar with one square lit a week is a good picture of a once-a-week rider
+ * rather than a bad one (16.3.5).
  */
 @Composable
 private fun ThisWeek(history: RidingHistory) {
-    val week = history.currentWeek ?: return
+    val recent = history.recent
 
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
-            text = "${week.rides}",
+            text = "${recent.rides}",
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.size(MaterialTheme.spacing.small))
         Text(
-            text = if (week.rides == 1) "ride this week" else "rides this week",
+            text = if (recent.rides == 1) {
+                "ride in the last ${recent.days} days"
+            } else {
+                "rides in the last ${recent.days} days"
+            },
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -160,15 +173,15 @@ private fun ThisWeek(history: RidingHistory) {
     }
 
     val detail = buildList {
-        if (week.rides > 0) {
-            val minutes = week.minutes
+        if (recent.rides > 0) {
+            val minutes = recent.minutes
             add("$minutes ${if (minutes == 1) "minute" else "minutes"}, " +
-                "${week.outputKj.roundToInt()} kJ")
+                "${recent.outputKj.roundToInt()} kJ")
         }
-        // A streak is only worth saying once it is one. "1 day" is a ride, and
+        // A streak is only worth saying once it is one. "1 week" is a ride, and
         // calling it a streak is the kind of encouragement that reads as
         // flattery — which is how a rider stops believing the other numbers.
-        if (history.streakDays >= 2) add("${history.streakDays} days in a row")
+        if (history.streakWeeks >= 2) add("${history.streakWeeks} weeks in a row")
     }.joinToString(" · ")
 
     if (detail.isNotEmpty()) {
