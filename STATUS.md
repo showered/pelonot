@@ -1,8 +1,8 @@
 # Where Pelonot is
 
 **Written 4 August 2026, updated the same evening.** Measured, not estimated:
-`assembleDebug` passes, **576 JVM tests, 0 failures**, and **442 of 644 plan
-boxes** are ticked across 26 phases. It is a summary — every claim below belongs to a phase file and
+`assembleDebug` passes, **585 JVM tests, 0 failures**, and **445 of 682 plan
+boxes** are ticked across 27 phases. It is a summary — every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
 
@@ -24,10 +24,11 @@ the real hardware. What arrived in the last two sittings is everything *off* the
 bike: accounts, a cloud backup that has been seen making the round trip, a
 companion web app that is now hosted, sign-in by scanning a QR code with a
 phone, and one leaderboard with everybody on it. That half works and is thin —
-it has been ridden by one household for a day. **The gap between here and
-finished is not features. It is a handful of first-run and honesty problems that
-any new rider would meet in their first ten minutes**, plus one setting on the
-Supabase dashboard that is currently open and should not be.
+it has been ridden by one household for two days, and the first thing the owner
+tried on it was broken. **The gap between here and finished is not features. It
+is a handful of first-run and honesty problems that any new rider would meet in
+their first ten minutes**, plus one setting on the Supabase dashboard that is
+currently open and should not be, and one deploy that has not been run.
 
 ---
 
@@ -38,7 +39,7 @@ Supabase dashboard that is currently open and should not be.
 | **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done** except one item — a live pace target *during* a ride (24.3.2) |
-| **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, one day old.** Round trip observed, RLS verified from a second account, web app hosted. Sign-out, account deletion and pull-to-a-new-device are not built |
+| **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). Sign-out, account deletion and pull-to-a-new-device are not built |
 | **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | ❌ **The real gap.** See *How close to done*, below |
 
 ---
@@ -76,7 +77,10 @@ exist and it works on the real tablet.
 **Classes.** 72 of them, **generated from a catalogue by a build that refuses to
 emit a session breaking a design rule** (`classlibrary/`), bundled in the APK,
 and reconciled onto an already-seeded tablet by retire-rather-than-delete so a
-ride never loses the class it points at.
+ride never loses the class it points at. **A class is now drawn as a shape
+before it is ridden** (22.7.2) — height for zone, width for time, so a long
+threshold block and a set of four repeats look like the different workouts they
+are, with a sentence over it that agrees with the class's own title.
 
 **The record.** History, ride detail, delete, CSV and TCX export, explicit Room
 migrations with an exported schema and a test each, and a local backup/restore
@@ -135,7 +139,8 @@ for.
 | **19.1.6** | The first run explains nothing | A new rider is dropped on the profile picker; the overlay permission — the thing the product is built on — is first mentioned at ride start; a heart-rate strap is discoverable only in Settings |
 | **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
 | **15.4.1–15.4.3** | Sign out, delete cloud data, delete the account | GDPR applies to a hobby project, and sign-out must keep every local ride |
-| **17.16.1** | The bike's QR points at `10.0.2.2` | One line in `local.properties`. Until then the QR the bike draws is unscannable off the emulator |
+| **17.16.6** | The pairing page's fix is not deployed | Fixed in the repo, and the internet still serves the version that gave the owner a dead end. `./web/check-deployed.sh` says so; redeploying is the owner's, and **how to do it is written down nowhere** (17.16.2) |
+| **15.8 / 20.3** | The first-run flow | Two notes, one screen. Profile creation is a bare dialog with three text fields that never mentions an account and asks for an FTP a new rider cannot give. Rebuild it once, not twice |
 
 ### Deliberately deferred, with the reason written down
 
@@ -150,8 +155,14 @@ for.
 - **2.2a calibration** — settled as *yes*, and gated on capturing a sweep with
   the coverage `calibration/README.md` specifies. The first fit failed
   cross-validation.
-- **11.7.2, 11.1b.10** — two decisions that are the owner's rather than a
-  session's, both written up with the measurements behind them.
+- **11.7.2** — a decision that is the owner's rather than a session's, written
+  up with the measurements behind it. (11.1b.10 was the other one and it is
+  answered: the owner reported the same hairline twice, once grey and once
+  orange, which settled it — a rule drawn across somebody's film is a rule
+  whatever colour it is.)
+- **Phase 27 alerts** — records, streaks, and being beaten. Written out at full
+  length and deferred on the owner's own weighting: *"definitely nice-to-have
+  and low priority for now"*.
 
 ### Nice to have, and honestly labelled as such
 
@@ -160,6 +171,12 @@ avatars (20.2), the Material Expressive cosmetic backlog (~30 items in 8.11), a
 custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
 (19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
 is the standing argument for why, and it has been right so far.
+
+**The live ghost (24.3.3–24.3.9, 18.12) is the exception worth naming**, because
+it is the one thing on this list that would change how a ride *feels*: nothing
+social in this app happens during a ride. It needs no account, no schema and no
+network for the household half, and the cloud half's endpoint (`class_ghost`)
+already exists and has never been called.
 
 ---
 
@@ -176,29 +193,41 @@ is the standing argument for why, and it has been right so far.
    rows. **It is two minutes in the Supabase dashboard and it is the owner's to
    do** — Authentication → Providers → Email → *Allow new users to sign up*,
    off.
-2. **The cloud tier has been alive for one day.** Everything in it has been
+2. **The deployed web app is not the committed one (17.16.6, 17.16.2).** A fix
+   to the pairing page was verified against the live endpoint *from a local
+   copy* and never shipped, so the owner scanned a QR the next day and met the
+   unfixed page with no way to sign in. Both faults are fixed in the repo and
+   **neither is fixed on the internet**. There is now a command that answers the
+   question — `./web/check-deployed.sh`, curl and diff, non-zero on drift — and
+   it currently reports two files out of date. What is still missing is the
+   deploy command itself, which lives only in the owner's shell history.
+3. **The cloud tier has been alive for two days.** Everything in it has been
    observed once, by one household, mostly on an emulator. This project's
-   history is three cloud defects that all returned success codes, so the right
-   posture is that the round trip works and nothing about it is weathered.
-3. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
+   history is three cloud defects that all returned success codes, plus the one
+   above, so the right posture is that the round trip works and nothing about it
+   is weathered.
+4. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
    ours. One `/dev/ttyO0`, one open, so two bike apps can never both work — and
    after the other app is gone the port can stay unopenable **until the tablet
    is rebooted**. What we owe it is 2.7.7 and 2.7.8: say what actually happened,
    and stop rebinding so eagerly.
-4. **The power curve is measurably wrong** — RMSE 137 W against the board's own
+5. **The power curve is measurably wrong** — RMSE 137 W against the board's own
    watts. It is fenced to two consumers (the simulator and a suggested
    resistance band) and can never reach a recorded number, which is the only
    reason this is a caveat rather than a defect. Adding a third consumer breaks
    that.
-5. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
+6. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
    instrumented suite is order-dependent, which is why CI runs only the JVM
    tests. A red run you are trained to re-run is a suite nobody reads.
-6. **Nothing keeps the two design systems in step (17.15.2)**, nothing keeps the
-   deployed web app in step with the repo (17.16.2), and nothing keeps this page
-   in step with the plan (19.1.7a). All three are stated rather than hidden, and
-   all three have the same cheap fix that should not be built until the drift
-   actually happens.
-7. **10.6 is still unanswered**: battery, thermals and memory over a full-length
+7. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
+   this page in step with the plan (19.1.7a). Both are stated rather than
+   hidden, and both have the same cheap fix that should not be built until the
+   drift actually happens. **The third member of that list has been struck off**:
+   "nothing keeps the deployed web app in step with the repo" stopped being
+   hypothetical within a day of being written, so it got its cheap fix
+   (`web/check-deployed.sh`) and is now item 2 above. Read that as evidence
+   about the other two rather than as a reason they are different.
+8. **10.6 is still unanswered**: battery, thermals and memory over a full-length
    ride. The one 20-minute ride on real hardware was spent finding 2.7.
 
 ---
@@ -207,25 +236,30 @@ is the standing argument for why, and it has been right so far.
 
 **Done for this household: weeks, not months — and mostly not code.** The bike
 works, the record is honest, the backup runs. What stands between here and
-"nobody thinks about it any more" is the sign-up setting, the QR pointing at the
-live page, sign-out doing the right thing, and a full-length ride that measures
-battery and heat. Two of those four are settings rather than work.
+"nobody thinks about it any more" is the sign-up setting, **redeploying the web
+app**, sign-out doing the right thing, and a full-length ride that measures
+battery and heat. Three of those four are a setting or a command rather than
+work.
 
-**Done for a stranger with a Peloton: the six rows in the table above.** In
-order of what a new rider meets first: something better than a text box
-prefilled with `200` (20.3), a first run that explains the overlay permission
-before the ride needs it (19.1.6), and a green CI run so the project can take a
-patch (19.1.4). That is a genuinely short list, and it is short because the hard
-parts — a stock bike, honest telemetry, migrations, an overlay that survives
-Netflix — are behind us.
+**Done for a stranger with a Peloton: the seven rows in the table above.** In
+order of what a new rider meets first: a first-run flow that offers an account
+and gets to a usable FTP without a text box — which is **15.8 and 20.3 on one
+screen**, and rebuilding it twice is the mistake to avoid — a first run that
+explains the overlay permission before the ride needs it (19.1.6), and a green
+CI run so the project can take a patch (19.1.4). That is a genuinely short list,
+and it is short because the hard parts — a stock bike, honest telemetry,
+migrations, an overlay that survives Netflix — are behind us.
 
-**Done as the plan is written: 69%, and it will never be 100.** 410 of 594
-boxes, and the remaining 184 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 65%, and it will never be 100.** 445 of 682
+boxes, and the remaining 237 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
-things it had already decided against. A closed box and an open one are not the
-same unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 is one
-box and a screen that has to be designed. **Read the percentage as an inventory
-count, never as a completion estimate.**
+things it had already decided against. **The percentage went *down* this sitting
+while three things were finished**, which is the clearest possible demonstration
+of why not to read it as progress: three of the owner's notes added forty boxes
+between them, most of Phase 27's. A closed box and an open one are not the same
+unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 is one box and
+a screen that has to be designed. **Read the percentage as an inventory count,
+never as a completion estimate.**
 
 **The thing most likely to move that date is not on any list**, and it is worth
 naming: this app has been ridden by one person on one bike. Every defect that
