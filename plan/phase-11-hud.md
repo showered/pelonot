@@ -852,6 +852,10 @@ measuring them moves most of the question.
       thing 23.2.6 and 25.4.3 say must not happen while a ride points at it.
       Route (a) is not wasted if (b) is chosen: it is the right way to *seed*
       the catalogue field in bulk, then correct by hand.
+      **Decided, 4 August 2026: (b).** The owner chose it directly when asked,
+      on the recommendation above. Not yet built — it does not jump ahead of
+      15.8 in the queue, but 11.7.1a, 11.7.3 and 11.7.4 are now unblocked
+      rather than waiting on a design question.
 - [ ] **11.7.3** **What the ride screen does with the answer.** Sketched, not
       settled — it depends on 11.7.2. The shape that follows from "one outcome,
       two controls":
