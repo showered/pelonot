@@ -247,24 +247,27 @@ written** — and this project now has one command that can tell them apart.
 
 ### What to do next, in order
 
-**Two of these are the owner's own hands and neither is a session's.**
+**Both of the owner-actions the last sitting listed are now closed, and one of
+them was closed by being overruled.**
 
-**First: 18.11.1 — turn public sign-up off.** Two minutes in the Supabase
-dashboard (Authentication → Providers → Email → *Allow new users to sign up*),
-and it is first because the website going live is what made it live too: the
-endpoint and its publishable key are now on the internet by design, `007` puts
-every registered account on the household's leaderboard, and the project still
-answers `"disable_signup": false` — **re-measured 4 August, in this sitting**.
-Nothing else on this list is a door standing open.
+- ~~**Redeploy `web/`**~~ **Done by the owner**, and `./web/check-deployed.sh`
+  is what says so rather than anybody's word: seven files the same, exit 0
+  (**17.16.8**). 17.16.6's fix is on the internet, so the state that produced
+  the bug report no longer exists. **17.16.2 is what it hands forward** — the
+  deploy command is still written down nowhere, and the next drift will be
+  found only by somebody choosing to run the script.
+- ~~**18.11.1 — turn public sign-up off**~~ **Closed as *not* to be done, on the
+  owner's word:** *"Leave on public signup. It doesn't matter — it requires
+  email validation anyway."* Supported by measurement — `mailer_autoconfirm` is
+  `false`, so an account needs a real inbox — but what actually settled it was
+  a **collision neither item had spotted: 18.11.1 and 15.8.2 are direct
+  contradictions**. 15.8.2 says a rider creating their first profile has no
+  account *by definition* and must be able to sign up from their phone;
+  invite-only makes that impossible. Two items that could not both be built,
+  and the one that serves the rider won. **The consequence is that 15.8.2 is
+  unblocked and built as written.**
 
-**Second, and it is new: redeploy `web/`.** The pairing page's fix (17.16.6) is
-in the repo and not on the internet, which is exactly the state that produced
-the bug report in the first place. `./web/check-deployed.sh` says whether it has
-happened — it currently reports `link.html` and `link.js` drifted. **How the
-deploy is done is written down nowhere (17.16.2)**, so it is the owner's
-command, and it should land in `web/README.md` while it is being run.
-
-**Then, from the notes this sitting emptied, one to do next and two that
+**Then, from the notes the last sitting emptied, one to do next and two that
 wait.** In order:
 
 - ~~**22.7.2 — the Start Class screen**~~ **Done in this sitting.** The class is

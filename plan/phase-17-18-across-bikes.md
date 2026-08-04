@@ -421,8 +421,41 @@ Two shapes to keep straight, because they will otherwise be built twice:
       series and every column those tables grow later. The ghost even strips
       heart rate: a leaderboard's worth of visibility is what was agreed, and a
       resting heart rate is a medical-shaped fact rather than a sporting one
-- [ ] **18.11.1** **Turn public sign-up off, and it is a prerequisite rather
-      than a tidy-up.** "Everyone registered" is a safe rule exactly as long as
+- [x] **18.11.1** **Turn public sign-up off** — ***closed by the owner as* not
+      *to be done, 4 August 2026.*** Verbatim: *"Leave on public signup. It
+      doesn't matter — it requires email validation anyway. Let's assume there's
+      only valid signups."* The item is kept in full below, because the exposure
+      it measures is real and the decision is to accept it rather than to
+      disagree that it exists.
+
+      **The owner's reason is factually supported and was re-measured in the
+      twenty-sixth sitting**: the project answers `"mailer_autoconfirm": false`,
+      so an account is not usable until somebody has opened a link in the inbox
+      they claimed. That does not make registration private — anyone with an
+      email address can still register — but it changes what "the public" means
+      here from *anyone who finds the URL* to *anyone who finds the URL and
+      wants an account on a stranger's exercise bike*, which at this project's
+      scale is nobody.
+
+      **What settled it was a collision the item had not spotted, and it is the
+      thing to carry forward.** 18.11.1 and **15.8.2** are direct contradictions
+      and neither mentioned the other: 15.8.2 says a rider creating their first
+      profile *has no account by definition*, so the pairing page must let them
+      sign **up** from their phone rather than sending them to the bike's own
+      keyboard. Invite-only makes that flow impossible. So this is not a
+      security item that lost to convenience — it is two items that could not
+      both be built, and the one that serves the rider won. **The consequence is
+      that 15.8.2 is unblocked and is built as written.**
+
+      Two things that were true before this decision and stay true: the blast
+      radius is still exactly what the measurement below says (leaderboard
+      entries and ghost traces, never rows), and **17.16.3 is now the item that
+      matters more** — if the door is deliberately open, which key is on the
+      internet is the question worth being careful about.
+
+      The original item, kept:
+
+      **"Everyone registered" is a safe rule exactly as long as
       registering is not open to the public, and those are two settings in two
       places: 18.11 makes every account visible to every other, and Supabase's
       `disable_signup` decides who can become an account. **Hosting the web app
@@ -451,6 +484,12 @@ Two shapes to keep straight, because they will otherwise be built twice:
       not RPE, not heart rate, not anyone's rows. That is the blast radius of
       one dashboard toggle, which is the argument for turning it off today
       rather than the argument that it can wait
+
+      *(That last sentence is the one the owner overruled, and the paragraph is
+      left standing because the blast radius it states is now the accepted risk
+      rather than the argument against it. It is also the paragraph to re-read
+      the day this project has more than four riders, which is the condition
+      18.11 itself was written under.)*
 - [ ] **18.1** Friends list and requests, mirroring 17.5
 - [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
 - [ ] **18.3** Kudos, and nothing that requires typing during or just after a ride
