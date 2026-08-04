@@ -8,6 +8,87 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### Latest session — 3 August 2026 (twenty-first sitting): the app goes online, and the endpoint stops being hypothetical
+
+**The owner asked for accounts, and said they were available to help set it up.**
+Three inbox notes were emptied on the way — including one about the inbox
+itself, and one asked mid-session about whether this should become a monorepo.
+Phase 15 exists now: the app has auth, a screen that says what an account is
+*for*, a companion web app, and signing in by scanning a QR code with a phone.
+**`003`, `004` and `005` are applied to the real project.** 532 JVM tests, 0
+failures.
+
+**The migration that had been written for two sittings finally ran, and the
+important part is what happened after it.** `003` returned `201`, which proves
+nothing — this project's history is three cloud defects that all returned
+success. So the catalogue was read back: nine policies, `WITH CHECK` on every
+write and `USING` on every read. Then the endpoint was probed over HTTP with
+the real anon key, which is the path an attacker takes rather than the one the
+SQL describes: `profiles`, `workouts` and `device_link` all answer **401**, and
+`class_templates` answers **200**. Three pre-consent profile rows deleted; the
+16 workouts kept, because one of them is 14.4.5's specimen.
+
+**That habit found something reading the SQL again could not.** `anon` still
+held **`TRUNCATE`** on `class_templates`, and then on `device_link` the moment
+`004` created it — from Supabase's own default privileges, not from any
+migration here. TRUNCATE ignores row-level security, being table-level, so on
+paper the 72-class library was one statement from empty. It is not reachable
+(PostgREST speaks no TRUNCATE and `anon` has no login), which makes it exactly
+what 14.0 called the old `USING (true)` policies: **a loaded gun rather than a
+fired one**. `005` puts it down. The rule it leaves behind is 15.5.7: *after any
+migration that creates a table, read the catalogue back* — what a migration
+granted and what a table ends up holding are different questions.
+
+**The owner's QR idea turned out to be both feasible and the flow this app
+should have led with.** The bike's tablet is the worst keyboard in the house;
+a phone is the opposite of all four reasons why. Supabase has no device
+authorization grant, so it is built out of a locked table, four `SECURITY
+DEFINER` functions and a one-time OTP. Three things it gets right on purpose:
+**the code is not the credential** (the bike sends only the SHA-256 of a secret
+it keeps, so a code photographed off the screen collects nothing); the table has
+RLS on and **not one policy**, so no role can read it and every access is a
+narrow function with `search_path` pinned; and **the bike ends up with a session
+of its own** — this project has refresh-token rotation on, so two devices in one
+token family revoke each other, which is why the phone's own refresh token is
+the thing not to copy.
+
+**`004` had a real flaw that only the endpoint could show.** `device_link_
+describe` was authenticated-only, which reads as the safer choice and is the
+wrong one: the phone must be told **which device it is signing in** *before* it
+asks anybody for a password, and a protection that only fires after the password
+is typed is not one. It is granted to `anon` now, with the bound stated — you
+cannot ask without the code, and a claimed code answers `expired` exactly like
+an unknown one.
+
+**Driving the AVD found the defect that reading the diff would not have, again.**
+Settings read `hasAccount` off the profile row, so a tablet holding **no session
+at all** said *"Backed up to your account"* — while the sync status line one
+card below, which does ask the gate, was silently absent. Two surfaces a card
+apart disagreeing, and the wrong one is the sentence a rider reads *instead of*
+checking. It now says the honest thing 15.2.8 asked for and nothing was drawing:
+*"Signed out on this bike. Your rides are still here and still yours … 3 rides
+are waiting to go up."*
+
+**15.2.8 is the design decision worth carrying forward.** 15.2.4 says nothing
+may assume one signed-in user per device, and that is right about the data
+model — but the client library holds exactly **one** session per process. Both
+are true, and the honest place to reconcile them is the gate: *having an account*
+and *this tablet carrying that rider's credentials* are different questions, and
+only the second can send a request. Without it, Priya's ride goes out under
+Simon's JWT with Priya's `user_id`, `003`'s `WITH CHECK` refuses it — correctly —
+and she is told forever that the network is at fault.
+
+**What is built and not yet seen working is the sign-in itself**, because it
+needs an account and creating one is the owner's to do. Everything up to that
+point is observed: the bike asks the live project for a pairing code and gets
+one, the server describes it back under the device's own name, `poll` with the
+right secret and with a wrong one are indistinguishable, `claim` is 401 to
+`anon`, and both web pages render against the real endpoint. **15.5.4 — every
+policy checked from a second account — is still open and is still the item in
+this phase that matters most.**
+
+---
+
 ### Latest session — 3 August 2026 (twentieth sitting): the owner's five snags, and the phase one of them opened
 
 **Five notes in the inbox, and a sixth about the inbox itself.** The owner's
