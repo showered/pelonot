@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Forty-one entries have passed through it.** In order: standing and seated
+**Forty-two entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -100,11 +100,13 @@ the owner as possibly-already-covered — it is, word for word, and the new
 sentence about power zone needing no resistance target restates 11.7.3
 exactly), and the birth-year grid looking ridiculous (**21.1.1b** — already one
 shared component on both screens that use it, so only the layout needed
-fixing, a `LazyColumn` in place of the grid).
+fixing, a `LazyColumn` in place of the grid), and rivals against a leaderboard
+(**24.3.11–24.3.14** — the owner's choice is the leaderboard, the rival goes
+behind a flag rather than into the bin, and **24.3.14 is a question back**:
+*watts* has now been used twice for the score and it decides whether the board
+re-sorts several times a second).
 
-### Rivals vs Leaderboard
-
-We have two competing ideas. One is yours, one is mine. I think i prefer Leaderboard as a feature for "chasing" your PB or your friend's PB. It has scope for including unlimited number of people whereas rivals is (i think) just one person you race against. Let's not waste all the effort though, let's feature flag the Rivals feature and keep it hidden away. But i do think Leaderboard is better. Not only can it include your own PB as a "ghost" to chase on the leaderboard, but also it could be PB this month, PB this year, and all your friends scores too. Just something to always be reaching for, you know? And in case this hasn't been logged, I'm expecting it to show the person above you, the person below you, with score being the current number of Watts **as of this point in the class**.
+*(The inbox is empty.)*
 
 ---
 

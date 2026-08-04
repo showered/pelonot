@@ -266,6 +266,102 @@ downgrade — it is why the feature can afford to be interesting.
       short ranked list, is the open question for whoever picks this up next,
       informed by how the single-gap version actually reads on the tablet.
 
+      **Answered, 4 August 2026, through the inbox** — the owner came back to
+      it after seeing the ghost and settled the shape rather than leaving it to
+      whoever picked it up. 24.3.11 to 24.3.14 are that answer, split by the
+      decision each one carries.
+
+- [ ] **24.3.11** **The leaderboard wins, and the rival goes behind a flag
+      rather than into the bin.** The owner, verbatim: *"We have two competing
+      ideas. One is yours, one is mine. I think i prefer Leaderboard as a
+      feature for 'chasing' your PB or your friend's PB. It has scope for
+      including unlimited number of people whereas rivals is (i think) just one
+      person you race against. Let's not waste all the effort though, let's
+      feature flag the Rivals feature and keep it hidden away. But i do think
+      Leaderboard is better."*
+
+      The reasoning is the owner's own and it is the right one: **the rival's
+      ceiling is one**. Everything the ghost does — the elapsed-second
+      alignment, the measured-power gate, `RivalTrace`, `active_ride_rival`
+      surviving a crash — is a leaderboard with a `LIMIT 1` on it, so the work
+      is a foundation rather than a detour. What is genuinely single-rival is
+      the *presentation*: the picker on the class detail screen, and the one
+      `+18 kJ` card.
+
+      So: **hidden, not deleted.** A build-time flag off by default, the picker
+      and the card behind it, the tests kept green, `RIVALS.md` kept and marked
+      as superseded. Two reasons not to simply delete it. It is the comparison
+      the owner asked for — *"let's keep what you're doing so I can see if
+      you've stumbled upon something brilliant"* — and it cannot be that if it
+      cannot be turned on. And 24.3.6, the *"they finished"* state, is a
+      question the leaderboard has too; the rival is where it is already
+      written down.
+
+- [ ] **24.3.12** **What is on the board, and it is more than housemates.**
+      Verbatim: *"Not only can it include your own PB as a 'ghost' to chase on
+      the leaderboard, but also it could be PB this month, PB this year, and
+      all your friends scores too. Just something to always be reaching for,
+      you know?"*
+
+      Four kinds of row, and they are four different queries rather than four
+      formats:
+      - **your best ever on this class** — 16.3.4 already computes it, and
+        24.3.3's picker already offers it
+      - **your best this month** and **your best this year** — the same query
+        with a date floor. These are the interesting ones, because a rider who
+        is improving has a *reachable* ghost in the month and an unreachable
+        one all-time, and the reason the owner gives is exactly that: something
+        to always be reaching for. Note 22.5's finding underneath this — a
+        rider who rides once a week has a thin month, so a month with one ride
+        in it puts your only ride on the board as a rival to itself. That has
+        to read as absent, not as a rival you are dead level with.
+      - **housemates' bests** — 24.3.1's query, unchanged
+      - **friends' bests** — needs 18, and needs their samples in the cloud,
+        which is the one row here that does not work offline. It must degrade
+        to absent rather than to an error: rule 3 of the connectivity model
+        says the household board is a Room query and never touches the network.
+
+- [ ] **24.3.13** **A window, not a list — the row above you and the row
+      below.** Verbatim: *"I'm expecting it to show the person above you, the
+      person below you."* This is what makes 24.3.4's *"not a list"* and the
+      owner's *"leaderboard"* stop contradicting each other, and it is worth
+      saying plainly: **the board can have any number of rows and the ride
+      screen shows three of them** — you, the one you are chasing, the one
+      chasing you. It is Peloton's own behaviour and it is the reason their
+      leaderboard is legible at 90 rpm.
+
+      Consequences to design against rather than discover: your row moves
+      *between* the other two as you pass and are passed, so the two neighbours
+      change identity mid-ride and the change must not read as a number
+      jumping; and at the top of the board there is no row above you, which is
+      the state worth designing first because it is the one a rider wants to
+      be in.
+
+- [ ] **24.3.14 The score is watts, and that is the one thing here still worth
+      a question.** Verbatim: *"with score being the current number of Watts
+      **as of this point in the class**."* The emphasis is the owner's.
+
+      The sentence carries two readings and they build different features.
+      *Current watts, right now* is instantaneous — the owner's earlier
+      example in 24.3.10 (*"you're on 56 watts and your PB is 65"*) is
+      unambiguously that. *As of this point in the class* is the language of a
+      running total — and Peloton's own leaderboard, which this item is
+      explicitly modelled on, ranks by **total output** rather than by live
+      watts, for the reason 24.3.5 and 11.6.7 give: an instantaneous ranking
+      re-sorts several times a second and cannot be read while breathing hard.
+
+      **The recommendation is the total, displayed in watts' own unit only if
+      it stays honest** — i.e. rank by cumulative kJ, exactly as the ghost
+      already does, because that is the number that cannot flicker and it is
+      what "as of this point in the class" measures. But this is the owner's
+      call and it should be asked directly rather than assumed, because the
+      word *watts* has now been used twice and it may well be deliberate: a
+      rider chasing a PB does want to know *right now* whether their legs are
+      enough, which is an instantaneous question. A third answer exists and may
+      be the real one — **rank by the total, show the live watts beside it** —
+      which is two numbers per row and is what makes the row above and below
+      actionable rather than merely informative.
+
 ### 24.4 Honesty, and the column that is now blocking three things
 
 - [x] **24.4.1** No caveat, and the card carries none
