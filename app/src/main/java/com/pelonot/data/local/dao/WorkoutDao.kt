@@ -392,6 +392,11 @@ interface WorkoutDao {
      * The same measured-power exclusion as [householdRivals], for the same
      * reason and now facing the rider's own history: a modelled trace drawn to
      * scale against a measured one is a fiction that looks exact.
+     *
+     * [sinceMs] is what makes this three of the live leaderboard's four kinds
+     * of row rather than one (24.3.12): the same query with a floor on it
+     * answers *your best ever*, *your best of the last twelve months* and
+     * *your best of the last thirty days*. Pass 0 for no floor.
      */
     @Query(
         """
@@ -403,6 +408,7 @@ interface WorkoutDao {
           AND w.user_id = :userId
           AND w.id != :excludingWorkoutId
           AND w.timestamp < :beforeMs
+          AND w.timestamp >= :sinceMs
           AND w.is_complete = 1
           AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
           AND NOT EXISTS (
@@ -418,7 +424,8 @@ interface WorkoutDao {
         classId: String,
         userId: Int,
         excludingWorkoutId: String,
-        beforeMs: Long
+        beforeMs: Long,
+        sinceMs: Long
     ): PreviousBestRow?
 
     /**

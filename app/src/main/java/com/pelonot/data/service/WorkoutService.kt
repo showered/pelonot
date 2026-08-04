@@ -17,6 +17,7 @@ import androidx.core.app.ServiceCompat
 import com.pelonot.MainActivity
 import com.pelonot.PelonotApp
 import com.pelonot.R
+import com.pelonot.core.Features
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
@@ -41,6 +42,7 @@ import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
@@ -159,17 +161,28 @@ class WorkoutService : Service() {
     private var rivalName: String? = null
 
     /**
+     * The live leaderboard this ride is on (24.3.10), loaded once at ride
+     * start or on resume and then read by elapsed second.
+     *
+     * Mutually exclusive with [rivalTrace] above: the board is what a ride
+     * gets unless [Features.singleRivalGhost] is on and somebody was picked.
+     * Null means nobody has a measured ride of this class, which is the
+     * ordinary case and draws nothing at all.
+     */
+    private var raceBoard: LiveLeaderboard? = null
+
+    /**
      * Set the moment a sample lands whose watts were not measured (24.3.7).
      *
-     * The gate has to be applied to *this* ride as well as the rival's, and
-     * this is the only point at which it can be: the rival's side is excluded
-     * by the query before the offer is made, but whether the ride about to
-     * happen will be measured is not knowable in advance. Once set the ghost
+     * The gate has to be applied to *this* ride as well as the others', and
+     * this is the only point at which it can be: their side is excluded by
+     * the query before the board is built, but whether the ride about to
+     * happen will be measured is not knowable in advance. Once set the race
      * is gone for the rest of the ride and never comes back — `Mixed` fails
      * `isTrustworthyAsMeasured` on purpose (24.4.2), and a race that was
      * honest for ten minutes and fiction for the next ten is worse than none.
      */
-    private var rivalDiscredited = false
+    private var raceDiscredited = false
 
     /** True while the in-app ride screen is on top; the HUD stands down. */
     private var rideScreenVisible = false
@@ -269,7 +282,7 @@ class WorkoutService : Service() {
         pendingMetrics.clear()
         calibrationSamples.clear()
         intervalEngine = null
-        clearRival()
+        clearRace()
 
         // The curve this bike has earned, read once here rather than per
         // sample. On hardware it will not be consulted at all — the board
@@ -326,9 +339,15 @@ class WorkoutService : Service() {
 
             // After the row, never before: `active_ride_rival` has a foreign
             // key onto it, exactly as `workout_metrics` does (1.12).
-            if (rivalWorkoutId != null) {
+            if (Features.singleRivalGhost && rivalWorkoutId != null) {
                 workoutRepository.setActiveRival(session.workoutId, rivalWorkoutId)
                 loadRival(rivalWorkoutId, userId)
+            } else if (classId != null) {
+                // 24.3.10. Nothing was chosen and nothing needs to be: the
+                // board is everybody who qualifies, and the only condition is
+                // that this ride is following a class — a free ride is not a
+                // ride of anything, so there is nothing to be ranked against.
+                loadRaceBoard(classId, userId, session.workoutId)
             }
         }
 
@@ -406,7 +425,7 @@ class WorkoutService : Service() {
         pendingMetrics.clear()
         calibrationSamples.clear()
         intervalEngine = null
-        clearRival()
+        clearRace()
 
         serviceScope.launch {
             PowerModel.curve = runCatching { calibrationRepository.activeCurve() }
@@ -418,8 +437,17 @@ class WorkoutService : Service() {
         // the race the rider was actually in, and nothing on the way back into
         // this ride knows what that was.
         serviceScope.launch {
-            workoutRepository.getActiveRival(workout.id)?.let { rivalId ->
+            val rivalId = workoutRepository.getActiveRival(workout.id)
+            if (Features.singleRivalGhost && rivalId != null) {
                 loadRival(rivalId, workout.userId)
+            } else if (workout.classId != null) {
+                // 24.3.8 for the board as much as for the rival, and cheaper:
+                // the board is derived from the class and the rider, both of
+                // which the row already carries, so a resumed ride rejoins the
+                // race it was in without anything having had to be written
+                // down. It rejoins it at the right second too — the clock
+                // above has already been wound back to the last one recorded.
+                loadRaceBoard(workout.classId, workout.userId, workout.id)
             }
         }
 
@@ -558,10 +586,66 @@ class WorkoutService : Service() {
         )
     }
 
-    private fun clearRival() {
+    /**
+     * Builds the live leaderboard this ride is on (24.3.10, 24.3.12).
+     *
+     * Every competitor's whole series is read here and reduced to a cumulative
+     * lookup, so the recording path never touches the database for the race:
+     * the tick reads memory. Same shape as [loadClass] and [loadRival] —
+     * asynchronous, and until it lands the ride simply has no board, which is
+     * exactly what a class nobody has ridden looks like.
+     *
+     * A competitor whose ride left no samples is dropped rather than drawn at
+     * zero. There is no honest number to put on that row and a competitor
+     * pinned to the bottom of the board for the whole class is worse than an
+     * absent one — 24.1.6's rule, applied per row.
+     */
+    private suspend fun loadRaceBoard(classId: String, youId: Int?, workoutId: String) {
+        val field = runCatching {
+            workoutRepository.raceBoardFor(
+                classId = classId,
+                youId = youId,
+                excludingWorkoutId = workoutId,
+                nowMs = System.currentTimeMillis()
+            )
+        }.onFailure { Log.w(TAG, "Could not build the leaderboard for $classId", it) }
+            .getOrDefault(emptyList())
+
+        val ghosts = field.mapNotNull { competitor ->
+            val samples = runCatching { workoutRepository.getMetrics(competitor.workoutId) }
+                .getOrDefault(emptyList())
+                .map { MetricSample(it.timestampSec, it.power, it.cadence, it.heartRate) }
+
+            val trace = RivalTrace.from(samples)
+            if (trace.isEmpty) {
+                Log.w(TAG, "${competitor.name} has no samples; leaving them off the board")
+                null
+            } else {
+                LiveLeaderboard.Ghost(
+                    name = competitor.name.ifBlank { "Rider" },
+                    trace = trace
+                )
+            }
+        }
+
+        if (ghosts.isEmpty()) {
+            Log.i(TAG, "Nobody has a raceable ride of $classId; no leaderboard")
+            return
+        }
+
+        raceBoard = LiveLeaderboard(ghosts)
+        Log.i(
+            TAG,
+            "Racing ${ghosts.size} on $classId: " +
+                ghosts.joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
+        )
+    }
+
+    private fun clearRace() {
         rivalTrace = null
         rivalName = null
-        rivalDiscredited = false
+        raceBoard = null
+        raceDiscredited = false
     }
 
     /**
@@ -838,6 +922,11 @@ class WorkoutService : Service() {
                     elapsedSec,
                     outputKj,
                     session?.distanceKm ?: current.distanceKm
+                ),
+                standings = standings(
+                    elapsedSec,
+                    outputKj,
+                    session?.distanceKm ?: current.distanceKm
                 )
             )
         }
@@ -853,18 +942,48 @@ class WorkoutService : Service() {
      */
     private fun rivalStatus(elapsedSec: Int, outputKj: Double, distanceKm: Double) =
         rivalTrace
-            ?.takeUnless { rivalDiscredited }
+            ?.takeUnless { raceDiscredited }
             ?.let { trace ->
                 // Your side of the comparison has to be the same quantity the
                 // trace accumulated (24.3.14). Asked of the trace rather than
                 // assumed here, so adding a third RaceMetric cannot leave this
                 // silently racing kilojoules against kilometres.
-                val yours = when (trace.metric) {
-                    RaceMetric.Output -> outputKj
-                    RaceMetric.Distance -> distanceKm
-                }
-                trace.statusAt(elapsedSec, yours, rivalName.orEmpty())
+                trace.statusAt(
+                    elapsedSec,
+                    yourValue(trace.metric, outputKj, distanceKm),
+                    rivalName.orEmpty()
+                )
             }
+
+    /**
+     * The live leaderboard at this second, or null when there is no honest one
+     * to draw (24.3.10).
+     *
+     * Same clock and same gate as [rivalStatus], because it is the same race
+     * with the `LIMIT 1` taken off.
+     */
+    private fun standings(elapsedSec: Int, outputKj: Double, distanceKm: Double) =
+        raceBoard
+            ?.takeUnless { raceDiscredited }
+            ?.let { board ->
+                board.standingsAt(
+                    elapsedSec,
+                    yourValue(board.metric, outputKj, distanceKm)
+                )
+            }
+
+    /**
+     * The rider's own side of a comparison, in whatever the race is measured
+     * in (24.3.14).
+     *
+     * Asked of the metric rather than assumed, so adding a third [RaceMetric]
+     * cannot leave a race silently comparing kilojoules against kilometres.
+     */
+    private fun yourValue(metric: RaceMetric, outputKj: Double, distanceKm: Double) =
+        when (metric) {
+            RaceMetric.Output -> outputKj
+            RaceMetric.Distance -> distanceKm
+        }
 
     private suspend fun recordMetric(elapsedSec: Int) {
         val session = _currentSession.value ?: return
@@ -918,13 +1037,16 @@ class WorkoutService : Service() {
             powerIsMeasured = reading.powerIsMeasured
         )
 
-        // 24.3.7, the symmetric half of the measured-power gate. The rival's
-        // side was excluded by the query before the offer was made; this side
-        // cannot be known until the watts actually arrive, and one modelled
-        // sample is enough — `Mixed` fails `isTrustworthyAsMeasured` too.
-        if (!reading.powerIsMeasured && !rivalDiscredited && rivalTrace != null) {
-            rivalDiscredited = true
-            Log.i(TAG, "Dropping the ghost at ${elapsedSec}s: these watts are modelled")
+        // 24.3.7, the symmetric half of the measured-power gate. Everybody
+        // else's side was excluded by the query before the board was built;
+        // this side cannot be known until the watts actually arrive, and one
+        // modelled sample is enough — `Mixed` fails `isTrustworthyAsMeasured`
+        // too.
+        if (!reading.powerIsMeasured && !raceDiscredited &&
+            (rivalTrace != null || raceBoard != null)
+        ) {
+            raceDiscredited = true
+            Log.i(TAG, "Dropping the race at ${elapsedSec}s: these watts are modelled")
         }
 
         // 2.2a.1: the ride is already the calibration dataset. Kept in memory

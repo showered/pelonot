@@ -4,6 +4,7 @@ import com.pelonot.data.sensor.PowerModel
 import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
@@ -68,7 +69,22 @@ data class RideSnapshot(
      * overlay has half a second of attention and it belongs to the next sixty
      * seconds of pedalling.
      */
-    val rival: RivalStatus? = null
+    val rival: RivalStatus? = null,
+    /**
+     * The live leaderboard, or null when there is nobody to race (24.3.10).
+     *
+     * Supersedes [rival], and is null for the same three reasons that one is
+     * — nobody has ridden this class, or the rides that exist are not measured
+     * power, or this ride's own watts turned out modelled. **Never both**: the
+     * board and the single gap are two presentations of one race and drawing
+     * them together would put two answers to the same question on one screen.
+     *
+     * **Nothing renders it on the overlay.** 24.1.5 and 18.6 both say nothing
+     * social goes on the strip, and a leaderboard is a stronger case for that
+     * rule than the single gap was: the overlay has half a second of attention
+     * and it belongs to the next sixty seconds of pedalling.
+     */
+    val standings: LiveStandings? = null
 ) {
     val isPaused: Boolean get() = state == WorkoutState.Paused
     val isRunning: Boolean get() = state == WorkoutState.Active || state == WorkoutState.Paused

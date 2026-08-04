@@ -84,6 +84,13 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
         buildConfigField("String", "PELONOT_WEB_URL", "\"$pelonotWebUrl\"")
 
+        // PLAN 24.3.11. The single-rival ghost, superseded by the live
+        // leaderboard and kept rather than deleted: the owner asked for it to
+        // be flagged off, not binned, and a comparison that cannot be turned
+        // on cannot be judged. Flip to `true` to get the picker back on the
+        // class detail screen and the one-number gap card on the ride screen.
+        buildConfigField("boolean", "RIVAL_GHOST", "false")
+
         ksp {
             // Export Room schemas so migrations can be written and verified.
             arg("room.schemaLocation", "$projectDir/schemas")

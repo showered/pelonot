@@ -45,6 +45,7 @@ import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.core.Features
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.core.Formatters
 import com.pelonot.ui.viewmodel.AppUiState
@@ -344,9 +345,18 @@ fun PelonotNavGraph(
                 value = classId?.let { onLoadLeaderboard(it, youId) }
             }
 
-            // 24.3.3, read the same way and for the same reason.
+            // 24.3.3, read the same way and for the same reason — and off by
+            // default since 24.3.11. The live leaderboard needs nothing chosen
+            // here: it is everybody who qualifies, assembled when the ride
+            // starts. With the flag off this stays empty and the *Ride
+            // against* card is not drawn, which is the same path a class
+            // nobody has ridden already takes.
             val rivals by produceState(emptyList<ClassRival>(), classId, youId) {
-                value = classId?.let { onLoadRivals(it, youId) }.orEmpty()
+                value = if (Features.singleRivalGhost) {
+                    classId?.let { onLoadRivals(it, youId) }.orEmpty()
+                } else {
+                    emptyList()
+                }
             }
             // Held here rather than inside the screen so it survives the
             // intent prompt, which composes over this destination.

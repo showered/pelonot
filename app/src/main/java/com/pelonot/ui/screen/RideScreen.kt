@@ -65,6 +65,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +80,8 @@ import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.LiveStanding
+import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
@@ -736,7 +739,12 @@ private fun EffortColumn(
         // comparison and they are facts — and deliberately not in MetricGrid,
         // which already carries the zone ladder and four target gauges. The
         // ghost must not become a third thing competing for the same glance.
+        //
+        // Exactly one of these two draws (24.3.11): the board is the race, and
+        // the single gap is the same race with a `LIMIT 1` on it, kept behind
+        // a flag. The service never populates both.
         RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
+        LiveLeaderboardCard(state.snapshot.standings, Modifier.fillMaxWidth())
 
         RideTotals(state, Modifier.fillMaxWidth())
     }
@@ -822,6 +830,173 @@ private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * The live leaderboard: three rows, ranked, moving under the rider (24.3.10,
+ * 24.3.13).
+ *
+ * **Three rows and not the whole board**, which is what makes the owner's word
+ * *leaderboard* and 24.3.4's *"not a list"* stop contradicting each other. The
+ * board can have any number of people on it; a rider at 90 rpm can read the
+ * one they are chasing, themselves, and the one chasing them. It is Peloton's
+ * own behaviour and it is why their leaderboard is legible at all.
+ *
+ * **Two number spaces, and the sign is what tells them apart.** The rider's
+ * own row carries their total with its unit; every other row carries the gap
+ * to them, signed, with none. A number with a sign is a difference and a
+ * number without one is a total — the same convention the single-gap card
+ * shipped with (24.3.4), and it is safe here because the ranking agrees with
+ * it: the row above yours always carries a `+` and the row below always
+ * carries a `−`. There is never a moment when the sign has to be puzzled out.
+ *
+ * **Nothing is coloured for winning or losing**, which is the decision this
+ * feature has now made twice. Being behind a stronger housemate is not a
+ * mistake, and the ride screen's red is the colour of an error. The whole card
+ * is in the output colour, because the score is kilojoules and a kJ that is
+ * not the colour of kJ is a second colour language on one column.
+ */
+@Composable
+private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = Modifier) {
+    if (standings == null) return
+
+    Card(
+        // 24.3.13's consequence, drawn rather than described: your row moves
+        // between the other two as you pass and are passed, so the two
+        // neighbours change identity mid-ride. A scale bounce marks that the
+        // board moved — it is a `graphicsLayer`, so nothing reflows and 11.6.8
+        // stays fixed.
+        modifier = modifier.attentionBounce(trigger = standings.yourRank),
+        shape = MaterialTheme.expressiveShapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.medium)
+        ) {
+            Text(
+                // The one thing the window hides is how big the field is. A
+                // rider looking at three rows cannot tell whether there are
+                // two more below or twenty — so the header is the whole board
+                // in four characters. Leading gets a word instead of a number,
+                // because it is the state a rider is trying to reach and
+                // "1ST OF 5" is a worse way of saying it.
+                text = if (standings.leading) {
+                    "LEADING"
+                } else {
+                    "${ordinal(standings.yourRank)} OF ${standings.fieldSize}"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(4.dp))
+            standings.window.forEach { row ->
+                LeaderboardRow(row, standings.metric)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
+    val units = MaterialTheme.units
+    val magnitude = kotlin.math.abs(if (row.isYou) row.value else row.gapToYou)
+    val number = when (metric) {
+        RaceMetric.Output -> Formatters.kilojoulesValue(magnitude)
+        RaceMetric.Distance -> Formatters.distanceValue(magnitude, units)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(26.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "${row.rank}",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Normal,
+            color = if (row.isYou) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            // Reserved rather than sized to its own text, which is 11.6.8's
+            // finding: a column that fits itself shifts everything beside it
+            // the moment a rider goes from 9th to 10th.
+            modifier = Modifier.width(18.dp)
+        )
+        Spacer(Modifier.width(MaterialTheme.spacing.small))
+        Text(
+            // 24.3.6. A competitor whose own ride has run out says so, once,
+            // and their number stops moving — never a line extrapolated
+            // forward. It is far less confusing on a board than it was on the
+            // single gap, because the rows either side of it are still moving.
+            text = if (row.finished) {
+                "${row.name.uppercase()} · DONE"
+            } else {
+                row.name.uppercase()
+            },
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Normal,
+            color = if (row.isYou) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(MaterialTheme.spacing.small))
+        Text(
+            text = when {
+                row.isYou -> number
+                row.gapToYou >= 0 -> "+$number"
+                else -> "−$number"
+            },
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black,
+            color = if (row.isYou) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            softWrap = false
+        )
+        if (row.isYou) {
+            Spacer(Modifier.width(3.dp))
+            Text(
+                text = when (metric) {
+                    RaceMetric.Output -> "kJ"
+                    RaceMetric.Distance -> units.distanceLabel
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
+/** `3` → `3RD`, for the one place on the ride screen a position is spoken. */
+private fun ordinal(rank: Int): String {
+    val suffix = when {
+        rank % 100 in 11..13 -> "TH"
+        rank % 10 == 1 -> "ST"
+        rank % 10 == 2 -> "ND"
+        rank % 10 == 3 -> "RD"
+        else -> "TH"
+    }
+    return "$rank$suffix"
 }
 
 @Composable

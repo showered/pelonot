@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.social.RaceCompetitor
 import com.pelonot.domain.progress.MeanMaximalPower
 import com.pelonot.domain.progress.PersonalBest
 import com.pelonot.domain.progress.PersonalBests
@@ -459,7 +460,7 @@ class WorkoutRepository(
         excludingWorkoutId: String,
         beforeMs: Long
     ): PreviousBestRow? =
-        workoutDao.previousBestOfClass(classId, userId, excludingWorkoutId, beforeMs)
+        workoutDao.previousBestOfClass(classId, userId, excludingWorkoutId, beforeMs, sinceMs = 0L)
 
     /**
      * Everyone whose ride of this class could be raced live (24.3.3).
@@ -485,7 +486,8 @@ class WorkoutRepository(
                 // Nothing to exclude: there is no ride yet — this is asked on
                 // the class detail screen, before one starts.
                 excludingWorkoutId = "",
-                beforeMs = Long.MAX_VALUE
+                beforeMs = Long.MAX_VALUE,
+                sinceMs = 0L
             )?.let {
                 ClassRival(
                     workoutId = it.workoutId,
@@ -507,6 +509,78 @@ class WorkoutRepository(
         }
 
         return listOfNotNull(yourBest) + housemates
+    }
+
+    /**
+     * Everybody the ride about to start is racing, for the live leaderboard
+     * (24.3.12).
+     *
+     * Four kinds of row and they are **four queries rather than four formats**
+     * — three windows onto the rider's own history and one onto the household.
+     * The fifth kind, a friend's best, needs Phase 18 and their samples in the
+     * cloud; it is absent rather than errored, which is rule 3 of the
+     * connectivity model working as written.
+     *
+     * **The windows are rolling, not calendar**, and that is 22.5.1's finding
+     * applied rather than rediscovered: a calendar month resets on the 1st, so
+     * a rider who rode on the 29th and the 30th would open a class on the 1st
+     * and find the reachable ghost they were chasing simply gone. The owner
+     * asked for *"PB this month, PB this year"* and the honest version of that
+     * on a bike somebody rides twice a week is the last thirty days and the
+     * last twelve months. The labels say so.
+     *
+     * **The same ride qualifying twice appears once**, at its widest label —
+     * see [RaceCompetitor.Kind.widerThan]. Nothing else in here can produce a
+     * duplicate: the household query is one row per rider and excludes the
+     * rider themselves.
+     *
+     * Empty is an ordinary answer and nothing may be drawn for it (24.1.6).
+     */
+    suspend fun raceBoardFor(
+        classId: String,
+        youId: Int?,
+        excludingWorkoutId: String,
+        nowMs: Long
+    ): List<RaceCompetitor> {
+        val yours = youId?.let { id ->
+            listOf(
+                RaceCompetitor.Kind.YourBestEver to 0L,
+                RaceCompetitor.Kind.YourBestYear to nowMs - RACE_YEAR_MS,
+                RaceCompetitor.Kind.YourBestMonth to nowMs - RACE_RECENT_MS
+            ).mapNotNull { (kind, sinceMs) ->
+                workoutDao.previousBestOfClass(
+                    classId = classId,
+                    userId = id,
+                    excludingWorkoutId = excludingWorkoutId,
+                    beforeMs = Long.MAX_VALUE,
+                    sinceMs = sinceMs
+                )?.let { row ->
+                    RaceCompetitor(
+                        workoutId = row.workoutId,
+                        name = kind.label,
+                        kind = kind,
+                        outputKj = row.outputKj
+                    )
+                }
+            }
+        }.orEmpty()
+
+        val housemates = workoutDao.householdRivals(
+            classId = classId,
+            excludingWorkoutId = excludingWorkoutId,
+            // The guest sentinel, so a guest ride races the whole household
+            // rather than silently excluding whichever profile holds id -1.
+            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID
+        ).map {
+            RaceCompetitor(
+                workoutId = it.workoutId,
+                name = it.name,
+                kind = RaceCompetitor.Kind.Housemate,
+                outputKj = it.outputKj
+            )
+        }
+
+        return RaceCompetitor.oneRowPerRide(yours + housemates).take(MAX_RACE_FIELD)
     }
 
     /**
@@ -650,6 +724,32 @@ class WorkoutRepository(
 
         private const val DURATION_TOLERANCE = 0.10
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+
+        /**
+         * The live leaderboard's two rolling windows (24.3.12).
+         *
+         * `RECENT_WINDOW_DAYS` rather than a literal 30, so the *30 days* row
+         * on the board covers the same span as the dashboard's *Last 30 days*
+         * card. Two figures about the same rider that disagree about what
+         * recently means is the kind of thing nobody notices and nobody can
+         * explain afterwards.
+         */
+        private const val RACE_RECENT_MS = RECENT_WINDOW_DAYS * 24L * 60 * 60 * 1000
+        private const val RACE_YEAR_MS = 365L * 24 * 60 * 60 * 1000
+
+        /**
+         * A ceiling on the field, and it is a safety valve rather than a
+         * design (24.3.12).
+         *
+         * A household is a handful of profiles, so nothing today comes near
+         * it. What it bounds is the cost of being wrong later: every ghost is
+         * a whole ride's samples read off disk at ride start and held in
+         * memory for the length of the class — a 45-minute rival is around
+         * 2,700 points — and Phase 18's friends are an unbounded list from a
+         * network. Eight is more competitors than 24.3.13's three-row window
+         * can usefully hide behind.
+         */
+        private const val MAX_RACE_FIELD = 8
 
         /**
          * How far back the household panel looks (22.5.4).

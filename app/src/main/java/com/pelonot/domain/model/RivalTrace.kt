@@ -39,10 +39,22 @@ data class RivalTrace(
      */
     fun valueAt(second: Int): Double? {
         if (points.isEmpty() || second > finalSecond) return null
+
+        // Binary search rather than a scan, because the live leaderboard asks
+        // this of every competitor on every tick: a 45-minute rival is 2,700
+        // points, and a board of six read four times a second is 65,000 list
+        // steps a second on the thread that also records the ride.
+        var low = 0
+        var high = points.size - 1
         var result = 0.0
-        for ((sec, kj) in points) {
-            if (sec > second) break
-            result = kj
+        while (low <= high) {
+            val mid = (low + high) / 2
+            if (points[mid].first <= second) {
+                result = points[mid].second
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
         }
         return result
     }
