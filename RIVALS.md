@@ -1,5 +1,20 @@
 # Riding against someone — how the rival feature works
 
+> **Superseded, and switched off** (PLAN.md 24.3.11). What a rider gets now is
+> the **live leaderboard** — [LEADERBOARD.md](LEADERBOARD.md) — which is this
+> same race with the limit of one person taken off it. The owner's reasoning:
+> *"It has scope for including unlimited number of people whereas rivals is (i
+> think) just one person you race against. Let's not waste all the effort
+> though, let's feature flag the Rivals feature and keep it hidden away."*
+>
+> So this is hidden rather than deleted, and everything below is still true of
+> it. Build with `RIVAL_GHOST` set to `true` in `app/build.gradle.kts` and the
+> picker and the one-number card come back. **Almost none of what is described
+> here is behind that flag** — the elapsed-second alignment, the measured-power
+> rule and the crash survival are all still live, because the leaderboard is
+> built on top of them. What the flag hides is choosing one person before the
+> ride, and reading the race as a single number.
+
 A plain-English description of what got built for PLAN.md **24.3.3–24.3.9**,
 written because the owner asked for one. `plan/phase-24-household.md` has the
 reasoning behind each decision; this is what it *does*.
@@ -135,14 +150,16 @@ rode"* is still owed.
 
 ---
 
-## The bigger idea that's queued behind this
+## The bigger idea that's queued behind this — and has now been built
 
 The owner's own suggestion, recorded as **24.3.10**: do what Peloton does and
-show a proper live leaderboard in watts — several rows, your PB and a friend's
-PB, ranked as you ride.
+show a proper live leaderboard — several rows, your PB and a friend's PB,
+ranked as you ride.
 
-That's a different and arguably better shape than one number, and it
-deliberately reopens two decisions this build made (one number rather than a
-list; cumulative rather than instantaneous watts). It is written up in the plan
-with the tension noted rather than quietly resolved, and it is the next thing
-to look at in this area.
+**That is what shipped**, as 24.3.11–24.3.13, and it is described in
+[LEADERBOARD.md](LEADERBOARD.md). One of the two tensions it opened turned out
+not to be a tension at all: the owner settled the score as **the class total in
+kilojoules**, so the board is cumulative and this page's *"cumulative, not
+instantaneous"* rule stands unchanged. The other — one number against a list —
+the leaderboard resolves by showing **three rows**: you, the one you are
+chasing, and the one chasing you.

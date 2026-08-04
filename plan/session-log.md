@@ -8,6 +8,107 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 4 August 2026 (twenty-ninth sitting): one instruction at a time
+
+**Two things landed: 11.7, and the answer to the leaderboard's score.**
+
+**11.7 is built, on the owner's own priority, and it is the item that had come
+up three times.** *"What do i do? do i focus on zone, cadence, or
+resistance?"* — the answer is that it was never three instructions. Power is
+not something a rider *does*; it is what happens when you turn the pedals at
+some cadence against some resistance. One outcome, two controls, and the
+screen was giving all three the same size tile, the same gauge and the same
+amber.
+
+**The block now says which axis it is asking for.** 11.7.2 had already chosen
+route (b) — name it in the catalogue — over route (a), derive it from the
+cadence band. The implementation puts governance on the **cadence intent**:
+`GRIND`, `CLIMB`, `SPIN` and `SURGE` govern by cadence and the middle of the
+range does not, with `POWER(x)` and `CADENCE(x)` overriding at the call site.
+That is not route (a) in disguise, and the distinction is the whole reason (b)
+was chosen: an author who writes `GRIND` **has said what they mean**, and the
+50–60 band is a consequence of that intent rather than its source. It seeded
+**231 blocks of 1071** — exactly the 231 the tails measurement found before
+the field existed — and 840 write nothing, because absent means power.
+
+**What a rider sees.** Resistance loses its band outright, on both surfaces
+and always: no class prescribes it, the band was `PowerModel` inverted, and
+that curve is 66% out at the median against the board's own watts. Of the
+three numbers competing for attention mid-effort it was **the derived guess,
+drawn with the same authority as the two that are measured**. The governing
+metric keeps the gauge, the amber, the arrow and the `TARGET` line; the other
+keeps its shaded band and loses every signal that says the rider is wrong.
+The consequence is the thing to judge it by: **exactly one tile carries a
+`TARGET` line at any moment.**
+
+**Observed on the tablet AVD across both governed states of one class**,
+`CLB-01`, which has both. On the Z2 endurance block a rider at 94 rpm against
+an 80–90 band is quiet cyan — no arrow, no target line — while power carries
+`TARGET 80–108 watts` and the amber; on the Z4 grind the two swap completely.
+The strip's line under the timer said `75–85 RPM · 30–40%` and now says
+`0–80 W` or `50–60 RPM` depending on the block. The next-up preview shows the
+rpm only for a block that is asking for it, seen both ways round in one
+screenshot.
+
+**Four surfaces changed, not the two the items named**, and the two extra were
+found by driving the flow rather than reading the diff: the next-up preview
+was naming a cadence directly under the zone name that was the real
+instruction, and the class detail list — the one screen where both halves
+belong, because it is where a class is *studied* — now bolds the governing
+half and dims the other.
+
+**And the voice had 11.7.1a's exact twin, which no item named.** `adviceFor`
+checked the cadence first and *returned* on it, so on a threshold block a
+rider spinning a perfectly good 92 rpm against the library's neutral default
+was told to ease back — and the power drift the class actually cared about
+**could never be reached at all**. Same defect as the amber, one channel
+louder.
+
+**On the bike itself**, which is where the second defect came from. The class
+library re-seeded against the owner's own seven rides with nothing lost — 73
+templates, still one retired, all four ride links intact, 32 of the 72 now
+carrying `governed_by`. And the position chip was drawing **"SIT" as a
+vertical S/I/T**: three letters is not too long for a chip, it is too long for
+the room the chip was left, which is the note `MetricReadout` already carries
+about "BPM". Invisible on the AVD, obvious on the tablet.
+
+**And the leaderboard's score is settled** (24.3.14). Asked directly and
+answered directly: **the class total in kilojoules**, *"the score that the real
+peloton gives you"* — so cumulative, and 24.3.5 and 11.6.7 both stand rather
+than being reopened. The owner asked for the data to be **metric-agnostic** in
+the same breath, and left the judgement to me: *"if it's really that trivial"*.
+It was, and the measurement is the reason — `WorkoutAggregates.from` was
+already integrating kilojoules **and** kilometres in one pass over the same
+samples with the same gap clamp, and `RivalTrace.from` was duplicating half of
+that loop. Sharing the constants closed a drift rather than adding one: a
+second copy of metres-per-revolution would have given the ghost a distance that
+disagreed with the distance the ride recorded. **The toggle is 24.3.15**, and
+it is deferred for a stated reason rather than a vague one — it is a control on
+the leaderboard's own surface, and the only place it could live today is the
+picker 24.3.11 is about to hide.
+
+One finding to carry into the build: **a distance race needs no measured
+power.** 24.4.2 excludes any ride with a single non-measured sample, which is
+why most classes have no ghost at all today — but distance is integrated
+*cadence*, measured on every ride this app has ever recorded.
+
+**The inbox is empty.** *Rivals vs Leaderboard* became **24.3.11–24.3.14**:
+the leaderboard wins on the owner's own reasoning (a rival's ceiling is one
+person), the ghost goes behind a flag rather than into the bin, and
+**24.3.14 is a question back** — *watts* has now been used twice for the
+score, and the two readings of *"as of this point in the class"* build
+different features.
+
+616 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite was
+run with `ANDROID_SERIAL=emulator-5554` because the bike was attached the whole
+session.
+
+**What is owed on 11.7:** the spoken half was not heard, only tested. A cue
+lasts a second or two and CLAUDE.md's own rule is that audio is the rider's to
+confirm, not something to poll `dumpsys` for.
+
+---
+
 ### 4 August 2026 (twenty-eighth sitting): riding against somebody, and the shape the owner wants instead
 
 **The live ghost is built — 24.3.3, 24.3.4, 24.3.5, 24.3.7, 24.3.8 and 24.3.9

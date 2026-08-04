@@ -748,6 +748,42 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       first ride loses the app's primary surface silently. Small; check what
       Settings already says before writing anything new
 
+- [ ] **11.6.16** **The countdown grows, and pushes the totals off the bottom
+      of the screen.** The owner's note, 5 August 2026, verbatim: *"When the
+      'next' section is counting down, it gets a bit bigger. No problem with
+      this but it bumps the cards underneath it down, and actually off screen.
+      Perhaps the 'next' card can shrink to accomodate it and the bottom
+      section (output, distance, power) can then remain entirely static."*
+
+      **The mechanism is known and the note names the fix.** `NextUpBlock` is
+      an `AnimatedContent` that swaps `NextUpPreview` for `CountdownBanner` in
+      the last seconds of a block (11.6.13's countdown, applied to interval
+      changes), and the two are not the same height. The effort column is a
+      plain `Column` with a `Spacer(weight(1f))` in it: while there is slack
+      the spacer absorbs the difference and nothing moves, and the moment there
+      is not, the growth comes off the **bottom** — silently, because a Column
+      clips rather than complaining. So the totals row disappears for a few
+      seconds at every interval boundary, which is both the least stable
+      moment on the screen and the one where the rider is least able to work
+      out what happened.
+
+      Three things worth knowing before picking it up:
+      - **24.3.13b made this both better and worse**, and it is worth being
+        honest about which. Moving *then* into that column took the slack
+        away, so this bites at more moments than it used to; moving the
+        leaderboard *out* of it gave back more than that. The note arrived
+        while looking at the result, which is the sequence that finds these.
+      - **The owner's suggested fix is the right shape and it generalises.**
+        The problem is not the countdown, it is that *any* growth above the
+        totals is paid for by the totals. Reserving the height of the taller
+        of the two states inside `NextUpBlock` fixes it once, for both
+        directions, and costs a few dp of white space the rest of the time —
+        which is 11.6.8's own trade (*reserve the widest string*) turned
+        ninety degrees.
+      - **The bottom row has to be the fixed point.** OUTPUT, DISTANCE and AVG
+        POWER are the numbers a rider looks for without looking, and a row
+        that is sometimes there is worse than a row that is smaller.
+
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 
 > The owner, verbatim, from the inbox: *"UX-wise it's difficult to know what to

@@ -232,7 +232,7 @@ downgrade — it is why the feature can afford to be interesting.
 > uncapped — 22.6 both ways round), and the gap drawn in a coral that reads as
 > red, which told a rider one kilojoule down that they were failing.
 
-- [ ] **24.3.10 A live leaderboard, not just a single gap** — the owner's
+- [x] **24.3.10 A live leaderboard, not just a single gap** — the owner's
       note, 4 August 2026, live in chat rather than through the inbox.
       Paraphrased for the numbers: *"let's do what Peloton does and show a
       live leaderboard (in watts) which includes a live 'as it stands'
@@ -271,7 +271,23 @@ downgrade — it is why the feature can afford to be interesting.
       whoever picked it up. 24.3.11 to 24.3.14 are that answer, split by the
       decision each one carries.
 
-- [ ] **24.3.11** **The leaderboard wins, and the rival goes behind a flag
+      **Built, 5 August 2026**, as 24.3.11 to 24.3.13b. Both tensions this item
+      recorded rather than resolved are now resolved, and neither the way it
+      feared:
+      - *"Not a list"* against *leaderboard* was settled by **24.3.13's
+        window**. The board has any number of rows and the ride screen shows
+        three of them, so 24.3.4's argument survives intact — what a rider
+        reads mid-effort is still small enough to read.
+      - *Cumulative against instantaneous* was settled by **the owner
+        directly** in 24.3.14: the score is the class total in kilojoules, so
+        the word *watts* in this item was loose language and 11.6.7 was never
+        actually reopened.
+
+      What was **not** foreseen here is how much of the ghost the board would
+      simply inherit — see 24.3.11. The presentation is nearly all of what
+      changed.
+
+- [x] **24.3.11** **The leaderboard wins, and the rival goes behind a flag
       rather than into the bin.** The owner, verbatim: *"We have two competing
       ideas. One is yours, one is mine. I think i prefer Leaderboard as a
       feature for 'chasing' your PB or your friend's PB. It has scope for
@@ -297,7 +313,25 @@ downgrade — it is why the feature can afford to be interesting.
       question the leaderboard has too; the rival is where it is already
       written down.
 
-- [ ] **24.3.12** **What is on the board, and it is more than housemates.**
+      **Built exactly that way.** `BuildConfig.RIVAL_GHOST`, false, read
+      through `core/Features` rather than at the call sites — and the reason
+      for the indirection is worth keeping, because it is what stops a flag
+      rotting: a `BuildConfig` boolean is a **compile-time** `false`, so
+      `if (BuildConfig.X)` folds away and the compiler starts calling the
+      branch behind it unreachable. Warnings become a deletion nobody meant to
+      make. Reading it through a `val` keeps the code alive.
+
+      **How little is actually behind it is the finding.** Two call sites: the
+      picker's query on the class detail screen, and the choice of which race
+      to load in `WorkoutService`. `RivalTrace`, the elapsed-second alignment,
+      the measured-power gate and `active_ride_rival` are all still on the
+      live path — which is 24.3.11's own claim ("the work is a foundation
+      rather than a detour") turning out to be true when it was cashed in.
+      `RIVALS.md` carries the superseded banner and says which flag turns it
+      back on. *Observed on the tablet AVD: the class detail screen for
+      `END-01` with the household board and no* Ride against *card.*
+
+- [x] **24.3.12** **What is on the board, and it is more than housemates.**
       Verbatim: *"Not only can it include your own PB as a 'ghost' to chase on
       the leaderboard, but also it could be PB this month, PB this year, and
       all your friends scores too. Just something to always be reaching for,
@@ -321,7 +355,74 @@ downgrade — it is why the feature can afford to be interesting.
         to absent rather than to an error: rule 3 of the connectivity model
         says the household board is a Room query and never touches the network.
 
-- [ ] **24.3.13** **A window, not a list — the row above you and the row
+      **Built, and the four queries turned out to be one query with a floor on
+      it plus `householdRivals` unchanged.** `previousBestOfClass` took a
+      `sinceMs`, so *ever*, *twelve months* and *thirty days* are the same SQL
+      with the same measured-power exclusion — which matters more than the line
+      count: three copies of that `NOT EXISTS` clause is three places for the
+      honesty rule to drift out of step.
+
+      **The windows are rolling, and that is 22.5.1 applied rather than
+      rediscovered.** The owner asked for *"PB this month, PB this year"* and
+      the calendar reading of that is the defect 22.5.1 already wrote down: a
+      month resets on the 1st, so a rider who rode on the 29th and the 30th
+      opens a class on the 1st and the reachable ghost they were chasing is
+      simply gone — on the day they least want it to be. Thirty days and
+      twelve months never reset. The rows say `30 DAYS` and `12 MONTHS` for
+      that reason: a rolling window labelled *this month* would be the same
+      lie in the opposite direction.
+
+      **One ride, one row, at its widest label**, which is 22.5's finding as a
+      function: `RaceCompetitor.oneRowPerRide`. A rider whose best-ever ride of
+      a class was three weeks ago has one ride answering all three of their own
+      questions, and this is the ordinary case rather than an exotic one. It is
+      pure and JVM-tested, in the domain rather than in the repository, because
+      it is a rule and not a query.
+
+      *Observed on the tablet AVD, `END-01` with six seeded measured rides:*
+      `Racing 5 on END-01: Your best 200, 12 months 160, 30 days 139, Kilo 180,
+      Grace 120` — five rows from six rides, with the 100 kJ ride that is never
+      the best of anything correctly absent, and no ride appearing twice.
+
+- [ ] **24.3.12a What the opponents are called — the owner's to decide, and
+      they have said so.** The note, 5 August 2026, verbatim: *"We're still
+      working on the fundamentals so let's no waste time getting hung up on
+      what the 'opponents' are called. But just for the record '12 months' is
+      no good at all. We should have a brainstorm at some point to come up with
+      a definitive list for who the opponents should be. Maybe put that as an
+      action on me, and just carry on what you're doing for now. You can remind
+      me at a later date if i haven't decided yet."*
+
+      **So this is an open item with the owner named on it**, which is rare
+      enough in this plan to be worth marking as such — most items are work
+      waiting for a session. It stays open until they have decided, and a
+      session that finds it still open should say so rather than invent an
+      answer.
+
+      What is worth having ready for that conversation, so it is a decision
+      rather than a blank page:
+      - **`12 months` is bad for a nameable reason**, and naming it makes the
+        replacement easier: it is a *duration*, and every other row is a
+        *person*. On a board where the neighbouring rows say `KILO` and `YOU`,
+        a row saying `12 MONTHS` is a category error before it is a bad label.
+        `30 DAYS` has the same fault and is only less obvious because it is
+        shorter.
+      - **The constraint is real and it is the screen.** These sit in a 320 dp
+        column beside a rank and a 26 sp number, read from two metres by
+        somebody at 90 rpm. *"Your best of the last twelve months"* is accurate
+        and unreadable, which is how the current labels got to be durations in
+        the first place.
+      - **The thing being named is not obvious either**, and that may be the
+        more useful half of the brainstorm. A row is *the rider, as they were
+        over some window* — a past self. Nothing in the app has ever had to
+        name one of those, and the answer may not be a shorter description at
+        all. It might be an idea: *you in the spring*, a personified ghost, or
+        simply a date.
+      - **Whatever is chosen, the label is one string per `RaceCompetitor
+        .Kind`** and changing it touches nothing else. That is worth saying
+        plainly so the decision is not weighed as if it were expensive.
+
+- [x] **24.3.13** **A window, not a list — the row above you and the row
       below.** Verbatim: *"I'm expecting it to show the person above you, the
       person below you."* This is what makes 24.3.4's *"not a list"* and the
       owner's *"leaderboard"* stop contradicting each other, and it is worth
@@ -336,6 +437,70 @@ downgrade — it is why the feature can afford to be interesting.
       jumping; and at the top of the board there is no row above you, which is
       the state worth designing first because it is the one a rider wants to
       be in.
+
+      **Built, and the answer to both consequences is the same one: the window
+      slides, it never shrinks.** Leading gives you the three rows below you;
+      last gives you the three above; anywhere else gives you the neighbour
+      each side. A card that lost a row at the top of the board would change
+      height at the exact moment a rider was doing well, and 11.6.8 is this
+      project's own finding that a ride screen which resizes under a rider is
+      unreadable at 90 rpm. **Last is not a corner case either — it is the
+      first ten seconds of every race**, because the whole field starts on
+      zero and anybody who moved first is ahead of a rider who has not turned
+      a pedal.
+
+      Two smaller decisions the drawing forced:
+      - **The header carries what the window hides.** Three rows cannot say
+        whether there are two more below or twenty, so the card says
+        `6TH OF 6` — and `LEADING` instead of `1ST OF 6`, because that is the
+        thing a rider was trying to do and the ordinal is a worse way of
+        saying it.
+      - **Two number spaces on one card, and the sign tells them apart.** Your
+        row carries your total with its unit; every other row carries the gap
+        to you, signed, without one. It is safe only because the ranking
+        agrees with it — the row above always reads `+`, the row below always
+        reads `−` — which is the same reason 24.3.4's single gap could get
+        away with the opposite convention.
+
+- [x] **24.3.13a A lever so the race can be *seen* on the emulator.** Not in
+      any earlier item, and it was needed the moment the board existed: 24.3.7
+      means every AVD ride drops its race one second in, so the only place the
+      feature could be looked at was a bike with a rider on it — and CLAUDE.md
+      is right that that is a perishable resource. `com.pelonot.debug.RACE`,
+      beside `COAST`, `CORRUPT` and `SILENCE`, is the same move for the same
+      reason.
+
+      **What makes it safe is what it does not touch.** `power_is_measured` is
+      still recorded honestly, sample by sample, so a ride captured under the
+      lever is still excluded from every board, every FTP proposal and every
+      calibration fit afterwards. Only the *live* comparison stops refusing to
+      draw. A lever that made a simulated ride **claim** to be measured would
+      poison the record permanently and be indistinguishable from a real ride
+      afterwards — which is the exact class of defect that column exists to
+      prevent, so the distinction is the whole of the argument and is written
+      out in `RaceDebug`.
+
+- [x] **24.3.13b Where the board goes, and what had to move for it.** The
+      owner, looking at the first draft on the tablet: *"'Then' section should
+      go under 'next'. This then frees up space for leaderboard which is where
+      your eyes are naturally drawn to anyway."*
+
+      Both halves are right and the first is **11.6.1's own argument carried
+      one step further**. That item moved the *next* effort out of the right
+      column to hang off the current one, because "what I am doing" and "what
+      I have to be ready for" are read together; the rest of the class was the
+      only part of that one thought still sitting in another column. It is
+      three rows there rather than four — it is a shape, not a schedule, and
+      it now shares a column with the timer and the totals.
+
+      **The board needed the room, and the first draft proved it by being
+      wrong.** Squeezed above the totals in the effort column it pushed
+      `OUTPUT`, `DISTANCE` and `AVG POWER` off the bottom of the screen —
+      clipped silently, with nothing failing. Found by looking at the tablet,
+      which is the only way that kind of thing is ever found, and the reason
+      CLAUDE.md says `assembleDebug` passing proves very little. With a column
+      of its own the rows are 44 dp with a 26 sp number and read at two
+      metres.
 
 - [x] **24.3.14 The score is the class total in kilojoules — answered, and the
       answer came with a second ask attached.** The question was put directly
@@ -393,6 +558,48 @@ downgrade — it is why the feature can afford to be interesting.
       **Only `Output` is reachable today** — nothing selects the other, because
       selecting it is 24.3.15. The distance path is exercised by tests and by
       nothing else, which is the honest state of it.
+
+- [ ] **24.3.16 The leaderboard on the overlay — and it reopens a rule twice
+      written down.** The owner's note, 5 August 2026, verbatim: *"Need to
+      think about how it works in HUD mode. We don't want to show too much
+      information But maybe we can squeeze a tiny version of the leaderboard
+      on. And in compact mode of the HUD there simply isn't space, so don't
+      include it. At a later date I will have a think about what we can do to
+      improve compact mode. But not now."*
+
+      **This is the owner overruling 24.1.5 and 18.6, and they should be read
+      before it is built rather than quietly dropped.** Both say nothing social
+      goes on the strip, for the reason 19.4 gives: the overlay has half a
+      second of a rider's attention and it belongs to the next sixty seconds of
+      pedalling. That reasoning is not wrong and the note does not claim it is
+      — *"We don't want to show too much information"* is the same concern,
+      arriving at a different answer. What has changed since those items is
+      that the thing being excluded is no longer a social ornament: **the race
+      is now the only thing on the ride screen that says whether the effort is
+      going well**, and a rider watching a film cannot see it at all.
+
+      The note already makes two of the three decisions:
+      - **Nothing at all in the collapsed strip.** Stated plainly, and it is
+        the right call: `HudCollapsed` is four `CompactMetric` readouts on one
+        line and there is no room for a fifth thing, let alone a ranked one.
+      - **A "tiny version" in the expanded overlay**, not the card. Which
+        raises the only real question here: **what is the smallest honest
+        leaderboard?** Three rows will not fit. One row might — and one row is
+        24.3.4's single gap, which is exactly what 24.3.11 has just put behind
+        a flag. That is not an argument against it; it is an argument for
+        being deliberate, because the overlay's answer may legitimately be the
+        shape the full screen rejected. Candidates, cheapest first: the
+        position alone (`5TH OF 6`), the position plus the gap to the row
+        above (the number a rider can act on), or the single row above you.
+      - **What the third decision is:** whether it appears at all when there
+        is no race, and the answer that follows from everything else here is
+        that it must not — 24.1.6's rule, and on the overlay an empty row is
+        more expensive than anywhere else in the app.
+
+      Not started. `HudExpanded` in `HudOverlayMain.kt` is where it would go,
+      and `RideSnapshot.standings` is already published to it — the overlay
+      renders from the same snapshot the ride screen does, so the data is
+      there and only the drawing is missing.
 
 - [ ] **24.3.15 The toggle: race by output, or race by distance.** Deferred on
       the owner's own *"otherwise just add it to the plan"*, and the reason it

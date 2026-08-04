@@ -104,11 +104,16 @@ fixing, a `LazyColumn` in place of the grid), and rivals against a leaderboard
 (**24.3.11–24.3.14** — the owner's choice is the leaderboard, the rival goes
 behind a flag rather than into the bin, and **24.3.14 is a question back**:
 *watts* has now been used twice for the score and it decides whether the board
-re-sorts several times a second).
+re-sorts several times a second), the countdown pushing the totals off the
+bottom of the screen (**11.6.16**, and the note names the fix as well as the
+fault), what the opponents on the leaderboard should be called (**24.3.12a** —
+**an open item with the owner's name on it**, at their own request, and a
+session that finds it still open should say so rather than invent an answer),
+and the leaderboard on the overlay (**24.3.16**, which **overrules 24.1.5 and
+18.6** — nothing social on the strip — and the write-up says so plainly rather
+than letting two rules quietly disagree).
 
-### Ride screen (full screen mode)
-
-When the "next" section is counting down, it gets a bit bigger. No problem with this but it bumps the cards underneath it down, and actually off screen. Perhaps the "next" card can shrink to accomodate it and the bottom section (output, distance, power) can then remain entirely static.
+*(The inbox is empty.)*
 
 ---
 
@@ -163,146 +168,141 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 4 August 2026 (twenty-ninth sitting): one instruction at a time
+### Latest session — 5 August 2026 (thirtieth sitting): the leaderboard, and the column the eye goes to
 
-**Two things landed: 11.7, and the answer to the leaderboard's score.**
+**The live leaderboard is built** — 24.3.10 through 24.3.13b — and it is the
+feature the owner asked for in the last sitting, in Peloton's own shape.
 
-**11.7 is built, on the owner's own priority, and it is the item that had come
-up three times.** *"What do i do? do i focus on zone, cadence, or
-resistance?"* — the answer is that it was never three instructions. Power is
-not something a rider *does*; it is what happens when you turn the pedals at
-some cadence against some resistance. One outcome, two controls, and the
-screen was giving all three the same size tile, the same gauge and the same
-amber.
+**What a rider gets.** Start a class anybody on the bike has ridden before and
+a board appears, ranked live on the class total in kilojoules, with **three
+rows: the one you are chasing, you, and the one chasing you.** Nobody is
+picked; the race is simply there. Four kinds of row (24.3.12) — your best
+ever, your best of the last twelve months, your best of the last thirty days,
+and every housemate's best — so a rider who is improving has an unreachable
+ghost and a very reachable one at the same time. That is the owner's own
+reasoning: *"Just something to always be reaching for, you know?"*
 
-**The block now says which axis it is asking for.** 11.7.2 had already chosen
-route (b) — name it in the catalogue — over route (a), derive it from the
-cadence band. The implementation puts governance on the **cadence intent**:
-`GRIND`, `CLIMB`, `SPIN` and `SURGE` govern by cadence and the middle of the
-range does not, with `POWER(x)` and `CADENCE(x)` overriding at the call site.
-That is not route (a) in disguise, and the distinction is the whole reason (b)
-was chosen: an author who writes `GRIND` **has said what they mean**, and the
-50–60 band is a consequence of that intent rather than its source. It seeded
-**231 blocks of 1071** — exactly the 231 the tails measurement found before
-the field existed — and 840 write nothing, because absent means power.
+**The single rival is hidden rather than deleted** (24.3.11), on the owner's
+instruction, and the interesting part is **how little was behind the flag**.
+Two call sites. `RivalTrace`, the elapsed-second alignment, the measured-power
+gate and `active_ride_rival` are all still on the live path, because the
+leaderboard is built on top of every one of them. 24.3.11's claim that the
+ghost was *"a foundation rather than a detour"* was cashed in this sitting and
+it held.
 
-**What a rider sees.** Resistance loses its band outright, on both surfaces
-and always: no class prescribes it, the band was `PowerModel` inverted, and
-that curve is 66% out at the median against the board's own watts. Of the
-three numbers competing for attention mid-effort it was **the derived guess,
-drawn with the same authority as the two that are measured**. The governing
-metric keeps the gauge, the amber, the arrow and the `TARGET` line; the other
-keeps its shaded band and loses every signal that says the rider is wrong.
-The consequence is the thing to judge it by: **exactly one tile carries a
-`TARGET` line at any moment.**
+**Three decisions the drawing forced, and each has a rule behind it.**
+- **The window slides; it never shrinks.** Leading gives you the three below,
+  last gives you the three above. A card that lost a row at the top would
+  change height at the exact moment a rider was doing well — 11.6.8 by a new
+  door. And last is not a corner case: it is the first ten seconds of every
+  race, since the field starts level and anybody who moved first is ahead of a
+  rider who has not turned a pedal.
+- **The header carries what the window hides** — `4TH OF 6`, and `LEADING`
+  rather than `1ST OF 6`, because that is what a rider was trying to do.
+- **Two number spaces, and the sign tells them apart.** Your row is your total
+  with its unit; every other row is the gap to you, signed, without one. Safe
+  only because the ranking agrees with it: above always reads `+`, below always
+  reads `−`.
 
-**Observed on the tablet AVD across both governed states of one class**,
-`CLB-01`, which has both. On the Z2 endurance block a rider at 94 rpm against
-an 80–90 band is quiet cyan — no arrow, no target line — while power carries
-`TARGET 80–108 watts` and the amber; on the Z4 grind the two swap completely.
-The strip's line under the timer said `75–85 RPM · 30–40%` and now says
-`0–80 W` or `50–60 RPM` depending on the block. The next-up preview shows the
-rpm only for a block that is asking for it, seen both ways round in one
-screenshot.
+**The owner moved the furniture mid-sitting, and was right** (24.3.13b).
+*"'Then' section should go under 'next'. This then frees up space for
+leaderboard which is where your eyes are naturally drawn to anyway."* The first
+half is 11.6.1's own argument carried one step further — *now*, *next* and
+*then* are one thought, and the rest of the class was the only part of it still
+in another column. The second half fixed a defect the first draft had already
+caused: squeezed above the totals, the board had pushed `OUTPUT`, `DISTANCE`
+and `AVG POWER` clean off the bottom of the screen, silently, because a Column
+clips rather than complaining. Found by looking at the tablet.
 
-**Four surfaces changed, not the two the items named**, and the two extra were
-found by driving the flow rather than reading the diff: the next-up preview
-was naming a cadence directly under the zone name that was the real
-instruction, and the class detail list — the one screen where both halves
-belong, because it is where a class is *studied* — now bolds the governing
-half and dims the other.
+**And a lever, because otherwise this could only be looked at on a bike with a
+rider on it** (24.3.13a). The measured-power gate means every AVD ride drops
+its race one second in. `com.pelonot.debug.RACE` lets the *live* board draw on
+a simulated ride and **changes nothing that is written down** — the samples
+still record honestly that the watts were modelled, so the ride is still
+excluded from every board afterwards. That distinction is the whole safety
+argument: a lever that made a simulated ride *claim* to be measured would
+poison the record permanently.
 
-**And the voice had 11.7.1a's exact twin, which no item named.** `adviceFor`
-checked the cadence first and *returned* on it, so on a threshold block a
-rider spinning a perfectly good 92 rpm against the library's neutral default
-was told to ease back — and the power drift the class actually cared about
-**could never be reached at all**. Same defect as the amber, one channel
-louder.
+**Observed on the tablet AVD**, against six hand-seeded measured rides of
+`END-01` and across a whole 20-minute class: `Racing 5 on END-01: Your best
+200, 12 months 160, 30 days 139, Kilo 180, Grace 120` — five rows from six
+rides, with the ride that is never the best of anything absent and nothing
+appearing twice. Then the board moving under a rider through three states:
+`6TH OF 6` with two rows above at the start, `5TH OF 6` after passing *30
+days*, and `4TH OF 6` with a neighbour each side. The class detail screen
+draws the household board and **no** *Ride against* card, which is the flag.
+And the board rebuilt itself after a mid-ride resume with nothing having been
+written down for it — the class and the rider are already on the row.
 
-**On the bike itself**, which is where the second defect came from. The class
-library re-seeded against the owner's own seven rides with nothing lost — 73
-templates, still one retired, all four ride links intact, 32 of the 72 now
-carrying `governed_by`. And the position chip was drawing **"SIT" as a
-vertical S/I/T**: three letters is not too long for a chip, it is too long for
-the room the chip was left, which is the note `MetricReadout` already carries
-about "BPM". Invisible on the AVD, obvious on the tablet.
+**The inbox had three entries and is empty.** The countdown pushing the totals
+off the bottom of the screen (**11.6.16** — a real defect, and the note names
+the fix as well as the fault); what the opponents should be called
+(**24.3.12a**, *"12 months is no good at all"* — **an open item with the
+owner's name on it at their own request**, so a session that finds it still
+open should say so rather than invent an answer); and the leaderboard on the
+overlay (**24.3.16**, which **overrules 24.1.5 and 18.6** — nothing social on
+the strip — and the write-up says so plainly rather than letting two rules
+quietly disagree).
 
-**And the leaderboard's score is settled** (24.3.14). Asked directly and
-answered directly: **the class total in kilojoules**, *"the score that the real
-peloton gives you"* — so cumulative, and 24.3.5 and 11.6.7 both stand rather
-than being reopened. The owner asked for the data to be **metric-agnostic** in
-the same breath, and left the judgement to me: *"if it's really that trivial"*.
-It was, and the measurement is the reason — `WorkoutAggregates.from` was
-already integrating kilojoules **and** kilometres in one pass over the same
-samples with the same gap clamp, and `RivalTrace.from` was duplicating half of
-that loop. Sharing the constants closed a drift rather than adding one: a
-second copy of metres-per-revolution would have given the ghost a distance that
-disagreed with the distance the ride recorded. **The toggle is 24.3.15**, and
-it is deferred for a stated reason rather than a vague one — it is a control on
-the leaderboard's own surface, and the only place it could live today is the
-picker 24.3.11 is about to hide.
-
-One finding to carry into the build: **a distance race needs no measured
-power.** 24.4.2 excludes any ride with a single non-measured sample, which is
-why most classes have no ghost at all today — but distance is integrated
-*cadence*, measured on every ride this app has ever recorded.
-
-**The inbox is empty.** *Rivals vs Leaderboard* became **24.3.11–24.3.14**:
-the leaderboard wins on the owner's own reasoning (a rival's ceiling is one
-person), the ghost goes behind a flag rather than into the bin, and
-**24.3.14 is a question back** — *watts* has now been used twice for the
-score, and the two readings of *"as of this point in the class"* build
-different features.
-
-616 JVM tests and 62 instrumented tests, 0 failures. The instrumented suite was
-run with `ANDROID_SERIAL=emulator-5554` because the bike was attached the whole
-session.
-
-**What is owed on 11.7:** the spoken half was not heard, only tested. A cue
-lasts a second or two and CLAUDE.md's own rule is that audio is the rider's to
-confirm, not something to poll `dumpsys` for.
+**What is owed.** 24.3.6's *"they finished"* state and the board's behaviour on
+a real bike. Everything else here was seen.
 
 ---
 
 ### What to do next, in order
 
-**The owner set the order directly last sitting; the first of the two is now
-done and the second is next.**
+**The leaderboard is built, so the order is the owner's own two remaining
+notes first — both of them are about the screen it now lives on — and then the
+one item that was already queued.**
 
-1. **24.3.10–24.3.14 — the live leaderboard the owner actually wants.** *"I
-   think my live leaderboard idea works better and I'd rather you get cracking
-   on that."* Peloton's shape: several rows, ranked live, your PB and a
-   friend's PB. The inbox filled in the rest of it this sitting — **24.3.11**
-   puts the single rival behind a flag rather than deleting it (everything
-   under the ghost is a leaderboard with a `LIMIT 1` on it; only the
-   presentation is single-rival), **24.3.12** is the four kinds of row,
-   **24.3.13** is the window that makes it legible at 90 rpm (the row above
-   you and the row below), and **24.3.14 is a question for the owner before
-   any of it is built** — see below.
-2. **15.7 — the Supabase emails.** Written up in full, and the templates are
+1. **11.6.16 — the countdown pushes the totals off the bottom of the screen.**
+   The owner's note this sitting, and it is a real defect rather than a
+   preference: `NextUpBlock` grows when it swaps the next-up preview for the
+   countdown, the effort column has no slack left, and a `Column` clips
+   silently — so `OUTPUT`, `DISTANCE` and `AVG POWER` vanish for a few seconds
+   at every interval boundary. The note names the fix as well as the fault
+   (reserve the taller state's height), and it generalises: the problem is not
+   the countdown, it is that anything growing above the totals is paid for by
+   the totals.
+2. **24.3.16 — the leaderboard on the overlay.** The owner's note, and it
+   **overrules 24.1.5 and 18.6** — *nothing social on the strip*. Read those
+   two first: 19.4's reasoning behind them is not wrong, and the note shares
+   the concern (*"We don't want to show too much information"*) while reaching
+   a different answer. Two of the three decisions are already made in the note
+   — nothing in the collapsed strip, a tiny version in the expanded overlay —
+   and the third is the interesting one: **what is the smallest honest
+   leaderboard?** Three rows will not fit; one row is the shape 24.3.11 has
+   just put behind a flag, which is an argument for being deliberate rather
+   than against it. `RideSnapshot.standings` already reaches the overlay, so
+   only the drawing is missing.
+3. **15.7 — the Supabase emails.** Written up in full, and the templates are
    ours to replace through the Management API with the token already in
    `local.properties`. Two of the six matter, the From line needs a domain that
    does not exist yet (15.7.3), and it changes the owner's live auth config,
    which is the one place in this project where being careless is a breach
    rather than a bug.
 
-**Nothing is blocking it any more.** 24.3.14 was the one open question and the
-owner answered it this sitting: **the score is the class total in kilojoules**,
-*"the score that the real peloton gives you"*. Cumulative, so 24.3.5 and 11.6.7
-both stand. They also asked for the data to be metric-agnostic so distance
-could race too — **built, because it was four lines of real change** (24.3.14a)
-— and left the *toggle* to the plan, which is 24.3.15. So the leaderboard can
-be started cold: the score is settled, `RivalTrace` already computes it, and
-the open work is presentation.
+**One item is waiting on the owner and is not a session's to do: 24.3.12a**,
+what the rows on the leaderboard should be called. They asked for it that way
+— *"Maybe put that as an action on me… You can remind me at a later date if i
+haven't decided yet"* — so this is the reminder. `12 months` and `30 days` are
+placeholders and the owner has said the first is *"no good at all"*. The item
+carries what is worth having ready for that conversation, including why those
+labels are wrong for a nameable reason: every other row on the board is a
+*person*, and those two are *durations*.
 
 **Already done and not to be re-picked:**
-- ~~**11.7 — one instruction at a time.**~~ **Done this sitting**, all five
-  items, observed on the AVD in both governed states and on the bike for the
-  re-seed. What is owed is the spoken half, which is the rider's to confirm.
+- ~~**24.3.10–24.3.14 — the live leaderboard.**~~ **Done this sitting**, and
+  described in plain English in [LEADERBOARD.md](LEADERBOARD.md). What is owed
+  is 24.3.6's *"they finished"* state and the board on a real bike.
+- ~~**11.7 — one instruction at a time.**~~ **Done in the twenty-ninth
+  sitting**, all five items. What is owed is the spoken half, which is the
+  rider's to confirm.
 - ~~**24.3.3–24.3.9 — the live ghost.**~~ **Done in the twenty-eighth
-  sitting**, except 24.3.6 and the pedalling observation. **24.3.11 supersedes
-  its presentation** — the picker and the single-gap card go behind a flag —
-  but nothing under it is wasted. `RIVALS.md` describes it in plain English.
+  sitting**, and **superseded by the leaderboard** (24.3.11): the picker and
+  the single-gap card are behind `RIVAL_GHOST`, off. Nothing under it is
+  wasted — almost all of it is still on the live path. `RIVALS.md` describes
+  it and says which flag turns it back on.
 
 **26.4 and Phase 27 are the two to leave.** The owner offered to leave 26.4 —
 *"happy to leave it"* — and the honest answer is that a "score" built on FTP is
