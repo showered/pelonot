@@ -178,11 +178,28 @@ downgrade — it is why the feature can afford to be interesting.
       **cumulative rather than instantaneous** — comparing this second's watts
       to their second's watts flickers, and 11.6.7 already settled that the ride
       screen's numbers change too fast to read
-- [ ] **24.3.6** **A ghost that runs out says so and stops.** The rival's ride
+- [x] **24.3.6** **A ghost that runs out says so and stops.** The rival's ride
       ends when it ends: a shorter one leaves the ghost with nothing to say
       after minute 18, and the honest answer is *"they finished"* and a final
       gap, never a line extrapolated forward or a comparison that silently
-      freezes. Same family as `isStaleAt` and the gap-not-a-clamp rule
+      freezes. Same family as `isStaleAt` and the gap-not-a-clamp rule.
+
+      **Seen at last, on the leaderboard rather than on the single gap** — it
+      had tests and no observation through two sittings, because seeing it
+      needs a ride that outlasts its rival's and nothing about a 20-minute
+      class makes that convenient. What made it cheap was seeding a rival with
+      a **90-second** ride: the state arrives at minute two instead of minute
+      eighteen. Worth writing down as a technique, because the same trick
+      reaches any "and then it ends" state in this feature.
+
+      *Observed on the tablet AVD, both ways round in ninety seconds:* at
+      01:34, `1 GRACE / FINISHED / +6` above the rider with her number frozen
+      at her ride's own total while theirs climbed; at 02:47, `LEADING` with
+      `1 YOU 23 kJ / 2 YOUR BEST −2 / 3 GRACE FINISHED −3`. **A board turns
+      out to be a better home for this than the single gap was**, and for a
+      reason the item did not anticipate: a frozen number beside two moving
+      ones is obviously frozen, where a single frozen number is
+      indistinguishable from a comparison that has quietly broken.
 - [x] **24.3.7** **The measured-power gate applies to both sides**, exactly as
       24.3.1 has it. A modelled ghost is `PowerModel` at 137 W RMSE presented as
       a race, and the rider cannot tell. If either side is not measured there is
@@ -437,6 +454,13 @@ downgrade — it is why the feature can afford to be interesting.
       jumping; and at the top of the board there is no row above you, which is
       the state worth designing first because it is the one a rider wants to
       be in.
+
+      *Observed on the tablet AVD across two whole classes, with the board
+      moving under a rider rather than in a screenshot:* `6TH OF 6` with two
+      rows above at the start, `5TH OF 6` after passing *30 days* (which then
+      sat below at `−3`), `4TH OF 6` with a neighbour each side, and `LEADING`
+      with all three rows below. The neighbours changed identity four times
+      and the card never changed size.
 
       **Built, and the answer to both consequences is the same one: the window
       slides, it never shrinks.** Leading gives you the three rows below you;

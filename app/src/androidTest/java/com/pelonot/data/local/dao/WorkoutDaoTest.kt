@@ -663,6 +663,71 @@ class WorkoutDaoTest {
         assertNull(cleared.oldestTimestamp)
     }
 
+    /**
+     * The live leaderboard's three own-history rows are **one query with a
+     * floor on it** (24.3.12), which is worth a test precisely because it is
+     * one query: a floor that leaked would put a ride from last year on the
+     * board labelled as this month's best, and nothing on the screen would
+     * look wrong.
+     */
+    @Test
+    fun theBoardsOwnRowsAreTheSameQueryWithADateFloor() = runBlocking {
+        // A realistic epoch, because `sinceMs = 0` is a real floor: with a
+        // small `now` the 400-day-old ride lands *before* 1970 and is excluded
+        // by the very clause the test is checking. That is the test's own
+        // first failure, kept in mind rather than in a comment nobody reads.
+        val now = 1_800_000_000_000L
+        val day = 86_400_000L
+        workoutDao.insertWorkout(
+            workout("ancient", outputKj = 300.0, classId = CLASS_ID, timestamp = now - 400 * day)
+        )
+        samplesFor("ancient", measured = true)
+        workoutDao.insertWorkout(
+            workout("in-the-year", outputKj = 200.0, classId = CLASS_ID, timestamp = now - 200 * day)
+        )
+        samplesFor("in-the-year", measured = true)
+        workoutDao.insertWorkout(
+            workout("this-month", outputKj = 100.0, classId = CLASS_ID, timestamp = now - 5 * day)
+        )
+        samplesFor("this-month", measured = true)
+
+        suspend fun bestSince(sinceMs: Long) = workoutDao.previousBestOfClass(
+            classId = CLASS_ID,
+            userId = USER_ID,
+            excludingWorkoutId = "",
+            beforeMs = Long.MAX_VALUE,
+            sinceMs = sinceMs
+        )?.workoutId
+
+        assertEquals("ancient", bestSince(0L))
+        assertEquals("in-the-year", bestSince(now - 365 * day))
+        assertEquals("this-month", bestSince(now - 30 * day))
+    }
+
+    /**
+     * And the floor does not quietly drop the measured-power rule with it
+     * (24.4.2). The window is the only thing that changes between those three
+     * calls; the honesty gate is the same clause.
+     */
+    @Test
+    fun aWindowedBestStillRefusesModelledPower() = runBlocking {
+        val now = 1_800_000_000_000L
+        workoutDao.insertWorkout(
+            workout("modelled", outputKj = 300.0, classId = CLASS_ID, timestamp = now)
+        )
+        samplesFor("modelled", measured = false)
+
+        assertNull(
+            workoutDao.previousBestOfClass(
+                classId = CLASS_ID,
+                userId = USER_ID,
+                excludingWorkoutId = "",
+                beforeMs = Long.MAX_VALUE,
+                sinceMs = now - 86_400_000L
+            )
+        )
+    }
+
     private companion object {
         const val USER_ID = 1
         const val OTHER_USER_ID = 2

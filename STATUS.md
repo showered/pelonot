@@ -39,7 +39,7 @@ currently open and should not be, and one deploy that has not been run.
 |------|-----------|-------|
 | **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
-| **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and the live ghost landed with it — you can now race a housemate's ride, or your own best, *while* you ride. Two corners owed: the *they finished* state and the gap watched moving under a real rider |
+| **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. One corner owed: it has never run on the real bike |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
 | **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. What is left is the overlay permission still being explained only at ride start (19.1.6) and a green CI run (19.1.4). See *How close to done*, below |
 
@@ -120,7 +120,19 @@ excludes paused time, so stopping for a bottle does not lose you the race; and
 never on the overlay, which belongs to the next sixty seconds of pedalling.
 Both sides have to be watts the bike actually measured, so it does not appear on
 a simulated ride at all — which is the honest answer rather than a missing
-feature. **`RIVALS.md` is the plain-English description.**
+feature.
+
+**And that single gap is now a leaderboard** (24.3.10–24.3.13b), which is what
+the owner wanted and is Peloton's own shape. Start a class anybody on this bike
+has ridden and a board appears with no choosing: your best ever, your best of
+the last twelve months, your best of the last thirty days, and every
+housemate's best, ranked live on the class total in kilojoules. It shows
+**three rows — the one you are chasing, you, and the one chasing you** — which
+is what keeps a leaderboard readable by somebody at 90 rpm. Your row carries
+your total; every other row carries the gap to you. Somebody whose ride ends
+before yours says `FINISHED` and their number stops. **`LEADERBOARD.md` is the
+plain-English description**, and `RIVALS.md` describes the single-rival version
+it replaced, which is switched off rather than deleted.
 
 **The cloud, as of the last two sittings.** Accounts with a screen that says
 what an account is *for*; row-level security applied and then **verified from a
@@ -171,9 +183,12 @@ for.
   governing metric in the catalogue — built), 11.1b.10 (a rule across
   somebody's film is a rule whatever colour it is), and 24.3.14 (the
   leaderboard's score is the class total in kilojoules). **24.3.15**, the
-  toggle between racing by output and racing by distance, is queued rather
-  than open — the data is agnostic already, the control has nowhere to live
-  until the leaderboard exists.
+  toggle between racing by output and racing by distance, is still queued —
+  the data is agnostic already, and now that the leaderboard exists the
+  control has a surface to live on. **24.3.12a is a decision waiting on the
+  owner** at their own request: what the rows on the leaderboard should be
+  called, since `12 months` and `30 days` are placeholders and the owner has
+  said the first is *"no good at all"*.
 - **Phase 27 alerts** — records, streaks, and being beaten. Written out at full
   length and deferred on the owner's own weighting: *"definitely nice-to-have
   and low priority for now"*.
@@ -186,13 +201,14 @@ custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
 (19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
 is the standing argument for why, and it has been right so far.
 
-**The live ghost's household half is now built** (24.3.3–24.3.9) and is
-described above; what is still on this list is **18.12**, the same thing across
-bikes, whose endpoint (`class_ghost`) already exists and has never been called.
+**The live leaderboard is built** (24.3.10–24.3.13b) and is described above;
+what is still on this list is **18.12**, the same thing across bikes, whose
+endpoint (`class_ghost`) already exists and has never been called — a friend's
+best is the one kind of row the board cannot draw yet, and it is absent rather
+than broken.
 
-**What the owner would rather have is the leaderboard** (24.3.10–24.3.14), and
-it is the next thing to build anywhere: Peloton's own shape — several rows,
-ranked live, your personal best and a friend's, rather than the single gap that
+**What the ghost was, before the board replaced it** (24.3.3–24.3.9): the
+single gap that
 shipped. The owner settled the shape through the inbox: **the leaderboard wins
 and the rival goes behind a flag rather than into the bin**, because a rival's
 ceiling is one person and everything under the ghost is a leaderboard with a
@@ -318,7 +334,8 @@ things this list does not have on it.
 |----------|------|
 | What is done, what is next, and this sitting's story | [PLAN.md](PLAN.md) |
 | How data actually flows | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Racing a housemate's ride, in plain English | [RIVALS.md](RIVALS.md) |
+| Racing everybody who has ridden this class, in plain English | [LEADERBOARD.md](LEADERBOARD.md) |
+| The single-rival ghost it replaced, now switched off | [RIVALS.md](RIVALS.md) |
 | The bike's measured display, system and input facts | [HARDWARE.md](HARDWARE.md) |
 | The traps that have already bitten, and the house rules | [CLAUDE.md](CLAUDE.md) |
 | Why the phases are ordered the way they are | [plan/fundamentals.md](plan/fundamentals.md) |
