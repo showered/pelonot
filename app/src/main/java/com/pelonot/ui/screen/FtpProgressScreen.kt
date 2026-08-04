@@ -60,6 +60,7 @@ import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.ui.components.ChartFrame
 import com.pelonot.ui.viewmodel.PersonalBestsViewModel
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.loneCard
 import com.pelonot.ui.theme.spacing
 import java.text.DateFormat
 import java.util.Date
@@ -169,7 +170,7 @@ fun FtpProgressScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
-            ChangeList(trend, onOpenRide, onRevert)
+            ChangeList(trend, onOpenRide, onRevert, Modifier.loneCard())
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -372,8 +373,10 @@ private fun AxisDate(atEpochMs: Long) {
 private fun ChangeList(
     trend: FtpTrend,
     onOpenRide: (String) -> Unit,
-    onRevert: (FtpChange) -> Unit
+    onRevert: (FtpChange) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+  Column(modifier) {
     Text(
         text = "Every change",
         style = MaterialTheme.typography.titleMedium,
@@ -390,7 +393,7 @@ private fun ChangeList(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        return
+        return@Column
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
@@ -412,6 +415,7 @@ private fun ChangeList(
             )
         }
     }
+  }
 }
 
 @Composable

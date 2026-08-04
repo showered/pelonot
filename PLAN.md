@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Twenty-two entries have passed through it.** In order: standing and seated
+**Twenty-five entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -69,15 +69,14 @@ measurement), and one page saying where the project actually is
 (**17.16.1**, which the owner did themselves in `local.properties`), a week
 being the wrong window for a rider who rides once of them (**22.5**), and *less
 is more* (**Phase 26**, and a line in CLAUDE.md — it is a standing rule about
-every screen rather than a job on one).
+every screen rather than a job on one), ten answers where three will do
+(**26.3**), no single card at full width (**22.6**, and the rule is in
+CLAUDE.md), and inferring the effort from the heart rate instead of asking
+(**21.5**).
 
-### How did that ride feel?
+### Supabase email notifications
 
-It's 1-10 which is good but honestly it causes me anxiety, wondering if i'm selecting the right option. Please change it to three options. Use better labels than i'm suggesting but basically it should be a) that was easy b) that was a good workout c) i'm exhausted. Under the hood these can still map to 1-10 if that makes data migration easier. Whatever you think.
-
-### "Card" max width
-
-Ride summary screen the "time in zone" card is stretching full width. This violates a design rule. If the rule doesn't exist, please make the rule. No single card should stretch the full width of the screen. We can use the full width using grid layout but we shouldn't stretch one item that far, it doesn't look good. I believe we already have a design token for the general max width of a column -- let's use it and enforce it.
+Any communication with a user sent by Supabase should be branded Pelonot using our design system, and also the "From" field and basically just any mention of Supabase should be removed, within our control. Please use my API key to jump in and make all that happen if possible.
 
 ---
 

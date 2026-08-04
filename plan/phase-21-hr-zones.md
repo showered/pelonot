@@ -283,3 +283,57 @@ drop out mid-class.
 - [ ] **21.5.5** Wherever a zone came from an age estimate rather than a
       measured maximum (21.1.2 vs 21.1.3), the class says so. Prescribing effort
       from a formula with a 12 bpm spread is fine; doing it silently is not
+
+---
+
+### 21.5 Do not ask what the heart rate already knows — the owner's note, 4 August 2026
+
+**Verbatim:** *"Also with regards to FTP auto calculation, and maybe this 'how
+did that ride feel' data ... surely there's something we can infer from heart
+rate (if connected)? For example if an endurance ride the rider spent most of
+the time in the top 1 or 2 zones, then they clearly found that ride more
+difficult than it should have been, you don't even need to ask!"*
+
+**The idea is right and the app is already half-way to it.**
+`PostWorkoutAnalyzer.detectBiometricDecoupling` looks for the opposite case —
+zone-4 power carried at a *low* heart rate, which is a rider who has improved —
+and 21.1/21.2 gave the app a maximum heart rate and five HR zones for the first
+time. What is missing is the join: **the class says what effort it prescribed,
+and the heart rate says what effort the rider actually made.** A gap between
+those two is information nobody has to be asked for.
+
+Three things this could feed, in increasing order of how much they can hurt:
+
+- [ ] **21.5.1** **Prefill the effort answer rather than replace it** (26.3).
+      An endurance class ridden mostly in HR zones 4–5 was hard; a threshold
+      class ridden in zone 2 was easy. Prefilling costs nothing if it is wrong
+      and saves a tap when it is right. **It must stay a prefill**: the rider's
+      own answer is a fact about them and the app may not write one on their
+      behalf, which is the same rule as 7.10.4/7.10.5 — *the app must not edit
+      the rider's record behind them*. A prefilled answer must also be
+      distinguishable from one the rider gave, or the column stops meaning what
+      it says
+- [ ] **21.5.2** **Feed the FTP proposal** (7.x). This is the one with teeth,
+      because an FTP is written into the rider's permanent record and every
+      zone in the app is derived from it. Two hard prerequisites before any of
+      it: the ride's power must be **measured** rather than modelled
+      (`PowerProvenance.isTrustworthyAsMeasured`, 7.10.7 — the same gate that
+      already stops a simulated ride proposing anything), and the maximum heart
+      rate must be **measured** rather than the Tanaka estimate (21.1), because
+      an inferred effort built on an estimated maximum is two guesses wearing
+      one number
+- [ ] **21.5.3** **Say it on the ride detail screen, which is free and safe.**
+      "You spent 18 minutes in HR zone 4 on an endurance ride" is an
+      observation about a ride, not a claim about the rider, and it needs
+      neither 21.5.1's prefill nor 21.5.2's gates. **Read 21.2.3 first** — the
+      thing that blocks it is that nothing yet draws an HR zone for a *past*
+      ride, and 7.8's trap is why: the zone bands would be drawn from whatever
+      maximum the rider has *today*, not the one the ride was ridden at
+- [ ] **21.5.4** **The honest limit, stated once so it is not rediscovered.**
+      Heart rate lags effort by a minute or two, drifts upward across a long
+      ride at constant power, and moves with heat, caffeine, sleep and
+      illness. It is a good signal about *a ride* and a poor one about *a
+      sixty-second interval*. Anything built here should compare whole blocks
+      or whole rides, never single samples — and it must degrade to silence
+      when no strap is worn, which on this bike is most of the time
+

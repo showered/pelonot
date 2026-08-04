@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -23,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -41,14 +43,17 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.model.PerceivedEffort
 import com.pelonot.ui.components.ClassLeaderboardCard
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.loneCard
 import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.PostRideViewModel
 import java.text.DateFormat
@@ -186,7 +191,9 @@ fun PostRideSummaryScreen(
                                 MaterialTheme.spacing.medium
                             )
                         ) {
-                            RpeCard(state.rpe, viewModel::setRpe, Modifier.fillMaxWidth())
+                            // 22.6: alone, so it stops at a column's width
+                            // instead of banding across the panel.
+                            RpeCard(state.rpe, viewModel::setRpe, Modifier.loneCard())
                             board?.let { ClassLeaderboardCard(it, Modifier.fillMaxWidth()) }
                         }
                     }
@@ -429,23 +436,26 @@ private fun GuestDestination(
 }
 
 /**
- * Rate of Perceived Exertion, 1–10.
+ * How hard that felt — three answers, not ten (26.3, the owner's note).
  *
  * In a card since 22.4.6 so that it and the leaderboard read as two things of
  * equal standing side by side, rather than a heading floating above a row of
  * pills.
  *
- * Uses [FlowRow] rather than a single [Row]: ten 48dp buttons plus spacing
- * needs roughly 520dp, so in one column of a two-column layout the higher
- * numbers would sit off the edge where they cannot be tapped at all.
+ * Three wide buttons rather than ten small ones is also what lets each carry a
+ * line saying what it means, which is what makes them answerable: *comfortable*
+ * against *a good workout* is a real distinction a rider can make in a second,
+ * where 6 against 7 is not. See [PerceivedEffort] for why the stored column is
+ * still 1–10.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RpeCard(
     selected: Int?,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val chosen = PerceivedEffort.of(selected)
+
     Card(
         modifier = modifier,
         shape = MaterialTheme.expressiveShapes.large,
@@ -455,79 +465,57 @@ private fun RpeCard(
     ) {
         Column(Modifier.padding(MaterialTheme.spacing.large)) {
             Text(
-                text = "How hard did that feel?",
+                text = "How did that feel?",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.semantics { heading() }
             )
-            Text(
-                // Load-bearing rather than decorative: without the ends named,
-                // one rider's 7 is another's 4 and the column means nothing.
-                text = "1 = very easy, 10 = maximal",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-            // Wide enough and the ten pills share the row out between them,
-            // which is both the easier target and the reason this card can
-            // hold the full width of the panel without looking like a strip of
-            // buttons pushed into one corner of it (22.4.6). Below that they
-            // wrap, and each keeps its 48 dp minimum.
-            BoxWithConstraints {
-                if (maxWidth >= RPE_SPREAD_BREAKPOINT) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            MaterialTheme.spacing.small
-                        )
-                    ) {
-                        for (rating in 1..10) {
-                            RpeButton(
-                                rating = rating,
-                                isSelected = selected == rating,
-                                onSelect = onSelect,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                } else {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            MaterialTheme.spacing.small
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                    ) {
-                        for (rating in 1..10) {
-                            RpeButton(
-                                rating = rating,
-                                isSelected = selected == rating,
-                                onSelect = onSelect
-                            )
-                        }
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+            ) {
+                PerceivedEffort.entries.forEach { effort ->
+                    EffortButton(
+                        effort = effort,
+                        isSelected = chosen == effort,
+                        onSelect = { onSelect(effort.rating) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * One of the three answers.
+ *
+ * The detail line is inside the button rather than beside it, because the
+ * button is what a rider is choosing between and a label they have to look
+ * away from to understand is not a label.
+ */
 @Composable
-private fun RpeButton(
-    rating: Int,
+private fun EffortButton(
+    effort: PerceivedEffort,
     isSelected: Boolean,
-    onSelect: (Int) -> Unit,
+    onSelect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     FilledTonalButton(
-        onClick = { onSelect(rating) },
+        onClick = onSelect,
         modifier = modifier
-            .sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = RPE_BUTTON_HEIGHT)
-            .semantics { contentDescription = "Rate this effort $rating out of 10" },
+            .sizeIn(minHeight = EFFORT_BUTTON_HEIGHT)
+            .semantics {
+                contentDescription = "${effort.label}. ${effort.detail}"
+            },
         shape = MaterialTheme.expressiveShapes.pill,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+        contentPadding = PaddingValues(
+            horizontal = 12.dp,
+            vertical = 12.dp
+        ),
         colors = if (isSelected) {
             ButtonDefaults.filledTonalButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -537,20 +525,26 @@ private fun RpeButton(
             ButtonDefaults.filledTonalButtonColors()
         }
     ) {
-        Text(
-            text = "$rating",
-            style = MaterialTheme.typography.titleMedium
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = effort.label,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = effort.detail,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = LocalContentColor.current.copy(alpha = 0.75f)
+            )
+        }
     }
 }
 
 private val MIN_TOUCH_TARGET = 48.dp
 
-/** Taller than the minimum once the pills are wide: a 10:1 pill looks like a bar. */
-private val RPE_BUTTON_HEIGHT = 56.dp
-
-/** Ten 48 dp pills and nine gaps need ~530 dp before they can share a row. */
-private val RPE_SPREAD_BREAKPOINT = 560.dp
+/** Two lines of text and a comfortable target for someone out of breath. */
+private val EFFORT_BUTTON_HEIGHT = 72.dp
 
 /** Wide enough to be the obvious target, narrow enough not to be a banner. */
 private val DONE_WIDTH = 220.dp

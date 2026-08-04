@@ -97,3 +97,109 @@ claim (14.4.7, 21.1).
 - [ ] **26.2.2** **Judged on the 1280 × 720 dp AVD**, and by looking at the
       screen rather than at the diff. Same condition as 22.4.5 — density is a
       thing you see and not a thing you count
+
+---
+
+### 26.3 Ten answers where three will do — the owner's note, 4 August 2026
+
+**Verbatim:** *"It's 1-10 which is good but honestly it causes me anxiety,
+wondering if I'm selecting the right option. Please change it to three options.
+Use better labels than I'm suggesting but basically it should be a) that was
+easy b) that was a good workout c) I'm exhausted."*
+
+**This is the same rule as the rest of the phase, applied to a control rather
+than to a sentence.** A ten-point scale is not more information, it is more
+*decision* — and the decision it asks for is one nobody can make. Borg's RPE
+earns its resolution in a lab, where it is calibrated against a rider who has
+been taught it and repeated over sessions. On a bike in a living room, asked of
+somebody who has just stopped pedalling and is out of breath, the gap between 6
+and 7 is not a measurement; it is a doubt manufactured by the control. The
+owner's word for the result is the right one: *anxiety*.
+
+**Nothing downstream needed the ten points.** One consumer reads the number at
+all — `PostWorkoutAnalyzer.suggestFtpFromRpe`, which asks *was this ≤ 4* — and
+everything else displays it.
+
+- [x] **26.3.1** **Three answers, and the column stays 1–10.** `PerceivedEffort`
+      is the type: `Comfortable` / `A good workout` / `Everything I had`, each
+      storing the middle of its band (3 / 6 / 9) and reading back anything
+      inside it. Three reasons the column does not change: **a ride already
+      recorded keeps its exact answer** rather than being reinterpreted, the
+      cloud payload's field is untouched (14.4), and `EASY_RPE_THRESHOLD` still
+      works — *Comfortable* stores 3, so a hard class that felt easy still
+      proposes an FTP bump. That last one is the trap worth naming: had the easy
+      level stored 5, the FTP proposal would have silently stopped firing and
+      **no screen would have looked any different**. It is a test.
+
+      *Done and observed on the tablet AVD. A new ride answered "A good workout"
+      lands as `rpe_rating = 6` in the database; **a ride rated 7 on the old
+      ten-point scale opens in ride detail reading "A good workout"**, which is
+      the backward-compatibility claim checked against real data rather than
+      argued. Both screens ask it the same way, which matters more than either:
+      a rider who answered on the night must not meet a 1–10 row a month later.*
+- [x] **26.3.2** **Each answer says what it felt like.** Three wide buttons have
+      room for a line under the label, and that line is what makes them
+      answerable — *Comfortable* against *A good workout* is not a distinction
+      anybody can make from the titles alone. It is also the argument for why
+      three is not simply "ten with less detail": the detail moved from a number
+      the rider had to interpret into words that interpret themselves
+- [ ] **26.3.3** **The wording is the owner's to settle.** The labels here are a
+      first draft against their brief ("use better labels than I'm suggesting").
+      Worth a look on the bike: *Everything I had* is the one most likely to be
+      wrong, because a rider who stopped a class early did not give everything
+      and may not want to say they did
+
+---
+
+### 26.3 Ten answers where three will do — the owner's note, 4 August 2026
+
+**Verbatim:** *"It's 1-10 which is good but honestly it causes me anxiety,
+wondering if I'm selecting the right option. Please change it to three options.
+Use better labels than I'm suggesting but basically it should be a) that was
+easy b) that was a good workout c) I'm exhausted. Under the hood these can
+still map to 1-10 if that makes data migration easier. Whatever you think."*
+
+**This is the same rule as the rest of the phase, applied to a control rather
+than to a sentence.** A ten-point scale is not more information, it is more
+*decision* — and the decision it asks for is one nobody can make. Borg's RPE
+earns its resolution in a lab, where it is calibrated against a rider who has
+been taught it and repeated across sessions. On a bike in a living room, asked
+of somebody who has just stopped pedalling and is out of breath, the gap
+between 6 and 7 is not a measurement; it is a doubt manufactured by the
+control. The owner's word for the result is the right one: *anxiety*.
+
+**Nothing downstream needed the ten points.** Exactly one consumer reads the
+number rather than displaying it — `PostWorkoutAnalyzer.suggestFtpFromRpe`,
+which asks *was this ≤ 4*.
+
+- [x] **26.3.1** **Three answers, and the column stays 1–10** — which is the
+      owner's own "whatever you think", answered. `PerceivedEffort` is the
+      type: *Comfortable* / *A good workout* / *Everything I had*, each storing
+      the middle of its band (3 / 6 / 9) and reading back anything inside it.
+      Three reasons not to change the column: **a ride already recorded keeps
+      its exact answer** instead of being reinterpreted, the cloud payload's
+      field is untouched (14.4), and `EASY_RPE_THRESHOLD` keeps working —
+      *Comfortable* stores 3, so a hard class that felt easy still proposes an
+      FTP bump. That last one is the trap worth naming: had the easy level
+      stored 5, the FTP proposal would have silently stopped firing and **no
+      screen would have looked any different**. It is a test.
+
+      *Done and observed on the tablet AVD. A new ride answered "A good
+      workout" lands as `rpe_rating = 6` in the database; **a ride rated 7 on
+      the old ten-point scale opens in ride detail reading "A good workout"**,
+      which is the backward-compatibility claim checked against real data
+      rather than argued. Both screens ask it the same way, which matters more
+      than either: a rider who answered on the night must not meet a 1–10 row a
+      month later.*
+- [x] **26.3.2** **Each answer says what it felt like.** Three wide buttons have
+      room for a line under the label, and that line is what makes them
+      answerable — *Comfortable* against *A good workout* is not a distinction
+      anybody can draw from the titles alone. It is also why three is not
+      simply "ten with less detail": the detail moved out of a number the rider
+      had to interpret and into words that interpret themselves
+- [ ] **26.3.3** **The wording is the owner's to settle.** These labels are a
+      first draft against their brief ("use better labels than I'm
+      suggesting"). Worth a look on the bike: *Everything I had* is the most
+      likely to be wrong, because a rider who stopped a class early did not
+      give everything and may not want to say they did
+

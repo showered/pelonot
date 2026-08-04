@@ -29,6 +29,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -54,6 +55,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,6 +65,7 @@ import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
+import com.pelonot.domain.model.PerceivedEffort
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.components.CadenceDistributionChart
 import com.pelonot.ui.components.CadenceTraceChart
@@ -73,6 +76,7 @@ import com.pelonot.ui.components.PowerTraceChart
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.loneCard
 import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.spacing
@@ -301,11 +305,15 @@ fun RideDetailScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
-            RpeEditor(selected = workout.rpeRating, onSelect = viewModel::setRpe)
+            RpeEditor(
+                selected = workout.rpeRating,
+                onSelect = viewModel::setRpe,
+                modifier = Modifier.loneCard()
+            )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
-            ExportSection(onExport = export)
+            ExportSection(onExport = export, modifier = Modifier.loneCard())
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -451,7 +459,9 @@ private fun RideChartsSection(
                     CadenceTraceCard(charts, Modifier.weight(1f))
                     CadenceCard(charts, Modifier.weight(1f))
                 }
-                ZoneCard(charts, Modifier.fillMaxWidth())
+                // 22.6: no partner beside it, so it stops at a column's width
+                // rather than becoming a bar across the room.
+                ZoneCard(charts, Modifier.loneCard())
             } else {
                 PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.fillMaxWidth())
                 HeartCard(charts, Modifier.fillMaxWidth())
@@ -640,7 +650,8 @@ private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
  * the thing the subscription product does.
  */
 @Composable
-private fun ExportSection(onExport: (ExportFormat) -> Unit) {
+private fun ExportSection(onExport: (ExportFormat) -> Unit, modifier: Modifier = Modifier) {
+  Column(modifier) {
     Text(
         text = "Take it with you",
         style = MaterialTheme.typography.titleMedium,
@@ -675,6 +686,7 @@ private fun ExportSection(onExport: (ExportFormat) -> Unit) {
         }
         Spacer(Modifier.size(MaterialTheme.spacing.small))
     }
+  }
 }
 
 private val TWO_COLUMN_BREAKPOINT = 900.dp
@@ -688,10 +700,21 @@ private val TWO_COLUMN_BREAKPOINT = 900.dp
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RpeEditor(selected: Int?, onSelect: (Int) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun RpeEditor(
+    selected: Int?,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // 26.3. The same three answers as the post-ride summary, on purpose: a
+    // rider who answered "A good workout" on the night must not come back a
+    // month later to a screen offering them a 7 instead. `PerceivedEffort.of`
+    // is what lets a ride rated on the old ten-point scale read back as one of
+    // the three without anything having been rewritten on disk.
+    val chosen = PerceivedEffort.of(selected)
+
+    Column(modifier) {
         Text(
-            text = "How hard did it feel?",
+            text = "How did it feel?",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold,
@@ -699,9 +722,9 @@ private fun RpeEditor(selected: Int?, onSelect: (Int) -> Unit) {
         )
         Text(
             text = if (selected == null) {
-                "You didn't rate this one — you still can"
+                "You didn't answer for this one — you still can"
             } else {
-                "Tap a different number to change your rating"
+                "Tap a different answer to change it"
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -709,25 +732,25 @@ private fun RpeEditor(selected: Int?, onSelect: (Int) -> Unit) {
 
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-        FlowRow(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(
-                MaterialTheme.spacing.small,
-                Alignment.CenterHorizontally
-            ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
         ) {
-            for (rating in 1..10) {
-                val isSelected = selected == rating
+            PerceivedEffort.entries.forEach { effort ->
+                val isSelected = chosen == effort
                 FilledTonalButton(
-                    onClick = { onSelect(rating) },
+                    onClick = { onSelect(effort.rating) },
                     modifier = Modifier
-                        .sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = MIN_TOUCH_TARGET)
+                        .weight(1f)
+                        .sizeIn(minHeight = EFFORT_BUTTON_HEIGHT)
                         .semantics {
-                            contentDescription = "Rate this effort $rating out of 10"
+                            contentDescription = "${effort.label}. ${effort.detail}"
                         },
                     shape = MaterialTheme.expressiveShapes.pill,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 12.dp,
+                        vertical = 12.dp
+                    ),
                     colors = if (isSelected) {
                         ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -737,11 +760,26 @@ private fun RpeEditor(selected: Int?, onSelect: (Int) -> Unit) {
                         ButtonDefaults.filledTonalButtonColors()
                     }
                 ) {
-                    Text("$rating")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = effort.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = effort.detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            color = LocalContentColor.current.copy(alpha = 0.75f)
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+/** Two lines of text and a comfortable target. Matches the summary screen's. */
+private val EFFORT_BUTTON_HEIGHT = 72.dp
 
 private val MIN_TOUCH_TARGET = 48.dp

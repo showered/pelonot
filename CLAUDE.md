@@ -62,12 +62,24 @@ an AVD at the right resolution but the wrong density hides half of them.
   "HUD" (jargon) and never "strip" (tried, rejected by the owner). The source,
   `PLAN.md` and `ARCHITECTURE.md` still say HUD internally and should: one name
   in the code, one name on screen. PLAN.md 11.6.5.
-- **A column of text or form fields is capped at `MaterialTheme.layout
-  .readableWidth`** via `Modifier.readableColumn()` — one token, not a number
-  per screen. The bike is 1280 dp wide and a line of body text across all of it
-  is harder to read than the same text at 700. **Not** the ride screen or the
-  overlay: those are deliberately full-bleed and read at two metres. PLAN.md
-  22.2.6.
+- **Cap what is read. Tile what is looked at. And no single card is ever wider
+  than `readableWidth`.** Three rules, one token each, and reaching for the
+  wrong one is how this project has twice made a whole screen the wrong shape:
+  - `Modifier.readableColumn()` caps a **column** at `MaterialTheme.layout
+    .readableWidth` (760 dp) and centres it. For prose and form fields —
+    Settings, the account screen. The bike is 1280 dp wide and a line of body
+    text across all of it is harder to read than the same text at 700.
+  - `WideGrid` is the other answer, for figures, charts, tiles and cards in a
+    set — things that are *looked at* rather than read. A wide screen is not a
+    licence to leave 520 dp of tablet empty. PLAN.md 22.4.
+  - `Modifier.loneCard()` caps a **card** that has nothing beside it. Uncapping
+    a screen is not uncapping a card: the owner's rule is that a single card
+    stretched across the panel "doesn't look good", and it is right. A card
+    *inside* a grid or a weighted row is `fillMaxWidth()` and already correct.
+    PLAN.md 22.6.
+
+  **Not** the ride screen or the overlay: those are deliberately full-bleed and
+  read at two metres. PLAN.md 22.2.6.
 - **Less is more, and a unit belongs where a measurement is being *read*, not
   where a choice is being *made*.** The owner's standing rule for any design or
   UX work: err towards saying less, and be sparing with the geeky words — watts,

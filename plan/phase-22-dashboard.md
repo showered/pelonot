@@ -278,3 +278,49 @@ is a decision handed over rather than a shrug:**
       month. Judged on the 1280 × 720 dp AVD with a database that has one ride a
       week in it, not with the dense fixture data the current card was built
       against
+
+---
+
+### 22.6 No single card takes the whole panel — the owner's rule, 4 August 2026
+
+**Verbatim, and it is a rule rather than a bug report:** *"Ride summary screen
+the 'time in zone' card is stretching full width, same with 'how did it feel'
+and 'take it with you'. This violates a design rule. If the rule doesn't exist,
+please make the rule. No single card should stretch the full width of the
+screen. We can use the full width using grid layout but we shouldn't stretch one
+item that far, it doesn't look good. I believe we already have a design token
+for the general max width of a column — let's use it and enforce it."*
+
+**It caught this session's own regression, which is the useful part.** 22.4.2
+uncapped ride detail so the charts could go two-up, and every card that had no
+partner to sit beside then inherited the whole 1232 dp — the zone bar, the
+effort question and the export rows. Uncapping a *screen* is not the same as
+uncapping a *card*, and until this note the plan only had the first half of
+that sentence written down.
+
+The rule, and it now sits in `CLAUDE.md` beside the other two:
+
+> **Cap what is read. Tile what is looked at. And no single card is ever wider
+> than `readableWidth`** — a card with nothing beside it stops at the column
+> width and leaves the rest of the panel alone.
+
+- [x] **22.6.1** **A third token, `Modifier.loneCard()`**, beside
+      `readableColumn` (cap a column and centre it) and `readableText` (cap a
+      line where it stands). This one caps a *card* at `Layout.readableWidth`
+      and leaves it where it is. Three modifiers for three different things is
+      one more than a screen should have to think about, so each one's KDoc
+      names the other two and says which question it answers
+- [x] **22.6.2** **Applied to the three the owner named** — ride detail's *Time
+      in zone*, *How did it feel* and *Take it with you* — and to the two the
+      same audit turned up: the post-ride summary's effort card when no
+      leaderboard sits beside it, and the FTP screen's *Every change* list.
+      *Observed on the tablet AVD.*
+- [ ] **22.6.3** **Enforce it, rather than remembering it.** The owner's word
+      was *enforce*, and a rule that lives only in `CLAUDE.md` is the kind this
+      project has already broken once — within a single session. What is
+      wanted is the `CloudAccessFenceTest` treatment: something that fails the
+      build when a `Card` is given `fillMaxWidth()` outside a grid or a
+      weighted row. It is a lint rule or a source-scanning test rather than a
+      unit test, and the hard part is the exception list — a card *inside* a
+      weighted row is `fillMaxWidth` and correct
+

@@ -161,6 +161,29 @@ fun Modifier.readableColumn(): Modifier {
 @Composable
 fun Modifier.readableText(): Modifier = this.widthIn(max = MaterialTheme.layout.readableWidth)
 
+/**
+ * Caps a **card** at [Layout.readableWidth] and leaves it where it stands
+ * (22.6, the owner's rule of 4 August).
+ *
+ * The third of three, and the one this project learnt by breaking: 22.4.2
+ * uncapped ride detail so its charts could sit two-up, and every card with no
+ * partner beside it then inherited the whole 1232 dp panel. **Uncapping a
+ * screen is not uncapping a card.** In the owner's words: *"we can use the full
+ * width using grid layout but we shouldn't stretch one item that far, it
+ * doesn't look good."*
+ *
+ * Which of the three to reach for:
+ *
+ * - [readableColumn] — the whole screen is one column of prose or form fields.
+ *   Settings, the account screen.
+ * - [readableText] — a wide screen with a paragraph loose in it. Ride detail's
+ *   date line.
+ * - **This one** — a card that has nothing to sit beside it. A card *inside* a
+ *   grid or a weighted row wants `fillMaxWidth()` and is already correct.
+ */
+@Composable
+fun Modifier.loneCard(): Modifier = this.widthIn(max = MaterialTheme.layout.readableWidth)
+
 val MaterialTheme.elevationTokens: Elevation
     @Composable @ReadOnlyComposable get() = LocalElevation.current
 
