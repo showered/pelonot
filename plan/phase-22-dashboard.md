@@ -170,3 +170,79 @@ length, tile what is looked at.**
       (`HARDWARE.md`, and the same condition as every other item in 22.2). A
       grid that looks right on a phone AVD is a single column, which is the
       thing being replaced
+- [ ] **22.4.6** **The post-ride summary is the worst offender, and it is the
+      one screen a rider cannot avoid.** `PostRideSummaryScreen` is a centred
+      column of six label-value rows — `Duration  24:03`, `Average power  188 W`
+      — on a 1280 dp screen, so a ride ends on a spec sheet with 500 dp of black
+      either side of it. It is the moment the app has the rider's full attention
+      and the least it has ever said with the most room. It is **both** answers
+      at once: tile the figures (they are looked at, not read) and the RPE
+      prompt and the leaderboard can sit beside them rather than a scroll below
+      them. Do this one with 26.1.2, which is the same six rows judged for their
+      *words* rather than their layout — one pass, not two
+
+---
+
+### 22.5 A week is the wrong window — the owner's note, 4 August 2026
+
+**Verbatim:** *"If we work on the assumption people will use the bike once per
+week, the 'this week section' is going to be meaningless. Perhaps 'this month'
+is better, or 'last 30 days', whatever you think is best. Work on the assumption
+people will ride the bike max once per week."*
+
+**This is a fact about the rider that invalidates a design decision, not a
+preference between two labels.** The *This Week* card (22.1.2's answer) was
+built on an unstated assumption of several rides a week, where a count is a
+meaningful number and a streak is an achievement. At one ride a week the same
+card reads **"0 rides"** for six days out of seven — so the first thing on the
+dashboard, above everything else in the progress section, is the app telling a
+rider who is doing exactly what they meant to do that they have done nothing.
+That is worse than uninformative; it is discouraging, and it is wrong.
+
+**The streak is the same defect one level down and it is more serious.**
+`StreakCalculator` counts *consecutive riding days*, so a rider who has never
+missed a Sunday in a year has a streak of 1 — and by the rule already written
+into `ThisWeekCard`, a streak of 1 is not shown at all. The most consistent
+rider the app can have is invisible to the feature built to reward consistency.
+
+**The recommendation, and the reasoning, because "whatever you think is best"
+is a decision handed over rather than a shrug:**
+
+- [ ] **22.5.1** **Last 30 days, not "this month".** A calendar month resets on
+      the 1st, so a rider who rode on the 29th and 30th opens the app on the 1st
+      to a zero. That is the same defect as the week's, on a 12× longer cycle
+      and therefore harder to notice and worse when it lands. A rolling
+      30-day window never resets, never lies, and at one ride a week always has
+      **four or five rides in it** — which is a number worth putting on a card.
+      Cost: `RidingHistory` is built out of whole weeks (`RidingWeek`,
+      `startOfWeek`), so the window is a genuine change to the domain and not a
+      string. Keep the weekly buckets — the bars on *Your riding* are right —
+      and add the rolling total beside them
+- [ ] **22.5.2** **The streak has to change unit or go.** A streak of *days*
+      cannot survive this assumption. Two candidates: **consecutive weeks with
+      a ride in them** (which is the thing a once-a-week rider is actually
+      keeping up, and reads as "7 weeks in a row"), or drop the streak and show
+      **rides in the last 30 days** alone. Prefer the weekly streak — it is the
+      same idea, correctly scaled, and it makes the consistent rider visible
+      instead of invisible. `StreakCalculator` is pure and JVM-tested, so this
+      is a cheap change with an honest test
+- [ ] **22.5.3** ***Your riding* follows the card.** The screen behind it
+      (16.3.2 / 16.3.5) is built on weekly bars and a day-square calendar, and
+      both are still right at this cadence — a calendar with one square lit a
+      week is a *good* picture of a once-a-week rider, which is exactly what
+      16.3.5 was for. What must change is the header and any wording that
+      implies a week is the unit of progress, and the calendar wants to show
+      enough weeks that the pattern is visible rather than the current window
+- [ ] **22.5.4** **Check every other surface that assumes a busy week** before
+      calling this done — it is the assumption, not the card, that is being
+      fixed. The household panel (24.2) counts the household's *week*, and at
+      one ride each per week a household of three shows an empty board most
+      days. The backup reminder counts rides rather than days and is fine
+      (23.3.1). The audit is the deliverable
+- [ ] **22.5.5** **The empty state is the case to design for, not the exception.**
+      At this cadence the card spends most of its life with a small number on
+      it, so "4 rides · 96 min · last Sunday" is the *normal* reading and
+      "0 rides" must be unreachable for anyone who has ridden in the last
+      month. Judged on the 1280 × 720 dp AVD with a database that has one ride a
+      week in it, not with the dense fixture data the current card was built
+      against

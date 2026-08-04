@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Nineteen entries have passed through it.** In order: standing and seated
+**Twenty-two entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -65,11 +65,13 @@ the prerequisite that makes that safe: public sign-up has to be off), the
 website being live (**17.16**, with **17.16.1–17.16.5** for what hosting it
 changed — and it is what turned 18.11.1 from a prerequisite into a
 measurement), and one page saying where the project actually is
-(**19.1.7** — [STATUS.md](STATUS.md)).
+(**19.1.7** — [STATUS.md](STATUS.md)), the live URL reaching the bike
+(**17.16.1**, which the owner did themselves in `local.properties`), a week
+being the wrong window for a rider who rides once of them (**22.5**), and *less
+is more* (**Phase 26**, and a line in CLAUDE.md — it is a standing rule about
+every screen rather than a job on one).
 
-### Owner's inbox
-
-*Empty.*
+*The inbox is empty.*
 
 ---
 
@@ -111,6 +113,7 @@ file to open for each.
 | [plan/phase-23-offline.md](plan/phase-23-offline.md) | **Phase 23** — offline by default, and the bundled class library |
 | [plan/phase-24-household.md](plan/phase-24-household.md) | **Phase 24** — household social, the tier that needs no cloud |
 | [plan/phase-25-position.md](plan/phase-25-position.md) | **Phase 25** — out of the saddle |
+| [plan/phase-26-voice.md](plan/phase-26-voice.md) | **Phase 26** — the app's voice: less is more, and where jargon belongs |
 | [plan/reference.md](plan/reference.md) | The Coggan zone table and the ride-intent multipliers |
 
 **Adding to the plan:** put the item in its phase's file. Only the four

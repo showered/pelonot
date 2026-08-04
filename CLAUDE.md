@@ -68,6 +68,16 @@ an AVD at the right resolution but the wrong density hides half of them.
   is harder to read than the same text at 700. **Not** the ride screen or the
   overlay: those are deliberately full-bleed and read at two metres. PLAN.md
   22.2.6.
+- **Less is more, and a unit belongs where a measurement is being *read*, not
+  where a choice is being *made*.** The owner's standing rule for any design or
+  UX work: err towards saying less, and be sparing with the geeky words — watts,
+  kilojoules, FTP — outside the places a rider is genuinely reading a
+  measurement (the ride screen, the overlay, chart axes and captions, the FTP
+  screens, and any provenance claim like *estimated* or *measured*, which loses
+  its meaning if shortened). A profile tile saying `150 W FTP` under a name is
+  the failure case: the screen's only question is *which of you is it*. Judge it
+  by looking at the screen on the tablet AVD, not by reading the diff.
+  **Phase 26**.
 - **The owner leaves notes in PLAN.md's *owner's inbox*** without opening a
   session. Read it before picking work, write each entry up as numbered plan
   items and then **empty it** — an entry still sitting there has not been dealt
