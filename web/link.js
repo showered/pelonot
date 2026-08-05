@@ -140,9 +140,13 @@ function setMode(next) {
 async function describe() {
   described = null;
   el('device-card').classList.remove('hidden');
-  el('device-caption').textContent = 'This will sign in';
+  el('device-caption').textContent = 'Checking the code';
   el('device-label').textContent = '…';
-  el('device-code').textContent = code.replace(/(.{4})(.{4})/, '$1 $2');
+  // **Not the code.** It used to print the eight characters back under the
+  // device name, which is the page showing its working: the rider has just
+  // scanned that code and it is in the URL bar above (17.16.9). It earns its
+  // place only where the rider is typing it, which is the `need-code` card.
+  el('device-code').textContent = '';
   route();
 
   // **Nothing on this page may wait forever without saying so** (15.6.14). The
@@ -203,6 +207,10 @@ async function describe() {
   }
 
   described = true;
+  // The owner's ask in three words: *the link worked* (17.16.9). The device
+  // name is the rest of it and is not decoration — a pairing page that does not
+  // say what it is pairing is a phishing primitive (15.6.5).
+  el('device-caption').textContent = 'Scanned — this will sign in';
   el('device-label').textContent = data.label;
   route();
 }

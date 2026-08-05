@@ -9,9 +9,11 @@
 </head>
 <body>
 <main>
+  <!-- One heading, and the sentence that used to sit under it has moved to the
+       card that needs it (PLAN 17.16.9). A heading, a subtitle and a status
+       line all narrating the same thing is three voices for one page. -->
   <header>
     <h1>Link a bike</h1>
-    <p class="muted small">Sign in here and the bike signs itself in.</p>
   </header>
 
   <p id="status" class="small"></p>
@@ -41,6 +43,9 @@
 
   <section id="signed-out" class="hidden">
     <div class="card">
+      <!-- The one sentence about what happens next, where the rider is about
+           to act rather than at the top of the page (17.16.9). -->
+      <p class="small muted">Sign in here and the bike signs itself in.</p>
       <div class="tabs">
         <button id="tab-signin" aria-pressed="true">Sign in</button>
         <button id="tab-signup" aria-pressed="false">Create an account</button>
@@ -58,10 +63,16 @@
 
   <section id="confirm" class="hidden">
     <div class="card">
+      <!-- Shown only when the hand-off falls back to giving the bike this
+           phone's own session (15.6.9) — which the live project does not do:
+           probed 5 August, /functions/v1/link-device answers 401, not 404, so
+           the bike is minted a session of its own and this phone keeps hers.
+           The sentence that used to follow ("that is a limitation of this
+           setup, not of the bike") is gone: it is a maintainer explaining
+           himself inside a rider's sentence (17.16.9). -->
       <p id="fallback-warning" class="small hidden">
-        This deployment hands the bike your own session, which means
-        <strong>you will be signed out on this phone</strong> once the bike picks
-        it up. That is a limitation of this setup, not of the bike.
+        <strong>You'll be signed out on this phone</strong> — it is handing the
+        bike its own session. Sign back in here whenever you like.
       </p>
       <button id="confirm-go" type="button">Sign this bike in</button>
       <button id="not-me" class="secondary" type="button">Not now</button>

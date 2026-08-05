@@ -547,8 +547,36 @@ rediscovering.
       the across-bikes ghost carries the caveat 18.7 asks for — on the modelled
       ones specifically, never as a blanket disclaimer
 
-- [ ] **17.16.9** **The pairing page tells the rider about the machinery — the
-      owner's note, 5 August 2026.** Verbatim: *"After scanning QR code the
+- [x] **17.16.9** **The pairing page tells the rider about the machinery — the
+      owner's note, 5 August 2026.** **Done in the thirty-fifth sitting**, in
+      the same change as 15.6.14 so that one deploy carries both.
+
+      What the page says on the happy path now, measured against the live
+      project with a real code minted by the tablet AVD: *"Link a bike /
+      **Scanned — this will sign in** / sdk_gphone64_arm64 / Sign in here and
+      the bike signs itself in."* and the form. That is the owner's sentence
+      almost word for word — the link worked, now sign in — and the device name
+      survives it, because 15.6.5 is not a style question.
+
+      Three cuts, one per bullet below. **The echoed pairing code is gone** from
+      the device card: the rider scanned it and it is in the URL bar above them,
+      so printing it back is the page showing its working; it stays on the
+      `need-code` card, where somebody is typing it. **The subtitle is gone** —
+      a heading, a subtitle and a status line narrating the same thing is three
+      voices, and the one sentence that earned its place has moved down to the
+      card where the rider is about to act. **And `fallback-warning` was
+      checked rather than rewritten from the armchair**, which the item asked
+      for: `POST /functions/v1/link-device` answers **401, not 404**, so the
+      Edge Function is deployed and this project mints the bike a session of its
+      own — the warning never fires here. It keeps its first sentence, since a
+      deployment without the function still needs it, and loses the second,
+      which was a maintainer explaining himself inside a rider's sentence.
+
+      All four states seen: unknown code and live code against the live project,
+      the confirm step and *Done* by driving `route()` directly, which is as far
+      as a session can take it without an account (15.7.7).
+
+      The original note follows. Verbatim: *"After scanning QR code the
       'link device' page could be much nicer. Get rid of all the geeky fluff and
       just tell the user what they want to hear -- the link worked and now they
       just need to sign in / sign up."*
