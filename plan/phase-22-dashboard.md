@@ -615,6 +615,32 @@ one is a screen the audit never reached.
         *the whole class on screen at once*; measure that again with the board
         drawing, on the bike or on a seeded AVD, before and after.
 
+      ***Done and observed, 5 August 2026 — on the tablet AVD with a seeded
+      household of twelve, and on the real bike.***
+
+      **The class on one side, the people on the other.** The board is not a
+      fact about the class, so it stopped being a card stacked into the
+      description of one: it is a fixed 400 dp column beside the class, and it
+      is **absent entirely when there is nobody on it** rather than leaving a
+      third of the panel empty. What that buys is the vertical space the screen
+      was actually short of — the 20-minute class's chart and all six of its
+      blocks are on screen at once again, with the board drawing.
+
+      *Seen on the AVD:* `1 Ava / 2 Ben / 3 Cleo / ⋮ / 8 Hana / 9 Simon / 10
+      Ivy / and 6 more` beside the class, with 24.1.8's window doing the
+      bounding. *Seen on the bike:* `Endurance Build 30` with no board at all —
+      the household's second rider has one ride of it at 0 kJ, so
+      `isWorthShowing` is false — and the eight interval tiles take the full
+      1920 px four across. That is the branch the AVD could not show and the
+      one 22.7.2 was judged on.
+
+      **A 30-minute class with sixteen blocks and no board still does not
+      scroll.** With a board the left column is ~880 dp and tiles go two
+      across, so a long class scrolls there and the board stays put, which is
+      the right thing to give up.
+
+      *Original notes follow.*
+
       **It cannot be judged on an empty AVD.** Seed two profiles with measured
       rides of the same class — the technique is in CLAUDE.md and the seeding
       the thirtieth sitting used for the live board is directly reusable — or
