@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -23,7 +24,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,16 +32,20 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.ui.components.BirthYearPicker
+import com.pelonot.ui.components.PickerField
 import com.pelonot.ui.components.birthYearToMillis
 import com.pelonot.ui.components.millisToBirthYear
 import com.pelonot.domain.model.FitnessLevel
@@ -260,6 +264,12 @@ private fun StepScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // 20.4.2's other half. Without this the IME is drawn *over* the
+                // step rather than shortening it, so a control the rider is
+                // reaching for can be underneath the keyboard entirely — and a
+                // tap on something that is not visible is the same report as a
+                // tap that does not register.
+                .imePadding()
                 .padding(MaterialTheme.spacing.doubleExtraLarge)
         ) {
             Text(
@@ -337,6 +347,27 @@ private fun AboutStep(
     onContinue: () -> Unit
 ) {
     var picking by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+
+    // 20.4.2. Every control on this step that is *not* the weight field puts
+    // the keyboard away before doing its own job.
+    //
+    // The owner's report was that after typing a weight, the next tap "doesn't
+    // register" — and the mechanism is that the step moves out from under the
+    // finger. `StepScaffold` centres its content vertically (22.7.1), so when
+    // the IME resizes the window every control on the step slides, and it
+    // slides by *half* the change rather than by none. A tap aimed at a chip
+    // lands where the chip was.
+    //
+    // Clearing focus on the tap itself is what makes the tap land: the
+    // keyboard goes, the layout settles, and the action still happens — one
+    // tap, one outcome. Doing it the other way round, by dismissing the
+    // keyboard on any touch outside the field, spends the rider's first tap on
+    // the dismissal and is the behaviour being complained about.
+    fun withKeyboardAway(action: () -> Unit): () -> Unit = {
+        focusManager.clearFocus()
+        action()
+    }
 
     if (picking) {
         BirthYearPicker(
@@ -355,47 +386,65 @@ private fun AboutStep(
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
-            verticalAlignment = Alignment.CenterVertically,
+            // Top rather than centre: the two controls are the same height by
+            // construction now (20.4.1), and a weight field that grows an error
+            // line must not shunt the year control down the screen with it.
+            verticalAlignment = Alignment.Top,
             modifier = Modifier.widthIn(max = 900.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            OutlinedTextField(
+                value = weight,
+                onValueChange = onWeightChange,
+                label = { Text("Weight (${weightUnits.weightLabel})") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    // There is nothing after this field to move to — the other
+                    // two questions are pickers — so the keyboard offers the
+                    // only action that makes sense here.
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                ),
                 modifier = Modifier.weight(1f)
+            )
+
+            // 13.8 again: the unit is the rider's to choose, and this is still
+            // the only route to one before a profile exists.
+            //
+            // Its own child of the row rather than nested inside the weight's,
+            // which is what made the two fields different widths: the chips
+            // were being taken out of the weight's half and out of nothing on
+            // the year's, so a pair of controls fixed to look identical
+            // (20.4.1) still measured 328 dp against 438 dp.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(FIELD_HEIGHT)
             ) {
-                OutlinedTextField(
-                    value = weight,
-                    onValueChange = onWeightChange,
-                    label = { Text("Weight (${weightUnits.weightLabel})") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-                // 13.8 again: the unit is the rider's to choose, and this is
-                // still the only route to one before a profile exists.
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
-                    UnitSystem.entries.forEach { option ->
-                        FilterChip(
-                            selected = weightUnits == option,
-                            onClick = { onUnitsChange(option) },
-                            label = { Text(option.weightLabel) }
-                        )
-                    }
+                UnitSystem.entries.forEach { option ->
+                    FilterChip(
+                        selected = weightUnits == option,
+                        onClick = withKeyboardAway { onUnitsChange(option) },
+                        label = { Text(option.weightLabel) }
+                    )
                 }
             }
 
-            OutlinedButton(
-                onClick = { picking = true },
+            // 20.4.1. The same box, the same height, the same label in the same
+            // place as the weight beside it — because they are the same kind of
+            // question and were drawn as a field and an action.
+            PickerField(
+                label = "Year you were born",
+                // The year, not a date, because the year is what was asked and
+                // echoing back "1 January 1986" would claim the rider told the
+                // app their birthday.
+                value = millisToBirthYear(birthDate)?.toString(),
+                placeholder = "Tap to choose",
+                onClick = withKeyboardAway { picking = true },
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    // The year, not a date, because the year is what was
-                    // asked and echoing back "1 January 1986" would claim the
-                    // rider told the app their birthday.
-                    text = millisToBirthYear(birthDate)?.let { "Born in $it" }
-                        ?: "What year were you born?"
-                )
-            }
+            )
         }
 
         Spacer(Modifier.height(MaterialTheme.spacing.doubleExtraLarge))
@@ -419,14 +468,14 @@ private fun AboutStep(
             FitnessLevelCard(
                 level = option,
                 selected = level == option,
-                onSelect = { onLevelChange(option) }
+                onSelect = withKeyboardAway { onLevelChange(option) }
             )
         }
 
         Spacer(Modifier.height(MaterialTheme.spacing.doubleExtraLarge))
 
         Button(
-            onClick = onContinue,
+            onClick = withKeyboardAway(onContinue),
             // Weight and a description are what the estimate multiplies, so
             // without both there is nothing to show on the next step. The date
             // is genuinely optional — it only adjusts a number that already
@@ -601,6 +650,13 @@ private fun ResultStep(
 private val PRIMARY_BUTTON_WIDTH = 420.dp
 
 /**
+ * Material's text-field height, so the unit chips sit level with the two fields
+ * they belong to rather than being centred against a row that is taller than
+ * they are (20.4.1).
+ */
+private val FIELD_HEIGHT = 56.dp
+
+/**
  * Bounds on a *typed* FTP, and they are a fence rather than a clamp: an
  * out-of-range value is refused, never quietly corrected. Same argument as
  * `TelemetryBounds`.
@@ -628,7 +684,22 @@ fun ProfileCreationDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            // 20.4.2, and this is the line that makes `imePadding()` inside the
+            // screen do anything at all. A `Dialog` gets a window of its own,
+            // and while `decorFitsSystemWindows` is true that window never
+            // reports IME insets to Compose — so every inset modifier in here
+            // resolves to zero and the keyboard is drawn straight over the
+            // step.
+            //
+            // Measured rather than reasoned about: with it true, the *Name*
+            // step's Continue button sat at y 603–632 px on the tablet AVD
+            // with the keyboard's top edge at 590. A rider typing their name —
+            // the very first thing this app asks anybody — could not see the
+            // button that takes them onward.
+            decorFitsSystemWindows = false
+        )
     ) {
         ProfileCreationScreen(
             onProfileCreated = onProfileCreated,

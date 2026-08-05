@@ -320,8 +320,18 @@ already claims *"no keyboard on any of them except the weight"* — true, and
 exactly the condition under which a stray keyboard is most disruptive, because
 it is the only one.
 
-- [ ] **20.4.1** **Two questions of the same kind, drawn as two different kinds
-      of control.** Weight is an `OutlinedTextField` with a floating label
+- [x] **20.4.1** **Two questions of the same kind, drawn as two different kinds
+      of control.** ***Done and observed on the tablet AVD.*** `PickerField` —
+      Material's own text-field metrics (56 dp, the extra-small corner, a 1 dp
+      outline, the label above the value in the same two styles), drawn
+      directly rather than as a `readOnly` `OutlinedTextField`, because a
+      read-only field still takes focus and shows a caret in a box the rider
+      cannot type into. It carries `Role.Button`, which is what it is.
+      *Measured beside its neighbour, which is where the fault lived:* the two
+      fields are **375 dp and 373 dp** where they were 328 and 438, because the
+      unit chips were being taken out of the weight's half of the row and out
+      of nothing on the year's. With a value in both, the screen now reads
+      `Weight (lb) / 68` beside `Year you were born / 1986`. Weight is an `OutlinedTextField` with a floating label
       inside a border; the birth year is an `OutlinedButton` whose whole content
       is a sentence — *"What year were you born?"* — with no label, a different
       height, a different corner radius and text centred rather than left. Side
@@ -339,7 +349,32 @@ it is the only one.
       honest version is a shared `PickerField` composable that draws the box
       itself and is judged **beside** the weight field on the tablet AVD rather
       than on its own
-- [ ] **20.4.2** **The keyboard eats the first tap.** After typing a weight, the
+- [x] **20.4.2** **The keyboard eats the first tap.** ***Done, and the cause
+      was not the one this item guessed at first.*** Both halves were
+      measured on the AVD rather than reasoned about, and the second is worse
+      than what was reported:
+
+      **The step slides under the finger.** With the keyboard up, `kg` moves
+      from y 337 to y 220 and *I ride regularly* from 544 to 427 — 117 px,
+      because `StepScaffold` centres its content (22.7.1) so an IME-driven
+      resize moves every control by half of it. Every control that is not the
+      weight field now clears focus *as part of its own tap*, so the keyboard
+      goes, the layout settles and the action still happens: **one tap, one
+      outcome**. Doing it the other way round — dismissing on any touch outside
+      the field — spends the rider's first tap on the dismissal, which is the
+      behaviour being complained about. The field also offers `ImeAction.Done`.
+
+      **And `imePadding()` was a no-op, which is how the *first* screen was
+      worse than the one reported.** `ProfileCreationScreen` is hosted in a
+      `Dialog`, and a dialog gets a window of its own that reports no IME
+      insets to Compose while `decorFitsSystemWindows` is true. So the keyboard
+      was drawn straight over the step: on the **Name** step — the first thing
+      this app asks anybody — *Continue* sat at y 603–632 with the keyboard's
+      top edge at 590. It is at y 381 now, and the whole step stands clear.
+      Nobody reported this one; it was found by turning the AVD's hardware
+      keyboard off, without which the emulator shows a floating IME and no
+      resize ever happens. **That is the check worth keeping: `hw.keyboard=no`
+      or this class of fault is invisible on an emulator.** After typing a weight, the
       next tap — on the kg/lb chips, on a fitness-level card, on the birth-year
       control — does nothing except dismiss the keyboard, and the rider has to
       tap twice. Two causes are possible and they want different fixes, so
