@@ -15,8 +15,49 @@ const el = (id) => document.getElementById(id);
 const status = el('status');
 const client = pelonotClient(status);
 
-let code = (location.hash || '').replace(/^#/, '').trim().toUpperCase();
+let code = pairingCodeIn(location.hash);
 let mode = 'signin';
+
+/**
+ * The session, kept here rather than asked for (PLAN 15.6.14).
+ *
+ * **Nothing on this page may call a Supabase method from inside
+ * `onAuthStateChange`.** That is Supabase's own documented rule and breaking it
+ * is what put three dots on the owner's phone and left them there: auth-js runs
+ * the callback while holding an exclusive Web Lock on the storage key, so a
+ * `getSession()` underneath it queues behind the very thing waiting for it.
+ * Measured on the live page with a stored session — `navigator.locks.query()`
+ * reported one holder and two waiters on `lock:sb-…-auth-token`, the RPC never
+ * left the browser, and the device name never arrived.
+ *
+ * So the callback is handed the session and writes it down, `route()` is
+ * synchronous, and no promise on this page waits on the auth lock while the
+ * auth lock is waiting on it.
+ */
+let session = null;
+
+/**
+ * False until the first auth event, which is a real state and not a formality:
+ * it is the same `AccountState.Unknown` the bike draws. Without it a rider who
+ * *is* signed in meets the sign-in form for a moment and starts typing.
+ */
+let sessionKnown = false;
+
+/**
+ * The pairing code in a fragment, or `''` if that fragment is not one.
+ *
+ * Supabase hands a confirmed sign-up back **in the fragment** —
+ * `#access_token=…&refresh_token=…&type=signup`, or `#error=…` when the link
+ * has lapsed. Read as a code, that string produced *"That code has expired"* on
+ * the screen of a rider who had just confirmed their address and had no code at
+ * all (15.6.14). A pairing code is eight characters from a fixed alphabet;
+ * anything else in there belongs to auth-js, which clears it up itself.
+ */
+function pairingCodeIn(hash) {
+  const raw = (hash || '').replace(/^#/, '').trim();
+  if (raw === '' || raw.includes('=')) return '';
+  return raw.toUpperCase();
+}
 
 /*
  * Whether the server has told us what this code is pairing: null until it has
@@ -58,7 +99,13 @@ async function start() {
     status.textContent = 'Nothing was linked.';
   });
 
-  client.auth.onAuthStateChange(() => route());
+  // Synchronous, and it must stay that way — see `session` above. It takes what
+  // it is given and redraws; it asks the auth client nothing.
+  client.auth.onAuthStateChange((_event, next) => {
+    session = next;
+    sessionKnown = true;
+    route();
+  });
 
   // Re-scanning the QR from an already-open page changes only the fragment,
   // and a hash change does not reload a document — so without this the page
@@ -66,7 +113,7 @@ async function start() {
   // nothing reached it; 17.16.6 makes it reachable, because a rider whose code
   // lapsed is now told to go and get another one.
   window.addEventListener('hashchange', () => {
-    const next = (location.hash || '').replace(/^#/, '').trim().toUpperCase();
+    const next = pairingCodeIn(location.hash);
     if (next && next !== code) {
       code = next;
       describe();
@@ -98,7 +145,49 @@ async function describe() {
   el('device-code').textContent = code.replace(/(.{4})(.{4})/, '$1 $2');
   route();
 
-  const { data, error } = await client.rpc('device_link_describe', { p_code: code });
+  // **Nothing on this page may wait forever without saying so** (15.6.14). The
+  // deadlock above is fixed at its cause and this is the belt underneath it: a
+  // request that has not come back is a screen a rider cannot act on, and three
+  // dots is the least useful thing to leave in front of them. Ten seconds is
+  // several times the round trip and well under the patience of somebody
+  // standing beside a bike.
+  const asked = code;
+
+  // The `await` is inside the wrapper deliberately: `client.rpc(...)` returns a
+  // **thenable, not a promise** — PostgrestFilterBuilder has `.then` and no
+  // `.catch` — so hanging a `.catch` on it throws a TypeError, and a TypeError
+  // in here leaves the same three dots as the hang it was written to prevent.
+  // Measured, not reasoned about: that was the first version of this fix.
+  const request = (async () => {
+    try {
+      return await client.rpc('device_link_describe', { p_code: code });
+    } catch {
+      return { silent: true };
+    }
+  })();
+
+  const result = await Promise.race([
+    request,
+    new Promise((resolve) => setTimeout(() => resolve({ silent: true }), 10_000)),
+  ]);
+
+  // A second scan while the first answer was in flight. Whatever came back is
+  // about a code the rider has moved on from.
+  if (asked !== code) return;
+
+  const { data, error, silent } = result;
+
+  if (silent) {
+    // Not "expired": the page does not know that, and saying it would send a
+    // rider to fetch a new code from a bike whose code is fine.
+    described = false;
+    el('device-caption').textContent = 'No answer';
+    el('device-label').textContent = "Couldn't reach Pelonot";
+    el('device-code').textContent =
+      'Check the phone has a signal and pull down to reload this page.';
+    route();
+    return;
+  }
 
   if (error || !data || data.status !== 'waiting') {
     described = false;
@@ -124,18 +213,23 @@ async function describe() {
  * Signing in depends on the session and nothing else. Handing a session over
  * depends on the session *and* on the server having named the device — which
  * is where 15.6.5 lives, and the only place it needs to.
+ *
+ * **Synchronous on purpose** — see `session`. It is called from an auth
+ * callback, and a callback that awaits the auth client deadlocks it.
  */
-async function route() {
+function route() {
   // Once the bike has it, this page has nothing left to offer. Without the
   // guard the fallback's own `signOut()` comes back through here and redraws
   // the sign-in form underneath the word "Done".
   if (finished) return;
 
-  const { data } = await client.auth.getSession();
-  const signedIn = Boolean(data.session);
+  const signedIn = Boolean(session);
   const known = described === true;
 
-  el('signed-out').classList.toggle('hidden', signedIn);
+  // Until the first auth event nothing is drawn either way. A rider who is
+  // signed in and shown a sign-in form starts typing, which is worse than a
+  // moment of nothing.
+  el('signed-out').classList.toggle('hidden', !sessionKnown || signedIn);
   el('confirm').classList.toggle('hidden', !signedIn || !known);
 
   // The way forward whenever there is no bike to sign in: no code at all, or
@@ -149,7 +243,7 @@ async function route() {
   // about to do, which is the whole of 15.6.5's requirement.
   const who = el('signed-in-as');
   who.classList.toggle('hidden', !signedIn);
-  if (signedIn) who.textContent = `Signed in as ${data.session.user.email}`;
+  if (signedIn) who.textContent = `Signed in as ${session.user.email}`;
 }
 
 async function submit(event) {
@@ -217,8 +311,6 @@ async function hand0ver() {
   status.classList.remove('error');
   status.textContent = 'Linking…';
 
-  const { data } = await client.auth.getSession();
-  const session = data.session;
   if (!session) {
     status.textContent = 'Sign in first.';
     el('confirm-go').disabled = false;
