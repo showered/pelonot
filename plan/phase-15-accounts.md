@@ -328,10 +328,43 @@ own**, minted for it, not a copy of the phone's.
       that way: expired rows deleted on every `begin`, a cap on how many
       unclaimed pairings can exist, and nothing in the row that identifies a
       rider until the moment one claims it
-- [ ] **15.6.11** **The bike has to say the link worked, on the bike** — the
+- [x] **15.6.11** **The bike has to say the link worked, on the bike** — the
       owner's note of 5 August: *"Make sure that after you sign in / sign up the
       bike automatically responds to it and says 'successfully linked account'
       or something similar/better."*
+
+      ***Built, and the panel is observed on the tablet AVD; the trigger needs a
+      real sign-in and is not a session's to perform.*** The three questions
+      this item said to establish first were, and the answers are why it was
+      worth asking them:
+
+      1. **What the bike drew in the second after a successful redeem: nothing.**
+         `resolve` called `onSignedIn` → `onDone` → the dialog closed and the
+         dashboard appeared. The QR did not so much confirm as *vanish*.
+      2. **A timeout already looks different** — `PairingState.Expired` draws
+         *"That code has expired"* with two ways on. So the failure was never
+         rendered as silence; only the success was.
+      3. **Nothing named the account**, and that is the half worth having. On a
+         household bike the interesting failure is signing in as the wrong
+         person, and an address is the only thing on the screen that would show
+         it. `AccountState.SignedIn` carries one, so `LinkedConfirmation` shows
+         it — with a fallback that claims only what is certainly true, because a
+         session need not carry an address.
+
+      **One button, and deliberately no timer.** The rider may still be two
+      steps away holding their phone, and a panel that counts itself down takes
+      the message from exactly the rider who needed it. **Both routes get the
+      same moment**: a rider who typed a password into a bike's touchscreen has
+      done more work than one who scanned, not less.
+
+      The one thing that had to change to make it possible is worth knowing:
+      the step's own guard is `signedInAsThisProfile`, which goes true the
+      instant a session lands, so it would have swept the rider onward before
+      the panel could draw. It is suppressed once the sign-in happened *here*.
+
+      **What is not observed** is the moment itself firing, because reaching it
+      means signing in to the owner's live project — see the note at the end of
+      this phase
 
       **Read 15.6.6 before assuming this is unbuilt**, because half of it is:
       the bike polls every two seconds and the poll is what redeems the pairing,

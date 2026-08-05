@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -15,12 +16,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.PairingState
 import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
@@ -54,12 +59,20 @@ fun ProfileAccountOfferStep(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // 15.6.11. **The bike has to say the link worked, on the bike.** Set by
+    // whichever route succeeded — the code or the typed password, both of which
+    // reach `onSignedIn` only from `AuthAttempt.Success` — and it is what turns
+    // the guard below off, because the moment a session lands
+    // `signedInAsThisProfile` becomes true and the guard would otherwise sweep
+    // the rider onward before the bike had said anything at all.
+    var linked by remember { mutableStateOf(false) }
+
     // Guards rather than expected paths: NavGraph only passes this step in at
     // all when the build has a cloud (15.8.7), and a brand-new profile is
     // never already signed in. Both are here so a future caller that gets
     // either wrong fails safe — straight through — rather than stranding the
     // rider on a screen with nothing to do.
-    if (!state.cloudConfigured || state.signedInAsThisProfile) {
+    if (!state.cloudConfigured || (state.signedInAsThisProfile && !linked)) {
         LaunchedEffect(Unit) { onDone() }
         return
     }
@@ -71,25 +84,31 @@ fun ProfileAccountOfferStep(
     // to the start from one press. Back is one step, and on this screen there
     // are exactly two steps to be on.
     BackHandler {
-        when (state.pairing) {
+        when {
+            // Signed in, and being told so. There is nothing behind this, so
+            // back does what its one button does.
+            linked -> onDone()
+
             // The two routes, one step back from the code. `cancelPairing`
             // rather than a state reset, because the bike has told the server a
             // code exists and a rider walking away from it should take it with
             // them.
-            PairingState.Starting, is PairingState.Waiting,
-            PairingState.Expired, is PairingState.Failed -> viewModel.cancelPairing()
+            state.pairing == PairingState.Starting ||
+                state.pairing is PairingState.Waiting ||
+                state.pairing == PairingState.Expired ||
+                state.pairing is PairingState.Failed -> viewModel.cancelPairing()
 
             // A handover is in hand and the session is being attached. Back does
             // nothing for the second this takes: dropping out mid-adoption is
             // the one outcome here worse than a press that appears to be
             // ignored.
-            PairingState.Completing -> Unit
+            state.pairing == PairingState.Completing -> Unit
 
             // Nothing to step back to — going back from the offer would re-ask a
             // question about a profile that already exists (15.8.1). So back is
             // the answer this app ships as its default, which is the one drawn
             // at the foot of the screen: *Not now*.
-            PairingState.Idle -> onDone()
+            else -> onDone()
         }
     }
 
@@ -120,10 +139,15 @@ fun ProfileAccountOfferStep(
         modifier = Modifier.widthIn(max = OFFER_WIDTH)
     ) {
         when {
+            linked -> LinkedConfirmation(
+                email = (state.session as? AccountState.SignedIn)?.email,
+                onDone = onDone
+            )
+
             state.pairing != PairingState.Idle -> PairingSection(
                 state = state,
                 onCancel = viewModel::cancelPairing,
-                onRetry = { viewModel.startPairing(onSignedIn = onDone) }
+                onRetry = { viewModel.startPairing(onSignedIn = { linked = true }) }
             )
 
             else -> {
@@ -161,7 +185,9 @@ fun ProfileAccountOfferStep(
                             modifier = Modifier.weight(1f)
                         ) {
                             ScanToSignIn(
-                                onStart = { viewModel.startPairing(onSignedIn = onDone) }
+                                onStart = {
+                                    viewModel.startPairing(onSignedIn = { linked = true })
+                                }
                             )
                         }
                     }
@@ -169,7 +195,11 @@ fun ProfileAccountOfferStep(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                         modifier = Modifier.weight(1f)
                     ) {
-                        SignInForm(state, viewModel, onDone = onDone)
+                        // 15.6.11 again: the typed route gets the same moment
+                        // as the scanned one. A rider who has just put a
+                        // password into a bike's touchscreen has done more work
+                        // than one who scanned, not less.
+                        SignInForm(state, viewModel, onDone = { linked = true })
                     }
                 }
 
@@ -184,6 +214,60 @@ fun ProfileAccountOfferStep(
                 }
             }
         }
+    }
+}
+
+/**
+ * The bike saying the link landed (PLAN 15.6.11).
+ *
+ * **The owner's note:** *"Make sure that after you sign in / sign up the bike
+ * automatically responds to it and says 'successfully linked account' or
+ * something similar/better."* Half of it was built — the poll redeems the
+ * pairing and a linked bike does end up signed in — and the half that was not
+ * is the *moment*. Before this, a successful redeem called `onDone`
+ * immediately: the QR vanished, the dialog closed and the dashboard appeared.
+ * A rider who has just typed a password into their phone is looking at the
+ * **bike** waiting to be told it worked, and a screen that quietly gets out of
+ * the way has answered a different question.
+ *
+ * **It names the account, because that is a fact the rider can check.**
+ * *"Success"* is a claim they cannot: on a household bike the interesting
+ * failure is signing in as the wrong person, and an address is the only thing
+ * on this screen that would show it. The address can be absent — a session
+ * carries one only if the provider gave one — so the fallback says what is
+ * certainly true and claims nothing more.
+ *
+ * **One button, and no timer.** The rider may still be holding their phone two
+ * steps away; a panel that counts itself down takes the message away from
+ * exactly the rider who needed it. Phase 26's rule is to say less, and it also
+ * says where to be explicit — this is the one moment in the app where work done
+ * on another device has to be reported back.
+ */
+@Composable
+private fun LinkedConfirmation(email: String?, onDone: () -> Unit) {
+    Text(
+        text = "Signed in",
+        style = MaterialTheme.typography.headlineMedium,
+        color = MaterialTheme.colorScheme.onBackground
+    )
+    Text(
+        text = email ?: "This bike is linked to your account.",
+        style = MaterialTheme.typography.bodyLarge,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.readableText()
+    )
+    Spacer(Modifier.height(MaterialTheme.spacing.medium))
+    Text(
+        text = "Your rides back themselves up from here on.",
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.readableText()
+    )
+    Spacer(Modifier.height(MaterialTheme.spacing.large))
+    Button(onClick = onDone, modifier = Modifier.widthIn(min = 200.dp)) {
+        Text("Start riding")
     }
 }
 
