@@ -7,6 +7,14 @@ package com.pelonot.domain.model
  * Previously this was passed around as a bare display string and compared with
  * `when (intentModifier) { "Reach New Milestones" -> ... }`, so a typo silently
  * degraded to a 1.0 multiplier.
+ *
+ * **[description] does not name the multiplier, and that is deliberate**
+ * (Phase 26, the owner's call of 5 August). It read "Push targets 5% higher
+ * than your zones prescribe" — three pieces of machinery in one line, on the
+ * one dialog standing between a rider and starting a class. *"Too geeky, the
+ * user doesn't need to see behind the curtain on this one."* The `k` is still
+ * exactly what it was; it is simply not the thing the rider is being asked
+ * about, which is whether they feel like working hard today.
  */
 enum class RideIntent(
     /** Stable identifier — safe to persist and to put in an Intent extra. */
@@ -18,13 +26,13 @@ enum class RideIntent(
     ReachNewMilestones(
         id = "reach_new_milestones",
         displayName = "Reach New Milestones",
-        description = "Push targets 5% higher than your zones prescribe",
+        description = "A bit harder than your zones ask for",
         multiplier = 1.05
     ),
     JustStayFit(
         id = "just_stay_fit",
         displayName = "Just Stay Fit",
-        description = "Ease targets 5% below your zones for a sustainable effort",
+        description = "A bit easier, for an effort you can hold",
         multiplier = 0.95
     );
 

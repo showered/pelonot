@@ -57,8 +57,8 @@ data class ClassProfile(
     val minutesLabel: String get() = "${(totalSec + 30) / 60} min"
 
     /**
-     * Where the work is, in the words a rider would use out loud — *"four
-     * 2 min efforts at VO2 Max"* — or null when the class asks for nothing.
+     * Where the work is, in the words a rider would use out loud — *"4 × 2 min
+     * at VO2 Max"* — or null when the class asks for nothing.
      *
      * **Minutes rather than `mm:ss`.** A clock format is for reading a
      * measurement; this is describing a shape to somebody deciding what to
@@ -70,8 +70,11 @@ data class ClassProfile(
             val zone = hardest ?: return null
             if (efforts.isEmpty()) return null
             return when {
+                // "a", not "one": with the numeral right behind it the word
+                // says the count twice — `END-01` read "one 1 min effort at
+                // Tempo", which looks like a typo rather than a description.
                 efforts.size == 1 ->
-                    "one ${length(efforts.first())} effort at ${zone.displayName}"
+                    "a ${length(efforts.first())} effort at ${zone.displayName}"
                 // Every effort the same length is the thing a rider recognises
                 // as a workout — "4 × 2 min" is how the class would be described
                 // out loud, and it is what the library's own titles already say.

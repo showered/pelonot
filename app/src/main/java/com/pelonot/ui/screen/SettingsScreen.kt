@@ -1508,8 +1508,13 @@ private fun HouseholdSection(
     SettingsSection("On this bike") {
         SettingsToggle(
             title = "Show me to the others",
+            // "Week" until 22.5.4 moved the window to 30 days and left this
+            // copy behind, describing a screen that no longer exists. The
+            // setting is the one place a rider goes to find out what other
+            // people can see, so being a month out of date about it is the
+            // worst place for the drift to land.
             description = "Your rides appear on this bike's leaderboards and on the " +
-                "week summary everyone here can see.",
+                "last 30 days everyone here can see.",
             checked = visible,
             onCheckedChange = onVisibleChange
         )
@@ -1519,8 +1524,8 @@ private fun HouseholdSection(
                     "dashboard and records are untouched — this is only about what other " +
                     "people on this tablet see."
             } else {
-                "You're hidden from this bike's leaderboards and week summary. Your own " +
-                    "rides are all still here."
+                "You're hidden from this bike's leaderboards and from the last 30 days. " +
+                    "Your own rides are all still here."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant

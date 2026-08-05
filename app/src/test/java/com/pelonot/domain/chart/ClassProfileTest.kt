@@ -43,7 +43,7 @@ class ClassProfileTest {
 
         assertEquals(PowerZone.Z4, profile.hardest)
         assertEquals(listOf(900), profile.efforts)
-        assertEquals("30 min · one 15 min effort at Lactate Threshold", profile.summary)
+        assertEquals("30 min · a 15 min effort at Lactate Threshold", profile.summary)
     }
 
     @Test

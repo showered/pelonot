@@ -95,6 +95,34 @@ claim (14.4.7, 21.1).
       and some is the author talking. The audit is per row: keep the sentence
       that changes what a rider would choose, cut the one that explains how it
       works
+- [x] **26.1.5** **The pre-ride goal prompt named its own multiplier.** *"Push
+      targets 5% higher than your zones prescribe"* and *"Ease targets 5% below
+      your zones for a sustainable effort"* — on the one dialog standing between
+      a rider and starting a class, and each line carrying three pieces of
+      machinery (a percentage, the word *targets*, and the claim that zones
+      *prescribe*). The owner's call, 5 August: *"let's hide away the +5% and
+      -5%, it's too geeky, the user doesn't need to 'see behind the curtain' on
+      this one."* Now *"A bit harder than your zones ask for"* and *"A bit
+      easier, for an effort you can hold"*. **`k` is unchanged** — 1.05 and
+      0.95 still scale every target, and `RideIntent.fromMultiplier` still
+      depends on them being distinct. What changed is that the number is no
+      longer the thing the rider is asked about. **Observed on the tablet AVD**
+- [ ] **26.1.6** **There is no way to ride a class at the zones it was
+      authored with.** `RideIntent` has exactly two entries and both scale away
+      from the prescription; Cancel abandons the start rather than accepting
+      it, so **every ride ever recorded by this app is ±5% off the catalogue**.
+      That sits oddly beside `classlibrary/`, where a build refuses to emit a
+      session that breaks a design rule and then every rider is moved off it by
+      default — and `DEFAULT = JustStayFit` means a resumed ride whose modifier
+      does not resolve silently becomes 0.95 rather than 1.0.
+
+      **Raised 5 August and deliberately not built**: the owner's answer was
+      *"leave it entirely"*, and 26.1.5 above is what they asked for instead.
+      Written down because the reasoning is worth keeping and the fix is small
+      if the answer ever changes — a third entry at 1.0, made the default.
+      `fromMultiplier`'s distinctness rule survives it, since 1.0 collides with
+      neither. What it would cost is a third card on a dialog that Phase 26 has
+      just finished making quieter, which is the honest argument against
 
 ### 26.2 The rule, written where it will be read
 

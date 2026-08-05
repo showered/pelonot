@@ -121,7 +121,17 @@ to change its units for one ride), the Start Class screen with the board on it
 designed on an AVD where the card could not draw), and the static board having
 no ceiling (**24.1.8**).
 
-**The inbox is empty.**
+### Leaderboard ghost riders
+
+Let's spend some effort thinking of some auto-generated leaderboard ghosts to ride against. They wouldn't go in the RideSummary screen, only in the live leaderboard, and they would serve as great targets to either catch, or stay in front of, to reach your fitness goals. There is already a plan item for his, but now it's time to actually do it. Let's work together. Please use your intelligence to come up with suggestions of what we can do. The more the merrier, really. There should always be some target. But then if there are too many "CPU" targets then we might lose sight of the (more exciting) human targets. So perhaps we should be intelligent about how we display these items on teh leaderboard, humans taking precedence. Your own PB should have some kind of UI to make it really exciting. If you're ahead of your PB then that should stand out. But no matter how high you go there should always be a target ahead of you. Perhaps total-output targets, like on a 30-min ride there should be a target for 200kj, 250, 300, 350, 400, etc. Maybe stretch goals so 5% higher than current PB. Please continue along this train of thought and come up with your own ideas and then we can decide on it. The labels should be self-explanatory but also personal and not too geeky. High priority let's get this done before recording the video demo.
+
+### Leaderboard target metric
+
+One for later, probably, unless it's really easy. Could toggle between Output and Distance as the target metric
+
+### New type of ride
+
+Maybe for the backlog some kind of ride where you set a distance and then try to set a new time record. Like 100 miles or 26.2 miles or 50km or whatever. Just an idea. For the backlog. Nothing urgent at all but i want to track it
 
 ---
 
