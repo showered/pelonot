@@ -41,23 +41,48 @@ data class RaceCompetitor(
          *
          * Short on purpose, and the reason is the screen rather than taste:
          * these sit in a 360 dp column beside a rank and a number, read from
-         * two metres by somebody at 90 rpm. *"Your best of the last thirty
-         * days"* is accurate and unreadable. Beside a row that says **YOU**,
-         * *30 days* is unambiguous.
+         * two metres by somebody at 90 rpm.
+         *
+         * **24.3.12a is settled here, and 24.3.18e is why it had to be.** The
+         * owner had said `12 months` was *"no good at all"* and left the
+         * naming as an action on themselves; what forced it was ghosts
+         * arriving, because a second family of invented name on a board that
+         * already read `12 MONTHS / 30 DAYS / Ava` would have been two
+         * problems instead of one. The fault was nameable: **every other row
+         * on the board is a person and those two were durations.** The brief
+         * from 24.3.18e — *"self-explanatory but also personal and not too
+         * geeky"* — gives one voice for every non-human row, written from the
+         * rider's own point of view. `Your best this year` is four characters
+         * longer than `12 months` and is a sentence about a person.
          */
         val label: String
     ) {
         /** Your best ride of this class, ever. */
         YourBestEver("Your best"),
 
-        /** Your best of the last twelve months. */
-        YourBestYear("12 months"),
+        /** Your best of the last twelve months — `12 months` until 24.3.12a. */
+        YourBestYear("Your best this year"),
 
-        /** Your best of the last thirty days. */
-        YourBestMonth("30 days"),
+        /** Your best of the last thirty days — `30 days` until 24.3.12a. */
+        YourBestMonth("Your recent best"),
 
         /** A housemate's best, from `householdRivals` (24.3.1's query). */
         Housemate(""),
+
+        /**
+         * A housemate's **most recent** ride, from `householdLatestRides`
+         * (24.3.18b).
+         *
+         * The owner: *"Can we also add more things like 'Tom's last ride' …
+         * it's exciting to see activity."* A best is a monument and can be two
+         * years old; a last ride is news. Declared **below** [Housemate] so
+         * that when a housemate's latest ride is also their best the board
+         * keeps the prouder of the two labels rather than the more recent one.
+         *
+         * The label is empty for the same reason [Housemate]'s is — it is
+         * built from the rider's name, in the repository.
+         */
+        HousemateLatest(""),
 
         /** Phase 18. Nothing produces one yet. */
         Friend("");
@@ -78,6 +103,24 @@ data class RaceCompetitor(
          * ever is not usefully described as your best of the last thirty days.
          */
         fun widerThan(other: Kind): Boolean = ordinal < other.ordinal
+
+        /**
+         * How this row is classified on the live board (24.3.18a).
+         *
+         * Every one of these is a **ride that happened**, so the honest answer
+         * for all of them is [GhostKind.Human] — a row is only a *ghost* when
+         * this app made the number up. The rider's own three windows carry
+         * their own kinds so the board can style them as themselves rather
+         * than as opponents (24.3.18d), which is a different question from
+         * whether anybody rode them.
+         */
+        val ghostKind: GhostKind
+            get() = when (this) {
+                YourBestEver -> GhostKind.YourBest
+                YourBestYear -> GhostKind.YourBestThisYear
+                YourBestMonth -> GhostKind.YourRecentBest
+                Housemate, HousemateLatest, Friend -> GhostKind.Human
+            }
     }
 
     companion object {

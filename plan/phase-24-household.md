@@ -751,6 +751,124 @@ downgrade — it is why the feature can afford to be interesting.
       known and the sentence should not be read as one. **Observed fixed on the
       tablet AVD over YouTube**, both surfaces, at three digits.
 
+### 24.3.18 Ghost riders — always something ahead. The owner's note, 5 August 2026
+
+**Verbatim:** *"Let's spend some effort thinking of some auto-generated
+leaderboard ghosts to ride against. They wouldn't go in the RideSummary screen,
+only in the live leaderboard, and they would serve as great targets to either
+catch, or stay in front of, to reach your fitness goals. There is already a plan
+item for this, but now it's time to actually do it. Let's work together. Please
+use your intelligence to come up with suggestions of what we can do. The more
+the merrier, really. There should always be some target. But then if there are
+too many "CPU" targets then we might lose sight of the (more exciting) human
+targets. So perhaps we should be intelligent about how we display these items on
+the leaderboard, humans taking precedence. Your own PB should have some kind of
+UI to make it really exciting. If you're ahead of your PB then that should stand
+out. But no matter how high you go there should always be a target ahead of you.
+Perhaps total-output targets, like on a 30-min ride there should be a target for
+200kj, 250, 300, 350, 400, etc. Maybe stretch goals so 5% higher than current PB.
+Please continue along this train of thought and come up with your own ideas and
+then we can decide on it. The labels should be self-explanatory but also personal
+and not too geeky."*
+
+**The note is right that there is already an item and wrong that it covers
+this.** 24.3.12 is *four kinds of row* and every one of them is a real ride
+somebody actually did. What this asks for is the opposite: rows that **nobody
+rode**, generated so the board is never empty above the rider. That is a
+different claim on the screen and it needs its own honesty rule, which is
+24.3.18a below.
+
+**The problem it solves is real and is visible in this project's own data.**
+`END-01` has fifteen seeded rides and looks great; every other class in the
+library has none, so the board does not draw at all (`isWorthShowing`, 24.1.6).
+A rider who picks a class nobody on the bike has ridden gets nothing — and 18.11
+removed the friend graph, so "somebody has ridden it" is a fact about a
+four-person population. **The common case for a new rider is an empty board**,
+and no amount of social plumbing fixes that.
+
+- [ ] **24.3.18a The honesty rule, and it comes first.** Every row on this board
+      today is a ride that happened, with measured watts, enforced in the query
+      (24.4.2). A generated row is **not that**, and the whole of 24.4's
+      argument says the difference has to be visible rather than smoothed over.
+      Two things follow and neither is negotiable:
+      - **A ghost is never counted as a person.** It cannot be the reason
+        `isWorthShowing` returns true, it cannot appear on the post-ride
+        leaderboard (the owner's own boundary — *"not in the RideSummary
+        screen"*), it never syncs, and it is never somebody's rank.
+      - **It reads as a target, not as a rival.** Whatever the visual
+        treatment, a rider must never come away thinking Ava did 300 kJ when
+        300 was a number this app made up.
+
+- [ ] **24.3.18b What the ghosts could be — five candidates, and they are not
+      equally good.** The owner asked for the train of thought, so here it is
+      with the argument attached rather than as a menu:
+
+      1. **Round output milestones** — 150 / 200 / 250 / 300 / 350 / 400 for the
+         class. This is the owner's own suggestion and it is the one that
+         delivers *"no matter how high you go there should always be a target
+         ahead"*, because the ladder is infinite by construction. It is also the
+         least personal: 300 is a number, not an opponent. Cheap — it needs no
+         query at all.
+      2. **A stretch on your own best** — PB + 5%. Also the owner's. Personal by
+         definition and exactly the right size of reach. Its limit is that it
+         only exists once a rider *has* a best on this class, which is the empty
+         case above, and beating it needs a second rung (+10%) or the ladder
+         stops.
+      3. **The class as it was written** — a ghost riding every block at the
+         middle of its prescribed band. **This is the one worth arguing for.**
+         It is the only candidate that is not arbitrary: it is the workout the
+         catalogue actually asked for, so catching it means *"I rode what the
+         class said"*, which is a fitness goal rather than a number. It needs no
+         history, so it is there on the very first ride of a class nobody has
+         touched — the empty-board case. And it quietly answers **26.1.6**,
+         which is that nothing in this app currently lets a rider aim at the
+         prescription. Most expensive of the five: it needs the interval plan
+         integrated into a kJ-against-time curve, which is `PowerModel`-free
+         because the target *is* watts.
+      4. **Your usual** — the median of your own rides of this class. The only
+         candidate that is deliberately *behind* a good rider, and that is its
+         point: on a bad day every other row is demoralising and this one is
+         beatable. Cheap, same query family as 24.3.12.
+      5. **The house** — the household's average best. Sociable without naming
+         anyone, and it degrades to absent in a household of one.
+
+- [ ] **24.3.18c Humans take precedence, and the rule has to be a rule.** The
+      owner's worry, verbatim: *"if there are too many CPU targets then we might
+      lose sight of the (more exciting) human targets."* The window is already
+      three rows (24.3.13) and that is the budget. Proposed rule, and it is one
+      sentence: **a ghost may only occupy a slot no human is using, and at most
+      one ghost is ever drawn** — the nearest one ahead of the rider. That
+      satisfies *always something ahead* with a single row, and on a busy class
+      the ghosts vanish entirely, which is the correct behaviour rather than a
+      compromise. The exception is a board with no humans on it at all, where
+      the ghosts are the board and more of them may be shown.
+
+- [ ] **24.3.18d Your best, made to feel like something.** *"Your own PB should
+      have some kind of UI to make it really exciting. If you're ahead of your
+      PB then that should stand out."* Two states and they are different jobs:
+      **chasing it** (the row is ahead, and it is the one row on the board that
+      is you, so it should not look like Ava's) and **past it** (a moment, then
+      a mark). Note the mid-ride trap 24.3.13 already found: the board re-sorts
+      as the rider moves, so "you passed your best" happens exactly once and
+      must not re-fire every second the lead is held. Same shape as
+      `PositionCallTracker` (25.3) — an event with a latch, not a state read
+      every frame.
+
+- [ ] **24.3.18e The labels, and this is 24.3.12a arriving from the other
+      side.** *"Self-explanatory but also personal and not too geeky."*
+      **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and
+      `30 DAYS` are durations where every other row is a person — and ghosts
+      make the mixture worse before they make it better. One voice for every
+      non-human row, proposed: `Your best`, `Your recent best`, `Your usual`,
+      `The plan`, `The house`, and a bare number for a milestone. Whatever is
+      chosen, **the two questions have to be answered together** or the board
+      ends up with two families of made-up name on it.
+
+- [ ] **24.3.18f Where it lives.** Live leaderboard only, on the owner's own
+      boundary. Nothing on the post-ride summary, nothing synced, nothing on
+      the overlay — 24.3.16 is unresolved and a ghost is not the thing to
+      reopen it with.
+
 - [ ] **24.3.15 The toggle: race by output, or race by distance.** Deferred on
       the owner's own *"otherwise just add it to the plan"*, and the reason it
       is not trivial is not the plumbing — that is done — but **where the

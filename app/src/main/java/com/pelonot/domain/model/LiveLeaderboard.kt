@@ -1,5 +1,9 @@
 package com.pelonot.domain.model
 
+import com.pelonot.core.Formatters
+import com.pelonot.domain.social.GhostKind
+import com.pelonot.domain.social.GhostRider
+
 /**
  * Everyone this ride is racing, ranked at the second it is asked about (PLAN
  * 24.3.10–24.3.13).
@@ -24,11 +28,60 @@ package com.pelonot.domain.model
  */
 data class LiveLeaderboard(
     val ghosts: List<Ghost>,
-    val metric: RaceMetric = RaceMetric.Output
+    val metric: RaceMetric = RaceMetric.Output,
+    /**
+     * The milestone ladder, or null (24.3.18b, candidate 1).
+     *
+     * Not one of [ghosts] because it is the only row on the board that has to
+     * **move when the rider does**: the owner's *"no matter how high you go
+     * there should always be a target ahead of you"* cannot be satisfied by a
+     * fixed total, since a rider who beats it is back to an empty sky.
+     */
+    val pacer: Pacer? = null
 ) {
 
     /** One competitor, reduced to a name and a cumulative series. */
-    data class Ghost(val name: String, val trace: RivalTrace)
+    data class Ghost(
+        val name: String,
+        val trace: RivalTrace,
+        /** What this row is (24.3.18a). [GhostKind.Human] for a real ride. */
+        val kind: GhostKind = GhostKind.Human
+    )
+
+    /**
+     * A round number that stays ahead of the rider (24.3.18b).
+     *
+     * It is a *pace* rather than a trace: the rung is chosen at each second
+     * from the greater of [floor] and the rider's own projected finish, so the
+     * ladder rises as they do. The row's own name changes with the rung, which
+     * is the point — passing 300 and finding 350 in front of you is the
+     * feature, not a glitch.
+     *
+     * @property floor the best total already on the board, so the first rung
+     *   is above the field rather than above nothing.
+     */
+    data class Pacer(
+        val durationSec: Int,
+        val floor: Double,
+        val stepKj: Double = GhostRider.MILESTONE_STEP_KJ
+    ) {
+        /**
+         * The target total at [second], given what the rider has done so far.
+         *
+         * Projection is held off until [GhostRider.LADDER_SETTLES_AFTER_SEC]:
+         * dividing by a handful of elapsed seconds turns a warm-up surge into
+         * a finishing total nobody has ridden, and the target would leap and
+         * then sag for the rest of the class.
+         */
+        fun targetAt(second: Int, yourValue: Double): Double {
+            val projected = if (second >= GhostRider.LADDER_SETTLES_AFTER_SEC && second > 0) {
+                yourValue * durationSec / second
+            } else {
+                0.0
+            }
+            return GhostRider.nextMilestone(maxOf(floor, projected, yourValue), stepKj)
+        }
+    }
 
     /**
      * **A board with nobody on it is not drawn** — 24.1.6's rule, and the
@@ -37,7 +90,20 @@ data class LiveLeaderboard(
      * comparison; zero is a rider being shown their own number with the word
      * *leaderboard* over it.
      */
-    val isEmpty: Boolean get() = ghosts.isEmpty()
+    /**
+     * **A ghost may carry a board on its own here, and only here** (24.3.18a).
+     *
+     * 24.1.6's rule — a board of one row is a rider's own number with the word
+     * *leaderboard* over it — is about the *static* board, where ghosts never
+     * appear at all. On the live board the opposite is true and it is the
+     * whole reason this feature exists: with 72 classes and a four-person
+     * household, the ordinary case is a class nobody has ridden, and *the
+     * plan* (24.3.18b) is a real target on the very first attempt at one.
+     *
+     * What stays true is that a generated row is never mistaken for a person:
+     * that is [Ghost.kind]'s job, not this one's.
+     */
+    val isEmpty: Boolean get() = ghosts.isEmpty() && pacer == null
 
     /**
      * The board as it stands at [second], with [yourValue] as the rider's own
@@ -47,7 +113,7 @@ data class LiveLeaderboard(
      *   case and draws nothing at all.
      */
     fun standingsAt(second: Int, yourValue: Double): LiveStandings? {
-        if (ghosts.isEmpty()) return null
+        if (isEmpty) return null
 
         val field = buildList {
             add(Placing(LiveStanding.YOU, yourValue, isYou = true, finished = false))
@@ -63,7 +129,34 @@ data class LiveLeaderboard(
                         name = ghost.name,
                         value = at ?: ghost.trace.finalValue,
                         isYou = false,
-                        finished = at == null
+                        finished = at == null,
+                        kind = ghost.kind
+                    )
+                )
+            }
+            // The ladder is placed last so that when it ties with a ghost the
+            // stable sort leaves it below — a round number and a real target
+            // level with each other should read as the real one being ahead.
+            pacer?.let { ladder ->
+                val target = ladder.targetAt(second, yourValue)
+                add(
+                    Placing(
+                        // The rung itself is the name — a bare number, which
+                        // is the board's own convention since 24.3.17b took
+                        // the units off every row.
+                        name = Formatters.kilojoulesValue(target),
+                        // Paced to finish on the rung, so it is beatable all
+                        // the way rather than an unreachable line from second
+                        // one: the rider is chasing a *pace*, which is what
+                        // "on for 300" means to somebody riding.
+                        value = if (ladder.durationSec > 0) {
+                            target * second.coerceAtMost(ladder.durationSec) / ladder.durationSec
+                        } else {
+                            target
+                        },
+                        isYou = false,
+                        finished = false,
+                        kind = GhostKind.Milestone
                     )
                 )
             }
@@ -90,7 +183,8 @@ data class LiveLeaderboard(
                 value = placing.value,
                 isYou = placing.isYou,
                 finished = placing.finished,
-                gapToYou = placing.value - yourValue
+                gapToYou = placing.value - yourValue,
+                kind = placing.kind
             )
         }
 
@@ -98,6 +192,7 @@ data class LiveLeaderboard(
         return LiveStandings(
             metric = metric,
             window = windowAround(standings, yourIndex),
+            all = standings,
             yourRank = standings[yourIndex].rank,
             fieldSize = standings.size
         )
@@ -107,7 +202,8 @@ data class LiveLeaderboard(
         val name: String,
         val value: Double,
         val isYou: Boolean,
-        val finished: Boolean
+        val finished: Boolean,
+        val kind: GhostKind = GhostKind.Human
     )
 
     companion object {
@@ -115,12 +211,22 @@ data class LiveLeaderboard(
          * How many rows the ride screen shows (24.3.13).
          *
          * The owner: *"I'm expecting it to show the person above you, the
-         * person below you."* Three is what makes 24.3.4's *"not a list"* and
-         * the word *leaderboard* stop contradicting each other — the board can
-         * have any number of rows on it and the rider sees the three that
+         * person below you."* It is what makes 24.3.4's *"not a list"* and the
+         * word *leaderboard* stop contradicting each other — the board can
+         * have any number of rows on it and the rider sees the ones that
          * concern them.
+         *
+         * **Three until the thirty-second sitting, and six now** (24.3.18c).
+         * The owner: *"There is space, as far as I remember, on the screen for
+         * more than 3 items … it's exciting to overtake and be overtaken so
+         * the more the merrier within reason."* Measured on the tablet AVD
+         * rather than estimated: rows are 66 px apart, the card starts at
+         * y ≈ 200, and *View in Overlay Mode* caps it at y ≈ 672 — six rows
+         * fit with nothing else moved, and a seventh collides with the button.
+         * The rest of the field is reachable by scrolling; the six are what a
+         * rider gets without taking a hand off the bars.
          */
-        const val WINDOW = 3
+        const val WINDOW = 6
 
         /**
          * Three consecutive rows containing the rider, centred on them where
@@ -161,6 +267,15 @@ data class LiveStandings(
     val metric: RaceMetric,
     /** Up to [LiveLeaderboard.WINDOW] rows, best first, always including you. */
     val window: List<LiveStanding>,
+    /**
+     * The whole field, best first — what scrolling reaches (24.3.18c).
+     *
+     * The owner asked for the rest to be scrollable rather than hidden. The
+     * distinction [window] keeps is still the important one: those are the
+     * rows a rider gets **without taking a hand off the bars**, and everything
+     * here beyond them costs a deliberate reach.
+     */
+    val all: List<LiveStanding> = window,
     val yourRank: Int,
     /** Everybody on the board, the rider included. */
     val fieldSize: Int
@@ -211,8 +326,20 @@ data class LiveStanding(
      * a `+` and the row below always carries a `−`, so the sign agrees with
      * the position it is drawn in.
      */
-    val gapToYou: Double
+    val gapToYou: Double,
+    /**
+     * What this row is (24.3.18a) — a person, or a target the app generated.
+     *
+     * Carried rather than worked out from [name], so nothing on the drawing
+     * side has to pattern-match a string to decide whether to mark a row as
+     * invented. A rider must never come away thinking a housemate did 300 kJ
+     * when 300 was a number this app made up.
+     */
+    val kind: GhostKind = GhostKind.Human
 ) {
+    /** Whether this row was generated rather than ridden. */
+    val isGhost: Boolean get() = kind.isGhost
+
     companion object {
         /** The rider's own row. Not a name, so it can never collide with one. */
         const val YOU = "You"

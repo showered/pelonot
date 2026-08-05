@@ -58,6 +58,23 @@ data class HouseholdRivalRow(
 )
 
 /**
+ * A housemate's most recent ride of one class — see
+ * [WorkoutDao.householdLatestRides] (24.3.18b).
+ *
+ * Separate from [HouseholdRivalRow] only because it carries [lastRideAt], and
+ * that column is what the row is *for*: it is on the board because it is news,
+ * not because it is good.
+ */
+data class HouseholdLatestRow(
+    val localUserId: Int,
+    val name: String,
+    val workoutId: String,
+    val outputKj: Double,
+    val durationSec: Int,
+    val lastRideAt: Long
+)
+
+/**
  * How far behind a rider's cloud backup is (PLAN 14.2.3, 14.2.4).
  *
  * `oldestTimestamp` is **nullable and null means there is no backlog** — it is
@@ -381,6 +398,56 @@ interface WorkoutDao {
     ): List<HouseholdRivalRow>
 
     /**
+     * Each housemate's **most recent** raceable ride of this class, rather than
+     * their best (24.3.18b).
+     *
+     * The owner's note: *"Can we also add more things like 'Tom's last ride'
+     * … it's exciting to see activity."* A best is a monument and can be two
+     * years old; a last ride is **news**, and it is the row that makes the
+     * board feel like other people are actually using the bike.
+     *
+     * `MAX(w.timestamp)` with `GROUP BY` rather than a window function, which
+     * SQLite on API 24 does not have. Every other clause is
+     * [householdRivals]'s, unchanged and deliberately so: a row that is not
+     * raceable as somebody's best is not raceable as their latest either.
+     *
+     * A housemate whose latest ride *is* their best appears once —
+     * `RaceCompetitor.oneRowPerRide` collapses them on the workout id, and the
+     * best is the wider label.
+     */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId,
+               p.name AS name,
+               w.id AS workoutId,
+               w.total_output_kj AS outputKj,
+               w.duration_sec AS durationSec,
+               MAX(w.timestamp) AS lastRideAt
+        FROM workouts w
+        JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.class_id = :classId
+          AND w.id != :excludingWorkoutId
+          AND w.user_id != :excludingUserId
+          AND w.is_complete = 1
+          AND w.total_output_kj > 0
+          AND p.household_visible = 1
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+              SELECT 1 FROM workout_metrics m
+              WHERE m.workout_id = w.id
+                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        GROUP BY p.local_user_id
+        ORDER BY lastRideAt DESC
+        """
+    )
+    suspend fun householdLatestRides(
+        classId: String,
+        excludingWorkoutId: String,
+        excludingUserId: Int
+    ): List<HouseholdLatestRow>
+
+    /**
      * The rider's own best ride of this class **before** the one being looked
      * at (16.3.4).
      *
@@ -603,6 +670,33 @@ interface WorkoutDao {
         """
     )
     fun getWorkoutsByClass(userId: Int, classId: String): Flow<List<WorkoutEntity>>
+
+    /**
+     * Every total this rider has recorded on one class, for *your usual*
+     * (24.3.18b).
+     *
+     * **Measured watts only**, by the same `NOT EXISTS` clause every other
+     * raceable query carries (24.4.2): a median that includes simulated rides
+     * is a target built partly out of `PowerModel`, and the whole reason
+     * `power_is_measured` exists is that the two must never be averaged
+     * together. `total_output_kj > 0` drops the abandoned ten-second attempts
+     * that would otherwise drag a median down.
+     */
+    @Query(
+        """
+        SELECT total_output_kj FROM workouts w
+        WHERE w.class_id = :classId
+          AND w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.total_output_kj > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM workout_metrics m
+            WHERE m.workout_id = w.id
+              AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        """
+    )
+    suspend fun ownTotalsForClass(userId: Int, classId: String): List<Double>
 
     /**
      * Every class id some ride still points at.

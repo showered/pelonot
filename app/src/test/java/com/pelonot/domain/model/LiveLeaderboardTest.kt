@@ -37,54 +37,61 @@ class LiveLeaderboardTest {
         assertNull(empty.standingsAt(60, yourValue = 12.0))
     }
 
-    // ── The three rows (24.3.13) ────────────────────────────────────
+    // ── The window (24.3.13, widened to six by 24.3.18c) ────────────
+    //
+    // Three until the thirty-second sitting. The rule these hold is unchanged
+    // and is the one that matters: **the window slides rather than shrinking**,
+    // so the card is the same height at the top of the board, at the bottom,
+    // and in the middle (11.6.8). Only the number changed, and it changed
+    // because the space was measured rather than assumed.
+
+    private fun crowd(size: Int) = (1..size).map { n ->
+        ghost("R$n", perSecond = 10.0 - n * 0.1, seconds = 600)
+    }.toTypedArray()
 
     @Test
-    fun `the window is the row above you, you, and the row below`() {
-        // Five on the board and the rider third: they see the one they are
-        // chasing, themselves, and the one chasing them — never the whole list.
-        val standings = board(
-            ghost("A", perSecond = 5.0, seconds = 600),
-            ghost("B", perSecond = 4.0, seconds = 600),
-            ghost("D", perSecond = 2.0, seconds = 600),
-            ghost("E", perSecond = 1.0, seconds = 600)
-        ).standingsAt(100, yourValue = 300.0)!!
+    fun `the window is centred on you, and slides rather than shrinking`() {
+        // Ten on the board and the rider in the middle of them.
+        val standings = board(*crowd(9)).standingsAt(100, yourValue = 550.0)!!
 
-        assertEquals(5, standings.fieldSize)
-        assertEquals(3, standings.yourRank)
-        assertEquals(listOf("B", LiveStanding.YOU, "D"), standings.window.map { it.name })
+        assertEquals(10, standings.fieldSize)
+        assertEquals(LiveLeaderboard.WINDOW, standings.window.size)
+        assertTrue("the rider must be on their own board", standings.window.any { it.isYou })
     }
 
     @Test
-    fun `leading still shows three rows, and says so`() {
+    fun `leading still shows a full window, and says so`() {
         // 24.3.13 names this the state to design first, because it is the one
-        // a rider wants to be in. The window slides rather than shrinking: a
-        // card that lost a row at the top would change height mid-ride, which
-        // is 11.6.8 all over again.
-        val standings = board(
-            ghost("B", perSecond = 4.0, seconds = 600),
-            ghost("C", perSecond = 3.0, seconds = 600),
-            ghost("D", perSecond = 2.0, seconds = 600)
-        ).standingsAt(100, yourValue = 900.0)!!
+        // a rider wants to be in. A card that lost a row at the top would
+        // change height mid-ride, which is 11.6.8 all over again.
+        val standings = board(*crowd(9)).standingsAt(100, yourValue = 9_000.0)!!
 
         assertTrue(standings.leading)
         assertEquals(1, standings.yourRank)
-        assertEquals(listOf(LiveStanding.YOU, "B", "C"), standings.window.map { it.name })
+        assertEquals(LiveLeaderboard.WINDOW, standings.window.size)
+        assertEquals(LiveStanding.YOU, standings.window.first().name)
     }
 
     @Test
-    fun `last still shows three rows`() {
+    fun `last still shows a full window`() {
         // The first ten seconds of every race: the whole field starts level and
         // anybody who moved first is ahead of a rider who has not turned a
-        // pedal. It must not be a two-row card that grows a third row later.
-        val standings = board(
-            ghost("B", perSecond = 4.0, seconds = 600),
-            ghost("C", perSecond = 3.0, seconds = 600),
-            ghost("D", perSecond = 2.0, seconds = 600)
-        ).standingsAt(100, yourValue = 1.0)!!
+        // pedal. It must not be a short card that grows rows later.
+        val standings = board(*crowd(9)).standingsAt(100, yourValue = 1.0)!!
 
-        assertEquals(4, standings.yourRank)
-        assertEquals(listOf("C", "D", LiveStanding.YOU), standings.window.map { it.name })
+        assertEquals(10, standings.yourRank)
+        assertEquals(LiveLeaderboard.WINDOW, standings.window.size)
+        assertEquals(LiveStanding.YOU, standings.window.last().name)
+    }
+
+    /** 24.3.18c: the window is what a hand-free glance gets, not the field. */
+    @Test
+    fun `the whole field is carried beside the window, for scrolling`() {
+        val standings = board(*crowd(9)).standingsAt(100, yourValue = 550.0)!!
+
+        assertEquals(10, standings.all.size)
+        assertEquals(standings.fieldSize, standings.all.size)
+        assertTrue(standings.all.size > standings.window.size)
     }
 
     @Test

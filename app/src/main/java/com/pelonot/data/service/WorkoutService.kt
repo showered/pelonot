@@ -48,6 +48,7 @@ import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.RivalTrace
+import com.pelonot.domain.social.GhostRider
 import com.pelonot.ui.overlay.AppForeground
 import com.pelonot.ui.overlay.HudOverlayManager
 import com.pelonot.ui.overlay.RideCoach
@@ -601,7 +602,7 @@ class WorkoutService : Service() {
      * absent one — 24.1.6's rule, applied per row.
      */
     private suspend fun loadRaceBoard(classId: String, youId: Int?, workoutId: String) {
-        val field = runCatching {
+        val ridden = runCatching {
             workoutRepository.raceBoardFor(
                 classId = classId,
                 youId = youId,
@@ -611,7 +612,7 @@ class WorkoutService : Service() {
         }.onFailure { Log.w(TAG, "Could not build the leaderboard for $classId", it) }
             .getOrDefault(emptyList())
 
-        val ghosts = field.mapNotNull { competitor ->
+        val ghosts = ridden.mapNotNull { competitor ->
             val samples = runCatching { workoutRepository.getMetrics(competitor.workoutId) }
                 .getOrDefault(emptyList())
                 .map { MetricSample(it.timestampSec, it.power, it.cadence, it.heartRate) }
@@ -623,21 +624,77 @@ class WorkoutService : Service() {
             } else {
                 LiveLeaderboard.Ghost(
                     name = competitor.name.ifBlank { "Rider" },
-                    trace = trace
+                    trace = trace,
+                    kind = competitor.kind.ghostKind
                 )
             }
         }
 
-        if (ghosts.isEmpty()) {
-            Log.i(TAG, "Nobody has a raceable ride of $classId; no leaderboard")
+        // 24.3.18 — the generated targets, and this is why the board no longer
+        // gives up when nobody has ridden the class. With 72 classes and a
+        // four-person household, "nobody has ridden this one" is the ordinary
+        // case, and *the plan* is a real target on a first attempt.
+        val generated = runCatching { generatedGhosts(classId, youId) }
+            .onFailure { Log.w(TAG, "Could not generate ghosts for $classId", it) }
+            .getOrDefault(emptyList())
+
+        val field = ghosts + generated
+        if (field.isEmpty()) {
+            Log.i(TAG, "Nothing to race on $classId; no leaderboard")
             return
         }
 
-        raceBoard = LiveLeaderboard(ghosts)
+        raceBoard = LiveLeaderboard(
+            ghosts = field,
+            // The ladder's floor is the best thing already on the board, so
+            // the first rung is above the field rather than above nothing.
+            pacer = field.maxOfOrNull { it.trace.finalSecond }
+                ?.takeIf { it > 0 }
+                ?.let { duration ->
+                    LiveLeaderboard.Pacer(
+                        durationSec = duration,
+                        floor = field.maxOfOrNull { it.trace.finalValue } ?: 0.0
+                    )
+                }
+        )
         Log.i(
             TAG,
-            "Racing ${ghosts.size} on $classId: " +
-                ghosts.joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
+            "Racing ${field.size} on $classId (${generated.size} generated): " +
+                field.joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
+        )
+    }
+
+    /**
+     * The targets nobody rode (24.3.18).
+     *
+     * Kept beside [loadRaceBoard] rather than inside it because the two answer
+     * different questions — who rode this, and what is worth aiming at — and
+     * only the first can fail on an empty database.
+     */
+    private suspend fun generatedGhosts(classId: String, youId: Int?): List<LiveLeaderboard.Ghost> {
+        val session = _currentSession.value ?: return emptyList()
+        // Read here rather than depending on `loadClass` having landed: the two
+        // are launched independently and racing them would make the ghosts
+        // present or absent depending on which database read finished first.
+        val classPlan = runCatching { classRepository.getPlan(classId) }
+            .onFailure { Log.w(TAG, "No plan for $classId; no generated targets", it) }
+            .getOrNull() ?: return emptyList()
+
+        val duration = classPlan.intervals.maxOfOrNull { it.endSec } ?: return emptyList()
+        if (duration <= 0) return emptyList()
+
+        val ownTotals = youId?.let { id ->
+            runCatching { workoutRepository.ownTotalsForClass(classId, id) }
+                .getOrDefault(emptyList())
+        }.orEmpty()
+
+        return GhostRider.ghostsFor(
+            intervals = classPlan.intervals,
+            durationSec = duration,
+            ftpWatts = session.ftpWatts.toDouble(),
+            intent = session.intent,
+            personalBestKj = ownTotals.maxOrNull(),
+            ownTotalsKj = ownTotals
         )
     }
 

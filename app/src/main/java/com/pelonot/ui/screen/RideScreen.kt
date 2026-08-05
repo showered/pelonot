@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,6 +84,10 @@ import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.LiveStanding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.RivalStatus
@@ -900,22 +905,60 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
-        Column(
+        // 24.3.18c. Six rows without moving a hand, and the rest of the field
+        // by scrolling — the owner's *"there is space … the more the merrier
+        // within reason"*, measured rather than felt: rows are 44 dp, the card
+        // starts below the zone ladder and *View in Overlay Mode* caps it, so
+        // six fit and a seventh collides with the button.
+        //
+        // The scroll starts on the rider's own row rather than at the top,
+        // because being able to see yourself is the one thing this card is
+        // for. It is a `LazyColumn` for the same reason `NextUpBlock` became
+        // one (11.6.18): the field is bounded at 16 but the rows are cheap and
+        // the list must not measure all of them every tick.
+        val yourIndex = standings.all.indexOfFirst { it.isYou }.coerceAtLeast(0)
+        val listState = rememberLazyListState()
+        LaunchedEffect(standings.yourRank) {
+            // Follows the rider as they pass and are passed, so the card never
+            // ends up showing a stretch of board they are not on.
+            listState.animateScrollToItem(
+                (yourIndex - LiveLeaderboard.WINDOW / 2).coerceAtLeast(0)
+            )
+        }
+
+        // The padding is `contentPadding` rather than a modifier, and the cap
+        // adds it back: `heightIn(6 rows).padding(large)` bounds the *outer*
+        // box, so the padding comes out of the rows and the card draws five of
+        // the six it was sized for. Measured on the AVD, where it did exactly
+        // that.
+        val edge = MaterialTheme.spacing.large
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(edge),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.large)
+                .heightIn(max = LEADERBOARD_ROW_HEIGHT * LiveLeaderboard.WINDOW + edge * 2)
         ) {
             // No header at all (24.3.17c). It said `4TH OF 6`, and a position
             // over a field that is mostly the rider's own past rides is a
             // category error rather than a small overstatement. Nothing has
             // replaced it: the rows are names and numbers, best first, and
             // that is the whole card.
-            standings.window.forEach { row ->
+            items(standings.all, key = { it.name }) { row ->
                 LeaderboardRow(row, standings.metric)
             }
         }
     }
 }
+
+/**
+ * One row's height, and the unit the card's ceiling is counted in (24.3.18c).
+ *
+ * Named rather than inlined because it appears twice — the row and the six-row
+ * cap — and a board that scrolled at five and a half rows would look broken in
+ * a way that is hard to attribute.
+ */
+private val LEADERBOARD_ROW_HEIGHT = 44.dp
 
 @Composable
 private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
@@ -927,21 +970,33 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
         RaceMetric.Output -> Formatters.kilojoulesValue(row.value)
         RaceMetric.Distance -> Formatters.distanceValue(row.value, units)
     }
-    val colour = if (row.isYou) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+    // Three treatments, not two (24.3.18a, 24.3.18d). The rider is the accent;
+    // **their own past rides are the accent dimmed**, because a row that is
+    // also them should not read as an opponent; and everything else — people
+    // and generated targets alike — is the ordinary variant. A generated row is
+    // told apart by its glyph rather than by its colour, so that colour can go
+    // on saying *is this me*.
+    val colour = when {
+        row.isYou -> MaterialTheme.colorScheme.primary
+        row.kind.isPerson -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(44.dp),
+            .height(LEADERBOARD_ROW_HEIGHT),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = row.name.uppercase(),
+                // 24.3.18a's visible half. A generated target carries a mark so
+                // a rider can never come away thinking a housemate did 300 kJ
+                // when 300 is a number this app made up. A ring rather than a
+                // word: the row is 44 dp in a 360 dp column read at two metres,
+                // and it is the same glyph 18.7 already uses for *this row is
+                // not quite what the others are*.
+                text = if (row.isGhost) "○ ${row.name.uppercase()}" else row.name.uppercase(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Medium,
                 color = colour,

@@ -2,6 +2,7 @@ package com.pelonot.domain.social
 
 import com.pelonot.domain.social.RaceCompetitor.Kind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -46,9 +47,17 @@ class RaceCompetitorTest {
         )
 
         assertEquals(3, field.size)
+        // 24.3.12a, settled in the thirty-second sitting: every non-human row
+        // is a sentence about the rider rather than a span of time. Asserted
+        // through `Kind.label` rather than as literals, because the words are
+        // the owner's to change and the property under test is the *dedupe*.
         assertEquals(
-            listOf("Your best", "12 months", "30 days"),
+            listOf(Kind.YourBestEver, Kind.YourBestYear, Kind.YourBestMonth).map { it.label },
             field.map { it.name }
+        )
+        assertTrue(
+            "a duration is not a person",
+            field.none { it.name.contains("months") || it.name.contains("days") }
         )
     }
 

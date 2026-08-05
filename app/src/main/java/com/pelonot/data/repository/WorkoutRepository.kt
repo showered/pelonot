@@ -580,8 +580,32 @@ class WorkoutRepository(
             )
         }
 
-        return RaceCompetitor.oneRowPerRide(yours + housemates).take(MAX_RACE_FIELD)
+        // 24.3.18b — activity, not just achievement. A best can be two years
+        // old; a last ride says somebody was on this bike recently, which is
+        // the owner's *"exciting to see activity"*. Where the two are the same
+        // ride, `oneRowPerRide` keeps the prouder label.
+        val latest = workoutDao.householdLatestRides(
+            classId = classId,
+            excludingWorkoutId = excludingWorkoutId,
+            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID
+        ).map {
+            RaceCompetitor(
+                workoutId = it.workoutId,
+                name = "${it.name}'s last ride",
+                kind = RaceCompetitor.Kind.HousemateLatest,
+                outputKj = it.outputKj
+            )
+        }
+
+        return RaceCompetitor.oneRowPerRide(yours + housemates + latest).take(MAX_RACE_FIELD)
     }
+
+    /**
+     * Every measured total this rider has recorded on one class, for *your
+     * usual* (24.3.18b).
+     */
+    suspend fun ownTotalsForClass(classId: String, userId: Int): List<Double> =
+        workoutDao.ownTotalsForClass(userId = userId, classId = classId)
 
     /**
      * Records which rival a ride in progress is racing, so it can be read
@@ -749,7 +773,18 @@ class WorkoutRepository(
          * network. Eight is more competitors than 24.3.13's three-row window
          * can usefully hide behind.
          */
-        private const val MAX_RACE_FIELD = 8
+        /**
+         * How many competitors the live board may carry (24.3.18c).
+         *
+         * Eight until the thirty-second sitting. The owner's *"the more the
+         * merrier within reason"* plus `HousemateLatest` doubling the number
+         * of household rows made eight the thing doing the truncating rather
+         * than the screen — and since 24.3.13 the screen shows a window of six
+         * and scrolls for the rest, so a bigger field costs a longer scroll
+         * rather than a taller card. Sixteen is still a bound: every one of
+         * these is a `workout_metrics` read at ride start.
+         */
+        private const val MAX_RACE_FIELD = 16
 
         /**
          * How far back the household panel looks (22.5.4).
