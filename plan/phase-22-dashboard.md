@@ -466,6 +466,29 @@ one is a screen the audit never reached.
       edge case at the bottom of a dense fixture list is the ordinary reading
       of this screen. That is 22.5.5's warning arriving on a second surface,
       and it is the reason this is worth a change rather than a shrug.*
+- [ ] **22.7.4** **The date header did not move when the row did**, and it is
+      22.7.1's own fix leaving a loose end. Centring a day that holds one ride
+      was right — a lone card stretched across the panel reads as a more
+      important day than the one above it — but the day's *heading* is still
+      hard against the left edge at x = 24 dp while the card it labels now
+      starts at x ≈ 500. **Seen on the tablet AVD** in the last shot of the
+      demo recording, against a seeded history where every day holds exactly
+      one ride, which 22.7.1 itself established is the ordinary reading of this
+      screen rather than the edge case.
+
+      A section header that does not sit over its section is the same family of
+      fault as the two 22.7.1 fixed — an alignment that reads as a mistake
+      rather than as a layout — and it is now the most visible thing on the
+      screen, because the fix moved the content out from under the label.
+
+      **Not changed on 5 August, deliberately.** The centring is a decision the
+      owner looked at and accepted, and the two ways out point in opposite
+      directions: centre the heading over its row, or left-align the row and
+      lose 22.7.1's reason for centring. That is a design call rather than a
+      defect fix, so it is written down with the measurement instead of being
+      guessed at. Judge it on the AVD with one ride on some days and two on
+      others (22.7.1's own instruction, and it is what makes the difference —
+      a two-ride day fills the row and its header lines up already)
 - [x] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
       *"I'm sure this is already on the todo list but it needs some work.
       Visualisation should be much more beautiful and also adhere to the rules

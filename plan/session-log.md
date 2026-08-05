@@ -8,6 +8,106 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 5 August 2026 (thirty-first sitting): the board says less, and the screens it landed on get their shape back
+
+**The owner left four notes and all four are about the leaderboard arriving on
+a screen that was designed without it.** They were written up as eight items
+and the inbox is empty; seven of the eight are built and seen.
+
+**The live board says less, and it is smaller than what the thirtieth sitting
+built** (24.3.17a–c). Every row carries its own total rather than the signed
+gap to yours; no row carries a unit; and there is no ranking at all — no rank
+column, no `4TH OF 6`, no `LEADING`. Between them the three notes undo two of
+24.3.13's three decisions, and each is right for a reason worth keeping:
+
+- **A gap is arithmetic the rider did not ask for.** `+12` is one subtraction
+  away from the two totals it came from and only means anything to somebody
+  holding their own number in their head at 90 rpm. Four totals in a column
+  are compared by eye.
+- **The rank was a category error, not an overstatement.** Four of the board's
+  row kinds are the rider's own past rides, so *4th of 6* describes a field
+  that is mostly one person. The ranking still orders the board and picks the
+  window — it is simply not drawn. What goes with it is the one thing the
+  header carried: a rider cannot tell whether there are two more rows below or
+  twenty. Accepted rather than solved, on the owner's reading that only the
+  rows next to them were ever actionable.
+- **No unit is safe only while one metric is reachable**, and the comment at
+  the drawing site says so: 24.3.15 would make the board's unit selectable,
+  and the header that could have named it is gone.
+
+*Observed on the tablet AVD against five seeded rides of `END-01`:* `KILO 10 /
+30 DAYS 9 / YOU 8`, moving to `KILO 17 / YOU 17 / 30 DAYS 16` as the rider drew
+level and passed one.
+
+**The ride screen's three notes, and two of them turned out to be one change**
+(11.6.17–11.6.19). *"The 'next' section — it could be scrollable tbh. Why
+not!"* is the rest of the class, capped at three blocks since 24.3.13b took its
+column away — and making it scroll **and giving it the column's slack** is also
+11.6.16's fix, because growth above it is then paid for by the list getting
+shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in
+silence. `NextUpBlock` reserves the taller of its two states as well, measured
+rather than typed in. *Observed across four interval changes: the totals row
+sat on the same pixel row throughout, and the fourth upcoming block —
+previously unreachable — scrolls into view.*
+
+**And the totals shrink rather than clip.** The owner feared overflow and the
+tile was already the one 11.6.12 caught rendering `63.`: a fixed 34 sp with
+`maxLines = 1` and no overflow, in a third of a 360 dp column. `ShrinkToFitText`
+measures with a `TextMeasurer` and decides the size once, so a number changing
+twice a second does not pulse. *Seen at four digits by resuming a seeded
+interrupted ride: `OUTPUT 1083 kJ`, `AVG POWER 1195 W`, whole, with their unit
+labels intact.* And tapping the distance reads it the other way for this ride
+only — `0.10 mi` → `0.31 km`, nothing written, so Settings stays the single
+writer of the preference.
+
+**The static board had no ceiling anywhere between the query and the screen**
+(24.1.8), which the owner noticed at three rows beside *how did that feel*. The
+row count is not "how many people live here" — 18.11 removed the friend graph,
+so it is *how many people use this app*. `ClassLeaderboard.visible` keeps the
+podium and the rider's own neighbourhood, marks the skip with a `⋮` and counts
+what is hidden. The two boards now differ in **which** window and they should:
+mid-ride only the rows next to you can be acted on, and afterwards the top of
+the board is genuinely interesting.
+
+**The Start Class screen was 22.7.2's own admission coming true** (22.7.3).
+That item shipped saying in as many words that the household card *"does not
+draw at all"* on the AVD it was judged on — so the screen was designed without
+the thing the owner is now complaining about. **A card gated on data the test
+device cannot produce is a card that has not been designed**, which is the same
+blind spot as everything gated on measured power. The fix is that the board is
+not a fact about the class: it is a column of its own, beside it, absent
+entirely when there is nobody on it. *Observed against a seeded household of
+twelve: `1 Ava / 2 Ben / 3 Cleo / ⋮ / 8 Hana / 9 Simon / 10 Ivy / and 6 more`,
+with the class's chart and all six blocks on screen at once — 22.7.2's own
+success criterion, restored. A 16-block class with no board fills the panel 4
+across and still does not scroll.*
+
+**On the summary the two cards are equal heights with the question still at the
+top**, so *"How did that feel?"* and *"On this bike"* land on the same line.
+Centring the question in the stretched card was tried first and reads worse:
+the two headings then disagree by a hundred dp.
+
+635 JVM tests, 0 failures. Everything above was driven on the tablet AVD by
+serial, with the bike attached the whole session and never touched.
+
+**24.3.16 was built and then taken back out, which is the sitting's one
+negative result and worth as much as the rest.** One row and a *gap* rather
+than a total is the right shape for a strip — the ride screen's own argument
+against the gap does not carry, because there is no column and the rider's own
+kilojoules are not on the overlay at all. What killed it was width, measured
+rather than felt: `HudExpanded` is one row of chips across a 1280 dp band, and
+a 132 dp race chip starved the weighted metrics chip until the four live
+readouts rendered as `CADEI`, `RESIS`, `POWE` with the digits cut off. The
+owner saw exactly that — *"it shouldn't feel so crowded. Particularly the power
+numbers it's all crammed in and clipping"* — and the strip is back to what it
+was. `LiveStandings.nearest` and its tests are kept; nothing draws them.
+
+**What is owed.** Where a race could live on the overlay that is not the chip
+row. And the board has still never been watched moving under somebody actually
+pedalling.
+
+---
+
 ### 5 August 2026 (thirtieth sitting): the leaderboard, and the column the eye goes to
 
 **The live leaderboard is built** — 24.3.10 through 24.3.13b — and it is the

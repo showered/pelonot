@@ -1,11 +1,18 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated the same evening (twenty-ninth sitting).**
-Measured, not estimated: `assembleDebug` passes, **616 JVM tests and 62
-instrumented tests, 0 failures**, and **472 of 696 plan boxes** are ticked
-across 27 phases. It is a summary — every claim below belongs to a phase file and
+**Written 4 August 2026, updated 5 August (thirty-second sitting).**
+Measured, not estimated: `assembleDebug` passes, **645 JVM tests, 0 failures**,
+and **490 of 713 plan boxes** are ticked across 27 phases. It is a summary —
+every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
+
+> **There is a demo recording as of 5 August**, driven on the tablet AVD at the
+> bike's own 1280 × 720 dp: the profile picker, the dashboard and its
+> household, the class library, Start Class with the leaderboard beside it, the
+> countdown, the ride screen with the board running live, **the overlay over
+> YouTube**, the post-ride summary and charts, and history. It is the shortest
+> answer to *what is this* that exists.
 
 > This page exists because the plan answers *why* extremely well and *where are
 > we* not at all (19.1.7). It is rewritten by whichever sitting changes the
@@ -273,7 +280,14 @@ race has to exclude.
 6. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
    instrumented suite is order-dependent, which is why CI runs only the JVM
    tests. A red run you are trained to re-run is a suite nobody reads.
-7. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
+7. **A written rule that nothing checks describes the library nobody built.**
+   `classlibrary/` R10 has always said a title names the shape and the demand,
+   *"not the category and the length"*, and ended with the words **not
+   tested** — and all 72 titles ended in their own duration. "The Long Climb
+   30" was drawn beside a chip already reading `30 min`, on four screens.
+   Stripped, and `build.py` refuses to emit them now. Read it as evidence
+   about the other rules marked *not tested* rather than as a closed item.
+8. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the
    drift actually happens. **The third member of that list has been struck off**:
@@ -281,7 +295,7 @@ race has to exclude.
    hypothetical within a day of being written, so it got its cheap fix
    (`web/check-deployed.sh`) and is now item 2 above. Read that as evidence
    about the other two rather than as a reason they are different.
-8. **10.6 is still unanswered**: battery, thermals and memory over a full-length
+9. **10.6 is still unanswered**: battery, thermals and memory over a full-length
    ride. The one 20-minute ride on real hardware was spent finding 2.7.
 
 ---

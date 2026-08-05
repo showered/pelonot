@@ -186,109 +186,96 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 5 August 2026 (thirty-first sitting): the board says less, and the screens it landed on get their shape back
+### Latest session — 5 August 2026 (thirty-second sitting): polish, and a demo of it
 
-**The owner left four notes and all four are about the leaderboard arriving on
-a screen that was designed without it.** They were written up as eight items
-and the inbox is empty; seven of the eight are built and seen.
+**The ask was polish and a demo video to show people, so the method was to
+drive the whole flow on the tablet AVD and fix what the screens actually
+showed.** Nine changes, every one of them found by looking rather than by
+reading code. 645 JVM tests, 0 failures. The bike was attached the entire
+session and never touched.
 
-**The live board says less, and it is smaller than what the thirtieth sitting
-built** (24.3.17a–c). Every row carries its own total rather than the signed
-gap to yours; no row carries a unit; and there is no ranking at all — no rank
-column, no `4TH OF 6`, no `LEADING`. Between them the three notes undo two of
-24.3.13's three decisions, and each is right for a reason worth keeping:
+**There is a recording now** — the profile picker, the dashboard and its
+household, the class library, Start Class with the leaderboard beside it, the
+countdown, the ride screen with the board running live, **the overlay over
+YouTube**, the summary and its charts, and history. It is 2:55 and it is the
+shortest answer to *what is this* that exists.
 
-- **A gap is arithmetic the rider did not ask for.** `+12` is one subtraction
-  away from the two totals it came from and only means anything to somebody
-  holding their own number in their head at 90 rpm. Four totals in a column
-  are compared by eye.
-- **The rank was a category error, not an overstatement.** Four of the board's
-  row kinds are the rider's own past rides, so *4th of 6* describes a field
-  that is mostly one person. The ranking still orders the board and picks the
-  window — it is simply not drawn. What goes with it is the one thing the
-  header carried: a rider cannot tell whether there are two more rows below or
-  twenty. Accepted rather than solved, on the owner's reading that only the
-  rows next to them were ever actionable.
-- **No unit is safe only while one metric is reachable**, and the comment at
-  the drawing site says so: 24.3.15 would make the board's unit selectable,
-  and the header that could have named it is gone.
+**The live board was the thing that nearly did not make the video**, and the
+fix was already in the repo: a simulated ride can never be ranked (24.4.2), so
+the app's best feature is invisible on an emulator. `RaceDebug` — built in the
+thirtieth sitting for exactly this — lets the *live* comparison run on modelled
+watts while `power_is_measured` still records the truth, so the ride is
+correctly excluded from every board afterwards. Seeding fake measured rides was
+the obvious move and would have been the wrong one.
 
-*Observed on the tablet AVD against five seeded rides of `END-01`:* `KILO 10 /
-30 DAYS 9 / YOU 8`, moving to `KILO 17 / YOU 17 / 30 DAYS 16` as the rider drew
-level and passed one.
+**The units were being cut off the live readouts, and the race chip was never
+why** (24.3.16). `100 RPM / 296 W / 188 BPM` drew as `100 RP`, `296` with the W
+gone, `188 BP` — with no race chip on the band at all. The previous sitting had
+put the owner's *"the power numbers it's all crammed in and clipping"* down to
+a 132 dp chip starving the weighted readouts, taken the chip out, and the
+clipping stayed. The cause is older: value and unit were both unweighted in a
+`Row`, so the number was measured first and the label got the remainder. The
+number is the weighted one now, sized against `"000"` rather than against
+itself — sizing on the live value would resize the readout every time it
+crossed 99, a number pulsing under the rider. **24.3.16 is corrected rather
+than reopened**: the owner's decision stands, but "there is no width that buys
+a fifth chip" was measured against a row already over-committed by this bug.
 
-**The ride screen's three notes, and two of them turned out to be one change**
-(11.6.17–11.6.19). *"The 'next' section — it could be scrollable tbh. Why
-not!"* is the rest of the class, capped at three blocks since 24.3.13b took its
-column away — and making it scroll **and giving it the column's slack** is also
-11.6.16's fix, because growth above it is then paid for by the list getting
-shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in
-silence. `NextUpBlock` reserves the taller of its two states as well, measured
-rather than typed in. *Observed across four interval changes: the totals row
-sat on the same pixel row throughout, and the fourth upcoming block —
-previously unreachable — scrolls into view.*
+**R10 had said the right thing for months and nothing checked it** (and it is
+now item 7 on STATUS.md's *what is wrong* list, as evidence about the other
+rules marked *not tested*). It says a title names the shape and the demand,
+*"not the category and the length, which the rider can already see"* — and all
+72 titles ended in their own duration, so "The Long Climb 30" was drawn beside
+a chip reading `30 min`, on the library, the start screen, the ride screen and
+every row of history. Both halves fixed: the durations are gone and `build.py`
+refuses to put them back. The check had to learn two things by being run —
+match the class's *own* length rather than any trailing number (`SWT-01` is
+"Sweet Spot 5 + 4"), and check uniqueness, which the duration had been doing
+quietly. No id moved, so nothing retired: 72 templates, 0 retired, rides on
+`END-01` still resolve.
 
-**And the totals shrink rather than clip.** The owner feared overflow and the
-tile was already the one 11.6.12 caught rendering `63.`: a fixed 34 sp with
-`maxLines = 1` and no overflow, in a third of a 360 dp column. `ShrinkToFitText`
-measures with a `TextMeasurer` and decides the size once, so a number changing
-twice a second does not pulse. *Seen at four digits by resuming a seeded
-interrupted ride: `OUTPUT 1083 kJ`, `AVG POWER 1195 W`, whole, with their unit
-labels intact.* And tapping the distance reads it the other way for this ride
-only — `0.10 mi` → `0.31 km`, nothing written, so Settings stays the single
-writer of the preference.
+**The dashboard's household panel had no ceiling** — 24.1.8 capped the class
+leaderboard and stopped one card short, and the same argument carries over
+exactly. Twelve profiles drew twelve rows. `HouseholdPanel.of` windows it at
+six, keeps the top of the list and **always the rider's own row**, marks a lift
+from below the cut with `⋮`, and counts what it dropped. Two things found while
+in there: `Spacer(Modifier.width(...))` twice inside a `Column`, which is
+nothing at all, and the Just Ride card stretched to its neighbour while its
+content wrapped, so `CenterVertically` centred nothing and the title sat on top
+of 250 dp of empty teal.
 
-**The static board had no ceiling anywhere between the query and the screen**
-(24.1.8), which the owner noticed at three rows beside *how did that feel*. The
-row count is not "how many people live here" — 18.11 removed the friend graph,
-so it is *how many people use this app*. `ClassLeaderboard.visible` keeps the
-podium and the rider's own neighbourhood, marks the skip with a `⋮` and counts
-what is hidden. The two boards now differ in **which** window and they should:
-mid-ride only the rows next to you can be acted on, and afterwards the top of
-the board is genuinely interesting.
+**And three lines were saying the machinery out loud.** The owner's call on the
+goal prompt: *"let's hide away the +5% and -5%, it's too geeky, the user
+doesn't need to 'see behind the curtain' on this one"* (26.1.5). Beside it,
+`END-01`'s shape sentence read "one 1 min effort at Tempo", where the word and
+the numeral say the count twice; and Settings still promised your rides appear
+"on the week summary everyone here can see", describing a screen 22.5.4
+replaced with 30 days — in the one place a rider goes to find out what other
+people can see. The FTP card's 4 dp teal gradient bar is gone too: on a card
+whose whole content is one measured number, a full-width filled bar is read as
+a meter, and a meter permanently at 100% is a claim nothing here is making.
 
-**The Start Class screen was 22.7.2's own admission coming true** (22.7.3).
-That item shipped saying in as many words that the household card *"does not
-draw at all"* on the AVD it was judged on — so the screen was designed without
-the thing the owner is now complaining about. **A card gated on data the test
-device cannot produce is a card that has not been designed**, which is the same
-blind spot as everything gated on measured power. The fix is that the board is
-not a fact about the class: it is a column of its own, beside it, absent
-entirely when there is nobody on it. *Observed against a seeded household of
-twelve: `1 Ava / 2 Ben / 3 Cleo / ⋮ / 8 Hana / 9 Simon / 10 Ivy / and 6 more`,
-with the class's chart and all six blocks on screen at once — 22.7.2's own
-success criterion, restored. A 16-block class with no board fills the panel 4
-across and still does not scroll.*
+**One negative result, and it cost most of an hour.** The summary's leaderboard
+looked clipped mid-row, the diagnosis was `IntrinsicSize.Min` under-measuring
+wrapping text, and a `SubcomposeLayout` equal-height row was written to replace
+it. It was not clipped. It was the scroll viewport, and the original was
+correct all along — the board renders whole, `Hana / Simon / Ivy / and 6 more`.
+Reverted in full. The lesson is the cheap check that was skipped: **scroll
+before believing a clip.**
 
-**On the summary the two cards are equal heights with the question still at the
-top**, so *"How did that feel?"* and *"On this bike"* land on the same line.
-Centring the question in the stretched card was tried first and reads worse:
-the two headings then disagree by a hundred dp.
-
-635 JVM tests, 0 failures. Everything above was driven on the tablet AVD by
-serial, with the bike attached the whole session and never touched.
-
-**24.3.16 was built and then taken back out, which is the sitting's one
-negative result and worth as much as the rest.** One row and a *gap* rather
-than a total is the right shape for a strip — the ride screen's own argument
-against the gap does not carry, because there is no column and the rider's own
-kilojoules are not on the overlay at all. What killed it was width, measured
-rather than felt: `HudExpanded` is one row of chips across a 1280 dp band, and
-a 132 dp race chip starved the weighted metrics chip until the four live
-readouts rendered as `CADEI`, `RESIS`, `POWE` with the digits cut off. The
-owner saw exactly that — *"it shouldn't feel so crowded. Particularly the power
-numbers it's all crammed in and clipping"* — and the strip is back to what it
-was. `LiveStandings.nearest` and its tests are kept; nothing draws them.
-
-**What is owed.** Where a race could live on the overlay that is not the chip
-row. And the board has still never been watched moving under somebody actually
-pedalling.
+**Two things written up rather than built**, both because they are the owner's
+call and not a session's. **26.1.6**: there is no way to ride a class at the
+zones it was authored with — two intents, both ±5%, so every ride this app has
+ever recorded is off the catalogue that a build refuses to let anyone break.
+Raised, and the owner's answer was *"leave it entirely"*. **22.7.4**: 22.7.1
+centred a day that holds one ride and left the day's *heading* hard against the
+left edge, so a section header no longer sits over its section — most visible
+on the last screen of the demo, and fixable in two opposite directions.
 
 ### What to do next, in order
 
-**The owner's inbox is empty and all eight of its items are settled — seven
-built, and 24.3.16 built, looked at and taken back out on the owner's word. So
-what is left is what was already queued, plus two things that need the owner.**
+**The owner's inbox is empty. What is left is what was already queued, plus
+two things that need the owner and one loose end this sitting left on purpose.**
 
 1. **15.7 — the Supabase emails.** Written up in full, and the templates are
    ours to replace through the Management API with the token already in
@@ -298,16 +285,25 @@ what is left is what was already queued, plus two things that need the owner.**
    rather than a bug.
 2. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
    ticks it, and it is the cheapest item left in the plan.
+3. **22.7.4 — the date header that did not move when the row did.** Small, and
+   it is the last screen of the demo recording, so it is the one a stranger is
+   most likely to be looking at. **It needs a decision rather than a fix**:
+   centre the heading over its row, or left-align the row and give up 22.7.1's
+   reason for centring. Judge it on the AVD with one ride on some days and two
+   on others.
 
-**24.3.16 is open and is not simply *unbuilt*.** The overlay's leaderboard was
-built this sitting and removed: *"there is simply no room for the leaderboard
+**24.3.16 is open, is not simply *unbuilt*, and its measurement has been
+corrected.** The overlay's leaderboard was built in the thirty-first sitting
+and removed on the owner's word: *"there is simply no room for the leaderboard
 on that HUD… it shouldn't feel so crowded. Particularly the power numbers it's
-all crammed in and clipping."* The measurement is in the item — a 132 dp chip
-starved the four live readouts on a 1280 dp band and they clipped, which is
-11.6.17's failure on the surface where it matters most. **The open question has
-changed shape**: not *what is the smallest honest leaderboard* but **where on
-the overlay a race could live that is not the chip row**. Do not re-attempt it
-as a narrower chip.
+all crammed in and clipping."* **That decision stands.** What does not stand is
+the number under it: the four readouts were found clipping in this sitting with
+no race chip on the band at all, because `MetricReadout` measured the value
+before the unit. That is fixed, so *"there is no width that buys a fifth chip
+on that row"* was measured against a row already over-committed by a bug and
+should not be read as a measurement. **The open question is still where on the
+overlay a race could live that is not the chip row** — but how much room that
+row really has is now genuinely unknown rather than known to be none.
 
 **Two things need the owner rather than a session:**
 
@@ -324,9 +320,14 @@ as a narrower chip.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**The polish pass and the demo recording.**~~ **Done in the thirty-second
+  sitting**, nine changes, all observed on the tablet AVD. Do not re-attempt
+  the summary's equal-height row: it was diagnosed as clipping, rewritten with
+  a `SubcomposeLayout`, found not to be broken at all — it was the scroll
+  viewport — and reverted.
 - ~~**24.3.17, 11.6.16–11.6.19, 24.1.8, 22.7.3 — the owner's four notes.**~~
-  **Done this sitting**, all seven built items observed on the tablet AVD.
-  [LEADERBOARD.md](LEADERBOARD.md) is updated to match.
+  **Done in the thirty-first sitting**, all seven built items observed on the
+  tablet AVD. [LEADERBOARD.md](LEADERBOARD.md) is updated to match.
 - ~~**24.3.10–24.3.14 — the live leaderboard.**~~ **Done in the thirtieth
   sitting**, and described in plain English in
   [LEADERBOARD.md](LEADERBOARD.md).
