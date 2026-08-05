@@ -58,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -896,7 +897,15 @@ private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
  * not the colour of kJ is a second colour language on one column.
  */
 @Composable
-private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = Modifier) {
+private fun LiveLeaderboardCard(
+    standings: LiveStandings?,
+    modifier: Modifier = Modifier,
+    /**
+     * The rider's own past ride just overtaken (24.3.18d). Raised by the
+     * service, latched to fire once, and null again after six seconds.
+     */
+    passedOwnRide: LiveStanding? = null
+) {
     if (standings == null) return
 
     Card(
@@ -938,12 +947,46 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
         // the six it was sized for. Measured on the AVD, where it did exactly
         // that.
         val edge = MaterialTheme.spacing.large
+
+        // 24.3.18d. **The moment, above the board rather than inside it.** The
+        // owner asked for passing your own best to *"really stand out"*, and
+        // the difficulty is that it has to be an *event*: the board recomputes
+        // four times a second, so "am I above that row" is true 240 times a
+        // minute. `RacePassTracker` latches it, the service holds it for six
+        // seconds, and it arrives here already decided — this composable makes
+        // no comparison of its own.
+        //
+        // **Outside the `LazyColumn`, and that is not a layout preference.**
+        // It was the first `item` in the list to begin with, and the list
+        // scrolls itself to the rider's own row on every rank change — so the
+        // banner fired correctly and was immediately scrolled off the top,
+        // which is exactly what happened on the AVD: the pass was in the data
+        // and never once on the screen. It also shifted every row index by
+        // one, quietly breaking the scroll arithmetic beneath it.
+        passedOwnRide?.let { row ->
+            PassedYourBest(
+                row = row,
+                modifier = Modifier.padding(start = edge, end = edge, top = edge)
+            )
+        }
+
+        // The banner is paid for out of the board, not out of the buttons
+        // below it. 24.3.18c measured this card's ceiling on the AVD — six rows
+        // fit and a seventh collides with *View in Overlay Mode* — and a banner
+        // stacked on top of six rows is that seventh row by another name. Seen
+        // doing exactly that: the moment fired and pushed *End ride* off the
+        // bottom of the screen.
+        val rows = if (passedOwnRide != null) {
+            LiveLeaderboard.WINDOW - 1
+        } else {
+            LiveLeaderboard.WINDOW
+        }
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(edge),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = LEADERBOARD_ROW_HEIGHT * LiveLeaderboard.WINDOW + edge * 2)
+                .heightIn(max = LEADERBOARD_ROW_HEIGHT * rows + edge * 2)
         ) {
             // No header at all (24.3.17c). It said `4TH OF 6`, and a position
             // over a field that is mostly the rider's own past rides is a
@@ -956,6 +999,48 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
         }
     }
 }
+
+/**
+ * *"Past your best"* — the six seconds after a rider overtakes one of their own
+ * rides (PLAN 24.3.18d).
+ *
+ * In the accent rather than in amber, and that is the same call 11.8.3 made for
+ * the opposite reason: amber is this app's *something is wrong* colour, and
+ * this is the best thing that happens in a class.
+ *
+ * The row's own name carries the claim — *Your best*, *Your recent best* — so
+ * the banner does not have to say which of them it was, and cannot disagree
+ * with the board underneath it.
+ */
+@Composable
+private fun PassedYourBest(row: LiveStanding, modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.expressiveShapes.pill)
+            .background(accent.copy(alpha = 0.18f))
+            .padding(
+                horizontal = MaterialTheme.spacing.medium,
+                vertical = MaterialTheme.spacing.small
+            )
+            // One bounce as it lands, keyed on the row so a second pass later
+            // in the ride lands again rather than sliding in silently.
+            .attentionBounce(trigger = row.name)
+    ) {
+        Text(
+            text = "PAST ${row.name.uppercase()}",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Black,
+            color = accent,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 
 /**
  * One row's height, and the unit the card's ceiling is counted in (24.3.18c).
@@ -1564,7 +1649,11 @@ private fun UpNextColumn(
         // the single gap is the same race with a `LIMIT 1` on it, kept behind
         // a flag. The service never populates both.
         RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
-        LiveLeaderboardCard(state.snapshot.standings, Modifier.fillMaxWidth())
+        LiveLeaderboardCard(
+            standings = state.snapshot.standings,
+            modifier = Modifier.fillMaxWidth(),
+            passedOwnRide = state.snapshot.passedOwnRide
+        )
 
         Spacer(Modifier.weight(1f))
 

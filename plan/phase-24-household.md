@@ -859,7 +859,38 @@ and no amount of social plumbing fixes that.
       the padding came out of the rows and the card drew five of the six it was
       sized for. It is `contentPadding` now, with the cap adding it back.
 
-- [ ] **24.3.18d Your best, made to feel like something.** *"Your own PB should
+- [x] **24.3.18d Your best, made to feel like something.** ***Done and observed
+      on the tablet AVD*** — `PAST YOUR BEST` above the board, with `YOU 13`
+      over `YOUR BEST 12 FINISHED` under it. `RacePassTracker` is the latch this
+      item asked for, pure and JVM-tested, and three of its rules were found by
+      writing the test rather than the code:
+
+      - **The first sighting latches without reporting**, and only for rows the
+        rider is already past. Latching the whole field instead — the obvious
+        implementation, and the one written first — silently disarms every row
+        still ahead, so the pass that matters can never fire at all.
+      - **A ride that has not started cannot be overtaken.** The ghosts are
+        cumulative *traces*, not final totals, so every race opens with the
+        whole field reading 0.0 and the rider's first kilojoule would announce a
+        personal best two seconds in. Rows at zero are skipped and left armed.
+      - **Only the rider's own past rides count**, which is `!isPerson &&
+        !isGenerated` — and it is exactly why 24.3.18 kept those two flags
+        separate. Passing Ava is a different moment; passing *the plan* or *your
+        usual* is a target this app invented, and marking that as a personal
+        best breaks the honesty rule from the inside.
+
+      **Two defects were found by looking rather than by reading the diff, and
+      the first is the instructive one.** The banner started as the first `item`
+      of the board's `LazyColumn` — which scrolls itself to the rider's row on
+      every rank change, so it fired correctly and was immediately scrolled off
+      the top. *The pass was in the data and never once on the screen.* It also
+      shifted every row index by one under the scroll arithmetic. It is a
+      sibling above the list now. Then, drawn, it made the card taller and
+      pushed *End ride* off the bottom — a banner stacked on six rows is
+      24.3.18c's seventh row by another name, so **the list gives up a row while
+      it shows** and the card's measured ceiling holds.
+
+      What is built is **the moment**; the *mark* is not. Original note follows. *"Your own PB should
       have some kind of UI to make it really exciting. If you're ahead of your
       PB then that should stand out."* Two states and they are different jobs:
       **chasing it** (the row is ahead, and it is the one row on the board that

@@ -43,6 +43,9 @@ import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.LiveLeaderboard
+import com.pelonot.domain.model.LiveStanding
+import com.pelonot.domain.model.LiveStandings
+import com.pelonot.domain.social.RacePassTracker
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
@@ -171,6 +174,17 @@ class WorkoutService : Service() {
      * ordinary case and draws nothing at all.
      */
     private var raceBoard: LiveLeaderboard? = null
+
+    /**
+     * Latches the moment the rider goes past one of their own past rides
+     * (24.3.18d). Lives here rather than in the UI because the UI is recreated
+     * on rotation and a celebration that re-fires on a rotate is worse than one
+     * that never fires.
+     */
+    private val passTracker = RacePassTracker()
+
+    /** Elapsed second the current [RideSnapshot.passedOwnRide] was raised at. */
+    private var passedAtSec = -1
 
     /**
      * Set the moment a sample lands whose watts were not measured (24.3.7).
@@ -702,6 +716,8 @@ class WorkoutService : Service() {
         rivalTrace = null
         rivalName = null
         raceBoard = null
+        passTracker.reset()
+        passedAtSec = -1
         raceDiscredited = false
     }
 
@@ -964,6 +980,16 @@ class WorkoutService : Service() {
     private fun publishSnapshot(elapsedSec: Int, intervalState: IntervalState) {
         val session = _currentSession.value
         val outputKj = session?.totalOutputKj ?: _rideSnapshot.value.totalOutputKj
+        val board = standings(
+            elapsedSec,
+            outputKj,
+            session?.distanceKm ?: _rideSnapshot.value.distanceKm
+        )
+        // Outside the `update` block on purpose: `update` retries its lambda
+        // under contention, and a latched one-shot event that fires inside a
+        // retried block is a celebration that can be swallowed.
+        val pass = passMoment(elapsedSec, board)
+
         _rideSnapshot.update { current ->
             current.copy(
                 state = _workoutState.value,
@@ -980,13 +1006,31 @@ class WorkoutService : Service() {
                     outputKj,
                     session?.distanceKm ?: current.distanceKm
                 ),
-                standings = standings(
-                    elapsedSec,
-                    outputKj,
-                    session?.distanceKm ?: current.distanceKm
-                )
+                standings = board,
+                passedOwnRide = pass
             )
         }
+    }
+
+    /**
+     * The *passed your own best* moment, or null (24.3.18d).
+     *
+     * Two jobs and they are both about time. [RacePassTracker] decides whether
+     * this tick is the transition — once ever, per row — and this decides how
+     * long the answer stays up, because a one-tick event on a 4 Hz clock is a
+     * quarter of a second and nobody would see it.
+     *
+     * Keyed on `elapsedSec`, which already excludes paused time: a rider who
+     * pauses to answer the door should not come back to a celebration that has
+     * expired while the bike was still.
+     */
+    private fun passMoment(elapsedSec: Int, board: LiveStandings?): LiveStanding? {
+        passTracker.onStandings(board)?.let { row ->
+            passedAtSec = elapsedSec
+            return row
+        }
+        val held = _rideSnapshot.value.passedOwnRide ?: return null
+        return held.takeIf { elapsedSec - passedAtSec < PASS_VISIBLE_SEC }
     }
 
     /**

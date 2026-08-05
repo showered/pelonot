@@ -4,6 +4,7 @@ import com.pelonot.data.sensor.PowerModel
 import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RivalStatus
@@ -84,7 +85,22 @@ data class RideSnapshot(
      * rule than the single gap was: the overlay has half a second of attention
      * and it belongs to the next sixty seconds of pedalling.
      */
-    val standings: LiveStandings? = null
+    val standings: LiveStandings? = null,
+    /**
+     * The rider's own past ride just overtaken, latched to fire once (24.3.18d).
+     *
+     * The owner: *"If you're ahead of your PB then that should stand out."*
+     * Half of that was already true — the rider's own rows are drawn in the
+     * accent dimmed — and the missing half was the **moment**, which cannot be
+     * a state read off the board: `standingsAt` runs four times a second, so
+     * *am I above that row now* is true 240 times a minute.
+     *
+     * So this is an event carried on the snapshot rather than a comparison the
+     * UI makes: [com.pelonot.domain.social.RacePassTracker] latches it, this
+     * holds it for [PASS_VISIBLE_SEC], and it goes back to null on its own.
+     * Same shape as the position cue (25.3), for the same reason.
+     */
+    val passedOwnRide: LiveStanding? = null
 ) {
     val isPaused: Boolean get() = state == WorkoutState.Paused
     val isRunning: Boolean get() = state == WorkoutState.Active || state == WorkoutState.Paused
@@ -162,3 +178,13 @@ data class RideSnapshot(
         val IDLE = RideSnapshot()
     }
 }
+
+/**
+ * How long the *passed your own best* moment stays on screen (24.3.18d).
+ *
+ * The same six seconds as the stand/sit cue (25.3), and for the same reason:
+ * long enough to be seen by somebody who was looking at the road, short enough
+ * that it is gone before it becomes furniture. A permanent mark is the other
+ * half of 24.3.18d and is a different thing — this is the moment.
+ */
+const val PASS_VISIBLE_SEC = 6
