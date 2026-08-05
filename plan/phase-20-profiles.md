@@ -428,3 +428,54 @@ it is the only one.
       **sequence of siblings** for a `ColumnScope`, so wrapping it in a `Box` to
       give it a weight stacked all five children on top of each other. It drew as
       an illegible smear and compiled perfectly
+- [x] **20.4.5** **The same two controls, reported a second time — *"Year born
+      and Weight are out of alignment"*.** ***Done and observed on the tablet
+      AVD.*** The owner's inbox, 5 August 2026, the sitting after 20.4.1 was
+      ticked. Two reports of one pair of controls is worth more than the fault
+      is: **20.4.1 was fixed by measuring the controls against each other and it
+      was not enough**, because the thing that was wrong was not a measurement
+      either time.
+
+      **What was actually wrong.** 20.4.1 built `PickerField` out of Material's
+      *numbers* — 56 dp, the extra-small corner, a 1 dp outline, the label above
+      the value in the two styles a text field uses. Every number was right and
+      the pair still did not line up, because an `OutlinedTextField` is **taller
+      than the box it draws**: when it has a label it applies a fixed top
+      padding, and the outline is the *bottom* 56 dp of a 64 dp control. So two
+      children of one `Alignment.Top` row, laid out from the same y of 307 px,
+      drew their outlines 12 px apart — and once the year was answered its label
+      floated to y 295, **outside its own control**, while the weight's sat on
+      its border at 307.
+
+      **The fix is to stop copying and start calling.** `PickerField` is
+      `OutlinedTextFieldDefaults.DecorationBox` now, with a `Text` where the
+      editor would be, so the two controls are one component drawn twice: the
+      same notched outline, the same label floating onto the border when the
+      question is answered, the same insets at any font scale. Measured after:
+      both outlines `[319 … 403]`, both labels `[307 … 331]`, `68` and `1986` on
+      one baseline.
+
+      **Three things it took to get there, all of them invisible in the diff:**
+      - The decoration box takes **no modifier**, so the width the caller gave
+        the control has to reach it as a *minimum constraint*
+        (`propagateMinConstraints`) or it draws at its intrinsic width and the
+        label spills past the outline. Seen: the year box 225 px narrower than
+        the weight's, with *"Year you were born"* running out of it.
+      - The reserve is **8 sp, not 8 dp** — the room a floated label needs is a
+        property of the text, so it moves with the rider's font scale. Material
+        keeps the constant `internal`, which is the one thing here that has to
+        be copied rather than called, so the check for it is the screen and not
+        this file.
+      - The kg/lb chips were the third child of the row and correct against the
+        *old* picker. With both fields now 64 dp tall around a 56 dp outline,
+        top-aligned chips sit 8 dp high against both. They align to the row's
+        **bottom**, which is the outline they belong to.
+
+      **What it costs.** The empty state loses *"Tap to choose"*: a text field's
+      placeholder appears only while it is focused, and this control never is,
+      so the question sits centred in the box exactly as *"Weight (lb)"* does
+      beside it. That is the trade this item is here to make — 20.4.1's own
+      argument is that a control which does not look like the thing next to it
+      is the screen failing to say what kind of answer it wants, and *looking
+      like it* has to mean in every state or the rider finds the state where it
+      does not

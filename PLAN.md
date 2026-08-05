@@ -132,11 +132,13 @@ screen's "million panels" (**22.7.5**, and **23.2.7** for the authored
 description asked for beside it — the first prose in the library a build rule
 cannot check for truth), and what a power zone actually is (**11.8**, a gap
 this plan has never had an item for: the app is built on zones end to end and
-never once says what one is).
+never once says what one is), and **the same two onboarding controls reported a
+second time** (**20.4.5** — and the interesting part is that 20.4.1 fixed them
+by measuring and it was not enough), and **the back button during sign-up**
+(**15.6.13**, with **20.4.6** for the profile-creation half of the same
+journey).
 
-### Onboarding snag
-
-Year born and Weight are out of alignment
+*Empty.*
 
 ---
 

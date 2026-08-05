@@ -433,10 +433,19 @@ private fun AboutStep(
             // were being taken out of the weight's half and out of nothing on
             // the year's, so a pair of controls fixed to look identical
             // (20.4.1) still measured 328 dp against 438 dp.
+            //
+            // Bottom, alone among the three, because a text field is taller
+            // than the box it draws: it reserves room above for the label to
+            // float onto the border, so its outline is the *bottom* 56 dp of a
+            // 64 dp control (20.4.5). Chips aligned to the row's top sit 8 dp
+            // high against both fields; aligned to its bottom they are centred
+            // on the outline they belong to.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.height(FIELD_HEIGHT)
+                modifier = Modifier
+                    .height(FIELD_HEIGHT)
+                    .align(Alignment.Bottom)
             ) {
                 UnitSystem.entries.forEach { option ->
                     FilterChip(
@@ -456,7 +465,6 @@ private fun AboutStep(
                 // echoing back "1 January 1986" would claim the rider told the
                 // app their birthday.
                 value = millisToBirthYear(birthDate)?.toString(),
-                placeholder = "Tap to choose",
                 onClick = withKeyboardAway { picking = true },
                 modifier = Modifier.weight(1f)
             )
