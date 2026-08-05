@@ -36,7 +36,7 @@ differences. This one carries none, because there is nothing to caveat.
       deleted profile's rides are `SET NULL`, so they leave the board rather
       than sitting on it attributed to nobody. Their rides survive in history,
       which is what 20.1's dialog already promises
-- [ ] **24.1.8 The static board has no ceiling, and it is the tallest thing on
+- [x] **24.1.8 The static board has no ceiling, and it is the tallest thing on
       two screens.** The owner's note, 5 August 2026, under *Post ride
       summary*, verbatim: *"Leaderboard has the potential to really throw the
       screen out of alignment when it grows long. Even just with 3, next to the
@@ -712,7 +712,7 @@ downgrade — it is why the feature can afford to be interesting.
         provenance rule: a number whose meaning has silently changed is worse
         than a number that is missing.
 
-- [ ] **24.3.17 The board says less — three notes, and between them they undo
+- [x] **24.3.17 The board says less — three notes, and between them they undo
       two of 24.3.13's three decisions.** The owner's note, 5 August 2026,
       under the heading *Leaderboard general improvements in full screen*,
       verbatim:
@@ -734,7 +734,7 @@ downgrade — it is why the feature can afford to be interesting.
       of *name* and *number*, and nothing else — which is a smaller thing than
       what 24.3.13 built and is, on the tablet, an easier thing to read.
 
-- [ ] **24.3.17a Every row carries its own total, not the gap to you.** The
+- [x] **24.3.17a Every row carries its own total, not the gap to you.** The
       first note, and it reverses 24.3.13's *"two number spaces, and the sign
       tells them apart"*. That decision was defensible and it is worth saying
       why it loses: a gap is **arithmetic the rider did not ask for**. `+12`
@@ -754,7 +754,7 @@ downgrade — it is why the feature can afford to be interesting.
       tested, and 24.3.16's overlay is the surface where a single gap may well
       still be the right answer. Nothing on the full ride screen draws it.
 
-- [ ] **24.3.17b No unit label on the board.** The second note. Every row is
+- [x] **24.3.17b No unit label on the board.** The second note. Every row is
       now in the same unit, ranked against each other, and the OUTPUT tile
       directly below the board spells out `kJ` in full — so the label on the
       rider's own row was the third place the same fact was being stated.
@@ -775,7 +775,7 @@ downgrade — it is why the feature can afford to be interesting.
       (24.3.17c), so that somewhere does not exist yet either. Leave a comment
       at the drawing site saying so.
 
-- [ ] **24.3.17c No ranking at all — no rank column, no `4TH OF 6`, no
+- [x] **24.3.17c No ranking at all — no rank column, no `4TH OF 6`, no
       `LEADING`.** The third note, and it is the one with an argument about the
       product in it rather than about the pixels: *"most of the 'people' are
       actually going to be targets rather than people"*. Four of the row kinds

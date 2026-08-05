@@ -133,24 +133,42 @@ fun ClassDetailScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(
-                    start = MaterialTheme.spacing.large,
-                    end = MaterialTheme.spacing.large,
-                    bottom = MaterialTheme.spacing.large
-                ),
-                // Centred when it does not fill the panel, which is 22.7.1's
-                // rule arriving on a third screen: most classes are seven or
-                // eight blocks and leave a third of a 720 dp tablet empty, so
-                // top-aligning them hangs the whole screen off the app bar with
-                // a hole above the Start button. A long class overflows and
-                // scrolls exactly as before.
-                verticalArrangement = Arrangement.spacedBy(
-                    MaterialTheme.spacing.large,
-                    Alignment.CenterVertically
-                )
+            // 22.7.3. **The class on one side, the people on the other.** The
+            // owner's note — *"we've added the leaderboard in there and the
+            // whole screen doesn't look good"* — and the diagnosis is that the
+            // board was stacked *into the description of the class*, between
+            // the picture of it and the list of its blocks. It is not a fact
+            // about the class; it is a fact about who has ridden it, and on a
+            // 1280 dp panel that is a column of its own.
+            //
+            // What it buys is vertical space, which is the thing this screen
+            // was actually short of: with the board in the stack, the interval
+            // grid of a 20-minute class was below the fold on the one screen
+            // whose job is to show the whole class (22.7.2's own criterion,
+            // broken by the card 22.7.2 could not draw).
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(
+                        start = MaterialTheme.spacing.large,
+                        end = MaterialTheme.spacing.large,
+                        bottom = MaterialTheme.spacing.large
+                    ),
+                    // Centred when it does not fill the panel, which is 22.7.1's
+                    // rule arriving on a third screen: most classes are seven or
+                    // eight blocks and leave a third of a 720 dp tablet empty, so
+                    // top-aligning them hangs the whole screen off the app bar with
+                    // a hole above the Start button. A long class overflows and
+                    // scrolls exactly as before.
+                    verticalArrangement = Arrangement.spacedBy(
+                        MaterialTheme.spacing.large,
+                        Alignment.CenterVertically
+                    )
+                ) {
                 // How long, how hard, what shape — one line, and the profile
                 // under it says the same thing without a word (22.7.2). The
                 // interval count is gone from here: the picture shows every
@@ -193,55 +211,64 @@ fun ClassDetailScreen(
                     item { ClassProfileChart(profile = profile) }
                 }
 
-                // Above the interval list rather than below it: this is the
-                // screen where a rider is choosing what to ride, and "your
-                // housemate did 214 kJ on this one" is the reason to pick it.
-                // The interval breakdown is what they read once they already
-                // have. A card with nothing beside it is capped (22.6).
-                leaderboard?.let {
-                    item { ClassLeaderboardCard(leaderboard = it, modifier = Modifier.loneCard()) }
-                }
-
-                // 24.3.3. Directly under the board, because the board is what
-                // makes the offer make sense — a rider looking at "Kilo did
-                // 240 kJ on this one" is exactly the rider who might want to
-                // race it. Chosen here rather than mid-ride: a menu over
-                // somebody who is already pedalling is 15.1.6's rule.
-                if (rivals.isNotEmpty()) {
-                    item {
-                        RivalPicker(
-                            rivals = rivals,
-                            selectedId = selectedRivalId,
-                            onPick = onPickRival,
-                            // Order matters and cost a screenshot to find:
-                            // `loneCard` only caps, so without a fill the
-                            // card sizes to its chips and sits half the width
-                            // of the board above it — and with the fill
-                            // *first* the cap cannot shrink it back, so it
-                            // spans the whole 1280 dp panel instead (22.6).
-                            // Cap outermost, fill inside it.
-                            modifier = Modifier.loneCard().fillMaxWidth()
-                        )
+                    if (plan.intervals.isNotEmpty()) {
+                        // Tiles, not a stack of full-width rows. Each row used to
+                        // carry four facts down its left edge with 1200 dp of empty
+                        // panel beside them, and the seventh block of a 30-minute
+                        // class fell below the fold — on the one screen whose job
+                        // is to show the whole class (22.6, 22.4).
+                        item {
+                            WideGrid(
+                                items = plan.intervals,
+                                minCellWidth = 300.dp,
+                                spacing = MaterialTheme.spacing.small,
+                                // One tile carrying a position chip is taller than
+                                // its neighbours, and a row of four where the
+                                // fourth is 20 dp taller reads as a mistake.
+                                equalHeightRows = true
+                            ) { interval ->
+                                IntervalCard(interval = interval, ftp = ftp)
+                            }
+                        }
                     }
                 }
 
-                if (plan.intervals.isNotEmpty()) {
-                    // Tiles, not a stack of full-width rows. Each row used to
-                    // carry four facts down its left edge with 1200 dp of empty
-                    // panel beside them, and the seventh block of a 30-minute
-                    // class fell below the fold — on the one screen whose job
-                    // is to show the whole class (22.6, 22.4).
-                    item {
-                        WideGrid(
-                            items = plan.intervals,
-                            minCellWidth = 300.dp,
-                            spacing = MaterialTheme.spacing.small,
-                            // One tile carrying a position chip is taller than
-                            // its neighbours, and a row of four where the
-                            // fourth is 20 dp taller reads as a mistake.
-                            equalHeightRows = true
-                        ) { interval ->
-                            IntervalCard(interval = interval, ftp = ftp)
+                // The people, in their own column (22.7.3). Fixed width rather
+                // than weighted: the class is what the screen is about and it
+                // must not lose a third of the panel on a night nobody has
+                // ridden this — which is why the whole column is absent when
+                // there is nothing on it (24.1.6's rule, one level up).
+                val showPeople = leaderboard?.isWorthShowing == true || rivals.isNotEmpty()
+                if (showPeople) {
+                    Column(
+                        modifier = Modifier
+                            .width(PEOPLE_COLUMN_WIDTH)
+                            .fillMaxHeight()
+                            .padding(end = MaterialTheme.spacing.large),
+                        // Level with the class beside it rather than hung off
+                        // the app bar — 22.7.1 again, turned ninety degrees.
+                        verticalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.large,
+                            Alignment.CenterVertically
+                        )
+                    ) {
+                        leaderboard?.let {
+                            ClassLeaderboardCard(leaderboard = it, modifier = Modifier.fillMaxWidth())
+                        }
+
+                        // 24.3.3. Under the board, because the board is what
+                        // makes the offer make sense — a rider looking at
+                        // "Kilo did 240 kJ on this one" is exactly the rider
+                        // who might want to race it. Chosen here rather than
+                        // mid-ride: a menu over somebody who is already
+                        // pedalling is 15.1.6's rule.
+                        if (rivals.isNotEmpty()) {
+                            RivalPicker(
+                                rivals = rivals,
+                                selectedId = selectedRivalId,
+                                onPick = onPickRival,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -276,6 +303,16 @@ fun ClassDetailScreen(
  * this question has an answer (22.4.5).
  */
 private val START_BUTTON_WIDTH = 420.dp
+
+/**
+ * How much of the panel the people take (22.7.3).
+ *
+ * Wide enough for a name and a number without either wrapping, and narrow
+ * enough that the class keeps two thirds of a 1280 dp tablet — which is the
+ * right split, because the class is what a rider came here to look at and the
+ * board is why they might pick this one.
+ */
+private val PEOPLE_COLUMN_WIDTH = 400.dp
 
 /**
  * "Ride against" — who this class can be raced live (24.3.3).

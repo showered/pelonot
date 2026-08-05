@@ -77,8 +77,34 @@ fun ClassLeaderboardCard(
             )
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-            for (entry in leaderboard.entries) {
+            // 24.1.8. The podium and your own neighbourhood, not the whole
+            // field — the row count is bounded by the design rather than by
+            // how many people happen to use the app.
+            val visible = leaderboard.visible
+            visible.rows.forEachIndexed { index, entry ->
                 LeaderboardRow(entry)
+                // Where the board skips ranks, and it has to be visible: two
+                // adjacent rows reading 3 and 9 with nothing between them
+                // would look like a ranking bug rather than a window.
+                if (index == visible.breakAfter) {
+                    Text(
+                        text = "⋮",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 10.dp)
+                    )
+                }
+            }
+
+            if (visible.hidden > 0) {
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                Text(
+                    // Counted rather than implied. A board that quietly stops
+                    // at six is a false claim about the size of the field.
+                    text = "and ${visible.hidden} more",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             // 18.7, and the reason it is one line rather than a paragraph: the
@@ -87,7 +113,7 @@ fun ClassLeaderboardCard(
             // than hoped for — so this says where somebody rode, not that the
             // number is doubtful. A blanket disclaimer nobody reads is the
             // same as none.
-            if (leaderboard.marksAnyRider) {
+            if (visible.marksAnyRider) {
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
                 Text(
                     text = "\u25CB rode a different bike. Only measured watts are ranked, " +

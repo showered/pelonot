@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
@@ -196,12 +199,26 @@ fun PostRideSummaryScreen(
 
                     if (sideBySide) {
                         Row(
+                            // 24.1.8. Two cards of different heights beside
+                            // each other read as a mistake rather than as a
+                            // layout — 22.7.2 found the same thing one screen
+                            // along and grew `equalHeightRows` for it. The
+                            // board is bounded now (`ClassLeaderboard.visible`),
+                            // so matching them costs a card's worth of air
+                            // rather than an unbounded amount of it.
+                            modifier = Modifier.height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(
                                 MaterialTheme.spacing.medium
                             )
                         ) {
-                            RpeCard(state.rpe, viewModel::setRpe, Modifier.weight(1f))
-                            board?.let { ClassLeaderboardCard(it, Modifier.weight(1f)) }
+                            RpeCard(
+                                state.rpe,
+                                viewModel::setRpe,
+                                Modifier.weight(1f).fillMaxHeight()
+                            )
+                            board?.let {
+                                ClassLeaderboardCard(it, Modifier.weight(1f).fillMaxHeight())
+                            }
                         }
                     } else {
                         Column(
@@ -520,7 +537,16 @@ private fun RpeCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
-        Column(Modifier.padding(MaterialTheme.spacing.large)) {
+        // Filled to whatever the board beside it needs (24.1.8) with the
+        // question still at the top, so *"How did that feel?"* and *"On this
+        // bike"* sit on the same line. Centring it was tried first and reads
+        // worse: the two headings then disagree by a hundred dp and the card
+        // looks like it is missing something above the question.
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(MaterialTheme.spacing.large)
+        ) {
             Text(
                 text = "How did that feel?",
                 style = MaterialTheme.typography.titleMedium,

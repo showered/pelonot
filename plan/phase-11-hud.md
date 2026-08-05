@@ -748,7 +748,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       first ride loses the app's primary surface silently. Small; check what
       Settings already says before writing anything new
 
-- [ ] **11.6.16** **The countdown grows, and pushes the totals off the bottom
+- [x] **11.6.16** **The countdown grows, and pushes the totals off the bottom
       of the screen.** The owner's note, 5 August 2026, verbatim: *"When the
       'next' section is counting down, it gets a bit bigger. No problem with
       this but it bumps the cards underneath it down, and actually off screen.
@@ -784,7 +784,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
         POWER are the numbers a rider looks for without looking, and a row
         that is sometimes there is worse than a row that is smaller.
 
-- [ ] **11.6.17 The totals row overflows when the numbers get big.** The
+- [x] **11.6.17 The totals row overflows when the numbers get big.** The
       owner's note, 5 August 2026, verbatim: *"The power, distance, output
       section looks brilliant but i fear it will overflow badly when the numbers
       get large. Please think about this."*
@@ -811,7 +811,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       number, and 11.6.12 was the last time this tile lied about its own value.
       Check it at four digits on the tablet AVD, not by reading the diff.
 
-- [ ] **11.6.18 The rest of the class scrolls.** The owner's note, 5 August
+- [x] **11.6.18 The rest of the class scrolls.** The owner's note, 5 August
       2026, verbatim: *"The 'next' section -- it could be scrollable tbh. Why
       not!"*
 
@@ -842,7 +842,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
         does not scroll and must not start: the totals and the metric grid are
         fixed points. Only this list scrolls, inside its own bounded height.
 
-- [ ] **11.6.19 Tap the distance to change its units, for this ride only.** The
+- [x] **11.6.19 Tap the distance to change its units, for this ride only.** The
       owner's note, 5 August 2026, verbatim: *"The 'distance' number. Clicking
       it could switching between imperial and metric (temporarily, not saved in
       settings) ... why not!?"*

@@ -228,4 +228,104 @@ class ClassLeaderboardTest {
 
         assertEquals(null, board.entries.first { it.name == "Sam" }.outputPerKg)
     }
+
+    // ======================================================================
+    // 24.1.8 — the podium and your own neighbourhood
+    // ======================================================================
+
+    private fun boardOf(size: Int, youAt: Int?): ClassLeaderboard =
+        ClassLeaderboard.of(
+            classId = "TH-01",
+            standings = (1..size).map { standing(it, "Rider $it", (300 - it).toDouble()) },
+            youId = youAt
+        )
+
+    /** Six is the ceiling, and a board at the ceiling is still a plain list. */
+    @Test
+    fun `a board that fits is drawn whole`() {
+        val visible = boardOf(ClassLeaderboard.MAX_ROWS, youAt = 6).visible
+
+        assertEquals(ClassLeaderboard.MAX_ROWS, visible.rows.size)
+        assertEquals(0, visible.hidden)
+        assertEquals(null, visible.breakAfter)
+    }
+
+    /**
+     * The shape the item asks for: the top three, the rider and the row either
+     * side of them, and a break where the board skips.
+     */
+    @Test
+    fun `a long board keeps the podium and your own neighbourhood`() {
+        val visible = boardOf(12, youAt = 9).visible
+
+        assertEquals(
+            listOf("Rider 1", "Rider 2", "Rider 3", "Rider 8", "Rider 9", "Rider 10"),
+            visible.rows.map { it.name }
+        )
+        assertEquals(6, visible.hidden)
+        // Between the podium and the neighbourhood, so the jump from 3rd to
+        // 8th cannot read as a ranking bug.
+        assertEquals(2, visible.breakAfter)
+    }
+
+    /**
+     * The same rule and the same failure mode as the live board's sliding
+     * window (24.3.13): being last must not remove you from your own board.
+     */
+    @Test
+    fun `the rider is on the board even when they are last`() {
+        val visible = boardOf(12, youAt = 12).visible
+
+        assertTrue(visible.rows.last().isYou)
+        assertEquals(listOf("Rider 1", "Rider 2", "Rider 3", "Rider 11", "Rider 12"), visible.rows.map { it.name })
+    }
+
+    /** Fourth means the two groups touch, so there is nothing to break. */
+    @Test
+    fun `a rider just below the podium gets a contiguous board`() {
+        val visible = boardOf(12, youAt = 4).visible
+
+        assertEquals(listOf("Rider 1", "Rider 2", "Rider 3", "Rider 4", "Rider 5"), visible.rows.map { it.name })
+        assertEquals(null, visible.breakAfter)
+    }
+
+    /**
+     * Class detail before the rider has ever ridden the class: there is no
+     * neighbourhood, and the podium alone is the honest answer.
+     */
+    @Test
+    fun `a board the rider is not on shows the podium and says how many are hidden`() {
+        val visible = boardOf(12, youAt = null).visible
+
+        assertEquals(ClassLeaderboard.PODIUM, visible.rows.size)
+        assertEquals(9, visible.hidden)
+        assertEquals(null, visible.breakAfter)
+    }
+
+    /**
+     * `marksAnyRider` asked of the rows that are drawn. A caption explaining a
+     * glyph that has been windowed away is the same fault one step along.
+     */
+    @Test
+    fun `the other-bike caption follows the rows that survive the window`() {
+        val standings = (1..12).map {
+            ClassLeaderboard.Standing(
+                localUserId = if (it == 12) null else it,
+                accountId = if (it == 12) "cloud-rider" else null,
+                name = "Rider $it",
+                outputKj = (300 - it).toDouble(),
+                weightKg = 70.0,
+                source = if (it == 12) {
+                    ClassLeaderboard.Source.Cloud
+                } else {
+                    ClassLeaderboard.Source.Household
+                }
+            )
+        }
+        val board = ClassLeaderboard.of("TH-01", standings, youId = 5)
+
+        // The cloud rider is last and is windowed away.
+        assertTrue(board.marksAnyRider)
+        assertFalse(board.visible.marksAnyRider)
+    }
 }

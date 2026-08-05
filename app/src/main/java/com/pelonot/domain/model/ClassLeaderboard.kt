@@ -31,6 +31,73 @@ data class ClassLeaderboard(
     val crossesBikes: Boolean get() = entries.any { it.source == Source.Cloud }
 
     /**
+     * The rows the card actually draws — **the podium and your own
+     * neighbourhood** (24.1.8).
+     *
+     * The owner's note: *"Leaderboard has the potential to really throw the
+     * screen out of alignment when it grows long."* There was no ceiling
+     * anywhere between the query and the screen, and the row count is not
+     * "how many people live here" — 18.11 removed the friend graph, so
+     * everyone registered is on everyone's board.
+     *
+     * **The answer is 24.3.13's, one screen along**: a window, not a list. The
+     * two boards differ in *which* window, and deliberately. Mid-ride only the
+     * rows next to you can be acted on. Afterwards the top of the board is
+     * genuinely interesting — a rider wants to know who won as well as where
+     * they came — so this keeps both ends and drops the middle.
+     *
+     * A truncated board that does not say it is truncated would be a false
+     * claim about the size of the field, which is why [Visible.hidden] is
+     * carried out rather than left to the caller to work out.
+     */
+    val visible: Visible
+        get() {
+            if (entries.size <= MAX_ROWS) return Visible(entries, hidden = 0, breakAfter = null)
+
+            val youIndex = entries.indexOfFirst { it.isYou }
+            // Your own row, and the one either side of it — the same shape as
+            // the live board's window, and for the same reason: a position
+            // means nothing without the people it is between.
+            val neighbourhood = if (youIndex < 0) {
+                emptySet()
+            } else {
+                setOf(youIndex - 1, youIndex, youIndex + 1).filter { it in entries.indices }
+            }
+            val keep = ((0 until PODIUM) + neighbourhood).distinct().sorted()
+            val breakAfter = keep.zipWithNext()
+                .indexOfFirst { (above, below) -> below - above > 1 }
+                .takeIf { it >= 0 }
+
+            return Visible(
+                rows = keep.map { entries[it] },
+                hidden = entries.size - keep.size,
+                breakAfter = breakAfter
+            )
+        }
+
+    /**
+     * @property rows in rank order, best first.
+     * @property hidden how many of [entries] are not drawn at all.
+     * @property breakAfter index within [rows] after which the board skips
+     *   ranks, or null when what is drawn is contiguous.
+     */
+    data class Visible(
+        val rows: List<Entry>,
+        val hidden: Int,
+        val breakAfter: Int?
+    ) {
+        /**
+         * [marksAnyRider], asked of the rows that are actually drawn.
+         *
+         * The distinction matters the moment the board is windowed: a caption
+         * explaining a glyph that has been windowed away is exactly the fault
+         * `marksAnyRider` exists to prevent, one step further along.
+         */
+        val marksAnyRider: Boolean
+            get() = rows.any { it.source == Source.Cloud && !it.isYou }
+    }
+
+    /**
      * Whether any row will actually carry the other-bike mark.
      *
      * Not the same as [crossesBikes], and the difference is the rider
@@ -88,6 +155,17 @@ data class ClassLeaderboard(
     )
 
     companion object {
+        /**
+         * Above this many riders the board is windowed rather than listed
+         * (24.1.8). Six is what fits beside *how did that feel* on the summary
+         * without the row going ragged, and it is also the largest board that
+         * can be drawn whole without a break in it.
+         */
+        const val MAX_ROWS = 6
+
+        /** How many from the top always survive the window. */
+        const val PODIUM = 3
+
         /**
          * Places riders, best first.
          *

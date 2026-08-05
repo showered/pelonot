@@ -562,7 +562,7 @@ one is a screen the audit never reached.
       rider and simulated watts, so the card does not draw at all — correctly.
       The change to it is a width cap and nothing else
 
-- [ ] **22.7.3 The Start Class screen again, with the board on it this time.**
+- [x] **22.7.3 The Start Class screen again, with the board on it this time.**
       The owner's note, 5 August 2026, under *Interim class screen, where you
       click 'start class'*, verbatim: *"Looks bad. We've added the leaderboard
       in there and the whole screen doesn't look good. Please totally re-assess
