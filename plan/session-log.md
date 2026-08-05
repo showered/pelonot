@@ -8,6 +8,106 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 5 August 2026 (thirty-third sitting): the first ride, watched over somebody's shoulder
+
+**The owner showed the app to their wife, who signed up for the first time, and
+reported it as "a clunky onboarding."** That is the only kind of evidence this
+project cannot generate for itself: a session driving its own flow knows where
+every control is. Three inbox entries came out of it, all three are written up
+and the inbox is empty, and four of them are built. 671 JVM tests, 0 failures.
+Everything below was observed on the tablet AVD.
+
+**Two of the three worst faults on the first-run path were not in the note.**
+They were found by walking the whole thing with the AVD's hardware keyboard
+turned *off* — which is the technique worth keeping, because with
+`hw.keyboard=yes` the emulator shows a floating IME, the window never resizes,
+and nothing is ever covered or moved:
+
+- **`Continue` was behind the keyboard on the very first screen the app shows
+  anybody.** y 603, keyboard top edge y 590. The cause is that `imePadding()` is
+  a **no-op inside a `Dialog`** — the dialog gets its own window and that window
+  reports no IME insets until `decorFitsSystemWindows = false`. It is at y 381
+  now.
+- **The account offer did not fit the panel, and its only visible control was a
+  dead button.** The whole offer was stacked in a 640 dp column on a 1280 dp
+  screen, so the password field ended at y 890 and **`Not now` was off the
+  bottom** — the answer this app ships as its default. Underneath it
+  `StepScaffold` drew a *Back* that does nothing by construction. So a rider who
+  had just made their first profile faced a screen whose only apparent way
+  onward was signing in. Two columns now (22.4's rule: things being *chosen
+  between* want the width), and no dead control.
+
+**The owner's two named faults are fixed and the second had the more
+interesting cause.** The birth year was an `OutlinedButton` beside a labelled
+weight field — a field and an action, where they are two facts about the rider —
+and is now a `PickerField` drawn to Material's own text-field metrics. And the
+keyboard "eating the first tap" is the step *sliding under the finger*: with the
+IME up, `kg` moves from y 337 to 220 and the last fitness card from 544 to 427,
+because `StepScaffold` centres its content so a resize moves everything by half
+of it. Every control that is not the weight field now clears focus **as part of
+its own tap** — keyboard away, layout settled, action done, one tap. Dismissing
+on any outside touch instead is what spends the tap and is the complaint.
+
+**The Start Class screen lost the "million panels", and it is the fourth note on
+that screen and the first to ask whether they belonged.** `CLB-01` is thirteen
+blocks: 52 facts on the last screen before a rider pedals, every one already
+drawn by the chart above. 22.7.2, 22.7.3 and 22.4.3 all answered earlier notes
+by *moving* the tiles. They are behind *See the blocks* now — which makes it a
+move rather than a deletion, and the distinction is **who is asking**: a
+first-time rider is deciding whether they want the ride, and a rider who taps
+that button has asked the question the tiles answer. Centring the remainder
+exposed a bug the tiles had hidden: the `LazyColumn`'s `weight(1f)` is its
+*horizontal* share of the Row, so it was only ever as tall as its content and
+`Alignment.CenterVertically` had never once run.
+
+**And 72 classes now say what they are for (23.2.7)** — the first authored prose
+in the library, because everything else about a class is derived from its blocks
+and so can only restate them. They live in `descriptions.py`, apart from the
+catalogue, because the failure mode is not a wrong sentence but 72 that sound
+alike. R13 holds the shape in `build.py` **and** again in
+`ClassLibraryAssetsTest`, since the assets are what ships; it was seen refusing
+five deliberate breakages before being trusted. **The rule that earns its place
+is the ban on naming its own category**, which is what forces *"the hardest pace
+you could hold for about an hour"* instead of *"threshold"* — the plain sentence
+is the one a first-time rider can act on.
+
+**Phase 11.8 did not exist and the gap is large.** The app is built on power
+zones end to end — the library prescribes them, the ride screen colours by them,
+the board scores off them, Phase 7 moves their denominator by itself — and it
+never once said what one is. Two sentences now, in the **countdown**: the rider
+is clipped in with ten seconds and nothing to do, and the class's first zone is
+on screen directly above, so the sentence has something to point at.
+`isFirstRide` is a query against the rider's own finished rides rather than a
+stored flag — the app already has the fact, and a flag is a second copy that can
+disagree. Beside it, **the governing tile now carries an outline in its own
+accent**: 11.7 had made "one instruction at a time" *true* and left it invisible,
+because four identical tiles reading `74 / 38 / 97 / 102` have nothing but a
+line of small dim text to separate an instruction from information. Not amber —
+that is the off-target signal, and spending it here would make a rider who is
+riding perfectly look wrong.
+
+**The last outstanding leaderboard item is closed (24.3.18d)** — `PAST YOUR
+BEST` over `YOU 13 / YOUR BEST 12 FINISHED`. `RacePassTracker` is the latch the
+item asked for, and three of its rules came out of writing the test rather than
+the code: the first sighting latches *without reporting* and only rows already
+passed (latching the whole field, written first, silently disarms every row
+still ahead, so the pass that matters never fires); a ride that has not started
+cannot be overtaken (the ghosts are cumulative traces, so the field opens on 0.0
+and the rider's first kilojoule would announce a PB two seconds in); and only
+the rider's own past rides count, which is `!isPerson && !isGenerated` and
+exactly why 24.3.18 kept those two flags apart.
+
+**Its first version was correct and invisible, which is this session's best
+lesson.** The banner was the first `item` of the board's `LazyColumn` — a list
+that scrolls itself to the rider's row on every rank change — so it fired
+exactly when it should and was scrolled straight off the top. *The pass was in
+the data and never once on the screen.* Drawn as a sibling instead, it then made
+the card taller and pushed *End ride* off the bottom, because a banner stacked
+on six rows is 24.3.18c's seventh row by another name. The list gives up a row
+while it shows.
+
+---
+
 ### 5 August 2026 (thirty-first sitting): the board says less, and the screens it landed on get their shape back
 
 **The owner left four notes and all four are about the leaderboard arriving on
