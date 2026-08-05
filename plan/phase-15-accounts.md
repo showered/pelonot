@@ -361,6 +361,45 @@ own**, minted for it, not a copy of the phone's.
       it wants the bike's waiting screen to be honest about it rather than
       counting down to a failure it can predict. **Read 15.7.6 with this** — the
       confirmation link is the other end of the same journey
+- [x] **15.6.13** **Android back from the QR code left the journey entirely —
+      and the code went on running without it.** ***Done and observed on the
+      tablet AVD.*** The owner's inbox, 5 August 2026, verbatim: *"If during
+      onboarding you try to sign up and you ask to see a QR code, and then click
+      'back' on android then you get taken all the way to the profile selector
+      screen and your new account is already there. Please analyse this whole
+      journey and make it correct. Back should just take you to the previous
+      screen, not the whole way back to the start."*
+
+      **The reported half has a one-line cause.** The offer is inside a
+      `Dialog`, and a dialog dismisses itself on back — so the press never
+      reached the step machinery at all. Reproduced exactly: one press on the
+      QR, and the rider was on *"Who's riding?"* with the new profile sitting
+      there unselected. **20.4.6 is the same cause on the three steps before
+      this one**, where it was throwing away a name and three answers; the two
+      items are one fix and are separate only because they are separate screens.
+
+      Back is one step now, and the offer owns its own because only it knows
+      which of its two states is showing: from the code, back to the two routes;
+      from the two routes, back is *Not now*, the answer this app ships as its
+      default and the control already drawn at the foot of the screen. Only
+      `PairingState.Completing` refuses — a handover is in hand and dropping out
+      mid-adoption is the one outcome worse than a press that looks ignored.
+
+      **Analysing the journey as asked found a second fault, and it is worse
+      than the one reported.** `AccountViewModel` outlives the dialog, so
+      backing out left `startPairing`'s loop polling with a five-minute code
+      still live. Measured: a rider backed out of **Ada**'s code, created a
+      second profile, and the offer for **Bee** opened on *Ada's* QR — the same
+      `Y4TM VX5W`, counting down from where it had got to. And `startPairing`
+      captures the local profile id it was *started* for, so a phone scanning
+      that code would have handed the session to **Ada** while **Bee** was the
+      profile on screen: two riders, one code, and the wrong one signed in.
+
+      `AccountViewModel.abandonPairing` is the fix and it is on the view model
+      rather than in a `DisposableEffect` deliberately — the decision is about
+      the *state*, not the screen, and only a code still being waited on may be
+      abandoned. Observed after: a fourth profile's offer opens on the two
+      routes with no code in sight
 
 ---
 

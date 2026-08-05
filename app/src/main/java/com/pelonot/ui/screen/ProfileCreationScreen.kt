@@ -1,5 +1,6 @@
 package com.pelonot.ui.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,10 +168,24 @@ fun ProfileCreationScreen(
         )
     )
 
+    val back = if (step == Step.Name) onCancel else ({ step = step.previous() })
+
+    // 20.4.6. **Android back skipped every step of this and closed the whole
+    // screen.** A `Dialog` dismisses itself on back, so one press from *A bit
+    // about you* threw away a name and three answers and put the rider on
+    // "Who's riding?" — and from the account step it did the same with the
+    // profile already written, which is what the owner reported (15.6.13).
+    // System back and the control at the foot of the screen are one behaviour,
+    // said twice, and there is no step where they may disagree.
+    //
+    // Off on the account step, which owns its own back: only that step knows
+    // whether a code is on screen, and two enabled handlers would race.
+    BackHandler(enabled = step != Step.Account, onBack = back)
+
     StepScaffold(
         heading = step.heading(name),
         subheading = step.subheading(),
-        onBack = if (step == Step.Name) onCancel else ({ step = step.previous() }),
+        onBack = back,
         // Null on the account step: there is nowhere back to go from it, and a
         // button that says otherwise is worse than no button (20.4.4).
         backLabel = when (step) {

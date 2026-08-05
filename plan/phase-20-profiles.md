@@ -479,3 +479,47 @@ it is the only one.
       is the screen failing to say what kind of answer it wants, and *looking
       like it* has to mean in every state or the rider finds the state where it
       does not
+- [x] **20.4.6** **Android back threw away every answer on every step.**
+      ***Done and observed on the tablet AVD.*** Found by taking the owner's
+      inbox note about the QR code (15.6.13) at its word — *"analyse this whole
+      journey"* — rather than fixing the screen it was reported on. The cause is
+      one line and it is the same one: `ProfileCreationScreen` is hosted in a
+      `Dialog`, a dialog's own callback dismisses it on back, and nothing in
+      this screen ever saw the press. So back on *A bit about you* threw away a
+      name, a weight, a year and a fitness level and put the rider on *"Who's
+      riding?"* — while the *Back* control two inches below it went one step, as
+      it always had.
+
+      **Two controls for one gesture, disagreeing.** `BackHandler` now takes the
+      same lambda `StepScaffold` is given, so there is no step on which they can
+      differ, and the account step turns it off because that step owns its own
+      (15.6.13) and two enabled handlers would race. Observed: back from *About*
+      lands on *Name* with the name still in the field; back from the estimate
+      lands on *About* with all three answers still set
+
+---
+
+### 20.5 What is left on the first-run path
+
+- [ ] **20.5.1** **Nothing fences the weight, and the first screen will take
+      any number it is given.** Found while walking 20.4.3's path: `68` typed
+      into a field labelled `Weight (lb)` — 31 kg — produced *"Here's where
+      we'll start you: 65 W"*, said with the same confidence as any other
+      estimate, and the rider rode away with an FTP a third of what it should
+      be. The arithmetic is correct and that is the point: `FtpEstimator` is
+      linear in weight and has nothing to disbelieve.
+
+      **It matters more here than it looks.** 20.3's own note records why an
+      estimate that starts *low* is the dangerous direction: `PostWorkoutAnalyzer`
+      only ever proposes an FTP **upward**, so a number that starts too low is
+      corrected by the first hard ride, but the rider spends that ride in zone 7
+      of a ladder built on 65 W — and 7.11 has not landed, so nothing brings it
+      back down if the rider never rides hard.
+
+      **Reject, never clamp** (CLAUDE.md), which here means the field says what
+      it will accept rather than silently correcting to a plausible number: a
+      weight outside roughly 30–250 kg is not a weight, and the honest answer is
+      to refuse *Continue* with a line under the field, not to substitute one.
+      The bounds belong beside `MIN_TYPED_FTP` / `MAX_TYPED_FTP`, which is the
+      same argument already made once on this screen for the number a rider
+      types when they disagree with the estimate

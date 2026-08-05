@@ -1,5 +1,6 @@
 package com.pelonot.ui.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -60,6 +62,43 @@ fun ProfileAccountOfferStep(
     if (!state.cloudConfigured || state.signedInAsThisProfile) {
         LaunchedEffect(Unit) { onDone() }
         return
+    }
+
+    // 15.6.13. **Android back was leaving this journey entirely.** The offer is
+    // inside a `Dialog`, and a dialog's own back callback dismisses it — so a
+    // rider who pressed back while looking at the QR was put back on "Who's
+    // riding?" with their new profile sitting there unselected, the whole way
+    // to the start from one press. Back is one step, and on this screen there
+    // are exactly two steps to be on.
+    BackHandler {
+        when (state.pairing) {
+            // The two routes, one step back from the code. `cancelPairing`
+            // rather than a state reset, because the bike has told the server a
+            // code exists and a rider walking away from it should take it with
+            // them.
+            PairingState.Starting, is PairingState.Waiting,
+            PairingState.Expired, is PairingState.Failed -> viewModel.cancelPairing()
+
+            // A handover is in hand and the session is being attached. Back does
+            // nothing for the second this takes: dropping out mid-adoption is
+            // the one outcome here worse than a press that appears to be
+            // ignored.
+            PairingState.Completing -> Unit
+
+            // Nothing to step back to — going back from the offer would re-ask a
+            // question about a profile that already exists (15.8.1). So back is
+            // the answer this app ships as its default, which is the one drawn
+            // at the foot of the screen: *Not now*.
+            PairingState.Idle -> onDone()
+        }
+    }
+
+    // The offer can leave without anybody pressing anything — `onDone` above,
+    // the process going away, a rider walking off. This view model outlives it
+    // either way, so the code goes when the screen does. See
+    // `AccountViewModel.abandonPairing` for what it cost not to.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.abandonPairing() }
     }
 
     Column(

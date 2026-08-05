@@ -283,6 +283,30 @@ class AccountViewModel(
         pairing.value = PairingState.Idle
     }
 
+    /**
+     * Stop waiting, because the screen showing the code has gone (15.6.13).
+     *
+     * **This view model outlives the screens that use it**, and during profile
+     * creation that is not a detail. Measured on the tablet AVD: a rider backed
+     * out of *Ada*'s account offer while her QR was up, created a second profile
+     * — and the offer for **Bee** opened on *Ada*'s code, `Y4TM VX5W`, counting
+     * down from where it had got to. The loop was still polling, and worse than
+     * looking wrong: `startPairing` captures the local profile id it was
+     * *started* for, so a phone scanning that code would have handed the session
+     * to Ada while Bee was the profile on screen.
+     *
+     * The decision lives here rather than in a `DisposableEffect` because it is
+     * about the state, not about the screen: only a code still being waited on
+     * is abandoned. A pairing already in [PairingState.Completing] has a
+     * handover in hand and cancelling it would drop a sign-in mid-adoption.
+     */
+    fun abandonPairing() {
+        when (pairing.value) {
+            PairingState.Starting, is PairingState.Waiting -> cancelPairing()
+            else -> Unit
+        }
+    }
+
     fun signOut() {
         val localUserId = uiState.value.profile?.localUserId ?: return
         form.update { it.copy(busy = true) }
