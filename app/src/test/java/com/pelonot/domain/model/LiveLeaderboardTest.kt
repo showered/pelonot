@@ -158,4 +158,44 @@ class LiveLeaderboardTest {
         assertTrue(standings.window.all { it.rank == 1 })
         assertEquals(LiveStanding.YOU, standings.window.first().name)
     }
+
+    // ── 24.3.16: the one row a strip can afford ─────────────────────
+
+    /** Mid-pack: the race is with whoever is immediately ahead. */
+    @Test
+    fun `the nearest row is the one immediately above you`() {
+        val standings = board(
+            ghost("A", perSecond = 5.0, seconds = 600),
+            ghost("B", perSecond = 3.0, seconds = 600),
+            ghost("C", perSecond = 1.0, seconds = 600)
+        ).standingsAt(100, yourValue = 200.0)
+
+        // A: 500, B: 300, you: 200, C: 100.
+        assertEquals("B", standings!!.nearest!!.name)
+        assertTrue(standings.nearest!!.gapToYou > 0)
+    }
+
+    /**
+     * Leading, and the chip must not go blank at the moment a rider is doing
+     * best — it turns round and shows the one chasing them.
+     */
+    @Test
+    fun `leading turns the chip round to the rider being chased`() {
+        val standings = board(
+            ghost("A", perSecond = 1.0, seconds = 600),
+            ghost("B", perSecond = 0.5, seconds = 600)
+        ).standingsAt(100, yourValue = 500.0)
+
+        assertTrue(standings!!.leading)
+        assertEquals("A", standings.nearest!!.name)
+        // Negative: you are ahead, and the sign is what says so on a strip
+        // with one row on it.
+        assertTrue(standings.nearest!!.gapToYou < 0)
+    }
+
+    /** A board with nobody on it draws nothing, on the overlay most of all. */
+    @Test
+    fun `no race means no chip`() {
+        assertEquals(null, board().standingsAt(100, yourValue = 50.0))
+    }
 }

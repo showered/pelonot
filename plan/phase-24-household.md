@@ -682,10 +682,45 @@ downgrade — it is why the feature can afford to be interesting.
         that it must not — 24.1.6's rule, and on the overlay an empty row is
         more expensive than anywhere else in the app.
 
-      Not started. `HudExpanded` in `HudOverlayMain.kt` is where it would go,
-      and `RideSnapshot.standings` is already published to it — the overlay
-      renders from the same snapshot the ride screen does, so the data is
-      there and only the drawing is missing.
+      ***Built, looked at, and taken back out — 5 August 2026. The item stays
+      open and what it is waiting for has changed.***
+
+      **The owner's verdict, verbatim:** *"Fair to say there is simply no room
+      for the leaderboard on that HUD. It would require a rethink and maybe put
+      it somewhere else. For now please REMOVE it and maybe we'll come back to
+      it later. Go back to how it was. It shouldn't feel so crowded.
+      Particularly the power numbers it's all crammed in and clipping."*
+
+      **What was tried, so the next attempt does not repeat it.** The smallest
+      honest thing turned out to be **one row, and a *gap* rather than a
+      total** — the shape the full screen had rejected one item earlier, and
+      for a reason that genuinely does not carry across: 24.3.17a took the
+      signed gap off the ride screen because four totals in a column are
+      compared by eye, and on a strip there is no column *and the rider's own
+      kilojoules are not on the overlay at all*, so a lone competitor's total
+      is a number with nothing to read it against. That reasoning still looks
+      right and is worth keeping.
+
+      **What killed it was width, and it was measured rather than felt.**
+      `HudExpanded` is one horizontal row of chips across a 1280 dp band:
+      clock 150, now 216, the four live readouts on `weight(1f)`, next 208, and
+      the controls. A 132 dp race chip starved the weighted one, and the four
+      readouts rendered as `CADEI`, `RESIS`, `POWE`, `HEART` with the digits
+      cut off — **which is 11.6.12 and 11.6.17's failure on the one surface
+      where it matters most**, and it is what the owner saw. Narrowing the chip
+      makes the labels illegible instead of the numbers; there is no width that
+      buys a fifth chip on that row.
+
+      So the open question is no longer *what is the smallest honest
+      leaderboard* — it is **where on the overlay a race could live that is not
+      the chip row**. The strip is already two bands (the numbers on one edge,
+      the timeline on the other, see `HudOverlayManager`), and that is the
+      space worth thinking about rather than a narrower chip.
+
+      **What was kept:** `LiveStandings.nearest` — the row immediately above
+      the rider, or the one below when they are leading — with its three tests.
+      It is four lines of pure derivation, nothing draws it, and it is the one
+      part of the attempt that survives a rethink about *where*.
 
 - [ ] **24.3.15 The toggle: race by output, or race by distance.** Deferred on
       the owner's own *"otherwise just add it to the plan"*, and the reason it

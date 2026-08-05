@@ -167,6 +167,27 @@ data class LiveStandings(
 ) {
     /** True when nobody is ahead — the state 24.3.13 says to design first. */
     val leading: Boolean get() = yourRank == 1
+
+    /**
+     * The one row a strip can afford (24.3.16).
+     *
+     * **The competitor immediately above the rider, or — when the rider is
+     * leading — the one immediately below.** Both are the same question asked
+     * from the two ends of it: *who is the race with right now*. It is the
+     * board's window narrowed to one, so it slides for exactly the reason the
+     * window does, and a rider who is leading gets the person chasing them
+     * rather than an empty chip.
+     *
+     * Null when there is nobody to race, which is by far the ordinary case and
+     * draws nothing at all — 24.1.6's rule, and it costs more on the overlay
+     * than anywhere else in the app.
+     */
+    val nearest: LiveStanding?
+        get() {
+            val you = window.indexOfFirst { it.isYou }
+            if (you < 0) return null
+            return window.getOrNull(you - 1) ?: window.getOrNull(you + 1)
+        }
 }
 
 /** One row (PLAN 24.3.12). */

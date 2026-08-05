@@ -258,38 +258,46 @@ the two headings then disagree by a hundred dp.
 635 JVM tests, 0 failures. Everything above was driven on the tablet AVD by
 serial, with the bike attached the whole session and never touched.
 
-**What is owed.** 24.3.16, the overlay's version of the board, is the one note
-from the previous sitting still unbuilt. And the board has still never been
-watched moving under somebody actually pedalling.
+**24.3.16 was built and then taken back out, which is the sitting's one
+negative result and worth as much as the rest.** One row and a *gap* rather
+than a total is the right shape for a strip — the ride screen's own argument
+against the gap does not carry, because there is no column and the rider's own
+kilojoules are not on the overlay at all. What killed it was width, measured
+rather than felt: `HudExpanded` is one row of chips across a 1280 dp band, and
+a 132 dp race chip starved the weighted metrics chip until the four live
+readouts rendered as `CADEI`, `RESIS`, `POWE` with the digits cut off. The
+owner saw exactly that — *"it shouldn't feel so crowded. Particularly the power
+numbers it's all crammed in and clipping"* — and the strip is back to what it
+was. `LiveStandings.nearest` and its tests are kept; nothing draws them.
+
+**What is owed.** Where a race could live on the overlay that is not the chip
+row. And the board has still never been watched moving under somebody actually
+pedalling.
 
 ### What to do next, in order
 
-**The owner's inbox is empty and seven of its eight items are built, so the
-order is the one note still outstanding, then the two things that need the
-owner, then what was already queued.**
+**The owner's inbox is empty and all eight of its items are settled — seven
+built, and 24.3.16 built, looked at and taken back out on the owner's word. So
+what is left is what was already queued, plus two things that need the owner.**
 
-1. **24.3.16 — the leaderboard on the overlay.** The owner's note of 5 August,
-   still the only one of theirs not built, and it **overrules 24.1.5 and 18.6**
-   — *nothing social on the strip*. Read those two first: 19.4's reasoning
-   behind them is not wrong, and the note shares the concern (*"We don't want
-   to show too much information"*) while reaching a different answer. Two of
-   the three decisions are already made in the note — nothing in the collapsed
-   strip, a tiny version in the expanded overlay — and the third is the
-   interesting one: **what is the smallest honest leaderboard?** Three rows
-   will not fit; one row is the shape 24.3.11 put behind a flag, which is an
-   argument for being deliberate rather than against it. **And 24.3.17 has
-   changed the answer's starting point**: the full board is now a name and a
-   number with no rank and no unit, which is already close to what a strip can
-   afford. `RideSnapshot.standings` reaches the overlay, so only the drawing is
-   missing.
-2. **15.7 — the Supabase emails.** Written up in full, and the templates are
+1. **15.7 — the Supabase emails.** Written up in full, and the templates are
    ours to replace through the Management API with the token already in
    `local.properties`. Two of the six matter, the From line needs a domain that
    does not exist yet (15.7.3), and it changes the owner's live auth config,
    which is the one place in this project where being careless is a breach
    rather than a bug.
-3. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
+2. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
    ticks it, and it is the cheapest item left in the plan.
+
+**24.3.16 is open and is not simply *unbuilt*.** The overlay's leaderboard was
+built this sitting and removed: *"there is simply no room for the leaderboard
+on that HUD… it shouldn't feel so crowded. Particularly the power numbers it's
+all crammed in and clipping."* The measurement is in the item — a 132 dp chip
+starved the four live readouts on a 1280 dp band and they clipped, which is
+11.6.17's failure on the surface where it matters most. **The open question has
+changed shape**: not *what is the smallest honest leaderboard* but **where on
+the overlay a race could live that is not the chip row**. Do not re-attempt it
+as a narrower chip.
 
 **Two things need the owner rather than a session:**
 
