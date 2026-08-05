@@ -434,6 +434,101 @@ own**, minted for it, not a copy of the phone's.
       abandoned. Observed after: a fourth profile's offer opens on the two
       routes with no code in sight
 
+- [x] **15.6.14** **Three dots on the phone, for ever — the owner's note,
+      5 August 2026.** Verbatim: *"I am still not able to create an account via
+      QR code and have that seamlessly refresh the app. I tried signing up and
+      nothing happened. I then tried scanning a new QR code and i just get 3
+      dots on the web application"*, and then, mid-session, the observation that
+      solved it: *"Because i was already signed in and it tried to link me. If i
+      then click 'sign out' and try again the page shows."*
+
+      **Done, and the owner's second note is the whole diagnosis.** The three
+      dots are `link.html`'s `device-label`, the placeholder `describe()` writes
+      before asking the server what a code is pairing. It never came back.
+
+      **Reproduced against the live page and measured rather than reasoned
+      about.** A stored session is the trigger, so the fixture is a stored
+      session: a plausible but invalid one written straight into
+      `localStorage` — no account, no credentials — and the page wedged exactly
+      as reported. `navigator.locks.query()` then named the fault outright:
+      **one holder and two waiters on `lock:sb-<ref>-auth-token`**, no request
+      to Supabase in the network log at all, and a *freshly constructed* client
+      hanging in `getSession()` for the full 8 s of a race against a timer.
+
+      **The cause is one line, and it breaks a rule Supabase writes down.**
+      auth-js runs `onAuthStateChange` callbacks **while holding that exclusive
+      Web Lock**, so a callback that calls back into the auth client queues
+      behind the very thing waiting for it. `link.js` had
+      `onAuthStateChange(() => route())` and `route()` opened with
+      `await client.auth.getSession()`. A signed-out phone never noticed,
+      because there is no session to recover and the lock is free by the time
+      anything asks; a signed-in one deadlocked on arrival, which is precisely
+      why signing out "fixed" it.
+
+      The fix is the documented one: the callback takes the session it is
+      **handed**, `route()` is synchronous, and nothing on the page asks the
+      auth client anything from inside a callback. `sessionKnown` comes with it
+      — the same `AccountState.Unknown` the bike draws, so a signed-in rider is
+      not shown a sign-in form for a moment and invited to start typing.
+
+      **Two more were found underneath it, and one is the other half of the
+      owner's note.** *"I tried signing up and nothing happened"*: Supabase
+      hands a confirmed sign-up back **in the fragment**, and `link.js` read
+      whatever was in the fragment as a pairing code — so a rider returning from
+      their inbox, having done everything right, was told *"That code has
+      expired"* about a code they had never had. `pairingCodeIn` ignores
+      anything with an `=` in it and leaves the fragment to auth-js, which
+      clears it up itself. Verified both ways on a local copy: an
+      `#access_token=…` fragment now draws no device card and no expiry claim.
+
+      And **nothing on the page may wait for ever without saying so**. The
+      deadlock is fixed at its cause; `describe()` also has a ten-second
+      timeout and a failure state of its own now, saying *"Couldn't reach
+      Pelonot"* rather than *"expired"*, because the page does not know that
+      and sending a rider to fetch a new code from a bike whose code is fine is
+      a worse answer than admitting silence. **The first version of that timeout
+      hung in the same three dots**, which is the part worth keeping: `client
+      .rpc(...)` returns a **thenable, not a promise** — `PostgrestFilterBuilder`
+      has `.then` and no `.catch` — so hanging a `.catch` on it threw a
+      `TypeError` inside an `async` function nobody was catching. It is an
+      `await` inside a `try` now. The rule: **a fix for a silent failure has to
+      be run against the thing that failed**, or it is a second one
+
+- [x] **15.6.15** **The code shown by default — the owner's note, 5 August
+      2026.** Verbatim: *"Can it just be shown by default please. Would be a
+      better UX than having to click 'Show me a code'"*.
+
+      **Done and observed on the tablet AVD, on both screens that offer an
+      account.** `ScanToSignIn` was a card that *explained* pairing — a heading,
+      three lines about password managers and keyboard sizes, and a button. It
+      is the QR itself now, minted as the screen opens, and the explanation is
+      gone: it was selling a route the picture sells by itself, and a rider
+      holding a phone has already decided. The typed form is not behind
+      anything either, so neither route is a mode.
+
+      **A code replaces itself while the screen is up, five times over
+      (`MAX_CODES`).** This is the same note arriving from the other end and it
+      matters more than the button did: signing *up* means leaving for an inbox
+      (15.6.12), and what the rider came back to was *"That code has expired"*
+      and a button to press — the exact tap the owner asked to have removed
+      from the front of the flow, moved to the middle of it. Half an hour of
+      five-minute codes is generous for somebody still standing beside a bike
+      and short enough that a tablet left on this screen stops asking.
+
+      **Two things fell out of drawing it that the note did not ask for.**
+      Stacked in the account screen's 760 dp reading column the QR is 600 px
+      tall and the form it is an alternative *to* began below the fold, so the
+      screen read as one route with something under it — that is **20.4.4 on a
+      second screen**, and 20.4.4's own fix: the two routes go side by side and
+      prose keeps the cap (22.4). And on the profile-creation step the taller
+      block pushed **`Not now` 36 px off the bottom**, which is 20.4.4's
+      literal fault; the QR block is 4 dp tighter a gap now and the measurement
+      after is `[916,947][1004,977]` inside a viewport ending at 984.
+
+      Back changes with it: there is no longer a step between the code and the
+      offer, because the code *is* the offer, so back is *Not now* — one step,
+      and `abandonPairing` still takes the live code with it (15.6.13)
+
 ---
 
 ### 15.7 The emails come from Supabase — the owner's note, 4 August 2026
@@ -686,3 +781,48 @@ beside it.
       Check it the way 15.7.5 asks: **a real address, a real sign-up, the link
       tapped on a phone** — a 200 from the Management API says the value was
       stored, not that the mail that arrives tomorrow carries it
+
+- [ ] **15.7.7** **The mailer is a test mailer, and it is now the thing in the
+      way.** Read off the live auth config on 5 August while chasing 15.6.14:
+      `smtp_host` is **null** — no custom SMTP, so every confirmation email
+      leaves through Supabase's built-in sender — and `rate_limit_email_sent`
+      is **2**. Two emails an hour, **project-wide**, and Supabase's own
+      documentation is explicit that the built-in sender is for testing and may
+      refuse addresses outside the project's team.
+
+      **This is why 15.7.3 stops being a branding item.** It was written as the
+      *From* line being wrong, which is cosmetic and could wait. What the
+      measurement adds is that the same missing setting caps the whole sign-up
+      path at two attempts an hour and silently drops mail to anybody who is not
+      the project owner — and the owner has now hit exactly that wall from the
+      other side: *"i've run out of email address accounts i can use"*.
+      A rider on the receiving end of the cap sees the page say *check your
+      email* and then nothing arrive, which is indistinguishable from the app
+      being broken, and is a fair description of *"I tried signing up and
+      nothing happened"*.
+
+      **Three things a session can say and one it cannot.** It can say the cap
+      exists (above); it can say that **`+` addressing costs nothing** —
+      `you+bike1@gmail.com` is a distinct account to Supabase and the same
+      inbox to the rider, which is the answer to running out of addresses and
+      needs no data deleted; and it can say what deleting users would actually
+      cost, because that was the owner's own suggestion: `profiles.id`
+      references `auth.users(id)` **`ON DELETE CASCADE`** and `workouts.user_id`
+      references `profiles.id` the same way, so removing an account removes its
+      cloud profile **and every ride under it**. The bike keeps its own copies —
+      but `workouts.synced_at` is already stamped, so nothing re-uploads them
+      and the cloud copy does not come back. What a session cannot do is supply
+      a domain and SMTP credentials, which is 15.7.3 and the owner's
+
+- [ ] **15.7.8** **Turning confirmation off is the cheap way to test the QR
+      journey, and it is a deliberate decision rather than a convenience.**
+      `mailer_autoconfirm` is `false` today and 18.11.1 leans on it: public
+      sign-up was left open *on the owner's word* — *"It doesn't matter — it
+      requires email validation anyway"* — so the mailer is the door's only
+      lock. Flipping it makes an account instant, which is exactly what an
+      end-to-end test of 15.6 wants and exactly what 18.11.1 assumed was not
+      the case. **So it is not a switch to flick quietly**: either it goes on
+      for a measured window with sign-up closed beside it, or it stays off and
+      15.7.3 is what unblocks testing. The owner's call, and `supabase/
+      auth_config.py` can make and revert the change in one command with the
+      whole config backed up first
