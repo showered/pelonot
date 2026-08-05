@@ -2,12 +2,14 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,11 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -45,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
-import androidx.compose.ui.res.stringResource
 import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.PairingState
 import com.pelonot.ui.components.QrCode
@@ -84,6 +87,30 @@ fun AccountScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // 15.6.15. The code is asked for as the screen opens, not by a button —
+    // and only on the one branch that draws it. A rider who is already signed
+    // in, riding as a guest, or waiting on a confirmation email is on a
+    // different screen, and minting a pairing code for them is a request to the
+    // server that nothing on the tablet will ever show.
+    val wantsCode = state.pairingAvailable &&
+        state.cloudConfigured &&
+        !state.isGuest &&
+        state.session != AccountState.Unknown &&
+        !state.signedInAsThisProfile &&
+        state.awaitingConfirmationFor == null
+
+    LaunchedEffect(wantsCode) {
+        if (wantsCode && state.pairing == PairingState.Idle) {
+            viewModel.startPairing(onSignedIn = onBack)
+        }
+    }
+
+    // The pairing outlives this screen otherwise, and a live code with nothing
+    // showing it is what 15.6.13 was. Same call the offer step makes.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.abandonPairing() }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -103,42 +130,79 @@ fun AccountScreen(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
+                .fillMaxWidth()
                 .padding(padding)
-                .readableColumn()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.large),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
         ) {
             when {
-                !state.cloudConfigured -> NoCloudHere()
-                state.isGuest -> GuestCannotBackUp()
-                state.session == AccountState.Unknown -> Loading()
-                state.signedInAsThisProfile -> SignedIn(state, viewModel::signOut)
-                state.awaitingConfirmationFor != null -> ConfirmYourEmail(
-                    state = state,
-                    onResend = viewModel::resendConfirmation,
-                    onBackToSignIn = { viewModel.setMode(AccountMode.SignIn) }
-                )
+                !state.cloudConfigured -> ReadablePanel { NoCloudHere() }
+                state.isGuest -> ReadablePanel { GuestCannotBackUp() }
+                state.session == AccountState.Unknown -> ReadablePanel { Loading() }
+                state.signedInAsThisProfile ->
+                    ReadablePanel { SignedIn(state, viewModel::signOut) }
 
-                state.pairing != PairingState.Idle -> PairingSection(
-                    state = state,
-                    onCancel = viewModel::cancelPairing,
-                    onRetry = { viewModel.startPairing(onSignedIn = onBack) }
-                )
-
-                else -> {
-                    // 15.6. Offered above the form rather than below it: for
-                    // anybody holding a phone this is the better path, and the
-                    // typed form is the one that exists for riders who are not.
-                    if (state.pairingAvailable) {
-                        ScanToSignIn(onStart = { viewModel.startPairing(onSignedIn = onBack) })
-                    }
-                    SignInForm(state, viewModel, onDone = onBack)
+                state.awaitingConfirmationFor != null -> ReadablePanel {
+                    ConfirmYourEmail(
+                        state = state,
+                        onResend = viewModel::resendConfirmation,
+                        onBackToSignIn = { viewModel.setMode(AccountMode.SignIn) }
+                    )
                 }
+
+                state.pairing == PairingState.Completing -> ReadablePanel { PairingCompleting() }
+
+                // **Two routes, side by side** — 20.4.4's fix arriving on the
+                // second screen with the same problem. Stacked in a 760 dp
+                // reading column the QR is 600 px tall and the form it is meant
+                // to be an alternative *to* begins below the fold, so the screen
+                // reads as one route with something under it. A set of things a
+                // rider is choosing between wants the width (22.4); prose and
+                // form fields are what the cap is for, which is why every other
+                // branch here keeps it.
+                state.pairingAvailable -> Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier.widthIn(max = OFFER_WIDTH)
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        ScanToSignIn(
+                            state = state,
+                            onRetry = { viewModel.startPairing(onSignedIn = onBack) }
+                        )
+                    }
+                    // `Column`, not `Box`: SignInForm emits a sequence of
+                    // siblings for a ColumnScope, and a Box stacks all of them
+                    // on top of one another (seen on the AVD, 20.4.4).
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        SignInForm(state, viewModel, onDone = onBack)
+                    }
+                }
+
+                else -> ReadablePanel { SignInForm(state, viewModel, onDone = onBack) }
             }
         }
     }
 }
+
+/**
+ * Everything on this screen except the two routes is prose and form fields, and
+ * `readableWidth` is what those are for (22.2.6).
+ */
+@Composable
+private fun ReadablePanel(content: @Composable ColumnScope.() -> Unit) = Column(
+    modifier = Modifier.readableColumn(),
+    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+    content = content
+)
 
 /**
  * A build with no endpoint compiled into it (23.1.5, 14.10.3).
@@ -405,69 +469,53 @@ internal fun SignInForm(
 }
 
 /**
- * The offer, before any of it has started (15.6).
+ * The QR, the code and the clock — drawn without being asked for (15.6.6,
+ * 15.6.15).
  *
- * It leads with what the rider gets rather than with how it works: no typing on
- * the bike, and their password manager doing the job it exists for. "Scan a
- * code" is a mechanism; "use your phone" is the reason.
- */
-@Composable
-internal fun ScanToSignIn(onStart: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(Modifier.padding(MaterialTheme.spacing.large)) {
-            Text("Use your phone instead", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.size(MaterialTheme.spacing.small))
-            Text(
-                text = "The bike shows a code, you scan it, and you sign in on your " +
-                    "phone — where your password manager works and the keyboard is " +
-                    "the right size. Nothing is typed on the bike.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-            Button(onClick = onStart) { Text("Show me a code") }
-        }
-    }
-}
-
-/**
- * The code, the clock, and the way out (15.6.6).
+ * **It used to be a button.** *"Use your phone instead"*, a paragraph about why,
+ * and *Show me a code*; the owner's note is one line — *"Can it just be shown by
+ * default please. Would be a better UX than having to click 'Show me a code'"* —
+ * and it is right for a reason worth keeping: the paragraph was selling a route
+ * the picture sells by itself, and a rider holding a phone has already decided.
+ * So the screen mints a code as it opens and the explanation is gone. The typed
+ * form is not behind anything either; both routes are on the screen at once and
+ * neither is a mode.
  *
  * Everything here is sized for somebody standing next to the bike holding a
  * phone: the QR big enough to scan from half a metre, the eight characters
  * underneath it big enough to type from the same distance, and the URL small
  * because it is the third fallback rather than the first.
  *
- * The countdown is honest about the five minutes and the expiry is a state of
- * its own rather than a silent stop — a code that quietly died while the rider
- * went to fetch their phone is the most confusing thing this flow can do.
+ * The countdown is honest about the five minutes, and the code replaces itself
+ * five more times before the screen gives up — a rider who went to their inbox
+ * to confirm an address comes back to a live code rather than to a dead one and
+ * a button.
  */
 @Composable
-internal fun PairingSection(
+internal fun ScanToSignIn(
     state: AccountUiState,
-    onCancel: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
 ) = Column(
-    modifier = Modifier.fillMaxWidth(),
-    // The one screen in the app that is centred, and it earns it: this is not
+    modifier = modifier.fillMaxWidth(),
+    // The one part of the app that is centred, and it earns it: this is not
     // read, it is *pointed a camera at* from a metre away, and a QR hugging the
     // left edge of a 1280 dp tablet makes the rider work out where to stand.
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+    // Tighter than the rest of the app on purpose. These five things are one
+    // object — a picture with its own caption — and on the profile-creation
+    // step the 12 dp version pushed *Not now* off the bottom of the screen,
+    // which is precisely the fault 20.4.4 exists to prevent.
+    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
 ) {
     when (val pairing = state.pairing) {
-        PairingState.Idle -> Unit
+        // Idle is the half-second before the first code is asked for, and
+        // Starting is every subsequent one. Both are the same to a rider.
+        PairingState.Idle, PairingState.Starting -> Loading()
 
-        PairingState.Starting -> Loading()
-
-        PairingState.Completing -> {
-            Text("Signing you in…", style = MaterialTheme.typography.titleLarge)
-            Text(
-                text = "Your phone has handed this bike a session.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        // The caller draws this one: it is a moment rather than a route, and it
+        // belongs to the whole screen.
+        PairingState.Completing -> Unit
 
         PairingState.Expired -> {
             Text("That code has expired", style = MaterialTheme.typography.titleLarge)
@@ -478,14 +526,16 @@ internal fun PairingSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Button(onClick = onRetry) { Text("Show me a new one") }
-            OutlinedButton(onClick = onCancel) { Text("Type it on the bike instead") }
         }
 
-        is PairingState.Failed -> {
-            Text("That did not work", style = MaterialTheme.typography.titleLarge)
-            ProblemLine(pairing.message)
-            OutlinedButton(onClick = onCancel) { Text("Back") }
-        }
+        // **One line, and no headline.** Nobody asked for this code, so a
+        // failure to mint it is not the rider's error to be told about in bold
+        // — the form beside it works and is what they should use.
+        is PairingState.Failed -> Text(
+            text = pairing.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         is PairingState.Waiting -> {
             Text("Scan this with your phone", style = MaterialTheme.typography.titleLarge)
@@ -518,10 +568,28 @@ internal fun PairingSection(
                     "${secondsLeft / 60}:${(secondsLeft % 60).toString().padStart(2, '0')}.",
                 style = MaterialTheme.typography.bodyMedium
             )
-
-            OutlinedButton(onClick = onCancel) { Text("Type it on the bike instead") }
         }
     }
+}
+
+/**
+ * The second between the phone letting go and the bike being signed in.
+ *
+ * It takes the screen rather than sitting in a column, because for that second
+ * it is the only thing happening and the rider is looking at the bike.
+ */
+@Composable
+internal fun PairingCompleting() = Column(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
+) {
+    Text("Signing you in…", style = MaterialTheme.typography.titleLarge)
+    Text(
+        text = "Your phone has handed this bike a session.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 /**

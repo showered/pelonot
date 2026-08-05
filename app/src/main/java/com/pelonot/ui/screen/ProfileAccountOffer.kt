@@ -85,29 +85,20 @@ fun ProfileAccountOfferStep(
     // are exactly two steps to be on.
     BackHandler {
         when {
-            // Signed in, and being told so. There is nothing behind this, so
-            // back does what its one button does.
-            linked -> onDone()
-
-            // The two routes, one step back from the code. `cancelPairing`
-            // rather than a state reset, because the bike has told the server a
-            // code exists and a rider walking away from it should take it with
-            // them.
-            state.pairing == PairingState.Starting ||
-                state.pairing is PairingState.Waiting ||
-                state.pairing == PairingState.Expired ||
-                state.pairing is PairingState.Failed -> viewModel.cancelPairing()
-
             // A handover is in hand and the session is being attached. Back does
             // nothing for the second this takes: dropping out mid-adoption is
             // the one outcome here worse than a press that appears to be
             // ignored.
             state.pairing == PairingState.Completing -> Unit
 
-            // Nothing to step back to — going back from the offer would re-ask a
-            // question about a profile that already exists (15.8.1). So back is
-            // the answer this app ships as its default, which is the one drawn
-            // at the foot of the screen: *Not now*.
+            // **One step, and this is it.** Until 15.6.15 there were two — the
+            // code, and the offer to ask for one — so back stepped from the
+            // first to the second. Now the code *is* the offer and there is
+            // nothing behind it: going further back would re-ask a question
+            // about a profile that already exists (15.8.1). So back is the
+            // answer this app ships as its default, which is the one drawn at
+            // the foot of the screen: *Not now*. `onDispose` below is what
+            // takes the live code away with it.
             else -> onDone()
         }
     }
@@ -118,6 +109,16 @@ fun ProfileAccountOfferStep(
     // `AccountViewModel.abandonPairing` for what it cost not to.
     DisposableEffect(Unit) {
         onDispose { viewModel.abandonPairing() }
+    }
+
+    // 15.6.15. The owner asked for the code to be on screen rather than behind
+    // *Show me a code*, and this is the moment it matters most: a rider who has
+    // just answered four questions about themselves is being offered an account
+    // and should be able to point a phone at the bike without reading anything.
+    LaunchedEffect(state.pairingAvailable) {
+        if (state.pairingAvailable && state.pairing == PairingState.Idle && !linked) {
+            viewModel.startPairing(onSignedIn = { linked = true })
+        }
     }
 
     Column(
@@ -144,11 +145,7 @@ fun ProfileAccountOfferStep(
                 onDone = onDone
             )
 
-            state.pairing != PairingState.Idle -> PairingSection(
-                state = state,
-                onCancel = viewModel::cancelPairing,
-                onRetry = { viewModel.startPairing(onSignedIn = { linked = true }) }
-            )
+            state.pairing == PairingState.Completing -> PairingCompleting()
 
             else -> {
                 Text(
@@ -161,7 +158,7 @@ fun ProfileAccountOfferStep(
                     modifier = Modifier.readableText()
                 )
 
-                Spacer(Modifier.height(MaterialTheme.spacing.large))
+                Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
@@ -184,8 +181,13 @@ fun ProfileAccountOfferStep(
                             ),
                             modifier = Modifier.weight(1f)
                         ) {
+                            // 15.6.15: the code is already on screen. It used
+                            // to be a card explaining that a code could be
+                            // asked for, which on the first screen a new rider
+                            // meets is a paragraph in the way of a picture.
                             ScanToSignIn(
-                                onStart = {
+                                state = state,
+                                onRetry = {
                                     viewModel.startPairing(onSignedIn = { linked = true })
                                 }
                             )
@@ -203,7 +205,7 @@ fun ProfileAccountOfferStep(
                     }
                 }
 
-                Spacer(Modifier.height(MaterialTheme.spacing.large))
+                Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
                 // Same weight as the buttons above it, not a grey link
                 // underneath them — declining is not a failure to finish
@@ -278,4 +280,4 @@ private fun LinkedConfirmation(email: String?, onDone: () -> Unit) {
  * than prose being read, which is 22.4's distinction and the reason the stacked
  * 640 dp version overflowed a panel with 1280 dp of room on it.
  */
-private val OFFER_WIDTH = 1040.dp
+internal val OFFER_WIDTH = 1040.dp

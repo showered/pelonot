@@ -227,10 +227,19 @@ class AccountViewModel(
     /**
      * Asks for a code and starts watching for the phone (15.6.6).
      *
-     * The loop it starts owns three responsibilities and they are deliberately
-     * in one place: tick the countdown, poll, and **stop**. A pairing that
-     * outlives its code is a screen inviting a rider to scan something the
-     * server has already forgotten.
+     * The loop it starts owns four responsibilities and they are deliberately
+     * in one place: tick the countdown, poll, **replace a code that has run
+     * out**, and stop. A pairing that outlives its code is a screen inviting a
+     * rider to scan something the server has already forgotten.
+     *
+     * **A code replaces itself while the screen is up (15.6.15).** Creating an
+     * account is not a five-minute job: the rider signs up on their phone, goes
+     * to their inbox, taps a link, and comes back — and until this, what they
+     * came back to was *"That code has expired"* and a button, which is the
+     * same tap the owner asked to have removed from the front of the flow. Six
+     * codes is half an hour of standing beside a bike, which is generous for a
+     * rider who is still there and short enough that a tablet left on this
+     * screen stops asking the server for codes on its own.
      */
     fun startPairing(onSignedIn: () -> Unit) {
         val localUserId = uiState.value.profile?.localUserId ?: return
@@ -238,40 +247,52 @@ class AccountViewModel(
         pairing.value = PairingState.Starting
 
         pollJob = viewModelScope.launch {
-            val started = deviceLinkRepository.begin()
-            pairing.value = started
-            val waiting = started as? PairingState.Waiting ?: return@launch
+            var codesShown = 0
 
             while (isActive) {
-                now.value = System.currentTimeMillis()
+                val started = deviceLinkRepository.begin()
+                pairing.value = started
+                val waiting = started as? PairingState.Waiting ?: return@launch
+                codesShown++
 
-                if (waiting.hasExpired(now.value)) {
-                    deviceLinkRepository.forget()
+                var expired = false
+                while (isActive && !expired) {
+                    now.value = System.currentTimeMillis()
+
+                    if (waiting.hasExpired(now.value)) {
+                        deviceLinkRepository.forget()
+                        expired = true
+                        continue
+                    }
+
+                    val handover = deviceLinkRepository.poll(waiting.code)
+                    if (handover != null) {
+                        pairing.value = PairingState.Completing
+                        val adopted = deviceLinkRepository.adopt(handover)
+                        // The same attach as the typed path, deliberately: if
+                        // pairing had its own copy of 15.2's rules, one of the
+                        // two would drift and it would be this one.
+                        resolve(
+                            accountRepository.adoptSession(localUserId, adopted),
+                            localUserId,
+                            onSignedIn
+                        )
+                        if (adopted is AuthAttempt.Failed) {
+                            pairing.value = PairingState.Failed(adopted.message)
+                        } else {
+                            pairing.value = PairingState.Idle
+                        }
+                        return@launch
+                    }
+
+                    delay(POLL_INTERVAL_MS)
+                }
+
+                if (codesShown >= MAX_CODES) {
                     pairing.value = PairingState.Expired
                     return@launch
                 }
-
-                val handover = deviceLinkRepository.poll(waiting.code)
-                if (handover != null) {
-                    pairing.value = PairingState.Completing
-                    val adopted = deviceLinkRepository.adopt(handover)
-                    // The same attach as the typed path, deliberately: if
-                    // pairing had its own copy of 15.2's rules, one of the two
-                    // would drift and it would be this one.
-                    resolve(
-                        accountRepository.adoptSession(localUserId, adopted),
-                        localUserId,
-                        onSignedIn
-                    )
-                    if (adopted is AuthAttempt.Failed) {
-                        pairing.value = PairingState.Failed(adopted.message)
-                    } else {
-                        pairing.value = PairingState.Idle
-                    }
-                    return@launch
-                }
-
-                delay(POLL_INTERVAL_MS)
+                pairing.value = PairingState.Starting
             }
         }
     }
@@ -395,6 +416,9 @@ class AccountViewModel(
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val POLL_INTERVAL_MS = DeviceLinkRepository.POLL_INTERVAL_MS
+
+        /** Half an hour of five-minute codes, and then the screen stops asking. */
+        private const val MAX_CODES = 6
 
         val Factory = viewModelFactory {
             AccountViewModel(
