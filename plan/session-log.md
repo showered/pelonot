@@ -8,6 +8,117 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 5 August 2026 (thirtieth sitting): the leaderboard, and the column the eye goes to
+
+**The live leaderboard is built** — 24.3.10 through 24.3.13b — and it is the
+feature the owner asked for in the last sitting, in Peloton's own shape.
+
+**What a rider gets.** Start a class anybody on the bike has ridden before and
+a board appears, ranked live on the class total in kilojoules, with **three
+rows: the one you are chasing, you, and the one chasing you.** Nobody is
+picked; the race is simply there. Four kinds of row (24.3.12) — your best
+ever, your best of the last twelve months, your best of the last thirty days,
+and every housemate's best — so a rider who is improving has an unreachable
+ghost and a very reachable one at the same time. That is the owner's own
+reasoning: *"Just something to always be reaching for, you know?"*
+
+**The single rival is hidden rather than deleted** (24.3.11), on the owner's
+instruction, and the interesting part is **how little was behind the flag**.
+Two call sites. `RivalTrace`, the elapsed-second alignment, the measured-power
+gate and `active_ride_rival` are all still on the live path, because the
+leaderboard is built on top of every one of them. 24.3.11's claim that the
+ghost was *"a foundation rather than a detour"* was cashed in this sitting and
+it held.
+
+**Three decisions the drawing forced, and each has a rule behind it.**
+- **The window slides; it never shrinks.** Leading gives you the three below,
+  last gives you the three above. A card that lost a row at the top would
+  change height at the exact moment a rider was doing well — 11.6.8 by a new
+  door. And last is not a corner case: it is the first ten seconds of every
+  race, since the field starts level and anybody who moved first is ahead of a
+  rider who has not turned a pedal.
+- **The header carries what the window hides** — `4TH OF 6`, and `LEADING`
+  rather than `1ST OF 6`, because that is what a rider was trying to do.
+- **Two number spaces, and the sign tells them apart.** Your row is your total
+  with its unit; every other row is the gap to you, signed, without one. Safe
+  only because the ranking agrees with it: above always reads `+`, below always
+  reads `−`.
+
+**The owner moved the furniture mid-sitting, and was right** (24.3.13b).
+*"'Then' section should go under 'next'. This then frees up space for
+leaderboard which is where your eyes are naturally drawn to anyway."* The first
+half is 11.6.1's own argument carried one step further — *now*, *next* and
+*then* are one thought, and the rest of the class was the only part of it still
+in another column. The second half fixed a defect the first draft had already
+caused: squeezed above the totals, the board had pushed `OUTPUT`, `DISTANCE`
+and `AVG POWER` clean off the bottom of the screen, silently, because a Column
+clips rather than complaining. Found by looking at the tablet.
+
+**And a lever, because otherwise this could only be looked at on a bike with a
+rider on it** (24.3.13a). The measured-power gate means every AVD ride drops
+its race one second in. `com.pelonot.debug.RACE` lets the *live* board draw on
+a simulated ride and **changes nothing that is written down** — the samples
+still record honestly that the watts were modelled, so the ride is still
+excluded from every board afterwards. That distinction is the whole safety
+argument: a lever that made a simulated ride *claim* to be measured would
+poison the record permanently.
+
+**Observed on the tablet AVD**, against six hand-seeded measured rides of
+`END-01` and across a whole 20-minute class: `Racing 5 on END-01: Your best
+200, 12 months 160, 30 days 139, Kilo 180, Grace 120` — five rows from six
+rides, with the ride that is never the best of anything absent and nothing
+appearing twice. Then the board moving under a rider through three states:
+`6TH OF 6` with two rows above at the start, `5TH OF 6` after passing *30
+days*, and `4TH OF 6` with a neighbour each side. The class detail screen
+draws the household board and **no** *Ride against* card, which is the flag.
+And the board rebuilt itself after a mid-ride resume with nothing having been
+written down for it — the class and the rider are already on the row.
+
+**The inbox had three entries and is empty.** The countdown pushing the totals
+off the bottom of the screen (**11.6.16** — a real defect, and the note names
+the fix as well as the fault); what the opponents should be called
+(**24.3.12a**, *"12 months is no good at all"* — **an open item with the
+owner's name on it at their own request**, so a session that finds it still
+open should say so rather than invent an answer); and the leaderboard on the
+overlay (**24.3.16**, which **overrules 24.1.5 and 18.6** — nothing social on
+the strip — and the write-up says so plainly rather than letting two rules
+quietly disagree).
+
+**And 24.3.6 was finally seen**, two sittings after it was written. The
+*"they finished"* state had tests and no observation, because seeing it needs a
+ride that outlasts its rival's. What made it cheap was seeding a rival with a
+**90-second** ride — the state arrives at minute two instead of minute
+eighteen — and the technique generalises to anything in this feature that ends.
+`1 GRACE / FINISHED / +6` with her number frozen and the rider's climbing, then
+`LEADING` a minute later with Grace at `−3`. **The board turns out to be a
+better home for it than the single gap was**, for a reason the item did not
+anticipate: a frozen number beside two moving ones is obviously frozen, where a
+single frozen number is indistinguishable from a comparison that has quietly
+broken.
+
+629 JVM tests and 64 instrumented tests, 0 failures. The instrumented suite was
+run with `ANDROID_SERIAL=emulator-5554` because the bike was attached the whole
+session.
+
+**And it ran on the real bike**, which is what the AVD could not vouch for.
+`Racing 1 on END-03: Your best 238` with real measured watts and no lever, and
+the board on screen as `2ND OF 2 / 1 YOUR BEST +2 / 2 YOU 0 kJ`. Two things
+came out of that which no fixture had produced: **the two-row case**, a field
+smaller than the window shown whole; and the dedupe firing for real, because
+the owner's best-ever ride of that class is two days old and is therefore also
+their best of the last twelve months and of the last thirty days — three
+questions, one ride, one row. It is the case `oneRowPerRide` exists for and it
+arrived unprompted on the first real ride it was tried on. The test ride was
+discarded through the app's own recovery prompt, and the bike is back to
+exactly the seven rides it had.
+
+**What is owed.** The board watched moving under somebody actually pedalling —
+the bike observation above was made with nobody on it, so the numbers were
+right and still. That needs a rider, and CLAUDE.md is right that it is a
+perishable resource.
+
+---
+
 ### 4 August 2026 (twenty-ninth sitting): one instruction at a time
 
 **Two things landed: 11.7, and the answer to the leaderboard's score.**

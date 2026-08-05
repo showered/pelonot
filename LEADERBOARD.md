@@ -63,24 +63,29 @@ Top right of the ride screen, in the column that used to hold the rest of the
 class:
 
 ```
-6TH OF 6
-
- 4  12 MONTHS        +14
- 5  30 DAYS          +10
- 6  YOU            36 kJ
+KILO              23
+30 DAYS           21
+YOU               20
 ```
 
-- **The header is the part the three rows hide.** Looking at three rows you
-  cannot tell whether there are two more below you or twenty. When you are
-  first it says `LEADING` instead, because that is the thing you were trying
-  to do and *"1st of 6"* is a worse way of saying it.
-- **Your row shows your total. Every other row shows the gap to you.** A
-  number with a sign is a difference; a number without one is a total. It
-  stays unambiguous because it agrees with the ranking: the row above you
-  always has a `+`, the row below always has a `−`.
+- **A name and a number, and nothing else.** No positions, no units, no
+  header. The owner cut all three at once, and the argument for the biggest
+  cut is about what this board actually is: most of the rows are your own
+  past rides, so calling you *4th of 6* describes a field that is mostly one
+  person.
+- **Every row is its own total**, including yours. The first version gave the
+  other rows the gap to you — `+12` — which is one subtraction away from the
+  two totals it came from, and only means anything to somebody holding their
+  own number in their head at 90 rpm. Four totals in a column are compared by
+  eye.
 - **Three rows always**, even when you are first or last — the window slides
   rather than shrinking. A card that changed height as you were passed would
-  be unreadable at 90 rpm.
+  be unreadable at 90 rpm. What that costs is the one thing the header used to
+  say: you cannot tell whether there are two more below you or twenty. That is
+  accepted rather than solved — only the rows next to you were ever something
+  you could act on.
+- **The card bounces when you move.** Passing somebody is two rows quietly
+  swapping otherwise, now that no number announces it.
 - **Nothing is coloured for winning or losing.** Being behind a stronger
   housemate is not a mistake and the ride screen's red is the colour of an
   error. The board is in the output colour, because the score is kilojoules.
@@ -136,9 +141,12 @@ ride record from scratch, so anything stored there that the rebuild does not
 know about gets silently wiped. Rather than risk that, the race is not part of
 the record.
 
-**Nothing appears on the overlay** — the floating strip you get over a film.
-That strip has about half a second of your attention and it belongs to the next
-sixty seconds of pedalling.
+**Nothing appears on the overlay yet** — the floating strip you get over a
+film. That strip has about half a second of your attention, and the rule had
+been that it belongs to the next sixty seconds of pedalling. The owner has
+since asked for a small version of the board in the *expanded* overlay and
+nothing in the collapsed strip, which overrules that rule deliberately rather
+than by accident (PLAN.md 24.3.16). It is not built.
 
 **A class nobody has ridden draws nothing at all.** No empty board, no "be the
 first" — an empty comparison is a message about the people who are not on it.
@@ -147,8 +155,14 @@ first" — an empty comparison is a message about the people who are not on it.
 
 ## What is settled and what is open
 
-**Settled:** the score is kilojoules, the board is cumulative, three rows, and
-the rival picker is gone.
+**Settled:** the score is kilojoules, the board is cumulative, three rows, no
+positions and no units, and the rival picker is gone.
+
+**Open, and it is the owner's own:** what the rows that are *not* people
+should be called. *12 months* and *30 days* are placeholders — the owner's
+verdict on the first was *"no good at all"* — and they matter more now that
+the rank is gone, because the name is the only identity a row has. Every other
+row on the board is a person and those two are durations.
 
 **Open:** racing by **distance** instead of output. The data already works that
 way — a race is one cumulative series against another, and distance is the same
