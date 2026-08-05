@@ -1105,14 +1105,14 @@ so — one `TARGET` line, one amber, one arrow. It is the answer to *what do I d
 right now*. This is the answer to *what is this thing you keep asking me to do*,
 and no amount of getting 11.7 right produces it.
 
-- [ ] **11.8.1** **Establish what the app says today before writing a word.**
+- [x] **11.8.1** ***Done, and the suspicion was right.*** Read on the tablet AVD rather than in the source: the ride screen says `Z1 / ACTIVE RECOVERY` beside a colour bar and `50% OF FTP`; Start Class says `20 min · Endurance · a 1 min effort at Tempo`; the countdown says `FIRST UP · Z1 · Active Recovery · 75–85 rpm`. Every one of those *uses* the word and none of them defines it. **Establish what the app says today before writing a word.**
       Read the ride screen, the zone ladder, the class detail screen and
       Settings for every place a zone number or name appears, and write down
       what a rider could learn from them. The suspicion is "nothing, anywhere",
       but this plan has twice written an item for a thing that turned out to
       already exist (11.7 and 21.4.2 both), and the cheap check is reading four
       screens
-- [ ] **11.8.2** **Say it once, at the moment it first means something.** The
+- [x] **11.8.2** ***Done and observed on the tablet AVD, on a profile with no finished rides.*** **The countdown**, of the three candidates — the rider is clipped in, sitting still, with ten seconds and nothing to do, and the class's first zone is already on screen directly above, so the sentence has something to point at. Two sentences under a `NEW TO THIS?` label, no modal and no carousel. **`isFirstRide` is a query against the rider's own finished rides**, not a stored flag: the app already has that fact and a flag is a second copy that can disagree. It is per profile, because the third housemate to sign on is as new to this as the first was, and it is suppressed on a free ride — a class that prescribes nothing must not explain a prescription. **Say it once, at the moment it first means something.** The
       candidate moments, in order of how well they fit: **the countdown**
       (11.6.13 — a rider is sitting still, clipped in, with ten seconds and
       nothing to do, and the class's first target is already on screen); the
@@ -1125,7 +1125,7 @@ and no amount of getting 11.7 right produces it.
       who wants to pedal. One short passage, dismissible, never shown twice.
       Phase 26 governs the wording and this is one of the places its exception
       applies: a rider being taught what a watt is *is* reading a measurement
-- [ ] **11.8.3** **Make the ride screen say which number is the job**, which is
+- [x] **11.8.3** ***Done and observed.*** One change, as this item asked: **the governing tile carries an outline in its own accent.** 11.7 had already made this *true* — exactly one tile has a `TARGET` line — and the gap was that all four tiles are the same object, so a first-time rider looking at `74 / 38 / 97 / 102` had nothing but a line of small dim text to tell an instruction from information. Deliberately **not** the amber: amber is this app's off-target signal, and spending it here would make a rider who is riding perfectly look like a rider who is wrong. **Make the ride screen say which number is the job**, which is
       the owner's *"and/or"* and is the cheaper half. 11.7 already gives the
       governing metric the amber, the arrow and the `TARGET` line; what it does
       not do is say **why that is the one**. Candidates worth judging on the
@@ -1161,7 +1161,7 @@ and no amount of getting 11.7 right produces it.
       on-the-ride-screen-only and never on the overlay is not negotiable (24.1.5
       survives here even though 24.3.16 overruled it for the board, because that
       overrule was about a *static* card and this is moving text)
-- [ ] **11.8.5** **Whatever lands, it must not need the cloud, an account or a
+- [x] **11.8.5** ***Held.*** Nothing 11.8.2 or 11.8.3 added reads anything but the local database. **Whatever lands, it must not need the cloud, an account or a
       network.** A rider being taught what a zone is has by definition just met
       the app, and rule 1 of the connectivity model says that rider makes no
       request at all

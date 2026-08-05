@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -185,6 +186,11 @@ fun RideScreen(
             // Coming back to "2" and then straight into a class is the same
             // defect wearing the other costume.
             paused = state.overlayPermissionNeeded || state.awaitingOverlayGrant,
+            // 11.8.2. Only for a rider with no finished rides, and only where
+            // there is a class calling zones at all — a free ride prescribes
+            // nothing, so explaining the prescription would be answering a
+            // question this ride does not ask.
+            explainZones = state.isFirstRide && plan?.intervals?.isNotEmpty() == true,
             onStart = { countdownCleared = true },
             modifier = modifier
         )
@@ -1308,8 +1314,37 @@ private fun RideMetricTile(
     /** Whether this tile's band is the class's instruction (11.7.3). */
     emphasis: TargetEmphasis = TargetEmphasis.Instruction
 ) {
+    // 11.8.3. **Which of the four is the job.** The owner's note: *"Make it
+    // much clearer on the Ride screen that powerzone is what you're supposed to
+    // work on."*
+    //
+    // 11.7 had already made this *true* — exactly one tile carries a TARGET
+    // line, the amber and the arrow — and the gap it left is that all four
+    // tiles are the same object. A first-time rider looking at four identical
+    // cards reading 63, 30, 57 and 79 has no way to tell that one of them is an
+    // instruction and three are information, because the only thing saying so
+    // is a line of small dim text at the bottom of one of them.
+    //
+    // An outline in the tile's own accent, so it reads from two metres without
+    // adding a word to a screen that has been decluttered twice already
+    // (11.6.16–11.6.19, 24.3.16). It is deliberately *not* the amber: amber is
+    // this app's off-target signal and spending it on "this is the one" would
+    // make a rider who is riding perfectly look like a rider who is wrong.
+    val governs = emphasis == TargetEmphasis.Instruction && band.isDefined
+
     Card(
-        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+        modifier = (if (onClick != null) modifier.clickable(onClick = onClick) else modifier)
+            .then(
+                if (governs) {
+                    Modifier.border(
+                        width = GOVERNING_TILE_OUTLINE,
+                        color = accent.copy(alpha = 0.55f),
+                        shape = MaterialTheme.expressiveShapes.container
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         shape = MaterialTheme.expressiveShapes.container,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -1604,4 +1639,13 @@ private fun UpNextColumn(
  * Shown in place of a metric the bike is no longer reporting (2.4.5) — the
  * same two dashes an absent heart-rate strap has always used.
  */
+/**
+ * How heavy the outline on the governing tile is (11.8.3).
+ *
+ * Thick enough to be unmistakable across a room, thin enough not to read as a
+ * warning — this marks *which number is the instruction*, not that anything is
+ * wrong.
+ */
+private val GOVERNING_TILE_OUTLINE = 2.dp
+
 private const val NO_READING = "--"

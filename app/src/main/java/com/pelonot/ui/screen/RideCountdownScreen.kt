@@ -44,6 +44,16 @@ import kotlinx.coroutines.delay
 private const val COUNTDOWN_SECONDS = 10
 
 /**
+ * How wide the zone explainer is allowed to run (11.8.2).
+ *
+ * Narrower than `readableWidth`, because this is read at arm's length by
+ * somebody already on the bike rather than at a desk, and because it sits under
+ * a centred column where a line the width of the panel would not look like part
+ * of it.
+ */
+private val EXPLAINER_WIDTH = 720.dp
+
+/**
  * The ten seconds between "start" and the ride (11.6.13).
  *
  * **The owner asked for this because it felt wrong without it, and the feeling
@@ -72,7 +82,12 @@ fun RideCountdownScreen(
      * Holds the count where it is (11.6.14). Set while the rider is answering
      * the overlay permission — in the dialog, or away in Android's settings.
      */
-    paused: Boolean = false
+    paused: Boolean = false,
+    /**
+     * Whether to say what a power zone is (11.8.2). True only for a rider who
+     * has never finished one.
+     */
+    explainZones: Boolean = false
 ) {
     // Survives a rotation without restarting the count — the rider does not get
     // their ten seconds back for turning the tablet.
@@ -181,6 +196,47 @@ fun RideCountdownScreen(
                     text = "No intervals, no targets — ride how you like",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // 11.8.2. **What a power zone is, said once, to a rider who has
+            // never ridden one.** The owner's note, after watching somebody
+            // meet the app for the first time: *"Explain what powerzone is to
+            // first time users."*
+            //
+            // Here rather than anywhere else, and the moment is the argument.
+            // A rider in the countdown is clipped in, sitting still, with ten
+            // seconds and nothing to do — and the class's first zone is already
+            // on the screen above this, so the sentence has something to point
+            // at. Every other candidate is worse: profile creation is minutes
+            // earlier and about a different number, and mid-ride is a wall of
+            // text at somebody who is breathing hard.
+            //
+            // Two sentences, and no tutorial, no carousel and no modal. It is
+            // shown only while `explainZones` is true, which is a query against
+            // the rider's own finished rides, so it stops appearing by itself
+            // the moment there is one.
+            //
+            // This is one of Phase 26's stated exceptions: a rider being taught
+            // what the number means *is* reading a measurement, so "watts" and
+            // "FTP" belong here in a way they do not on a screen where somebody
+            // is choosing.
+            if (explainZones) {
+                Spacer(Modifier.height(MaterialTheme.spacing.large))
+                Text(
+                    text = "NEW TO THIS?",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
+                Text(
+                    text = "A power zone is how hard to push, from Z1 easy to Z7 flat out. " +
+                        "The class calls a zone, you turn the resistance up or down until " +
+                        "your watts sit inside it — that number is the one to ride to.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(max = EXPLAINER_WIDTH)
                 )
             }
 

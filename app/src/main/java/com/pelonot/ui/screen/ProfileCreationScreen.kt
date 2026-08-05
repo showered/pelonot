@@ -171,7 +171,13 @@ fun ProfileCreationScreen(
         heading = step.heading(name),
         subheading = step.subheading(),
         onBack = if (step == Step.Name) onCancel else ({ step = step.previous() }),
-        backLabel = if (step == Step.Name) "Cancel" else "Back"
+        // Null on the account step: there is nowhere back to go from it, and a
+        // button that says otherwise is worse than no button (20.4.4).
+        backLabel = when (step) {
+            Step.Name -> "Cancel"
+            Step.Account -> null
+            else -> "Back"
+        }
     ) {
         when (step) {
             Step.Name -> NameStep(
@@ -257,7 +263,8 @@ private fun StepScaffold(
     heading: String,
     subheading: String?,
     onBack: () -> Unit,
-    backLabel: String,
+    /** Null draws no control at all — see 20.4.4 at the call site. */
+    backLabel: String?,
     content: @Composable () -> Unit
 ) {
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
@@ -299,7 +306,15 @@ private fun StepScaffold(
                 content()
             }
 
-            TextButton(onClick = onBack) { Text(backLabel) }
+            // 20.4.4. No control at all rather than a dead one. On the account
+            // step `previous()` returns the account step — deliberately, since
+            // going back would re-ask a question about a profile that already
+            // exists (15.8.1) — so this button rendered and did nothing. It sat
+            // at the foot of the one step whose own answer had scrolled off the
+            // bottom, which is how it came to look like the only way onward.
+            if (backLabel != null) {
+                TextButton(onClick = onBack) { Text(backLabel) }
+            }
         }
     }
 }

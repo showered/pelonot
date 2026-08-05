@@ -403,3 +403,28 @@ it is the only one.
       summary. The other two entries in this same note (22.7.5, 11.8) came from
       the same sitting and the same rider, which is the evidence that the path
       and not the screen is the unit
+- [x] **20.4.4** **The account offer did not fit the panel, and the only visible
+      control on it was a dead button.** ***Found by doing 20.4.3 — walking the
+      whole first-run path with fresh eyes — and it is worse than either fault
+      the owner reported.***
+
+      Measured on the tablet AVD: the whole offer was stacked in a 640 dp column
+      on a 1280 dp panel, so the sign-in password field ended at y 890 and
+      **`Not now` was off the bottom of the screen**. That is the answer this
+      app ships as its default (15.8.1: *"skip is a first-class answer"*), and a
+      first-class answer a rider cannot see is not one. Underneath it,
+      `StepScaffold` drew a *Back* — which on this step does nothing by
+      construction, since `Step.Account.previous()` returns itself, deliberately,
+      because going back would re-ask a question about a profile that already
+      exists.
+
+      **So a rider who had just made their first profile was looking at a screen
+      whose only apparent way onward was signing in.** Both halves fixed: the two
+      routes go side by side (22.4's rule — a set of things being *chosen
+      between* wants the width, not a reading column), and `backLabel` is
+      nullable so the step draws no control rather than a dead one.
+
+      One thing worth carrying forward from the fix itself: `SignInForm` emits a
+      **sequence of siblings** for a `ColumnScope`, so wrapping it in a `Box` to
+      give it a weight stacked all five children on top of each other. It drew as
+      an illegible smear and compiled perfectly

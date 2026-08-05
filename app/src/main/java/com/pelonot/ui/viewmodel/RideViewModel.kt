@@ -68,7 +68,24 @@ data class RideUiState(
      * one (21.1). Null is a real state and means **no heart-rate zone is drawn
      * at all** — not a default maximum, which would be inventing a denominator.
      */
-    val maxHeartRate: MaxHeartRate? = null
+    val maxHeartRate: MaxHeartRate? = null,
+    /**
+     * True while this rider has never finished a ride (PLAN 11.8.2).
+     *
+     * The app is built on power zones from end to end — the library prescribes
+     * them, this screen colours by them, the board scores off them, Phase 7
+     * moves their denominator by itself — and until now it never once said what
+     * one *is*. A rider who has come from Peloton's own classes has met the
+     * phrase; a rider who has not is being asked to work at "Z4 · Threshold"
+     * with no way to find out what that means without getting off the bike.
+     *
+     * Read from the rides on disk rather than stored as a flag, because that is
+     * a fact the app already has and a flag is a second copy of it that can
+     * disagree. It flips on its own the moment the first ride finishes, and it
+     * is **per profile**: a bike is shared, and the third housemate to sign on
+     * is as new to this as the first was.
+     */
+    val isFirstRide: Boolean = false
 ) {
     val elapsedSeconds: Int get() = snapshot.elapsedSeconds
     val isPaused: Boolean get() = workoutState == WorkoutState.Paused
@@ -138,6 +155,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
     private val sensorRepository = ServiceLocator.sensorRepository
     private val settingsRepository = ServiceLocator.settingsRepository
     private val userRepository = ServiceLocator.userRepository
+    private val workoutRepository = ServiceLocator.workoutRepository
 
     private val _uiState = MutableStateFlow(RideUiState())
     val uiState: StateFlow<RideUiState> = _uiState.asStateFlow()
@@ -224,6 +242,20 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
                 .collect { user ->
                     val max = MaxHeartRate.resolve(user?.maxHrBpm, user?.birthDate)
                     _uiState.update { it.copy(maxHeartRate = max) }
+                }
+        }
+        // 11.8.2. Whether this rider has ever finished a ride, from the rides
+        // themselves. A guest has no profile and so no count — and a guest is
+        // by definition somebody the app knows nothing about, so they are shown
+        // the explanation too.
+        viewModelScope.launch {
+            settingsRepository.settings
+                .map { it.lastProfileId }
+                .flatMapLatest { id ->
+                    if (id == null) flowOf(0) else workoutRepository.observeCompletedCount(id)
+                }
+                .collect { finished ->
+                    _uiState.update { it.copy(isFirstRide = finished == 0) }
                 }
         }
     }

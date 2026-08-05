@@ -1,6 +1,8 @@
 package com.pelonot.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -63,7 +65,20 @@ fun ProfileAccountOfferStep(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        modifier = Modifier.widthIn(max = 640.dp)
+        // 20.4.4. **The whole offer stacked in a 640 dp column on a 1280 dp
+        // panel, and it did not fit.** Measured on the tablet AVD: the sign-in
+        // password field ended at y 890 and *Not now* — the answer this app
+        // ships as its default — was off the bottom of the screen, with the
+        // only visible control at the foot of the step being a *Back* that does
+        // nothing by construction (`Step.Account.previous()` returns itself).
+        //
+        // So a rider who had just made their first profile was looking at a
+        // screen whose only apparent way onward was signing in. That is worse
+        // than either fault the owner reported, and it is the same cause as
+        // 22.4: a set of things a rider is *choosing between* wants the width,
+        // not a reading column. The two routes go side by side and the offer
+        // fits with room under it.
+        modifier = Modifier.widthIn(max = OFFER_WIDTH)
     ) {
         when {
             state.pairing != PairingState.Idle -> PairingSection(
@@ -85,17 +100,46 @@ fun ProfileAccountOfferStep(
 
                 Spacer(Modifier.height(MaterialTheme.spacing.large))
 
-                if (state.pairingAvailable) {
-                    ScanToSignIn(onStart = { viewModel.startPairing(onSignedIn = onDone) })
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
+                    // Top, not centre: the two routes are different heights and
+                    // a short one floating in the middle of a tall one reads as
+                    // a mistake rather than as a pair.
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // `Column`, not `Box`, and the difference is not cosmetic:
+                    // [SignInForm] emits a *sequence* of siblings for a
+                    // `ColumnScope` — the take-over warning, the mode tabs, two
+                    // fields, the submit — so a `Box` stacks all five on top of
+                    // one another. Seen on the AVD as a single illegible smear
+                    // where the form should be.
+                    if (state.pairingAvailable) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(
+                                MaterialTheme.spacing.medium
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            ScanToSignIn(
+                                onStart = { viewModel.startPairing(onSignedIn = onDone) }
+                            )
+                        }
+                    }
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        SignInForm(state, viewModel, onDone = onDone)
+                    }
                 }
-
-                Spacer(Modifier.height(MaterialTheme.spacing.medium))
-                SignInForm(state, viewModel, onDone = onDone)
 
                 Spacer(Modifier.height(MaterialTheme.spacing.large))
 
                 // Same weight as the buttons above it, not a grey link
-                // underneath them — declining is not a failure to finish.
+                // underneath them — declining is not a failure to finish
+                // (15.8.1). It only *is* first-class if a rider can see it,
+                // which is what 20.4.4 above restores.
                 OutlinedButton(onClick = onDone, modifier = Modifier.widthIn(min = 200.dp)) {
                     Text("Not now")
                 }
@@ -103,3 +147,12 @@ fun ProfileAccountOfferStep(
         }
     }
 }
+
+/**
+ * How wide the two routes are allowed to run together (20.4.4).
+ *
+ * Not `readableWidth`: this is a set of things being *chosen between* rather
+ * than prose being read, which is 22.4's distinction and the reason the stacked
+ * 640 dp version overflowed a panel with 1280 dp of room on it.
+ */
+private val OFFER_WIDTH = 1040.dp

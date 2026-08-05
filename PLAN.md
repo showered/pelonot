@@ -134,7 +134,9 @@ cannot check for truth), and what a power zone actually is (**11.8**, a gap
 this plan has never had an item for: the app is built on zones end to end and
 never once says what one is).
 
-**The inbox is empty.**
+### Onboarding snag
+
+Year born and Weight are out of alignment
 
 ---
 
