@@ -16,6 +16,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1056,15 +1059,21 @@ fun NextUpPreview(
 fun UpcomingIntervals(
     intervals: List<Interval>,
     fromIndex: Int,
-    modifier: Modifier = Modifier,
-    max: Int = 4
+    modifier: Modifier = Modifier
 ) {
     val upcoming = remember(intervals, fromIndex) {
-        intervals.drop((fromIndex + 2).coerceAtLeast(0)).take(max)
+        intervals.drop((fromIndex + 2).coerceAtLeast(0))
     }
-    if (upcoming.isEmpty()) return
 
+    // 11.6.18, and this is the half that closes 11.6.16 as well. The column
+    // claims its space **even with nothing left to show**, because it is the
+    // thing that absorbs the slack: everything above it — the countdown
+    // swapping in for the preview, a position call, a cue banner — is paid for
+    // by this list getting shorter rather than by the totals row falling off
+    // the bottom of the screen in silence.
     Column(modifier = modifier) {
+        if (upcoming.isEmpty()) return@Column
+
         Text(
             text = "THEN",
             style = MaterialTheme.typography.labelSmall,
@@ -1072,39 +1081,56 @@ fun UpcomingIntervals(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 6.dp)
         )
-        upcoming.forEach { interval ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+
+        // The owner's *"it could be scrollable tbh. Why not!"*. It used to be
+        // the next three blocks and no way to see the fourth, which on a
+        // 45-minute class is most of it.
+        val listState = rememberLazyListState()
+        // **Anchored to the ride, not to the finger.** The list is live: when
+        // the interval changes, `upcoming` loses its first row and the block a
+        // rider scrolled to stops being the one they were looking at. Without
+        // this, somebody who glanced at the end of the class at minute 8 is
+        // still looking at minute 45 an hour later.
+        LaunchedEffect(fromIndex) { listState.scrollToItem(0) }
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f)
+        ) {
+            items(upcoming) { interval ->
+                Row(
                     modifier = Modifier
-                        .size(width = 4.dp, height = 20.dp)
-                        .clip(MaterialTheme.expressiveShapes.pill)
-                        .background(interval.powerZone.color)
-                )
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-                Text(
-                    text = "Z${interval.powerZoneNumber}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = interval.powerZone.color,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-                Text(
-                    text = interval.powerZone.displayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = Formatters.duration(interval.durationSec),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 4.dp, height = 20.dp)
+                            .clip(MaterialTheme.expressiveShapes.pill)
+                            .background(interval.powerZone.color)
+                    )
+                    Spacer(Modifier.width(MaterialTheme.spacing.small))
+                    Text(
+                        text = "Z${interval.powerZoneNumber}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = interval.powerZone.color,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(Modifier.width(MaterialTheme.spacing.small))
+                    Text(
+                        text = interval.powerZone.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = Formatters.duration(interval.durationSec),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -55,10 +57,13 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.times
 import androidx.compose.animation.core.tween
 import com.pelonot.ui.theme.FitnessTypography
 import com.pelonot.ui.theme.PelonotGradients
@@ -749,5 +754,81 @@ fun ExpressiveNavigationRail(
                 )
             }
         }
+    }
+}
+/**
+ * One line of text that shrinks rather than being cut off (PLAN 11.6.17).
+ *
+ * **The failure this exists to stop is silent.** A `Text` with `maxLines = 1`
+ * and no `overflow` clips at the edge of its box and says nothing: `1080`
+ * renders as `108`, which is not obviously wrong. That has now happened twice
+ * on the ride screen's totals row — 11.6.12 found the same tile rendering
+ * `63.` with the tenth cut off — and both times the number was believable
+ * enough to be read.
+ *
+ * Measured rather than iterated: [rememberTextMeasurer] answers "how wide
+ * would this be at that size" without drawing, so the size is decided once per
+ * (text, width) pair instead of by rendering too big and recomposing smaller.
+ * A recomposing version would settle at the right size eventually, and would
+ * also grow and shrink under a number that changes twice a second.
+ *
+ * It shrinks by whole sp down to [minFontSize] and no further: past that the
+ * honest answer is that the tile is too small, and a two-metre readout
+ * quietly rendered at 9 sp is its own kind of lie.
+ */
+@Composable
+fun ShrinkToFitText(
+    text: String,
+    fontSize: TextUnit,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    fontWeight: FontWeight? = null,
+    letterSpacing: TextUnit = TextUnit.Unspecified,
+    minFontSize: TextUnit = fontSize * 0.6f,
+    textAlign: TextAlign? = null
+) {
+    val measurer = rememberTextMeasurer()
+    val base = LocalTextStyle.current.copy(
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        letterSpacing = letterSpacing
+    )
+
+    BoxWithConstraints(modifier = modifier) {
+        val available = constraints.maxWidth
+        val size = remember(text, available, fontSize, base) {
+            var candidate = fontSize
+            // Whole sp: the step is invisible at these sizes and it bounds the
+            // loop at a couple of dozen measurements in the worst case.
+            while (candidate > minFontSize) {
+                val width = measurer.measure(
+                    text = text,
+                    style = base.copy(fontSize = candidate),
+                    maxLines = 1,
+                    softWrap = false
+                ).size.width
+                if (width <= available) break
+                candidate = (candidate.value - 1f).sp
+            }
+            maxOf(candidate.value, minFontSize.value).sp
+        }
+
+        Text(
+            text = text,
+            fontSize = size,
+            // Scaled with the size, or a number shrunk to 24 sp keeps the
+            // tracking of a 34 sp one and looks squeezed rather than smaller.
+            lineHeight = size * 1.06f,
+            fontWeight = fontWeight,
+            letterSpacing = if (letterSpacing == TextUnit.Unspecified) {
+                TextUnit.Unspecified
+            } else {
+                letterSpacing * (size.value / fontSize.value)
+            },
+            color = color,
+            textAlign = textAlign,
+            maxLines = 1,
+            softWrap = false
+        )
     }
 }

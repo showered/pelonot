@@ -33,6 +33,16 @@ enum class UnitSystem(
     fun weightFromKg(kg: Double): Double =
         if (this == IMPERIAL) kg * POUNDS_PER_KG else kg
 
+    /**
+     * The other one (PLAN 11.6.19).
+     *
+     * For reading a number the other way round without changing anything: the
+     * ride screen's distance tile flips to this on a tap and back on the next,
+     * and **nothing is written** — the stored preference has one writer and it
+     * is Settings.
+     */
+    val other: UnitSystem get() = if (this == METRIC) IMPERIAL else METRIC
+
     /** The inverse, for reading a weight the rider typed in their own units. */
     fun weightToKg(value: Double): Double =
         if (this == IMPERIAL) value / POUNDS_PER_KG else value

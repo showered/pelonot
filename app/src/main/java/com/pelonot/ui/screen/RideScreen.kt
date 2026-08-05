@@ -50,22 +50,24 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,6 +97,7 @@ import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
+import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.UpcomingIntervals
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.attentionBounce
@@ -738,17 +741,27 @@ private fun EffortColumn(
             // The owner's own reasoning for moving it — *"this then frees up
             // space for leaderboard which is where your eyes are naturally
             // drawn to anyway"*.
+            // 11.6.18 / 11.6.16. It scrolls, it holds the whole rest of the
+            // class rather than three blocks of it, and — the part that
+            // matters most — **it is the weighted child of this column**.
+            // Everything above it can grow: the countdown swaps in for the
+            // next-up preview at every interval boundary, a position call
+            // appears, a cue banner appears. That growth used to come off the
+            // bottom, taking OUTPUT, DISTANCE and AVG POWER off the screen
+            // without a word, because a Column clips rather than complaining.
+            // Now it comes off this list.
             UpcomingIntervals(
                 intervals = snapshot.intervals,
                 fromIndex = interval.index,
-                // Three rather than four: this is a shape, not a schedule, and
-                // the column it now lives in is the busiest on the screen.
-                max = 3,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             )
+        } else {
+            // A free ride has no rest of the class, so the slack has nowhere
+            // else to go and the totals still sit at the bottom.
+            Spacer(Modifier.weight(1f))
         }
-
-        Spacer(Modifier.weight(1f))
 
         RideTotals(state, Modifier.fillMaxWidth())
     }
@@ -846,13 +859,24 @@ private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
  * one they are chasing, themselves, and the one chasing them. It is Peloton's
  * own behaviour and it is why their leaderboard is legible at all.
  *
- * **Two number spaces, and the sign is what tells them apart.** The rider's
- * own row carries their total with its unit; every other row carries the gap
- * to them, signed, with none. A number with a sign is a difference and a
- * number without one is a total — the same convention the single-gap card
- * shipped with (24.3.4), and it is safe here because the ranking agrees with
- * it: the row above yours always carries a `+` and the row below always
- * carries a `−`. There is never a moment when the sign has to be puzzled out.
+ * **One number space, no unit and no rank** (24.3.17). Every row carries its
+ * own total, in the same unit, and says nothing else. The first draft gave the
+ * rider's row their total and every other row the signed gap to it, which the
+ * owner rejected for the reason that survives restating: *a gap is arithmetic
+ * the rider did not ask for*. `+12` is one subtraction away from the two
+ * totals it came from, and it only means anything to somebody holding their
+ * own number in their head at 90 rpm. Four totals in a column are compared by
+ * eye. `LiveStanding.gapToYou` is still on the model, for the tests and for
+ * the overlay (24.3.16), where a single gap may well still be the right shape.
+ *
+ * **The rank is gone too, and that is a claim about the product rather than
+ * about the pixels.** Four of the row kinds on this board are the rider's own
+ * past rides (24.3.12), so *4th of 6* describes a field that is mostly one
+ * person. The ranking still orders the board and still picks the window — it
+ * is simply not drawn. What is lost with it is the one thing the window hid:
+ * a rider seeing three rows cannot tell whether there are two more or twenty,
+ * and on the owner's reading that is fine, because only the rows next to them
+ * were ever actionable.
  *
  * **Nothing is coloured for winning or losing**, which is the decision this
  * feature has now made twice. Being behind a stronger housemate is not a
@@ -881,28 +905,11 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
                 .fillMaxWidth()
                 .padding(MaterialTheme.spacing.large)
         ) {
-            Text(
-                // The one thing the window hides is how big the field is. A
-                // rider looking at three rows cannot tell whether there are
-                // two more below or twenty — so the header is the whole board
-                // in four characters. Leading gets a word instead of a number,
-                // because it is the state a rider is trying to reach and
-                // "1ST OF 5" is a worse way of saying it.
-                text = if (standings.leading) {
-                    "LEADING"
-                } else {
-                    "${ordinal(standings.yourRank)} OF ${standings.fieldSize}"
-                },
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (standings.leading) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                maxLines = 1
-            )
-            Spacer(Modifier.height(MaterialTheme.spacing.small))
+            // No header at all (24.3.17c). It said `4TH OF 6`, and a position
+            // over a field that is mostly the rider's own past rides is a
+            // category error rather than a small overstatement. Nothing has
+            // replaced it: the rows are names and numbers, best first, and
+            // that is the whole card.
             standings.window.forEach { row ->
                 LeaderboardRow(row, standings.metric)
             }
@@ -913,10 +920,12 @@ private fun LiveLeaderboardCard(standings: LiveStandings?, modifier: Modifier = 
 @Composable
 private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
     val units = MaterialTheme.units
-    val magnitude = kotlin.math.abs(if (row.isYou) row.value else row.gapToYou)
+    // 24.3.17a. Their total, not their distance from yours — on every row,
+    // including the rider's own, so there is one number space on the card and
+    // nothing to tell apart.
     val number = when (metric) {
-        RaceMetric.Output -> Formatters.kilojoulesValue(magnitude)
-        RaceMetric.Distance -> Formatters.distanceValue(magnitude, units)
+        RaceMetric.Output -> Formatters.kilojoulesValue(row.value)
+        RaceMetric.Distance -> Formatters.distanceValue(row.value, units)
     }
     val colour = if (row.isYou) {
         MaterialTheme.colorScheme.primary
@@ -930,19 +939,6 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             .height(44.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "${row.rank}",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Normal,
-            color = colour,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            // Reserved rather than sized to its own text, which is 11.6.8's
-            // finding: a column that fits itself shifts everything beside it
-            // the moment a rider goes from 9th to 10th.
-            modifier = Modifier.width(24.dp)
-        )
-        Spacer(Modifier.width(MaterialTheme.spacing.small))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = row.name.uppercase(),
@@ -967,12 +963,18 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             }
         }
         Spacer(Modifier.width(MaterialTheme.spacing.small))
+        // 24.3.17b. No unit, on any row. Every number here is in the same one
+        // and the OUTPUT tile below the board spells it out in full, so the
+        // label was the third statement of one fact.
+        //
+        // **This is safe only while `Output` is the only reachable metric**
+        // (24.3.14a). 24.3.15 would make the board's unit selectable, and a
+        // number whose meaning has silently changed is worse than one that is
+        // missing — so that item has to find somewhere on this card to say
+        // which race it is, and the note that closed 24.3.17c took the header
+        // away.
         Text(
-            text = when {
-                row.isYou -> number
-                row.gapToYou >= 0 -> "+$number"
-                else -> "−$number"
-            },
+            text = number,
             fontSize = 26.sp,
             lineHeight = 28.sp,
             fontWeight = FontWeight.Black,
@@ -985,33 +987,7 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             maxLines = 1,
             softWrap = false
         )
-        if (row.isYou) {
-            Spacer(Modifier.width(3.dp))
-            Text(
-                text = when (metric) {
-                    RaceMetric.Output -> "kJ"
-                    RaceMetric.Distance -> units.distanceLabel
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.padding(bottom = 3.dp)
-            )
-        }
     }
-}
-
-/** `3` → `3RD`, for the one place on the ride screen a position is spoken. */
-private fun ordinal(rank: Int): String {
-    val suffix = when {
-        rank % 100 in 11..13 -> "TH"
-        rank % 10 == 1 -> "ST"
-        rank % 10 == 2 -> "ND"
-        rank % 10 == 3 -> "RD"
-        else -> "TH"
-    }
-    return "$rank$suffix"
 }
 
 @Composable
@@ -1206,6 +1182,18 @@ private fun MetricGrid(
 @Composable
 private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
     val snapshot = state.snapshot
+
+    // 11.6.19. The owner's *"why not!?"*: tapping the distance reads it the
+    // other way round, for this ride only. **Nothing is written** — the stored
+    // preference has exactly one writer and it is Settings, which is 2.4.6's
+    // rule applied to a second setting before it could be broken the same way.
+    // Held here rather than in a CompositionLocal because this tile is the only
+    // distance on the screen; saved across a recreation and no further, so it
+    // lasts exactly as long as the ride it was flipped during.
+    var flipped by rememberSaveable { mutableStateOf(false) }
+    val stored = MaterialTheme.units
+    val units = if (flipped) stored.other else stored
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
@@ -1224,9 +1212,15 @@ private fun RideTotals(state: RideUiState, modifier: Modifier = Modifier) {
         SmallStat(
             label = "DISTANCE",
             icon = MetricIcons.Distance,
-            value = Formatters.distanceValue(snapshot.distanceKm, MaterialTheme.units),
-            unit = MaterialTheme.units.distanceLabel,
+            value = Formatters.distanceValue(snapshot.distanceKm, units),
+            unit = units.distanceLabel,
             accent = MaterialTheme.colorScheme.primary,
+            // Reversible by the same gesture, which is also the only way it can
+            // be discovered — there is no room on a 113 dp tile for a caption
+            // saying it is tappable, and a mis-tap mid-effort costs a rider one
+            // tap back.
+            onClick = { flipped = !flipped },
+            clickLabel = "Show this distance in ${units.other.displayName.lowercase()}",
             modifier = Modifier.weight(1f)
         )
         SmallStat(
@@ -1317,10 +1311,21 @@ private fun SmallStat(
     unit: String,
     accent: Color,
     icon: ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Non-null makes the whole tile a target — see the distance tile (11.6.19). */
+    onClick: (() -> Unit)? = null,
+    clickLabel: String? = null
 ) {
     Card(
-        modifier = modifier,
+        // `onClickLabel` rather than a `contentDescription`: the tile's own
+        // label and value are what a screen reader should read, and setting a
+        // description on the merged node would replace them with the name of
+        // the action.
+        modifier = if (onClick != null) {
+            modifier.clickable(onClickLabel = clickLabel, onClick = onClick)
+        } else {
+            modifier
+        },
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -1350,14 +1355,16 @@ private fun SmallStat(
                 )
             }
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(
+                // 11.6.17. Shrinks rather than clipping. An hour at 300 W is
+                // 1080 kJ and this tile is a third of a 360 dp column: at a
+                // fixed 34 sp the fourth digit was simply cut off the edge, in
+                // silence, exactly as the tenth was in 11.6.12.
+                ShrinkToFitText(
                     text = value,
                     fontSize = 34.sp,
-                    lineHeight = 36.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
                     color = accent,
-                    maxLines = 1,
                     // Weighted, and `fill = false` so it still only takes what
                     // it needs. A Row measures its unweighted children first,
                     // so an unweighted "0.20" claimed the whole tile and left
@@ -1394,26 +1401,46 @@ private fun NextUpBlock(
 ) {
     val next = interval.next ?: return
 
-    AnimatedContent(
-        targetState = interval.isChangeImminent,
-        transitionSpec = {
-            (fadeIn() + scaleIn(initialScale = 0.85f))
-                .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
-        },
-        modifier = modifier,
-        label = "RideNextOrCountdown"
-    ) { imminent ->
-        if (imminent) {
-            CountdownBanner(
-                secondsRemaining = interval.remainingInIntervalSec,
-                nextZone = next.powerZone
-            )
-        } else {
-            NextUpPreview(
-                next = next,
-                secondsUntil = interval.remainingInIntervalSec,
-                modifier = Modifier.fillMaxWidth()
-            )
+    // 11.6.16, the other half. The list below absorbs the growth now, so
+    // nothing falls off the bottom either way — but the countdown is still
+    // 10-odd dp taller than the preview it replaces, and every interval
+    // boundary would otherwise shuffle the rest of the class up and back.
+    //
+    // Reserved from what has actually been measured rather than from a number
+    // typed in here: the block settles at the taller of the two states the
+    // first time it sees it and never gives the height back. Same trade as
+    // 11.6.8's *reserve the widest string*, turned ninety degrees, and it needs
+    // no maintenance when either child changes shape.
+    val density = LocalDensity.current
+    var reserved by remember { mutableStateOf(0.dp) }
+
+    Box(modifier = modifier.heightIn(min = reserved)) {
+        AnimatedContent(
+            targetState = interval.isChangeImminent,
+            transitionSpec = {
+                (fadeIn() + scaleIn(initialScale = 0.85f))
+                    .togetherWith(fadeOut() + scaleOut(targetScale = 0.85f))
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { size ->
+                    val height = with(density) { size.height.toDp() }
+                    if (height > reserved) reserved = height
+                },
+            label = "RideNextOrCountdown"
+        ) { imminent ->
+            if (imminent) {
+                CountdownBanner(
+                    secondsRemaining = interval.remainingInIntervalSec,
+                    nextZone = next.powerZone
+                )
+            } else {
+                NextUpPreview(
+                    next = next,
+                    secondsUntil = interval.remainingInIntervalSec,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
