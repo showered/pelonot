@@ -2341,3 +2341,129 @@ Three consequences worth carrying forward:
    something else, has now been seen on the bike over Netflix (10.4) and the
    strip's controls work from the background (11.1.5). What remains in Phase 11
    is code, not verification.
+
+
+### Latest session — 5 August 2026 (thirty-second sitting): polish, and a demo of it
+
+**The ask was polish and a demo video to show people, so the method was to
+drive the whole flow on the tablet AVD and fix what the screens actually
+showed.** Nine changes, every one of them found by looking rather than by
+reading code. 645 JVM tests, 0 failures. The bike was attached the entire
+session and never touched.
+
+**There is a recording now** — the profile picker, the dashboard and its
+household, the class library, Start Class with the leaderboard beside it, the
+countdown, the ride screen with the board running live, **the overlay over
+YouTube**, the summary and its charts, and history. It is 2:55 and it is the
+shortest answer to *what is this* that exists.
+
+**The live board was the thing that nearly did not make the video**, and the
+fix was already in the repo: a simulated ride can never be ranked (24.4.2), so
+the app's best feature is invisible on an emulator. `RaceDebug` — built in the
+thirtieth sitting for exactly this — lets the *live* comparison run on modelled
+watts while `power_is_measured` still records the truth, so the ride is
+correctly excluded from every board afterwards. Seeding fake measured rides was
+the obvious move and would have been the wrong one.
+
+**The units were being cut off the live readouts, and the race chip was never
+why** (24.3.16). `100 RPM / 296 W / 188 BPM` drew as `100 RP`, `296` with the W
+gone, `188 BP` — with no race chip on the band at all. The previous sitting had
+put the owner's *"the power numbers it's all crammed in and clipping"* down to
+a 132 dp chip starving the weighted readouts, taken the chip out, and the
+clipping stayed. The cause is older: value and unit were both unweighted in a
+`Row`, so the number was measured first and the label got the remainder. The
+number is the weighted one now, sized against `"000"` rather than against
+itself — sizing on the live value would resize the readout every time it
+crossed 99, a number pulsing under the rider. **24.3.16 is corrected rather
+than reopened**: the owner's decision stands, but "there is no width that buys
+a fifth chip" was measured against a row already over-committed by this bug.
+
+**R10 had said the right thing for months and nothing checked it** (and it is
+now item 7 on STATUS.md's *what is wrong* list, as evidence about the other
+rules marked *not tested*). It says a title names the shape and the demand,
+*"not the category and the length, which the rider can already see"* — and all
+72 titles ended in their own duration, so "The Long Climb 30" was drawn beside
+a chip reading `30 min`, on the library, the start screen, the ride screen and
+every row of history. Both halves fixed: the durations are gone and `build.py`
+refuses to put them back. The check had to learn two things by being run —
+match the class's *own* length rather than any trailing number (`SWT-01` is
+"Sweet Spot 5 + 4"), and check uniqueness, which the duration had been doing
+quietly. No id moved, so nothing retired: 72 templates, 0 retired, rides on
+`END-01` still resolve.
+
+**The dashboard's household panel had no ceiling** — 24.1.8 capped the class
+leaderboard and stopped one card short, and the same argument carries over
+exactly. Twelve profiles drew twelve rows. `HouseholdPanel.of` windows it at
+six, keeps the top of the list and **always the rider's own row**, marks a lift
+from below the cut with `⋮`, and counts what it dropped. Two things found while
+in there: `Spacer(Modifier.width(...))` twice inside a `Column`, which is
+nothing at all, and the Just Ride card stretched to its neighbour while its
+content wrapped, so `CenterVertically` centred nothing and the title sat on top
+of 250 dp of empty teal.
+
+**And three lines were saying the machinery out loud.** The owner's call on the
+goal prompt: *"let's hide away the +5% and -5%, it's too geeky, the user
+doesn't need to 'see behind the curtain' on this one"* (26.1.5). Beside it,
+`END-01`'s shape sentence read "one 1 min effort at Tempo", where the word and
+the numeral say the count twice; and Settings still promised your rides appear
+"on the week summary everyone here can see", describing a screen 22.5.4
+replaced with 30 days — in the one place a rider goes to find out what other
+people can see. The FTP card's 4 dp teal gradient bar is gone too: on a card
+whose whole content is one measured number, a full-width filled bar is read as
+a meter, and a meter permanently at 100% is a claim nothing here is making.
+
+**One negative result, and it cost most of an hour.** The summary's leaderboard
+looked clipped mid-row, the diagnosis was `IntrinsicSize.Min` under-measuring
+wrapping text, and a `SubcomposeLayout` equal-height row was written to replace
+it. It was not clipped. It was the scroll viewport, and the original was
+correct all along — the board renders whole, `Hana / Simon / Ivy / and 6 more`.
+Reverted in full. The lesson is the cheap check that was skipped: **scroll
+before believing a clip.**
+
+**Then the owner's inbox arrived mid-session with a high-priority note, and
+it is built.** *"Auto-generated leaderboard ghosts to ride against … there
+should always be some target … no matter how high you go there should always
+be a target ahead of you."* Written up as **24.3.18** with five candidates and
+the argument attached rather than as a menu, four of them chosen and built:
+
+- **The plan** — the class ridden at the middle of every band it prescribes,
+  and the one worth arguing for. It is the only non-arbitrary target, catching
+  it means *I rode what the class asked for*, and it needs no history — so it
+  is on the board for the first attempt at a class nobody has touched, which
+  with 72 classes and a four-person household is **the ordinary case**. It does
+  not touch `PowerModel`: a zone target is watts already.
+- **Just past your best**, **Your usual** (the median, and the only row
+  deliberately *behind* a rider on form), and **a round number that moves** —
+  a pace rather than a trace, because a fixed total cannot satisfy *however
+  high you go*.
+- And **"Tom's last ride"**, on the owner's follow-up: a best is a monument
+  and can be two years old, a last ride is news.
+
+**The board is six rows now, and the owner was right that there was space.**
+They said so from memory and it was settled by measuring rather than by
+agreeing: `uiautomator` puts the rows 66 px apart and the Overlay button at
+y ≈ 672, so six fit and a seventh collides. The rest scrolls, and the list
+follows the rider as they pass and are passed.
+
+**24.3.12a is finally shut**, after a fortnight open with the owner's name on
+it — and what closed it was ghosts arriving, because a second family of
+invented name on a board already reading `12 MONTHS / 30 DAYS / Ava` would
+have been two problems instead of one. The fault was nameable: every other row
+is a person and those two were durations. Every non-human row is a sentence
+about the rider now.
+
+**The one distinction worth carrying forward is two flags rather than one.**
+`GhostKind` has `isPerson` and `isGenerated` separately, because the rider's
+own best is neither a person nor invented — conflating them would either mark
+a real ride of theirs as fictional or let a generated target be counted as a
+rival, and the second is precisely what the honesty rule exists to prevent. So
+a generated row carries a `○` and colour goes on saying *is this me*.
+
+**Two things written up rather than built**, both because they are the owner's
+call and not a session's. **26.1.6**: there is no way to ride a class at the
+zones it was authored with — two intents, both ±5%, so every ride this app has
+ever recorded is off the catalogue that a build refuses to let anyone break.
+Raised, and the owner's answer was *"leave it entirely"*. **22.7.4**: 22.7.1
+centred a day that holds one ride and left the day's *heading* hard against the
+left edge, so a section header no longer sits over its section — most visible
+on the last screen of the demo, and fixable in two opposite directions.

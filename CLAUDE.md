@@ -39,6 +39,16 @@ ride. Adding a test class whose package sorts ahead of `data.service` was enough
 to fail two of them. Before believing a red run, re-run the failing class on its
 own.
 
+**Turn the AVD's hardware keyboard off, or a whole class of defect is
+invisible.** With `hw.keyboard=yes` (the default in `Pelonot_Tablet.avd/
+config.ini`) the emulator shows a small floating IME and **the window never
+resizes**, so nothing is ever covered and nothing ever moves. Set
+`hw.keyboard=no` and restart the emulator. That is what exposed 20.4.2: on the
+*first* screen the app shows anybody, `Continue` sat at y 603 with the
+keyboard's top edge at 590. Related trap — `imePadding()` is a **no-op inside a
+`Dialog`** unless the dialog is given `decorFitsSystemWindows = false`, because
+the dialog gets its own window and that window reports no IME insets.
+
 **Do not check UI work on `Medium_Phone_API_36.1`.** The bike is a landscape
 **1920 × 1080 at 240 dpi — 1280 × 720 dp** — with a 48 dp bottom navigation bar
 and no top status bar. A phone AVD hides every layout problem this app has, and

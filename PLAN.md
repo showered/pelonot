@@ -191,157 +191,135 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 5 August 2026 (thirty-second sitting): polish, and a demo of it
+### Latest session — 5 August 2026 (thirty-third sitting): the first ride, watched over somebody's shoulder
 
-**The ask was polish and a demo video to show people, so the method was to
-drive the whole flow on the tablet AVD and fix what the screens actually
-showed.** Nine changes, every one of them found by looking rather than by
-reading code. 645 JVM tests, 0 failures. The bike was attached the entire
-session and never touched.
+**The owner showed the app to their wife, who signed up for the first time, and
+reported it as "a clunky onboarding."** That is the only kind of evidence this
+project cannot generate for itself: a session driving its own flow knows where
+every control is. Three inbox entries came out of it, all three are written up
+and the inbox is empty, and four of them are built. 671 JVM tests, 0 failures.
+Everything below was observed on the tablet AVD.
 
-**There is a recording now** — the profile picker, the dashboard and its
-household, the class library, Start Class with the leaderboard beside it, the
-countdown, the ride screen with the board running live, **the overlay over
-YouTube**, the summary and its charts, and history. It is 2:55 and it is the
-shortest answer to *what is this* that exists.
+**Two of the three worst faults on the first-run path were not in the note.**
+They were found by walking the whole thing with the AVD's hardware keyboard
+turned *off* — which is the technique worth keeping, because with
+`hw.keyboard=yes` the emulator shows a floating IME, the window never resizes,
+and nothing is ever covered or moved:
 
-**The live board was the thing that nearly did not make the video**, and the
-fix was already in the repo: a simulated ride can never be ranked (24.4.2), so
-the app's best feature is invisible on an emulator. `RaceDebug` — built in the
-thirtieth sitting for exactly this — lets the *live* comparison run on modelled
-watts while `power_is_measured` still records the truth, so the ride is
-correctly excluded from every board afterwards. Seeding fake measured rides was
-the obvious move and would have been the wrong one.
+- **`Continue` was behind the keyboard on the very first screen the app shows
+  anybody.** y 603, keyboard top edge y 590. The cause is that `imePadding()` is
+  a **no-op inside a `Dialog`** — the dialog gets its own window and that window
+  reports no IME insets until `decorFitsSystemWindows = false`. It is at y 381
+  now.
+- **The account offer did not fit the panel, and its only visible control was a
+  dead button.** The whole offer was stacked in a 640 dp column on a 1280 dp
+  screen, so the password field ended at y 890 and **`Not now` was off the
+  bottom** — the answer this app ships as its default. Underneath it
+  `StepScaffold` drew a *Back* that does nothing by construction. So a rider who
+  had just made their first profile faced a screen whose only apparent way
+  onward was signing in. Two columns now (22.4's rule: things being *chosen
+  between* want the width), and no dead control.
 
-**The units were being cut off the live readouts, and the race chip was never
-why** (24.3.16). `100 RPM / 296 W / 188 BPM` drew as `100 RP`, `296` with the W
-gone, `188 BP` — with no race chip on the band at all. The previous sitting had
-put the owner's *"the power numbers it's all crammed in and clipping"* down to
-a 132 dp chip starving the weighted readouts, taken the chip out, and the
-clipping stayed. The cause is older: value and unit were both unweighted in a
-`Row`, so the number was measured first and the label got the remainder. The
-number is the weighted one now, sized against `"000"` rather than against
-itself — sizing on the live value would resize the readout every time it
-crossed 99, a number pulsing under the rider. **24.3.16 is corrected rather
-than reopened**: the owner's decision stands, but "there is no width that buys
-a fifth chip" was measured against a row already over-committed by this bug.
+**The owner's two named faults are fixed and the second had the more
+interesting cause.** The birth year was an `OutlinedButton` beside a labelled
+weight field — a field and an action, where they are two facts about the rider —
+and is now a `PickerField` drawn to Material's own text-field metrics. And the
+keyboard "eating the first tap" is the step *sliding under the finger*: with the
+IME up, `kg` moves from y 337 to 220 and the last fitness card from 544 to 427,
+because `StepScaffold` centres its content so a resize moves everything by half
+of it. Every control that is not the weight field now clears focus **as part of
+its own tap** — keyboard away, layout settled, action done, one tap. Dismissing
+on any outside touch instead is what spends the tap and is the complaint.
 
-**R10 had said the right thing for months and nothing checked it** (and it is
-now item 7 on STATUS.md's *what is wrong* list, as evidence about the other
-rules marked *not tested*). It says a title names the shape and the demand,
-*"not the category and the length, which the rider can already see"* — and all
-72 titles ended in their own duration, so "The Long Climb 30" was drawn beside
-a chip reading `30 min`, on the library, the start screen, the ride screen and
-every row of history. Both halves fixed: the durations are gone and `build.py`
-refuses to put them back. The check had to learn two things by being run —
-match the class's *own* length rather than any trailing number (`SWT-01` is
-"Sweet Spot 5 + 4"), and check uniqueness, which the duration had been doing
-quietly. No id moved, so nothing retired: 72 templates, 0 retired, rides on
-`END-01` still resolve.
+**The Start Class screen lost the "million panels", and it is the fourth note on
+that screen and the first to ask whether they belonged.** `CLB-01` is thirteen
+blocks: 52 facts on the last screen before a rider pedals, every one already
+drawn by the chart above. 22.7.2, 22.7.3 and 22.4.3 all answered earlier notes
+by *moving* the tiles. They are behind *See the blocks* now — which makes it a
+move rather than a deletion, and the distinction is **who is asking**: a
+first-time rider is deciding whether they want the ride, and a rider who taps
+that button has asked the question the tiles answer. Centring the remainder
+exposed a bug the tiles had hidden: the `LazyColumn`'s `weight(1f)` is its
+*horizontal* share of the Row, so it was only ever as tall as its content and
+`Alignment.CenterVertically` had never once run.
 
-**The dashboard's household panel had no ceiling** — 24.1.8 capped the class
-leaderboard and stopped one card short, and the same argument carries over
-exactly. Twelve profiles drew twelve rows. `HouseholdPanel.of` windows it at
-six, keeps the top of the list and **always the rider's own row**, marks a lift
-from below the cut with `⋮`, and counts what it dropped. Two things found while
-in there: `Spacer(Modifier.width(...))` twice inside a `Column`, which is
-nothing at all, and the Just Ride card stretched to its neighbour while its
-content wrapped, so `CenterVertically` centred nothing and the title sat on top
-of 250 dp of empty teal.
+**And 72 classes now say what they are for (23.2.7)** — the first authored prose
+in the library, because everything else about a class is derived from its blocks
+and so can only restate them. They live in `descriptions.py`, apart from the
+catalogue, because the failure mode is not a wrong sentence but 72 that sound
+alike. R13 holds the shape in `build.py` **and** again in
+`ClassLibraryAssetsTest`, since the assets are what ships; it was seen refusing
+five deliberate breakages before being trusted. **The rule that earns its place
+is the ban on naming its own category**, which is what forces *"the hardest pace
+you could hold for about an hour"* instead of *"threshold"* — the plain sentence
+is the one a first-time rider can act on.
 
-**And three lines were saying the machinery out loud.** The owner's call on the
-goal prompt: *"let's hide away the +5% and -5%, it's too geeky, the user
-doesn't need to 'see behind the curtain' on this one"* (26.1.5). Beside it,
-`END-01`'s shape sentence read "one 1 min effort at Tempo", where the word and
-the numeral say the count twice; and Settings still promised your rides appear
-"on the week summary everyone here can see", describing a screen 22.5.4
-replaced with 30 days — in the one place a rider goes to find out what other
-people can see. The FTP card's 4 dp teal gradient bar is gone too: on a card
-whose whole content is one measured number, a full-width filled bar is read as
-a meter, and a meter permanently at 100% is a claim nothing here is making.
+**Phase 11.8 did not exist and the gap is large.** The app is built on power
+zones end to end — the library prescribes them, the ride screen colours by them,
+the board scores off them, Phase 7 moves their denominator by itself — and it
+never once said what one is. Two sentences now, in the **countdown**: the rider
+is clipped in with ten seconds and nothing to do, and the class's first zone is
+on screen directly above, so the sentence has something to point at.
+`isFirstRide` is a query against the rider's own finished rides rather than a
+stored flag — the app already has the fact, and a flag is a second copy that can
+disagree. Beside it, **the governing tile now carries an outline in its own
+accent**: 11.7 had made "one instruction at a time" *true* and left it invisible,
+because four identical tiles reading `74 / 38 / 97 / 102` have nothing but a
+line of small dim text to separate an instruction from information. Not amber —
+that is the off-target signal, and spending it here would make a rider who is
+riding perfectly look wrong.
 
-**One negative result, and it cost most of an hour.** The summary's leaderboard
-looked clipped mid-row, the diagnosis was `IntrinsicSize.Min` under-measuring
-wrapping text, and a `SubcomposeLayout` equal-height row was written to replace
-it. It was not clipped. It was the scroll viewport, and the original was
-correct all along — the board renders whole, `Hana / Simon / Ivy / and 6 more`.
-Reverted in full. The lesson is the cheap check that was skipped: **scroll
-before believing a clip.**
+**The last outstanding leaderboard item is closed (24.3.18d)** — `PAST YOUR
+BEST` over `YOU 13 / YOUR BEST 12 FINISHED`. `RacePassTracker` is the latch the
+item asked for, and three of its rules came out of writing the test rather than
+the code: the first sighting latches *without reporting* and only rows already
+passed (latching the whole field, written first, silently disarms every row
+still ahead, so the pass that matters never fires); a ride that has not started
+cannot be overtaken (the ghosts are cumulative traces, so the field opens on 0.0
+and the rider's first kilojoule would announce a PB two seconds in); and only
+the rider's own past rides count, which is `!isPerson && !isGenerated` and
+exactly why 24.3.18 kept those two flags apart.
 
-**Then the owner's inbox arrived mid-session with a high-priority note, and
-it is built.** *"Auto-generated leaderboard ghosts to ride against … there
-should always be some target … no matter how high you go there should always
-be a target ahead of you."* Written up as **24.3.18** with five candidates and
-the argument attached rather than as a menu, four of them chosen and built:
-
-- **The plan** — the class ridden at the middle of every band it prescribes,
-  and the one worth arguing for. It is the only non-arbitrary target, catching
-  it means *I rode what the class asked for*, and it needs no history — so it
-  is on the board for the first attempt at a class nobody has touched, which
-  with 72 classes and a four-person household is **the ordinary case**. It does
-  not touch `PowerModel`: a zone target is watts already.
-- **Just past your best**, **Your usual** (the median, and the only row
-  deliberately *behind* a rider on form), and **a round number that moves** —
-  a pace rather than a trace, because a fixed total cannot satisfy *however
-  high you go*.
-- And **"Tom's last ride"**, on the owner's follow-up: a best is a monument
-  and can be two years old, a last ride is news.
-
-**The board is six rows now, and the owner was right that there was space.**
-They said so from memory and it was settled by measuring rather than by
-agreeing: `uiautomator` puts the rows 66 px apart and the Overlay button at
-y ≈ 672, so six fit and a seventh collides. The rest scrolls, and the list
-follows the rider as they pass and are passed.
-
-**24.3.12a is finally shut**, after a fortnight open with the owner's name on
-it — and what closed it was ghosts arriving, because a second family of
-invented name on a board already reading `12 MONTHS / 30 DAYS / Ava` would
-have been two problems instead of one. The fault was nameable: every other row
-is a person and those two were durations. Every non-human row is a sentence
-about the rider now.
-
-**The one distinction worth carrying forward is two flags rather than one.**
-`GhostKind` has `isPerson` and `isGenerated` separately, because the rider's
-own best is neither a person nor invented — conflating them would either mark
-a real ride of theirs as fictional or let a generated target be counted as a
-rival, and the second is precisely what the honesty rule exists to prevent. So
-a generated row carries a `○` and colour goes on saying *is this me*.
-
-**Two things written up rather than built**, both because they are the owner's
-call and not a session's. **26.1.6**: there is no way to ride a class at the
-zones it was authored with — two intents, both ±5%, so every ride this app has
-ever recorded is off the catalogue that a build refuses to let anyone break.
-Raised, and the owner's answer was *"leave it entirely"*. **22.7.4**: 22.7.1
-centred a day that holds one ride and left the day's *heading* hard against the
-left edge, so a section header no longer sits over its section — most visible
-on the last screen of the demo, and fixable in two opposite directions.
+**Its first version was correct and invisible, which is this session's best
+lesson.** The banner was the first `item` of the board's `LazyColumn` — a list
+that scrolls itself to the rider's row on every rank change — so it fired
+exactly when it should and was scrolled straight off the top. *The pass was in
+the data and never once on the screen.* Drawn as a sibling instead, it then made
+the card taller and pushed *End ride* off the bottom, because a banner stacked
+on six rows is 24.3.18c's seventh row by another name. The list gives up a row
+while it shows.
 
 ### What to do next, in order
 
-**The owner's inbox is empty. What is left is what was already queued, plus
-two things that need the owner and one loose end this sitting left on purpose.**
+**The owner's inbox is empty. What is left of the first-run path is the
+account-linking hand-off, and one item of it needs the owner rather than a
+session.**
 
-1. **15.7 — the Supabase emails.** Written up in full, and the templates are
-   ours to replace through the Management API with the token already in
-   `local.properties`. Two of the six matter, the From line needs a domain that
-   does not exist yet (15.7.3), and it changes the owner's live auth config,
-   which is the one place in this project where being careless is a breach
-   rather than a bug.
-2. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
-   ticks it, and it is the cheapest item left in the plan.
-3. **24.3.18d — the moment you pass your own best.** Half of it is built: the
-   rider's own rows are drawn in the accent dimmed, so a row that is also them
-   never reads as an opponent. What is missing is the *event* — the owner asked
-   for passing your PB to *"really stand out"* and nothing marks it. Do it as
-   `PositionCallTracker`'s shape, latched: `standingsAt` runs four times a
-   second, so anything derived from *am I above that row now* fires 240 times
-   a minute.
-4. **22.7.4 — the date header that did not move when the row did.** Small, and
-   it is the last screen of the demo recording, so it is the one a stranger is
-   most likely to be looking at. **It needs a decision rather than a fix**:
-   centre the heading over its row, or left-align the row and give up 22.7.1's
-   reason for centring. Judge it on the AVD with one ride on some days and two
-   on others.
+1. **15.7.6 — the confirmation email points at `localhost`.** *This is the most
+   severe defect left on the onboarding path and it was deliberately not built
+   this session.* A first-time rider signs up on their phone, taps the link, and
+   lands on a page that does not exist on the device they are holding; there is
+   no recovery inside the flow. It is two settings (`site_url`,
+   `uri_allow_list`) plus an `emailRedirectTo` in `link.js` — but the first two
+   change **the owner's live auth config**, where a wrong value breaks signing
+   in for the accounts that already exist. Written up in full, with the rollback
+   step first. **Ask before touching it.**
+2. **17.16.9 — the pairing page's voice**, and **15.6.11 — the bike saying the
+   link landed.** The other two halves of the same journey. 17.16.9 is Phase 26
+   arriving on the web app; 15.6.11 is smaller than it looks, because the poll
+   already redeems the pairing — what is missing is the *moment* on the bike.
+   Note 17.16.9 reaches a rider only when deployed: run `./web/check-deployed.sh`
+   before believing it closed.
+3. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
+   ticks it, and it is still the cheapest item in the plan.
+4. **22.7.4 — the date header that did not move when the row did.** Unchanged
+   from last session, and it **needs a decision rather than a fix**.
+
+**Left deliberately undone, and both are written up:** 24.3.18d's *mark* — the
+moment is built, a permanent marker on a beaten row is not — and 11.8.4, the
+subtitle line, which is answered with a recommendation (build it as captions for
+the coach that already exists, not as a slot that must be filled) rather than
+built.
 
 **24.3.16 is open, is not simply *unbuilt*, and its measurement has been
 corrected.** The overlay's leaderboard was built in the thirty-first sitting
@@ -371,6 +349,11 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**20.4, 22.7.5, 23.2.7, 11.8, 24.3.18d — the first-ride pass.**~~ **Done in
+  the thirty-third sitting**, all observed on the tablet AVD. Two faults on that
+  path were found that nobody had reported (20.4.2's dialog insets, 20.4.4's
+  account offer), and both were invisible until the AVD's hardware keyboard was
+  turned off — that is now a line in CLAUDE.md.
 - ~~**The polish pass and the demo recording.**~~ **Done in the thirty-second
   sitting**, nine changes, all observed on the tablet AVD. Do not re-attempt
   the summary's equal-height row: it was diagnosed as clipping, rewritten with
