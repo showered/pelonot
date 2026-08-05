@@ -328,6 +328,39 @@ own**, minted for it, not a copy of the phone's.
       that way: expired rows deleted on every `begin`, a cap on how many
       unclaimed pairings can exist, and nothing in the row that identifies a
       rider until the moment one claims it
+- [ ] **15.6.11** **The bike has to say the link worked, on the bike** — the
+      owner's note of 5 August: *"Make sure that after you sign in / sign up the
+      bike automatically responds to it and says 'successfully linked account'
+      or something similar/better."*
+
+      **Read 15.6.6 before assuming this is unbuilt**, because half of it is:
+      the bike polls every two seconds and the poll is what redeems the pairing,
+      so *the mechanism* exists and a linked bike does end up signed in. What
+      the note is about is the **moment** — a rider who has just typed a
+      password into their phone is looking at the bike waiting to be told it
+      worked, and a QR screen that quietly closes has answered a different
+      question. The two are easy to confuse from the code and impossible to
+      confuse from the tablet, which is where this is judged.
+
+      Three things to establish before writing anything, in this order: what the
+      bike actually draws in the second after a successful redeem; whether it
+      draws anything different from a **timeout**, which is the failure this
+      screen must not render as silence; and whether the confirmation names the
+      account — *"Signed in as simon@…"* is a fact the rider can check, where
+      *"Success"* is a claim they cannot. Phase 26's rule applies to the wording
+      and this is not a place to be sparing: it is the one moment in the app
+      where a rider has done work on another device and needs to be told it
+      landed
+- [ ] **15.6.12** **A sign-*up* by QR does not finish where a sign-*in* does,
+      and 15.6.11 must not pretend otherwise.** `link.js` already handles this
+      correctly in its own copy — a sign-up with no session tells the rider to
+      confirm by email first — but it means the bike can be sitting on a live
+      pairing code that is *never* going to be redeemed within its five minutes,
+      because the rider has gone to their inbox. That is not a bug in the
+      pairing; it is 15.6.7's remaining half arriving through the back door, and
+      it wants the bike's waiting screen to be honest about it rather than
+      counting down to a failure it can predict. **Read 15.7.6 with this** — the
+      confirmation link is the other end of the same journey
 
 ---
 
@@ -498,3 +531,45 @@ beside it.
       `showAccountOffer` on the dashboard from the same value, so a
       self-hoster's build shows neither by construction rather than by two
       separate checks that could drift
+
+- [ ] **15.7.6** **The confirmation link points at `localhost` — the owner's
+      note, 5 August 2026.** Verbatim: *"Verification email on supabase points to
+      localhost. Please fix, you have access to my supabase with API key."*
+
+      **This is the most severe defect in the onboarding path and it is not a
+      cosmetic one.** Everything else in the owner's note is a screen that could
+      be nicer; this one *ends the journey*. A first-time rider creates an
+      account on their phone, is told to check their email, taps the link, and
+      arrives at `http://localhost:3000` — a page that does not exist on the
+      device they are holding. There is no recovery from that inside the flow,
+      and the rider has no way to know their account was in fact created.
+
+      **It is two settings and one line of client code, and they are genuinely
+      different fixes:**
+
+      1. **`site_url` on the project's auth config** is the default any email
+         template's `{{ .ConfirmationURL }}` is built from, and it is still
+         Supabase's `http://localhost:3000` scaffold value. It wants
+         `https://pelonot.showered.workers.dev` — which is **17.16.4**, already
+         written down and open since the site went up, and this note is the
+         evidence for it arriving as a rider-visible fault rather than as
+         tidiness.
+      2. **`uri_allow_list`** has to contain any redirect the app asks for, or
+         Supabase silently falls back to `site_url`. A fix to (1) that does not
+         also widen this looks like it worked and then does not.
+      3. **`link.js` passes no `emailRedirectTo` on `signUp`**, so it is relying
+         entirely on (1). It should name where it wants the rider back —
+         `link.html` with the pairing code still on it, so the confirmation
+         lands them on the page they left rather than on the site root, which is
+         the difference between finishing the pairing and starting it again.
+
+      **Same live-service caution as the rest of 15.7, and more of it**, because
+      these are the two fields that decide whether *anybody* can complete a
+      sign-in: `PATCH /v1/projects/{ref}/config/auth` takes the whole object,
+      so read it, keep the copy, send back only these keys. **And confirm the
+      wipe of nothing** — unlike the mailer templates, a wrong value here breaks
+      the existing accounts' password-reset flow too.
+
+      Check it the way 15.7.5 asks: **a real address, a real sign-up, the link
+      tapped on a phone** — a 200 from the Management API says the value was
+      stored, not that the mail that arrives tomorrow carries it

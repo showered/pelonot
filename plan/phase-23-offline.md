@@ -327,3 +327,63 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       whether it is per rider and rider-controlled — and note this is the first
       item in the project where one person's setting reaches another person's
       history
+
+---
+
+### 23.2.7 A class that says what it is for — the owner's note, 5 August 2026
+
+**Verbatim, the second half of the Start Class note (22.7.5):** *"And maybe we
+could spend some time adding a rich 'description' to each class which tells you
+what the ride is and what it focuses on. That is more useful."*
+
+**It is more useful, and the reason is worth stating rather than agreeing with.**
+Everything the library tells a rider today is *derived* — the title, the
+category, the duration, `ClassProfile.shape`'s generated sentence, the chart.
+All of it is a description of the **blocks**, computed from them, and none of it
+can say a single thing the blocks do not contain. So the library can tell a
+rider that a class is "20 min · Climbs · four hard efforts" and it cannot tell
+them **why they would ride it**, what it is training, who it suits, or what it
+is going to feel like at minute fourteen. That is authored knowledge and there
+is nowhere to put it.
+
+**This is the first genuinely authored prose in the library**, which makes it
+the first thing in `catalogue.py` that a build rule cannot check for truth. That
+cuts both ways and both belong in the item: it is why it is worth doing (a
+generator cannot produce it) and why it needs its own rules (a generator cannot
+police it either).
+
+- [ ] **23.2.7a** **`description` is a field on the class, authored in
+      `catalogue.py`, carried by `build.py` into the asset JSON.** Follow the
+      existing path exactly — `to_json`, the entity's new column, a migration
+      (12.5, and `class_templates` is `@Upsert` since 23.2.6c, *not* REPLACE),
+      the exported schema, a `MigrationTestHelper` test, and the fingerprint in
+      `assets/class_library.json` so an already-seeded tablet actually receives
+      it. **A catalogue change that is not rebuilt does not reach a tablet**,
+      which is the trap CLAUDE.md names
+- [ ] **23.2.7b** **Two or three sentences, and the rules are R10's rules one
+      level down.** What it says: what the ride *is*, what it *trains*, and what
+      it will feel like. What it must not say: the duration, the category or the
+      block count — all three are already on the screen beside it, and R10
+      exists because the titles were doing exactly that. No FTP, no watts, no
+      kilojoules: this is a rider choosing, not reading a measurement, which is
+      CLAUDE.md's standing rule and Phase 26's whole argument
+- [ ] **23.2.7c** **A build rule for what a build *can* check.** Not the prose —
+      `build.py` cannot know whether a sentence is true — but it can hold the
+      shape: every class has one, it is within a length band, it does not end in
+      a digit (R10's own trap), and it does not contain the class's own
+      duration or category. **And it can check the one substantive thing**: a
+      description naming a position (*"out of the saddle"*) or a cadence
+      character (*"grinding"*) is a promise the blocks have to keep, which is
+      R11 and 25.4.2's rule arriving in a second place
+- [ ] **23.2.7d** **72 of them is the cost and it is the real one.** This cannot
+      be generated from a template without producing 72 sentences that all sound
+      the same, which would be worse than none — a rider scanning the library
+      would learn to skip them within four classes. Write them per class, in the
+      voice Phase 26 describes, and accept that the categories will share
+      vocabulary because the rides genuinely do
+- [ ] **23.2.7e** **Where it shows.** The Start Class screen is what the note is
+      about (22.7.5b) and is where the whole description goes. Whether a line of
+      it also belongs on the **library list** is a separate question and
+      probably no: that screen is three cards across and already carries a title
+      and a shape sentence, so a third line is 26.3's failure mode. Decide it by
+      looking, not here

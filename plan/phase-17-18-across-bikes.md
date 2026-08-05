@@ -541,3 +541,48 @@ rediscovering.
       per sample, but the function does not project it. Either it starts to, or
       the across-bikes ghost carries the caveat 18.7 asks for — on the modelled
       ones specifically, never as a blanket disclaimer
+
+- [ ] **17.16.9** **The pairing page tells the rider about the machinery — the
+      owner's note, 5 August 2026.** Verbatim: *"After scanning QR code the
+      'link device' page could be much nicer. Get rid of all the geeky fluff and
+      just tell the user what they want to hear -- the link worked and now they
+      just need to sign in / sign up."*
+
+      **This is the third report against this one page and the first that is
+      about its voice rather than its function.** 17.16.5 was a copy defect,
+      17.16.6 was a dead end with no sign-in on it; both are fixed and both were
+      about whether the rider *could* proceed. This one is about what the page
+      says while they do, and it is Phase 26 arriving on the web app — the
+      standing rule is the same one, and `link.html` breaks it in the place a
+      first-time rider meets it.
+
+      **What is on the page that the rider did not ask about**, reading it as
+      somebody who has just pointed a camera at a bike:
+
+      - **The device card is a fact about pairing, not about them.** *"This will
+        sign in / PLTN-RB1VQ"* plus the pairing code underneath. The device name
+        earns its place — 15.6.5 is a real anti-phishing argument and must not
+        be lost — but the **code** is machinery: the rider has already scanned
+        it, it is in the URL, and printing it back is the page showing its
+        working. It is needed only on the `need-code` path, where the rider is
+        typing it.
+      - **`fallback-warning`** explains that this deployment hands over the
+        phone's own session and *"you will be signed out on this phone"*,
+        followed by a sentence distancing the app from its own limitation. That
+        is a maintainer's note in a rider's sentence. Whether it is even true is
+        deployment-dependent (15.6.9), so the fix is partly to find out which
+        route the live project actually takes before writing anything.
+      - **The status line and the heading say the same thing twice** — *"Link a
+        bike"* over *"Sign in here and the bike signs itself in"* over a
+        `#status` paragraph that also narrates.
+
+      **What the rider wants to hear is exactly what the owner said**: the link
+      worked, and now sign in. That is two sentences and one form, with the
+      device named on the confirm step where the naming does its job.
+
+      **Do not fix this by deleting text alone.** The page has four states
+      (`need-code`, `signed-out`, `confirm`, `done`) and 17.16.6's whole lesson
+      was that collapsing them is what broke it last time; they were all four
+      measured against the live project and should be again. And the fix reaches
+      a rider only when it is deployed, which is 17.16.2's still-open gap —
+      **run `./web/check-deployed.sh` before believing this closed** (17.16.7)

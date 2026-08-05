@@ -297,3 +297,74 @@ soon as it has evidence.** Which of the owner's two routes that is depends on
       FTP, and adding an onboarding flow in front of "just let me ride" would
       break the one thing the guest rung is for. Check what a guest ride's zone
       display does today before changing anything here
+
+---
+
+### 20.4 The first thing a new rider meets, watched over somebody's shoulder — the owner's note, 5 August 2026
+
+**Verbatim, the onboarding half:** *"Year born and weight inputs are different,
+visually"* and *"After typing in weight, and then trying to select weight, it
+doesn't register the tap because of keyboard still being open"*.
+
+**The provenance is what makes these worth more than their size.** The owner
+watched somebody sign up for the first time — their wife — and reported it as
+*"a clunky onboarding"*. That is the only kind of evidence this screen can get
+that is not a session driving its own flow knowing where every control is. A
+first-time rider does not know the birth-year control is a picker, so its not
+looking like the thing beside it is not a cosmetic complaint: it is the screen
+failing to say what kind of answer it wants.
+
+**Both faults are on `AboutStep`, which is the one step that asks for three
+things at once**, and it is worth noticing that the step's own doc comment
+already claims *"no keyboard on any of them except the weight"* — true, and
+exactly the condition under which a stray keyboard is most disruptive, because
+it is the only one.
+
+- [ ] **20.4.1** **Two questions of the same kind, drawn as two different kinds
+      of control.** Weight is an `OutlinedTextField` with a floating label
+      inside a border; the birth year is an `OutlinedButton` whose whole content
+      is a sentence — *"What year were you born?"* — with no label, a different
+      height, a different corner radius and text centred rather than left. Side
+      by side in one `Row` they read as a field and an action, when they are two
+      facts about the rider.
+
+      **The fix is not to make the year a text field.** 21.1.1b settled that a
+      year is picked and not typed, and the reason stands: a keyboard on it is
+      the very thing 20.4.2 is about. What is wanted is a control that *looks*
+      like the field beside it and *behaves* like the button it is — same
+      height, same border, same label in the same place, with the value where
+      the value goes and the question in the label rather than in the value
+      slot. `OutlinedTextField` has a `readOnly` mode that keeps every one of
+      those affordances, but it also keeps a focusable text cursor, so the
+      honest version is a shared `PickerField` composable that draws the box
+      itself and is judged **beside** the weight field on the tablet AVD rather
+      than on its own
+- [ ] **20.4.2** **The keyboard eats the first tap.** After typing a weight, the
+      next tap — on the kg/lb chips, on a fitness-level card, on the birth-year
+      control — does nothing except dismiss the keyboard, and the rider has to
+      tap twice. Two causes are possible and they want different fixes, so
+      **measure before changing anything**: either the IME window is consuming
+      the touch outright, or `adjustResize` is re-laying the step out as the
+      keyboard goes and the tap lands where the control *was*. The second is the
+      more likely on this screen, because `StepScaffold` puts the content in a
+      `verticalScroll` `Box` with `Alignment.Center` — so every control moves
+      when the available height changes, and the movement is doubled by the
+      centring.
+
+      Candidate fixes, cheapest first: give the weight field an `ImeAction.Done`
+      that clears focus so the keyboard is gone before the rider reaches for
+      anything; anchor the step's content to the top once a keyboard is up so it
+      stops sliding under the finger; declare the activity's soft-input
+      behaviour explicitly rather than inheriting whatever the manifest's
+      default is (`MainActivity` declares no `windowSoftInputMode` today).
+      **The check is a tap that works first time, on the AVD, with the keyboard
+      up** — not a reading of the diff
+- [ ] **20.4.3** **What this pair says about the rest of the flow.** Neither
+      fault is visible to anybody who has driven this screen before, and both
+      were found in seconds by somebody who had not. That is an argument for
+      **watching the whole first-run path with fresh eyes at the AVD's real
+      size** rather than for fixing two controls: profile creation, the account
+      offer, the class library, Start Class, the countdown, the first ride, the
+      summary. The other two entries in this same note (22.7.5, 11.8) came from
+      the same sitting and the same rider, which is the evidence that the path
+      and not the screen is the unit

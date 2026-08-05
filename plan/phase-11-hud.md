@@ -1076,3 +1076,92 @@ block a rider spinning 92 rpm against the library's neutral 75–85 default was
 told to ease the cadence back — and the power drift the class actually cared
 about **could never be reached at all**, because cadence had already answered.
 Same defect as the amber, one channel louder.
+
+---
+
+### 11.8 "What is a power zone?" — the owner's note, 5 August 2026
+
+**Verbatim:** *"I think we need to: Explain what powerzone is to first time
+users — and/or — Make it much clearer on the Ride screen that powerzone is what
+you're supposed to work on. In lieu of a human trainer, is it worth us
+considering having a designated space for 'subtitles'? Mix of motivational text
+but also can help explain powerzones and whatnot? This is just an idea off the
+top of my head. It could be a bad one."*
+
+**The note names a gap the plan has never had an item for, and it is a large
+one.** This app is built on power zones from end to end: the class library
+prescribes them, the ride screen colours by them, the leaderboard scores in
+kilojoules derived from them, `FtpEstimator` exists to produce the denominator
+they are computed against, and Phase 7 moves that denominator by itself. **And
+the app never once says what a zone is.** A rider who has come from Peloton's
+own classes has met the phrase; a rider who has not is being asked to work at
+"Z4 · Threshold" with no way to find out what that means without leaving the
+bike. That is not a copy problem, it is a missing feature, and it is exactly the
+kind of thing only a first-time rider can report — which is how it arrived.
+
+**11.7 is the near neighbour and it is not the same item.** That phase settled
+*which* metric is the instruction on any given block and made the ride screen say
+so — one `TARGET` line, one amber, one arrow. It is the answer to *what do I do
+right now*. This is the answer to *what is this thing you keep asking me to do*,
+and no amount of getting 11.7 right produces it.
+
+- [ ] **11.8.1** **Establish what the app says today before writing a word.**
+      Read the ride screen, the zone ladder, the class detail screen and
+      Settings for every place a zone number or name appears, and write down
+      what a rider could learn from them. The suspicion is "nothing, anywhere",
+      but this plan has twice written an item for a thing that turned out to
+      already exist (11.7 and 21.4.2 both), and the cheap check is reading four
+      screens
+- [ ] **11.8.2** **Say it once, at the moment it first means something.** The
+      candidate moments, in order of how well they fit: **the countdown**
+      (11.6.13 — a rider is sitting still, clipped in, with ten seconds and
+      nothing to do, and the class's first target is already on screen); the
+      **first ride only**, which needs a per-profile "has ridden" flag that
+      `workouts` can already answer; or the **profile creation result step**,
+      which is where the FTP is explained (20.3.4) and is therefore where the
+      denominator is already being talked about.
+
+      **Not** a tutorial, not a carousel, and not a modal in front of a rider
+      who wants to pedal. One short passage, dismissible, never shown twice.
+      Phase 26 governs the wording and this is one of the places its exception
+      applies: a rider being taught what a watt is *is* reading a measurement
+- [ ] **11.8.3** **Make the ride screen say which number is the job**, which is
+      the owner's *"and/or"* and is the cheaper half. 11.7 already gives the
+      governing metric the amber, the arrow and the `TARGET` line; what it does
+      not do is say **why that is the one**. Candidates worth judging on the
+      AVD: the zone ladder naming what it is a ladder *of*; the `TARGET` line
+      carrying a word rather than only a band; the governing metric's tile
+      reading as the primary one at two metres rather than as one of four
+      equals. **Change one thing at a time** — this screen is read at speed by
+      somebody out of breath and it has been over-decorated before
+- [ ] **11.8.4** **The subtitle space — written up as a decision, because the
+      owner offered it as a possibly-bad idea and it deserves a real answer.**
+
+      *The case for:* the app has a spoken coach (`RideCoach`) whose lines a
+      rider can miss entirely — over music, over a film, or because the tablet
+      is muted, which is 11.5's whole reason for existing. Everything that voice
+      says is already computed and already timed, and none of it is on screen.
+      A caption line is therefore mostly a *rendering* of a thing that exists,
+      which is a much smaller job than it sounds and is worth a lot to a deaf
+      rider or one riding at 6 am.
+
+      *The case against, and it is specific:* a text line that changes during a
+      ride is the single most attention-taking thing that can be put on a screen
+      read at two metres by somebody at threshold. The ride screen has been
+      **decluttered twice** on the owner's own reports (11.6.16–11.6.19, and
+      24.3.16 took the leaderboard off the overlay for exactly this), and a
+      moving sentence is a bigger draw than any chip that was removed.
+
+      *The recommendation:* **build it as captions for the coach, not as a
+      motivational feed.** Same trigger, same cadence, same latch — so it says
+      something roughly once a block rather than continuously, and it is silent
+      by default between cues. Motivational filler is what turns it from a
+      caption into a slot that must be filled, and a slot that must be filled is
+      what produces sentences nobody needed. Off by default is defensible;
+      on-the-ride-screen-only and never on the overlay is not negotiable (24.1.5
+      survives here even though 24.3.16 overruled it for the board, because that
+      overrule was about a *static* card and this is moving text)
+- [ ] **11.8.5** **Whatever lands, it must not need the cloud, an account or a
+      network.** A rider being taught what a zone is has by definition just met
+      the app, and rule 1 of the connectivity model says that rider makes no
+      request at all

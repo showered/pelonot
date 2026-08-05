@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Forty-seven entries have passed through it.** In order: standing and seated
+**Fifty entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -123,7 +123,16 @@ no ceiling (**24.1.8**), and auto-generated leaderboard ghosts to ride
 against (**24.3.18** — five candidates written out with the argument
 attached, four of them chosen and built, and it forced **24.3.12a** shut
 after a fortnight open because ghosts would otherwise have put a second
-family of invented name on a board that already had `12 MONTHS` on it).
+family of invented name on a board that already had `12 MONTHS` on it), and
+**the three notes of the first rider who had never seen it** — the onboarding
+inputs (**20.4**, with the linking half at **15.6.11**, **15.6.12** and
+**17.16.9**, and the `localhost` confirmation link at **15.7.6**, which is the
+one that *ends* the journey rather than roughening it), the Start Class
+screen's "million panels" (**22.7.5**, and **23.2.7** for the authored
+description asked for beside it — the first prose in the library a build rule
+cannot check for truth), and what a power zone actually is (**11.8**, a gap
+this plan has never had an item for: the app is built on zones end to end and
+never once says what one is).
 
 **The inbox is empty.**
 

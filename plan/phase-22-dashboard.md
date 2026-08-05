@@ -668,3 +668,63 @@ one is a screen the audit never reached.
       rides of the same class — the technique is in CLAUDE.md and the seeding
       the thirtieth sitting used for the live board is directly reusable — or
       look at it on the bike, which has the owner's real rides on it
+
+---
+
+### 22.7.5 "A million panels" — the Start Class screen, again, and this time it is about the rider rather than the layout
+
+**The owner's note, 5 August 2026, verbatim:** *"The Class screen, the one where
+you click 'begin class', it doesn't make much sense. I like the chart, but then
+underneath it are a million panels (all the intervals) and it's just too much
+and is confusing to new users. Completely rethink this page. It doesn't need to
+say much! It can be centred in the middle if you like. And maybe we could spend
+some time adding a rich 'description' to each class which tells you what the
+ride is and what it focuses on. That is more useful. Let's make this page
+simple."*
+
+**This is the fourth note on this screen and the previous three were all
+answered by moving things.** 22.7.2 replaced six full-width rows with a chart
+and a tile grid; 22.7.3 moved the leaderboard out into a column of its own;
+22.4.3 capped the prose. Every one of those was a real improvement and **none of
+them questioned whether the intervals belong on the screen at all** — the grid
+just got tidier. So this item is not "shrink the tiles". The owner has said the
+page shows the wrong things, and the number is the evidence: `CLB-01` is a
+20-minute class with **thirteen** blocks, and thirteen cards each naming a zone,
+a cadence band, a watt band and a duration is 52 facts on the last screen before
+a rider starts pedalling.
+
+**Why the tiles cannot be defended even though each one is accurate.** The
+argument that put them there was that this is the screen a rider *studies* a
+class on (11.7's own words, in `IntervalCard`). That is true of a rider who
+knows what Z4 is. For a first-time rider it is a wall, and worse than a wall: it
+is a wall of **the same information the chart above it already draws**, which is
+Phase 26's "ten answers where three will do" (26.3) on the screen with the most
+riding on it. The chart is height-for-zone and width-for-time and it is the good
+answer — the owner says so directly, *"I like the chart"*.
+
+- [ ] **22.7.5a** **The intervals come off this screen.** Not shrunk, not
+      collapsed behind a disclosure by default — off. What replaces them is
+      nothing, because the chart is already the picture of them. **Keep one
+      escape**: a rider who genuinely wants the block list is a real rider and
+      the data is already parsed, so it can live behind a plain *"See the
+      blocks"* that opens over the screen. Build the removal first and add the
+      escape only if the screen looks like it is missing something, rather than
+      keeping the grid on a technicality
+- [ ] **22.7.5b** **The screen is centred and short.** The owner's own
+      permission — *"It can be centred in the middle if you like"* — and it lines
+      up with 22.7.1, which has now been the right answer on four screens. The
+      target shape: the class's name, one line saying how long and how hard, the
+      chart, the description (23.2.7), and Start. Nothing else. The leaderboard
+      column stays where 22.7.3 put it, because that item's reasoning is about
+      *whose* facts they are and is untouched by this one
+- [ ] **22.7.5c** **The empty-interval branch must survive the rewrite.** A class
+      with unreadable interval data currently says so in the error colour and
+      offers a free ride. That path has nothing to do with the tiles and is easy
+      to delete by accident while removing them
+- [ ] **22.7.5d** **Judge it against the first-time rider, not against the
+      diff.** This whole note came from the owner watching somebody meet the app
+      for the first time. The question the screen has to answer for that person
+      is *what am I about to do and will I like it* — and the honest reading is
+      that today it answers *here are 52 numbers*. Look at it on the tablet AVD
+      at 1280 × 720 dp, on a long class and a short one, with a board and
+      without
