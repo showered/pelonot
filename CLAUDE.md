@@ -280,6 +280,20 @@ Two consequences to know before you are surprised by them:
     `GRIND` has said what they mean. Reading it back off the number band is
     route (a), which PLAN.md 11.7.2 rejected. R12 in `build.py` and
     `ClassLibraryAssetsTest` holds the line.
+- **On the web app, never call a Supabase method from inside
+  `onAuthStateChange` — it deadlocks, and only for a rider who is signed in.**
+  auth-js runs the callback while holding an exclusive Web Lock on
+  `lock:sb-<ref>-auth-token`, so an `await client.auth.getSession()` underneath
+  it queues behind the thing waiting for it and **nothing on the page ever
+  finishes**. The owner met it as three dots on the pairing page that never
+  became a device name; a signed-*out* phone never reproduces it, which is why
+  it survived three sittings. The callback is handed the session — use that,
+  and keep the redraw synchronous. `navigator.locks.query()` is the diagnostic:
+  one holder and two waiters on that name is the whole answer. PLAN.md 15.6.14.
+- **And `client.rpc(...)` is a thenable, not a promise** — `PostgrestFilter
+  Builder` has `.then` and no `.catch`, so hanging a `.catch` on it throws a
+  `TypeError` inside an `async` function nobody is catching, which looks
+  exactly like the hang you were trying to fix. `await` it inside a `try`.
 - **`heartRateBpm` is nullable and null means *unknown*.** Never default it to
   0 — that writes a fake sample into the rider's record and drags averages down.
 - **`PelonotTheme` may be composed from a Service context** (the HUD overlay),
