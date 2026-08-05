@@ -52,6 +52,7 @@ import com.pelonot.ui.components.millisToBirthYear
 import com.pelonot.domain.model.FitnessLevel
 import com.pelonot.domain.model.NewProfile
 import com.pelonot.domain.model.FtpEstimator
+import com.pelonot.domain.model.RiderBounds
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.readableText
@@ -399,6 +400,14 @@ private fun AboutStep(
         action()
     }
 
+    // 20.5.1. The one number on this screen the app will act on without being
+    // able to disbelieve it. `68` in a field labelled lb is 31 kg, and the next
+    // screen said "65 W" with a straight face.
+    val typedWeightKg = weight.toDoubleOrNull()
+        ?.takeIf { it > 0.0 }
+        ?.let(weightUnits::weightToKg)
+    val weightProblem = RiderBounds.weightProblem(typedWeightKg, weightUnits)
+
     if (picking) {
         BirthYearPicker(
             currentSelection = millisToBirthYear(birthDate),
@@ -426,6 +435,12 @@ private fun AboutStep(
                 value = weight,
                 onValueChange = onWeightChange,
                 label = { Text("Weight (${weightUnits.weightLabel})") },
+                // Said under the field rather than on the button, because the
+                // rider has to know *which* answer is refused — and quoting the
+                // range in their own unit is what shows a rider who typed
+                // pounds into a kilogram field what they have done (20.5.1).
+                isError = weightProblem != null,
+                supportingText = weightProblem?.let { { Text(it) } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
@@ -518,7 +533,9 @@ private fun AboutStep(
             // without both there is nothing to show on the next step. The date
             // is genuinely optional — it only adjusts a number that already
             // exists — which is why it is not in this condition.
-            enabled = level != null && weight.toDoubleOrNull()?.let { it > 0.0 } == true,
+            // Reject, never clamp (20.5.1): an impossible weight stops the
+            // step rather than being quietly corrected into a plausible one.
+            enabled = level != null && typedWeightKg != null && weightProblem == null,
             modifier = Modifier.width(PRIMARY_BUTTON_WIDTH)
         ) {
             Text("Continue", style = MaterialTheme.typography.titleMedium)

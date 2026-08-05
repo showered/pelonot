@@ -47,6 +47,27 @@ right one — same device shape, same distance, same job.
       That is an accessibility action, not a gesture — a real press-and-hold
       fell straight through to the click and opened the dashboard. It needs
       `Modifier.combinedClickable`
+- [ ] **20.1.6** **Past about twenty riders the grid clips its last tile and
+      nothing says it scrolls.** Seen on the tablet AVD at 23 tiles: the heading
+      is on screen, three full rows are on screen, and the fourth row is a bare
+      `+` cut off at y 1080 with *New rider* and *Add a profile* below the fold.
+      It **does** scroll and the tile is reachable — so this is an affordance
+      fault rather than a dead end, which is exactly the kind this project has
+      shipped before (22.4.3's charts pushed below the fold, 20.4.4's *Not now*).
+
+      **It is 20.1.2's floor doing its job and the screen not admitting it.**
+      Tiles are sized off the width and the count, bounded below so a household
+      of six stays tappable with sweaty hands, so past some count the grid must
+      overflow and the floor is the right thing to keep. What is missing is the
+      screen saying so — the first paint should end mid-row rather than on a
+      row boundary, or the heading should stay put while the grid scrolls under
+      it, so a rider can see there is more.
+
+      **Found with 23 profiles, which no household has**, and the honest note is
+      that the count came from a session's own test riders. It is written down
+      because the failure is silent and the threshold is unknown: nobody has
+      measured where it starts, and *"a household of six"* is 20.1's own stated
+      target rather than a ceiling
 
 ### 20.2 Avatars
 
@@ -501,25 +522,48 @@ it is the only one.
 
 ### 20.5 What is left on the first-run path
 
-- [ ] **20.5.1** **Nothing fences the weight, and the first screen will take
-      any number it is given.** Found while walking 20.4.3's path: `68` typed
-      into a field labelled `Weight (lb)` — 31 kg — produced *"Here's where
-      we'll start you: 65 W"*, said with the same confidence as any other
-      estimate, and the rider rode away with an FTP a third of what it should
-      be. The arithmetic is correct and that is the point: `FtpEstimator` is
-      linear in weight and has nothing to disbelieve.
+- [x] **20.5.1** **Two writers of one column, and only one of them had a
+      fence.** ***Done and observed on the tablet AVD.*** Found by walking
+      20.4.3's path as a rider who had never seen it: `68` typed into a field
+      labelled `Weight (lb)` produced *"Here's where we'll start you: 65 W"*,
+      said with exactly the confidence of any other estimate. `FtpEstimator` is
+      linear in weight and had nothing to disbelieve.
 
-      **It matters more here than it looks.** 20.3's own note records why an
-      estimate that starts *low* is the dangerous direction: `PostWorkoutAnalyzer`
-      only ever proposes an FTP **upward**, so a number that starts too low is
-      corrected by the first hard ride, but the rider spends that ride in zone 7
-      of a ladder built on 65 W — and 7.11 has not landed, so nothing brings it
-      back down if the rider never rides hard.
+      **The honest account of that particular number is that the fence does not
+      catch it**, and the item is worth having anyway. 68 lb is 31 kg, which is
+      inside any bound this app could defend — a 31 kg rider is a child, not a
+      typo. What went wrong there was a *unit*, and the defence against a unit
+      is the label and the chips beside the field, which were both correct and
+      which the rider (me) did not read. **What the fence catches is the
+      neighbouring failure**: a missing digit, or pounds typed into a kilogram
+      field, where the number is not merely unlikely but impossible.
 
-      **Reject, never clamp** (CLAUDE.md), which here means the field says what
-      it will accept rather than silently correcting to a plausible number: a
-      weight outside roughly 30–250 kg is not a weight, and the honest answer is
-      to refuse *Continue* with a line under the field, not to substitute one.
-      The bounds belong beside `MIN_TYPED_FTP` / `MAX_TYPED_FTP`, which is the
-      same argument already made once on this screen for the number a rider
-      types when they disagree with the estimate
+      **What made it worth building is what the walk turned up beside it:
+      Settings has fenced this column since 13.8 and profile creation never
+      did.** So the two screens that write `weight_kg` disagreed about what a
+      weight is, and the one with no fence is the first screen a rider ever
+      meets. `RiderBounds` is now the single answer and Settings' own constants
+      point at it, because two copies of a bound is how they came to differ.
+
+      **Reject, never clamp**, and the message quotes the range **in the rider's
+      own unit** — a range in kilograms shown to somebody typing pounds explains
+      nothing, and explaining is the whole job of that line.
+
+      Note **absent is not out of range**: the weight is optional here, and an
+      unanswered question is a different claim from a wrong answer. Same family
+      as `heartRateBpm` and `target_position`
+- [ ] **20.5.2** **The estimate does not show its working, and it is the last
+      screen that could.** *"Our estimate, from your weight, your age, and that
+      you're riding now and then"* names the **inputs** and not their
+      **values**, so a rider who mistyped a weight two screens ago has no way to
+      see it — and by the next screen the number is on their profile and in the
+      denominator of every zone. Naming the values (*"from 68 lb, born 1986…"*)
+      would catch exactly the fault 20.5.1 could not fence.
+
+      **It is not obviously right, which is why it is written down rather than
+      built.** Phase 26's standing rule is to say less and to keep the geeky
+      words where a measurement is being *read*; three numbers echoed back on a
+      screen whose whole job is to say one number is the opposite of that.
+      There is a cheaper version — make the *Back* on this step the answer, and
+      it already is — so this may be a real improvement or may be clutter, and
+      the owner's eye is the right judge. **20.3.4 is the item it argues with.**

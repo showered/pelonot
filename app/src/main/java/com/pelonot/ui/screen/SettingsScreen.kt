@@ -88,6 +88,7 @@ import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.ui.components.VolumeSliders
+import com.pelonot.domain.model.RiderBounds
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.DarkSurfaceContainerLowest
@@ -1563,5 +1564,11 @@ private fun SettingsToggle(
 
 private const val MIN_FTP = 30
 private const val MAX_FTP = 600
-private const val MIN_WEIGHT = 25.0
-private const val MAX_WEIGHT = 250.0
+/**
+ * The same fence profile creation uses, and deliberately the same *object*
+ * (20.5.1). Settings has had a weight fence since 13.8 and the first screen a
+ * rider ever meets had none, so the two writers of one column disagreed about
+ * what a weight is. Two copies of a bound is how that happens again.
+ */
+private const val MIN_WEIGHT = RiderBounds.MIN_WEIGHT_KG
+private const val MAX_WEIGHT = RiderBounds.MAX_WEIGHT_KG
