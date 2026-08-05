@@ -3,5 +3,6 @@
   "title": "Easy Spin",
   "category": "Recovery",
   "duration_sec": 900,
+  "description": "A short, gentle spin with one slightly firmer middle block. Nothing here is meant to be hard: the job is to move blood through tired legs and get off the bike feeling better than you got on.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":180,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":180,\"time_end_sec\":300,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":540,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":540,\"time_end_sec\":660,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":660,\"time_end_sec\":900,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

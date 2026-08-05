@@ -17,6 +17,17 @@ data class ClassPlan(
     val category: String get() = template.category
     val durationSec: Int get() = template.durationSec
 
+    /**
+     * What the ride is for, or null when this class has not been given one
+     * (PLAN 23.2.7).
+     *
+     * Null rather than the entity's empty string, because a caller drawing this
+     * has to decide whether to draw anything at all, and `""` is a value that
+     * every naive `if (description != null)` gets wrong. The column stays empty
+     * for the reason on the entity; the *UI's* question is different.
+     */
+    val description: String? get() = template.description.takeIf { it.isNotBlank() }
+
     /** True when the template's `intervals_json` could not be decoded. */
     val isMalformed: Boolean get() = intervals.isEmpty()
 }

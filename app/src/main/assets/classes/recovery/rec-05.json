@@ -3,5 +3,6 @@
   "title": "Flush",
   "category": "Recovery",
   "duration_sec": 1200,
+  "description": "Gentle riding with a single easy lift in the middle. Named for what it does \u2014 it moves the legs enough to clear yesterday out of them, and asks for nothing you will notice tomorrow.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":180,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":180,\"time_end_sec\":420,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":420,\"time_end_sec\":600,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":600,\"time_end_sec\":780,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":780,\"time_end_sec\":1200,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

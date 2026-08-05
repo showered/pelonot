@@ -173,11 +173,12 @@ def hold(seconds, zone, cadence, position=None):
 
 
 class Session:
-    def __init__(self, id, title, category, blocks):
+    def __init__(self, id, title, category, blocks, description=""):
         self.id = id
         self.title = title
         self.category = category
         self.blocks = blocks
+        self.description = description
 
     @property
     def duration_sec(self):
@@ -187,7 +188,14 @@ class Session:
 CATALOGUE = []
 
 
-def klass(id, title, category, *parts):
-    """Register one class. `parts` are block lists, concatenated in order."""
+def klass(id, title, category, *parts, description=""):
+    """Register one class. `parts` are block lists, concatenated in order.
+
+    `description` is the one thing here a rule cannot check for truth (PLAN
+    23.2.7): every other fact about a class is derived from its blocks, so the
+    library can say a ride is "20 min · Climbs · four hard efforts" and cannot
+    say why anybody would ride it. Keyword-only, so it never gets mistaken for
+    a block list in the middle of a `*parts` run.
+    """
     blocks = [b for part in parts for b in part]
-    CATALOGUE.append(Session(id, title, category, blocks))
+    CATALOGUE.append(Session(id, title, category, blocks, description))

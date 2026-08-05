@@ -6,6 +6,7 @@ import com.pelonot.domain.model.IntervalParser
 import com.pelonot.domain.model.RidePosition
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -473,5 +474,76 @@ class ClassLibraryAssetsTest {
                 }
             }
         }
+    }
+
+    /**
+     * R13 — every class says what it is for, and says it without restating the
+     * screen around it (PLAN 23.2.7).
+     *
+     * `build.py` enforces this too, and this test exists for the same reason
+     * every other rule here is duplicated: **the assets are what ships, and a
+     * generator nobody runs cannot vouch for them.** A description edited
+     * straight into a JSON file — which CLAUDE.md forbids and somebody will
+     * eventually do anyway — is caught here and nowhere else.
+     *
+     * What it deliberately does not check is whether a sentence is *true*.
+     * Nothing can. The `standing` clause is the one exception: a description
+     * promising a position is making a claim the blocks have to keep, which is
+     * the only way an authored sentence here can be wrong arithmetically.
+     */
+    @Test
+    fun `every class says what it is for, in the app's own voice`() {
+        for ((file, dto, intervals) in plans()) {
+            val text = dto.description
+            assertTrue("${dto.id} has no description", text.isNotBlank())
+            assertTrue(
+                "${dto.id} description is ${text.length} characters; " +
+                    "the band is $DESCRIPTION_MIN-$DESCRIPTION_MAX (${file.name})",
+                text.length in DESCRIPTION_MIN..DESCRIPTION_MAX
+            )
+
+            val minutes = dto.durationSec / 60
+            assertFalse(
+                "${dto.id} description names its own length ($minutes), which is " +
+                    "drawn beside it",
+                Regex("\\b$minutes\\b").containsMatchIn(text)
+            )
+            assertFalse(
+                "${dto.id} description names its own category (${dto.category}), " +
+                    "which is drawn beside it",
+                Regex("\\b${Regex.escape(dto.category)}\\b", RegexOption.IGNORE_CASE)
+                    .containsMatchIn(text)
+            )
+
+            for (word in JARGON) {
+                assertFalse(
+                    "${dto.id} description says \"$word\"; a rider choosing a class " +
+                        "is not reading a measurement (Phase 26)",
+                    Regex("\\b$word\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
+                )
+            }
+
+            val stands = intervals.any { it.position == RidePosition.Standing }
+            if (!stands) {
+                assertFalse(
+                    "${dto.id} description promises standing and no block asks for it",
+                    Regex("out of the saddle|standing", RegexOption.IGNORE_CASE)
+                        .containsMatchIn(text)
+                )
+            }
+        }
+    }
+
+    private companion object {
+        /** Long enough to say something, short enough to be read over a bike. */
+        const val DESCRIPTION_MIN = 80
+        const val DESCRIPTION_MAX = 320
+
+        /**
+         * Units and acronyms. The zone *vocabulary* is fine — "threshold
+         * effort" describes a feeling — so this bans the way a measurement is
+         * written, not the way riding is talked about.
+         */
+        val JARGON = listOf("FTP", "watts?", "kilojoules?", "kJ", "W/kg", "VO2", "rpm")
     }
 }

@@ -3,5 +3,6 @@
   "title": "Zone 2 Steady",
   "category": "Endurance",
   "duration_sec": 1200,
+  "description": "A single steady block at a pace you could hold a conversation through. This is the ride that builds the base everything else sits on, and the discipline is keeping it easy when your legs say they could do more.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":120,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":120,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":240,\"time_end_sec\":300,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":300,\"time_end_sec\":900,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":900,\"time_end_sec\":1020,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":1020,\"time_end_sec\":1200,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

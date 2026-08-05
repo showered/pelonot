@@ -1014,6 +1014,72 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 16 → 17: `class_templates.description` (PLAN 23.2.7).
+     *
+     * Two things are worth asserting and only one of them is the column. The
+     * other is that **a retired class survives** — `class_templates` is the one
+     * table in this database that a launch-time reconcile rewrites, and a ride
+     * pointing at a retired class is the case 23.2.6c exists to protect. A
+     * migration that took the retired row with it would turn a rider's ride
+     * into a ride of nothing, and it would do it silently.
+     */
+    @Test
+    fun migrate16To17_addsTheDescriptionAndLeavesRetiredClassesAlone() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO class_templates (id, title, category, duration_sec,
+                                             intervals_json, created_at, retired_at)
+                VALUES ('CLB-01', 'Torque Repeats', 'Climbs', 1200, '[]', 1000, NULL)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO class_templates (id, title, category, duration_sec,
+                                             intervals_json, created_at, retired_at)
+                VALUES ('HC-01', 'An Old Class', 'Climbs', 1200, '[]', 1000, 5000)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 17, true, AppMigrations.MIGRATION_16_17)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val db = migrated.openHelper.writableDatabase
+
+            // Both classes are still here, retired one included.
+            db.query("SELECT COUNT(*) FROM class_templates").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(2, cursor.getInt(0))
+            }
+
+            // Empty, not null: there is no third claim to make about a class
+            // that has not been given a description yet.
+            db.query("SELECT description FROM class_templates WHERE id = 'CLB-01'").use { cursor ->
+                assertTrue("the class went missing", cursor.moveToFirst())
+                assertEquals("", cursor.getString(0))
+            }
+
+            // The retired class kept its retirement date, which is the link
+            // history resolves through.
+            db.query("SELECT retired_at FROM class_templates WHERE id = 'HC-01'").use { cursor ->
+                assertTrue("the retired class went missing", cursor.moveToFirst())
+                assertEquals(5000, cursor.getLong(0))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

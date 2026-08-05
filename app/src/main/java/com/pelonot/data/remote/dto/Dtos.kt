@@ -45,6 +45,16 @@ data class ClassTemplateDto(
     val title: String,
     val category: String,
     @SerialName("duration_sec") val durationSec: Int,
+    /**
+     * What the ride is for, in words (PLAN 23.2.7). Authored in
+     * `classlibrary/descriptions.py`; every other fact about a class is derived
+     * from its blocks and so can only ever restate them.
+     *
+     * Defaulted rather than required, because the cloud's copy of the library
+     * predates the column and a class arriving without one is a class with no
+     * description — not a parse failure that costs the rider the whole class.
+     */
+    val description: String = "",
     // A JSON string in the assets, a JSONB array in the cloud. See
     // [IntervalsJsonSerializer] — reading it as a plain String meant the cloud's
     // 72 class templates had never once been decoded.
@@ -57,6 +67,7 @@ data class ClassTemplateDto(
         title = title,
         category = category,
         durationSec = durationSec,
+        description = description,
         intervalsJson = intervalsJson
     )
 }

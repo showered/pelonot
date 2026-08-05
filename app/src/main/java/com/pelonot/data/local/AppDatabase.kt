@@ -26,7 +26,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
         FtpHistoryEntity::class,
         ActiveRideRivalEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

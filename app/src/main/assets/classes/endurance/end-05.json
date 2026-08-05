@@ -3,5 +3,6 @@
   "title": "The Long Steady",
   "category": "Endurance",
   "duration_sec": 1800,
+  "description": "One long block and nothing else. There is no interval to count down to, which is the point \u2014 this is the ride that teaches patience, and it is the best possible use of a film you have been meaning to watch.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":120,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":120,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":240,\"time_end_sec\":300,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":300,\"time_end_sec\":1560,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":1560,\"time_end_sec\":1680,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":1680,\"time_end_sec\":1800,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

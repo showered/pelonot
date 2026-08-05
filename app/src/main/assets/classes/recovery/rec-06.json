@@ -3,5 +3,6 @@
   "title": "Recovery Flow",
   "category": "Recovery",
   "duration_sec": 1800,
+  "description": "Half an hour of easy riding with one block a little firmer than the rest. A good default for a rest day when sitting still does not appeal, and a good first ride back after time off.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":660,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":660,\"time_end_sec\":960,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":960,\"time_end_sec\":1320,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":2},{\"time_start_sec\":1320,\"time_end_sec\":1800,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

@@ -19,6 +19,25 @@ data class ClassTemplateEntity(
     @ColumnInfo(name = "duration_sec")
     val durationSec: Int,
 
+    /**
+     * What this ride is for, and what it will feel like (PLAN 23.2.7).
+     *
+     * The only authored prose in the library. Everything else on this row is
+     * *derived* from the blocks — the title, the duration, the shape sentence,
+     * the chart — so the app can say a class is "20 min · Climbs · four hard
+     * efforts" and cannot say why a rider would choose it. That gap is what
+     * made the Start Class screen answer *"here are 52 numbers"* to somebody
+     * meeting it for the first time (22.7.5).
+     *
+     * Empty rather than nullable, and the distinction is deliberate: there is
+     * no third claim here. A class either has a description or has not been
+     * given one yet, and both read as "nothing to show" — unlike
+     * `target_position` or `heart_rate_bpm`, where absent means something.
+     * `build.py`'s R13 refuses to write a bundle in which any class is empty.
+     */
+    @ColumnInfo(name = "description", defaultValue = "")
+    val description: String = "",
+
     @ColumnInfo(name = "intervals_json")
     val intervalsJson: String,
 

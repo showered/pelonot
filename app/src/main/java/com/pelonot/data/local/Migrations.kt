@@ -417,10 +417,34 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 16 → 17: what a class is *for* (PLAN 23.2.7).
+     *
+     * `NOT NULL DEFAULT ''` rather than nullable, because there is no third
+     * claim to make: a class either carries a description or does not, and both
+     * draw as nothing. Not backfilled, and it does not need to be —
+     * `ClassTemplateSeeder` upserts every bundled class whenever the bundle's
+     * fingerprint moves, and adding 72 descriptions moved it. So an existing
+     * tablet gets them on its next launch, from the assets it already has.
+     *
+     * A **retired** class keeps its empty string for ever, which is correct:
+     * it is out of the library and only ever resolved by id from history, where
+     * nothing draws a description.
+     */
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `class_templates` ADD COLUMN `description` " +
+                    "TEXT NOT NULL DEFAULT ''"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16
+        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
+        MIGRATION_16_17
     )
 }

@@ -352,6 +352,43 @@ same additive shape as `target_position`, so every class written before it
 decodes unchanged. Unlike position there is no third claim: absent is not "the
 rider chooses", it is simply the ordinary case.
 
+### R13 — Every class says what it is for
+
+**The only prose in this library, and the only rule a build cannot check for
+truth.** Everything else about a class is *derived from its blocks* — the title,
+the duration, the shape sentence, the chart on the Start Class screen — so the
+app can tell a rider that a ride is "20 min · Climbs · four hard efforts" and
+cannot tell them why they would choose it, what it trains, or what it will feel
+like at minute fourteen. That gap is what made the Start Class screen answer
+*"here are 52 numbers"* to somebody meeting the app for the first time.
+
+The descriptions live in **`descriptions.py`**, keyed by id, deliberately apart
+from the blocks in `catalogue.py`. Two reasons: the catalogue stays readable as
+blocks of real time, and these 72 sentences have to be **read as a set** to be
+any good — the failure mode is not one wrong sentence, it is 72 that all sound
+alike, which a rider learns to skip within four classes.
+
+What `build.py` and `ClassLibraryAssetsTest` hold:
+
+- every class has one, between **80 and 320 characters**;
+- it does **not name its own duration**, which is drawn beside it — R10's
+  failure, one surface along;
+- it does **not name its own category**, also drawn beside it. This is the most
+  useful rule of the five, and not because of repetition: it is what forces
+  *"the hardest pace you could hold for about an hour"* instead of
+  *"threshold"*. The plain sentence is the one a first-time rider can act on,
+  and the jargon was never doing the work anyway;
+- **no units and no acronyms** — no watts, no kilojoules, no FTP, no rpm. A
+  rider choosing tonight's ride is deciding, not reading a measurement. The
+  *vocabulary* of riding is fine: "a firm effort", "a heavy cadence", "flat
+  out" all describe feelings;
+- and a description **promising a position** has to be describing blocks that
+  ask for it. That is R11 and PLAN 25.4.2 again, and it is the only way a
+  sentence here can be wrong in a way arithmetic can catch.
+
+What no rule can check is whether the sentence is *true* of the ride. Read it
+against the blocks.
+
 ---
 
 ## The seven categories

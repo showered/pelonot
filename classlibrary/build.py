@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import catalogue  # noqa: F401  (importing it is what populates the catalogue)
 from builder import CADENCE_GOVERNS, CATALOGUE, POWER_GOVERNS
+from descriptions import DESCRIPTIONS
 
 ASSETS = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -73,6 +74,20 @@ CADENCE_CATEGORIES = {"Climbs", "Sprints"}
 # ceiling rather than a floor, because the failure mode is the field spreading
 # until "one instruction at a time" means "always the cadence".
 CADENCE_LIBRARY_CEILING = 1 / 3
+
+# R13 — the description (PLAN 23.2.7). Two or three sentences: long enough to
+# say what the ride is and what it trains, short enough that a rider standing
+# over a bike reads it rather than skims past it.
+DESCRIPTION_MIN = 80
+DESCRIPTION_MAX = 320
+
+# R13 — words that belong where a measurement is being *read*, not where a
+# class is being *chosen*. CLAUDE.md's standing rule and Phase 26's argument:
+# a rider picking tonight's ride is deciding, and "FTP" in that sentence is the
+# app showing its working. The zone *names* are fine — "threshold effort"
+# describes a feeling — so this bans the units and the acronyms, not the
+# vocabulary of riding.
+JARGON = ["FTP", "watts?", "kilojoules?", "kJ", "W/kg", "VO2", "rpm"]
 
 
 def governs(cadence):
@@ -349,6 +364,53 @@ def library_problems(sessions):
         if titles.count(title) > 1:
             out.append(f"[R10] \"{title}\" is the name of {titles.count(title)} classes")
 
+    # R13 — the description says what the ride is for (PLAN 23.2.7).
+    #
+    # This is the first authored prose in the library, and a build rule cannot
+    # check whether a sentence is *true*. What it can check is the shape, and
+    # the shape is where R10's failure lived: a description that repeats the
+    # duration, the category or the block count is spending the rider's
+    # attention on three things already drawn beside it.
+    #
+    # The substantive half is the last one. A description promising a position
+    # or a cadence character is making a claim the blocks have to keep — the
+    # same rule as R11 and 25.4.2, one surface along, and the only way an
+    # authored sentence can be *wrong* in a way arithmetic can catch.
+    for session in sessions:
+        text = session.description
+        if not text.strip():
+            out.append(f"[R13] {session.id} has no description")
+            continue
+        if len(text) < DESCRIPTION_MIN or len(text) > DESCRIPTION_MAX:
+            out.append(
+                f"[R13] {session.id} description is {len(text)} characters; "
+                f"the band is {DESCRIPTION_MIN}-{DESCRIPTION_MAX}"
+            )
+        minutes = session.duration_sec // 60
+        if re.search(rf"\b{minutes}\b", text):
+            out.append(
+                f"[R13] {session.id} description names its own length "
+                f"({minutes}); the duration is already on the screen beside it"
+            )
+        if re.search(rf"\b{re.escape(session.category)}\b", text, re.IGNORECASE):
+            out.append(
+                f"[R13] {session.id} description names its own category "
+                f"(\"{session.category}\"), which is drawn beside it"
+            )
+        for word in JARGON:
+            if re.search(rf"\b{word}\b", text, re.IGNORECASE):
+                out.append(
+                    f"[R13] {session.id} description says \"{word}\"; a rider "
+                    "choosing a class is not reading a measurement (Phase 26)"
+                )
+        # A position word is a promise the blocks have to keep.
+        stands = any(b[3] == "standing" for b in session.blocks)
+        if re.search(r"out of the saddle|standing", text, re.IGNORECASE) and not stands:
+            out.append(
+                f"[R13] {session.id} description promises standing and no "
+                "block asks for it"
+            )
+
     ids = [s.id for s in sessions]
     for id in set(ids):
         if ids.count(id) > 1:
@@ -388,12 +450,20 @@ def to_json(session):
         "title": session.title,
         "category": session.category[0] if isinstance(session.category, tuple) else session.category,
         "duration_sec": at,
+        "description": session.description,
         "intervals_json": json.dumps(intervals, separators=(",", ":")),
     }
 
 
 def main():
     sessions = CATALOGUE
+    # PLAN 23.2.7. The prose lives in its own module so the 72 sentences can be
+    # read as a set — the failure mode is not a wrong sentence, it is 72 that
+    # all sound alike. A class with no entry gets an empty string and R13
+    # refuses to write, which is what makes a new class carry one.
+    for session in sessions:
+        session.description = DESCRIPTIONS.get(session.id, "")
+
     for session in sessions:
         # `klass` takes (display name, directory) so the author writes one thing.
         session.directory = session.category[1]

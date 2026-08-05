@@ -702,7 +702,7 @@ Phase 26's "ten answers where three will do" (26.3) on the screen with the most
 riding on it. The chart is height-for-zone and width-for-time and it is the good
 answer — the owner says so directly, *"I like the chart"*.
 
-- [ ] **22.7.5a** **The intervals come off this screen.** Not shrunk, not
+- [x] **22.7.5a** ***Done and observed on the tablet AVD.*** The escape was built after all, and the reason is that it makes the removal a *move* rather than a deletion: the distinction is **who is asking**. A first-time rider is deciding whether they want the ride; a rider who taps *See the blocks* has asked the question the tiles answer, and for them 11.7's *"this is the screen a class is studied on"* was always right. Same `IntervalCard`, same grid, in a `ModalBottomSheet` — no new work and nothing lost. **The intervals come off this screen.** Not shrunk, not
       collapsed behind a disclosure by default — off. What replaces them is
       nothing, because the chart is already the picture of them. **Keep one
       escape**: a rider who genuinely wants the block list is a real rider and
@@ -710,18 +710,18 @@ answer — the owner says so directly, *"I like the chart"*.
       blocks"* that opens over the screen. Build the removal first and add the
       escape only if the screen looks like it is missing something, rather than
       keeping the grid on a technicality
-- [ ] **22.7.5b** **The screen is centred and short.** The owner's own
+- [x] **22.7.5b** ***Done, and it found a layout bug that had been hidden by the thing being removed.*** `Alignment.CenterVertically` had never once run: the `LazyColumn` takes `weight(1f)` for its *horizontal* share of the Row and so was only ever as tall as its own content, and with thirteen tiles in it the content always overflowed, so the column filled the panel by accident. Taking the tiles out left it hanging off the app bar. It is `fillMaxHeight()` now. **The screen is centred and short.** The owner's own
       permission — *"It can be centred in the middle if you like"* — and it lines
       up with 22.7.1, which has now been the right answer on four screens. The
       target shape: the class's name, one line saying how long and how hard, the
       chart, the description (23.2.7), and Start. Nothing else. The leaderboard
       column stays where 22.7.3 put it, because that item's reasoning is about
       *whose* facts they are and is untouched by this one
-- [ ] **22.7.5c** **The empty-interval branch must survive the rewrite.** A class
+- [x] **22.7.5c** ***Done — kept, and centred with the rest.*** **The empty-interval branch must survive the rewrite.** A class
       with unreadable interval data currently says so in the error colour and
       offers a free ride. That path has nothing to do with the tiles and is easy
       to delete by accident while removing them
-- [ ] **22.7.5d** **Judge it against the first-time rider, not against the
+- [x] **22.7.5d** ***Done.*** Seen on the tablet AVD on `CLB-01` (thirteen blocks, no board) and `END-01` (six blocks, a board of ten with `⋮` and *and 6 more*). Both draw whole, both centred, neither scrolls. **Judge it against the first-time rider, not against the
       diff.** This whole note came from the owner watching somebody meet the app
       for the first time. The question the screen has to answer for that person
       is *what am I about to do and will I like it* — and the honest reading is

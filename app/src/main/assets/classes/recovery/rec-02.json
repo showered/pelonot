@@ -3,5 +3,6 @@
   "title": "Loosen the Legs",
   "category": "Recovery",
   "duration_sec": 900,
+  "description": "Easy riding with two brief bursts of fast, light pedalling in the middle. The bursts are about pedal speed rather than effort \u2014 they wake the legs up without asking anything of them.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":240,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":240,\"time_end_sec\":300,\"target_cadence_min\":105,\"target_cadence_max\":115,\"target_power_zone\":1,\"governed_by\":\"cadence\"},{\"time_start_sec\":300,\"time_end_sec\":360,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":360,\"time_end_sec\":420,\"target_cadence_min\":105,\"target_cadence_max\":115,\"target_power_zone\":1,\"governed_by\":\"cadence\"},{\"time_start_sec\":420,\"time_end_sec\":480,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":480,\"time_end_sec\":660,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":660,\"time_end_sec\":900,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

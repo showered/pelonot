@@ -3,5 +3,6 @@
   "title": "The Long Climb",
   "category": "Climbs",
   "duration_sec": 1800,
+  "description": "One long block at a firm effort and a slow, heavy cadence, the way a real hill is ridden. No intervals to count and no rests to look forward to, which is exactly what a long ascent feels like.",
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":180,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":180,\"time_end_sec\":360,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":360,\"time_end_sec\":480,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":480,\"time_end_sec\":660,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":3,\"governed_by\":\"cadence\"},{\"time_start_sec\":660,\"time_end_sec\":1560,\"target_cadence_min\":60,\"target_cadence_max\":70,\"target_power_zone\":4,\"governed_by\":\"cadence\"},{\"time_start_sec\":1560,\"time_end_sec\":1680,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":1680,\"time_end_sec\":1800,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
 }

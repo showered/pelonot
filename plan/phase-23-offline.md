@@ -352,7 +352,7 @@ cuts both ways and both belong in the item: it is why it is worth doing (a
 generator cannot produce it) and why it needs its own rules (a generator cannot
 police it either).
 
-- [ ] **23.2.7a** **`description` is a field on the class, authored in
+- [x] **23.2.7a** ***Done.*** **`description` is a field on the class, authored in
       `catalogue.py`, carried by `build.py` into the asset JSON.** Follow the
       existing path exactly — `to_json`, the entity's new column, a migration
       (12.5, and `class_templates` is `@Upsert` since 23.2.6c, *not* REPLACE),
@@ -360,14 +360,14 @@ police it either).
       `assets/class_library.json` so an already-seeded tablet actually receives
       it. **A catalogue change that is not rebuilt does not reach a tablet**,
       which is the trap CLAUDE.md names
-- [ ] **23.2.7b** **Two or three sentences, and the rules are R10's rules one
+- [x] **23.2.7b** ***Done.*** **Two or three sentences, and the rules are R10's rules one
       level down.** What it says: what the ride *is*, what it *trains*, and what
       it will feel like. What it must not say: the duration, the category or the
       block count — all three are already on the screen beside it, and R10
       exists because the titles were doing exactly that. No FTP, no watts, no
       kilojoules: this is a rider choosing, not reading a measurement, which is
       CLAUDE.md's standing rule and Phase 26's whole argument
-- [ ] **23.2.7c** **A build rule for what a build *can* check.** Not the prose —
+- [x] **23.2.7c** ***Done, and seen failing before it was believed*** — five deliberate breakages in one run produced five named refusals and nothing was written. **A build rule for what a build *can* check.** Not the prose —
       `build.py` cannot know whether a sentence is true — but it can hold the
       shape: every class has one, it is within a length band, it does not end in
       a digit (R10's own trap), and it does not contain the class's own
@@ -375,13 +375,13 @@ police it either).
       description naming a position (*"out of the saddle"*) or a cadence
       character (*"grinding"*) is a promise the blocks have to keep, which is
       R11 and 25.4.2's rule arriving in a second place
-- [ ] **23.2.7d** **72 of them is the cost and it is the real one.** This cannot
+- [x] **23.2.7d** ***Done.*** **72 of them is the cost and it is the real one.** This cannot
       be generated from a template without producing 72 sentences that all sound
       the same, which would be worse than none — a rider scanning the library
       would learn to skip them within four classes. Write them per class, in the
       voice Phase 26 describes, and accept that the categories will share
       vocabulary because the rides genuinely do
-- [ ] **23.2.7e** **Where it shows.** The Start Class screen is what the note is
+- [x] **23.2.7e** ***Done — the Start Class screen, and only there.*** The library list was left alone as this item predicted: three cards across already carrying a title and a shape sentence, and a third line there is 26.3's failure mode. **Where it shows.** The Start Class screen is what the note is
       about (22.7.5b) and is where the whole description goes. Whether a line of
       it also belongs on the **library list** is a separate question and
       probably no: that screen is three cards across and already carries a title

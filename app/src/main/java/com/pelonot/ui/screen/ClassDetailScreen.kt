@@ -26,11 +26,18 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -128,6 +136,16 @@ fun ClassDetailScreen(
 
         val profile = remember(plan.intervals) { ClassProfile.of(plan.intervals) }
 
+        // 22.7.5a's escape. Nothing is drawn for it until a rider asks.
+        var showingBlocks by rememberSaveable { mutableStateOf(false) }
+        if (showingBlocks) {
+            ClassBlocksSheet(
+                intervals = plan.intervals,
+                ftp = ftp,
+                onDismiss = { showingBlocks = false }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -152,7 +170,16 @@ fun ClassDetailScreen(
                     .fillMaxWidth()
             ) {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    // `weight` is the *horizontal* share of the Row; without
+                    // `fillMaxHeight` this list is only as tall as its own
+                    // content, and `Alignment.CenterVertically` below then has
+                    // nothing to centre within. It was invisible until 22.7.5a
+                    // took the interval grid out — with thirteen tiles in here
+                    // the content always overflowed, so the list filled the
+                    // panel by accident and the centring never ran.
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     contentPadding = PaddingValues(
                         start = MaterialTheme.spacing.large,
                         end = MaterialTheme.spacing.large,
@@ -167,7 +194,13 @@ fun ClassDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(
                         MaterialTheme.spacing.large,
                         Alignment.CenterVertically
-                    )
+                    ),
+                    // 22.7.5b — the owner's own permission: *"It can be centred
+                    // in the middle if you like."* With the interval grid gone
+                    // the column holds four short things, none of which fills
+                    // the panel, and left-aligning them hangs the whole screen
+                    // off one edge. Same rule as 22.7.1, on a fifth screen.
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                 // How long, how hard, what shape — one line, and the profile
                 // under it says the same thing without a word (22.7.2). The
@@ -187,12 +220,15 @@ fun ClassDetailScreen(
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // A sentence is read, so it is capped where it stands
-                        // rather than centred over left-aligned content.
+                        textAlign = TextAlign.Center,
+                        // A sentence is read, so it is capped where it stands.
                         modifier = Modifier.readableText()
                     )
                 }
 
+                // 22.7.5c. Nothing to do with the tiles and easy to delete by
+                // accident while removing them: a class whose intervals will
+                // not parse still has to say so and still has to be rideable.
                 if (plan.intervals.isEmpty()) {
                     item {
                         Text(
@@ -200,6 +236,7 @@ fun ClassDetailScreen(
                                 "cannot be shown. You can still ride it as a free ride.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
                             modifier = Modifier.readableText()
                         )
                     }
@@ -211,23 +248,52 @@ fun ClassDetailScreen(
                     item { ClassProfileChart(profile = profile) }
                 }
 
-                    if (plan.intervals.isNotEmpty()) {
-                        // Tiles, not a stack of full-width rows. Each row used to
-                        // carry four facts down its left edge with 1200 dp of empty
-                        // panel beside them, and the seventh block of a 30-minute
-                        // class fell below the fold — on the one screen whose job
-                        // is to show the whole class (22.6, 22.4).
+                    // 23.2.7. **What the ride is for** — the one thing on this
+                    // screen the blocks cannot say. Everything above it is
+                    // derived from them, so a rider could read the title, the
+                    // length, the shape sentence and the chart and still not
+                    // know why they would pick this class over the one beside
+                    // it.
+                    //
+                    // Below the picture rather than above it: the chart is what
+                    // a class is recognised by from across the room, and these
+                    // are the sentences read once a rider has stopped on one.
+                    plan.description?.let { description ->
                         item {
-                            WideGrid(
-                                items = plan.intervals,
-                                minCellWidth = 300.dp,
-                                spacing = MaterialTheme.spacing.small,
-                                // One tile carrying a position chip is taller than
-                                // its neighbours, and a row of four where the
-                                // fourth is 20 dp taller reads as a mistake.
-                                equalHeightRows = true
-                            ) { interval ->
-                                IntervalCard(interval = interval, ftp = ftp)
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.readableText()
+                            )
+                        }
+                    }
+
+                    // **The interval tiles are gone (22.7.5a).** The owner's
+                    // note: *"underneath it are a million panels (all the
+                    // intervals) and it's just too much and is confusing to new
+                    // users."* CLB-01 is thirteen blocks, so that was 52 facts
+                    // on the last screen before a rider starts pedalling — and
+                    // every one of them is already drawn by the chart above,
+                    // which is 26.3's "ten answers where three will do" on the
+                    // screen with the most riding on it.
+                    //
+                    // Three previous notes on this screen were all answered by
+                    // *moving* the tiles (22.7.2, 22.7.3, 22.4.3) and none
+                    // asked whether they belonged here at all. The argument
+                    // that put them here was that this is the screen a rider
+                    // *studies* a class on — true of a rider who knows what Z4
+                    // is, and this screen's job is the one who does not.
+                    //
+                    // They are still one tap away rather than deleted: a rider
+                    // who wants the block list is a real rider, the data is
+                    // already parsed, and [ClassBlocksSheet] costs nothing to
+                    // anybody who does not open it.
+                    if (plan.intervals.isNotEmpty()) {
+                        item {
+                            TextButton(onClick = { showingBlocks = true }) {
+                                Text("See the blocks")
                             }
                         }
                     }
@@ -374,6 +440,67 @@ private fun RivalPicker(
                             }
                         }
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Every block of the class, on request (PLAN 22.7.5a).
+ *
+ * The tiles were on the Start Class screen itself until the owner reported it
+ * as *"a million panels"*, and taking them off is the fix. This is not a
+ * softened version of that: it is what stops the removal being a *deletion*.
+ *
+ * The distinction that makes both true at once is **who is asking**. A rider
+ * meeting the app for the first time is deciding whether they want to do this
+ * ride, and thirteen cards of zone-cadence-watts-duration answer a question
+ * they have not asked. A rider who taps *See the blocks* has asked it exactly,
+ * and for them the tiles were always the right answer — 11.7's note that this
+ * is the screen a class is *studied* on is true of that rider and only that
+ * rider.
+ *
+ * So the content is unchanged, deliberately: same [IntervalCard], same grid,
+ * same equal-height rows. Nothing here is new work and nothing is lost.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ClassBlocksSheet(
+    intervals: List<Interval>,
+    ftp: Double,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = MaterialTheme.spacing.large,
+                end = MaterialTheme.spacing.large,
+                bottom = MaterialTheme.spacing.doubleExtraLarge
+            ),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+        ) {
+            item {
+                Text(
+                    text = "The blocks",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            item {
+                WideGrid(
+                    items = intervals,
+                    minCellWidth = 300.dp,
+                    spacing = MaterialTheme.spacing.small,
+                    // One tile carrying a position chip is taller than its
+                    // neighbours, and a row of four where the fourth is 20 dp
+                    // taller reads as a mistake.
+                    equalHeightRows = true
+                ) { interval ->
+                    IntervalCard(interval = interval, ftp = ftp)
                 }
             }
         }
