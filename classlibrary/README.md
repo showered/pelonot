@@ -195,7 +195,26 @@ target; a class earns its blocks from what it is for.
 
 Name the shape and the demand — "Threshold 3×8", "Descending Climbs", "Sweet
 Spot Over/Under". Not the category and the length, which the rider can already
-see. *Not tested.*
+see.
+
+**It said *not tested*, and every one of the 72 titles broke it.** Each ended
+in its own duration — "The Long Climb 30" drawn beside a chip already reading
+`30 min`, on the library, the start screen, the ride screen and in history —
+which is the exact thing the sentence above bans, repeated seventy-two times
+in the file the sentence is about. That is what an untested rule is worth: it
+described the library nobody had built. `build.py` now checks it, and the
+titles are the shape and the demand alone.
+
+Two things the check had to get right, both learned by running it:
+
+- **It matches the class's own length, not a trailing number.** `SWT-01` is
+  "Sweet Spot 5 + 4" and the 4 is a block length; the looser version flagged it
+  on the first run.
+- **Titles must now be unique on their own**, because the duration was quietly
+  doing that work. Stripping it produced no collisions across all 72, but
+  nothing would have caught the next one, so uniqueness is checked here too.
+
+A rename is safe — see the note at the end of this rule.
 
 **And it may only name what the intervals carry.** PLAN.md **25.4.2**. Four
 classes were named after a position their blocks did not prescribe: `END-08`

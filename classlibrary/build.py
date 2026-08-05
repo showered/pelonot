@@ -12,6 +12,7 @@ ships, and a generator nobody runs cannot vouch for them.
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -320,6 +321,33 @@ def library_problems(sessions):
                             f"[R9] {a.id} and {b.id} are both {category} "
                             f"{duration // 60} min and differ in {differing} block(s)"
                         )
+
+    # R10 — the title names the shape and the demand, not the length. The rule
+    # was written down and marked "not tested", and all 72 titles broke it:
+    # "The Long Climb 30" sits beside a chip already reading "30 min", on the
+    # library, on the start screen, on the ride screen and in history. A shape
+    # count ("4×2", "5×5") is the demand and stays.
+    #
+    # It is the class's *own length* that is banned, not any trailing number:
+    # `SWT-01` is "Sweet Spot 5 + 4", where the 4 is a block length and the
+    # class is 30 minutes. Matching against the duration rather than against
+    # the shape of the string is what tells those apart — and it is not a
+    # hypothetical, because the looser version flagged exactly that class on
+    # its first run.
+    for session in sessions:
+        minutes = session.duration_sec // 60
+        if re.search(rf"(^|\s){minutes}$", session.title):
+            out.append(
+                f"[R10] {session.id} \"{session.title}\" ends in its own length; "
+                "the duration is already on every surface that shows the title"
+            )
+
+    # R10 — and two classes may not share a name, which is the thing the
+    # duration was quietly doing. Without it the check has to be real.
+    titles = [s.title for s in sessions]
+    for title in set(titles):
+        if titles.count(title) > 1:
+            out.append(f"[R10] \"{title}\" is the name of {titles.count(title)} classes")
 
     ids = [s.id for s in sessions]
     for id in set(ids):

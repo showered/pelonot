@@ -1,6 +1,6 @@
 {
   "id": "REC-09",
-  "title": "Long Recovery 45",
+  "title": "Long Recovery",
   "category": "Recovery",
   "duration_sec": 2700,
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":300,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":300,\"time_end_sec\":1200,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":1200,\"time_end_sec\":1800,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":1800,\"time_end_sec\":2400,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":1},{\"time_start_sec\":2400,\"time_end_sec\":2700,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"

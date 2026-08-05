@@ -1,6 +1,6 @@
 {
   "id": "SWT-01",
-  "title": "Sweet Spot 5 + 4 20",
+  "title": "Sweet Spot 5 + 4",
   "category": "Sweet Spot",
   "duration_sec": 1200,
   "intervals_json": "[{\"time_start_sec\":0,\"time_end_sec\":120,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":120,\"time_end_sec\":240,\"target_cadence_min\":80,\"target_cadence_max\":90,\"target_power_zone\":2},{\"time_start_sec\":240,\"time_end_sec\":300,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":3},{\"time_start_sec\":300,\"time_end_sec\":600,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":4},{\"time_start_sec\":600,\"time_end_sec\":780,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1},{\"time_start_sec\":780,\"time_end_sec\":1020,\"target_cadence_min\":85,\"target_cadence_max\":95,\"target_power_zone\":4},{\"time_start_sec\":1020,\"time_end_sec\":1080,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":2},{\"time_start_sec\":1080,\"time_end_sec\":1200,\"target_cadence_min\":75,\"target_cadence_max\":85,\"target_power_zone\":1}]"
