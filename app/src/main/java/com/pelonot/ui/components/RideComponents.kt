@@ -403,14 +403,27 @@ fun MetricReadout(
         horizontalAlignment = Alignment.Start
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(
+            // The number is the weighted one, so the **unit is measured first
+            // and keeps its width**. It was the other way round, and the way a
+            // `Row` measures meant a three-digit value took what it wanted and
+            // the label got the remainder: on the overlay over a film, `100
+            // RPM / 296 W / 188 BPM` rendered as `100 RP`, `296` with the W
+            // gone, and `188 BP`. That is the clipping the owner reported in
+            // 24.3.16 — where it was put down to the race chip crowding the
+            // band, and the chip was removed. The chip was not the cause. This
+            // tile clips on its own as soon as the rider is working.
+            //
+            // Sized against the widest value the tile can hold rather than the
+            // value in it, so a readout changing twice a second is drawn at one
+            // size instead of pulsing between two as it crosses 99.
+            ShrinkToFitText(
                 text = value,
+                measureAgainst = "0".repeat(maxOf(value.length, WIDEST_METRIC_DIGITS)),
                 fontSize = valueSize,
-                lineHeight = valueSize,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-2).sp,
                 color = valueColor,
-                maxLines = 1
+                modifier = Modifier.weight(1f, fill = false)
             )
             Spacer(Modifier.width(4.dp))
             Text(
@@ -1196,3 +1209,13 @@ fun ProgressArc(
         content()
     }
 }
+
+/**
+ * How many digits a live metric tile reserves room for.
+ *
+ * Every metric on both surfaces tops out in three digits — cadence and heart
+ * rate around 200, resistance at 100, and power under 1000 on a bike anybody
+ * is riding. Reserving that width is what lets a tile pick one type size and
+ * keep it, instead of resizing under the rider as the number crosses 99.
+ */
+private const val WIDEST_METRIC_DIGITS = 3

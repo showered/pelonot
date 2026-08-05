@@ -785,7 +785,17 @@ fun ShrinkToFitText(
     fontWeight: FontWeight? = null,
     letterSpacing: TextUnit = TextUnit.Unspecified,
     minFontSize: TextUnit = fontSize * 0.6f,
-    textAlign: TextAlign? = null
+    textAlign: TextAlign? = null,
+    /**
+     * The string the size is chosen for, when that is not [text] itself.
+     *
+     * A live readout changes twice a second, and sizing each value on its own
+     * makes `99` → `100` a visible jump in type size — the number pulsing as
+     * the rider pedals, which is worse than the clipping this was built to
+     * stop. Pass the widest value the tile can ever hold ("000") and every
+     * value in that tile is drawn at one size, chosen once.
+     */
+    measureAgainst: String = text
 ) {
     val measurer = rememberTextMeasurer()
     val base = LocalTextStyle.current.copy(
@@ -796,13 +806,13 @@ fun ShrinkToFitText(
 
     BoxWithConstraints(modifier = modifier) {
         val available = constraints.maxWidth
-        val size = remember(text, available, fontSize, base) {
+        val size = remember(measureAgainst, available, fontSize, base) {
             var candidate = fontSize
             // Whole sp: the step is invisible at these sizes and it bounds the
             // loop at a couple of dozen measurements in the worst case.
             while (candidate > minFontSize) {
                 val width = measurer.measure(
-                    text = text,
+                    text = measureAgainst,
                     style = base.copy(fontSize = candidate),
                     maxLines = 1,
                     softWrap = false

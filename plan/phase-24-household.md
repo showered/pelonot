@@ -722,6 +722,35 @@ downgrade — it is why the feature can afford to be interesting.
       It is four lines of pure derivation, nothing draws it, and it is the one
       part of the attempt that survives a rethink about *where*.
 
+      **Correction, 5 August: the race chip was not the cause of the
+      clipping.** The paragraph above blames a 132 dp chip for starving the
+      weighted readouts, and the chip is gone — but the readouts still clip,
+      measured on the tablet AVD with the overlay over YouTube and **no race
+      chip on the band at all**: `100 RPM / 296 W / 188 BPM` drew as `100 RP`,
+      `296` with the W gone, and `188 BP`. The tile clips on its own as soon as
+      the rider is working hard enough for three digits, which on the ride
+      screen is most of any class above Z2 and on the overlay is every one of
+      them, because the strip is narrower.
+
+      The cause was in `MetricReadout` and is older than the race: the value
+      and the unit sat in a `Row` with the value unweighted, so a `Row`
+      measured the number first, gave it what it asked for, and handed the
+      label the remainder. **The number is the weighted one now**, so the unit
+      is measured first and keeps its width, and the digits shrink to fit —
+      sized against `"000"` rather than against the current value, or a readout
+      changing twice a second would resize as it crossed 99, which is worse
+      than the clipping. `ShrinkToFitText` grew a `measureAgainst` parameter
+      for it, which is 11.6.17's component doing 11.6.8's *reserve the widest
+      string* job.
+
+      **What this changes about the item.** Not the decision — the owner looked
+      at a strip with a race chip on it and said take it out, and that stands.
+      What it changes is the *evidence*: "there is no width that buys a fifth
+      chip on that row" was measured against a row that was already
+      over-committed by a bug, so the width available for a rethink is not
+      known and the sentence should not be read as one. **Observed fixed on the
+      tablet AVD over YouTube**, both surfaces, at three digits.
+
 - [ ] **24.3.15 The toggle: race by output, or race by distance.** Deferred on
       the owner's own *"otherwise just add it to the plan"*, and the reason it
       is not trivial is not the plumbing — that is done — but **where the
