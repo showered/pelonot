@@ -14,3 +14,5 @@ local.properties
 /web/config.js
 # A short-lived test session, never committed.
 /web/_session.json
+# The live auth config, saved as 15.7.6's rollback. Never committed.
+/supabase/_auth_config.json

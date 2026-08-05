@@ -180,8 +180,13 @@ keyboard should be possible on the web and optional on the bike.**
       happens: rotating the one you remember leaves the one on the internet
       working. Say which form this project uses, in `config.example.js` and in
       `cloud.properties`, and use it in both places
-- [ ] **17.16.4** **Point the project's Site URL at the host now that there is
-      one.** Email confirmation links go to *Authentication → URL
+- [x] **17.16.4** **Point the project's Site URL at the host now that there is
+      one.** ***Done — see 15.7.6***, where it arrived a second time as a
+      rider-visible fault rather than as tidiness, which is what got it built.
+      `site_url` and `uri_allow_list` are both set and the change was measured
+      against the link `generate_link` mints. Original note follows.
+
+      Email confirmation links go to *Authentication → URL
       Configuration → Site URL*, so with it still pointing at a dev address
       every account created from the live page gets a confirmation link to
       somewhere that is not running — and 15.1's "signed up, not confirmed, no

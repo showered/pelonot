@@ -571,9 +571,50 @@ beside it.
       self-hoster's build shows neither by construction rather than by two
       separate checks that could drift
 
-- [ ] **15.7.6** **The confirmation link points at `localhost` — the owner's
-      note, 5 August 2026.** Verbatim: *"Verification email on supabase points to
+- [x] **15.7.6** **The confirmation link points at `localhost` — the owner's
+      note, 5 August 2026.** ***The two settings are done and measured against
+      the live project; the `link.js` half is in the repo and not yet on the
+      internet.*** Verbatim: *"Verification email on supabase points to
       localhost. Please fix, you have access to my supabase with API key."*
+
+      **What was there, read before anything was written:** `site_url =
+      'http://localhost:3000'` — Supabase's scaffold value, never changed — and
+      `uri_allow_list = ''`, empty. **What is there now:**
+      `https://pelonot.showered.workers.dev` and that host plus `/**`. The
+      `diff` after the write names those two fields and no others out of 242.
+
+      **`supabase/auth_config.py` is what made it safe to do at all**, and it is
+      the shape this item asked for rather than a curl in a plan file: `backup`
+      writes the whole config to a git-ignored file first, `set-site-url` sends
+      **only** the two keys, `diff` re-reads and reports every field that moved.
+      The owner authorised it directly (5 August) after being shown that a wrong
+      value here breaks signing in for accounts that already exist.
+
+      **A 200 says the value was stored, not that a rider's link carries it**,
+      which is what 15.7.5 was getting at — so the script has a `check-link`
+      that mints the confirmation link `admin/generate_link` would send *without
+      sending it*, on a throwaway account it deletes on the way out. Measured:
+      `redirect_to = https://pelonot.showered.workers.dev`, where it was
+      `localhost:3000`. **It prints the shape of the link and never the link**:
+      the token beside it is a live single-use credential, and a check that
+      leaves one in a scrollback is a worse habit than the fault it checks for.
+
+      **The third part changed shape while being built, and the reason is worth
+      keeping.** `emailRedirectTo` was going to carry the pairing code back on
+      the fragment, and that is wrong twice: Supabase hands the confirmed
+      session back **in the fragment**, so a code sitting there is exactly what
+      it overwrites — and by the time anybody has been to their inbox the five
+      minutes are gone anyway, which is **15.6.12 arriving from the other end**.
+      It names the pairing *page* instead. What the rider needs on their return
+      is to be signed in where the bike's next code can be typed, which is the
+      field 17.16.6 put there.
+
+      **What is left, and neither is a session's:** `./web/check-deployed.sh`
+      reports `link.js` DRIFTED, so the client half reaches nobody until the
+      owner redeploys (17.16.2 again); and the end-to-end check — a real
+      address, a real sign-up, the link tapped on a phone — needs an inbox.
+
+      The original write-up follows.
 
       **This is the most severe defect in the onboarding path and it is not a
       cosmetic one.** Everything else in the owner's note is a screen that could

@@ -166,7 +166,28 @@ async function submit(event) {
       const { error: failure } = await client.auth.signInWithPassword({ email, password });
       if (failure) throw failure;
     } else {
-      const { data, error: failure } = await client.auth.signUp({ email, password });
+      // `emailRedirectTo` names where the rider comes back to (PLAN 15.7.6,
+      // point 3). Without it Supabase builds the link from `site_url` alone and
+      // drops the rider on the site root, which is a different page from the
+      // one they were half way through.
+      //
+      // **This page, and not the code they arrived with.** Carrying the code
+      // across the email was the obvious version and it is wrong twice over:
+      // Supabase hands the confirmed session back *in the fragment*, so a
+      // pairing code sitting there is the thing it overwrites — and by the time
+      // anybody has been to their inbox the five minutes are gone anyway, which
+      // is 15.6.12 arriving from the other end. What the rider needs on their
+      // return is to be signed in on the pairing page, where the bike's next
+      // code can be typed into the field 17.16.6 put there.
+      //
+      // The address has to be in the project's `uri_allow_list` or Supabase
+      // ignores it and falls back to `site_url` without saying so, which is why
+      // `supabase/auth_config.py` sets both fields in one call.
+      const { data, error: failure } = await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: location.origin + location.pathname }
+      });
       if (failure) throw failure;
       if (!data.session) {
         error.classList.remove('error');
