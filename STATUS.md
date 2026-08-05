@@ -48,7 +48,7 @@ currently open and should not be, and one deploy that has not been run.
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. Seen on the real bike as well as the emulator; what is owed is watching it move under somebody actually pedalling |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
-| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). What is left is the overlay permission still being explained only at ride start (19.1.6), a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). **The thirty-fifth sitting then fixed the one the owner could not get past**: signing in by QR from a phone that was *already* signed in sat on three dots for ever, because the pairing page called Supabase from inside an auth callback and deadlocked the session lock it holds (15.6.14) — reproduced, measured with `navigator.locks.query()`, and fixed. The code is also shown by default rather than behind a button and replaces itself while the screen is up (15.6.15). What is left is **not the app**: the project's confirmation emails go through Supabase's built-in test sender, capped at **two an hour** and documented as refusing addresses outside the project team, so a real sign-up cannot be completed or repeated until custom SMTP exists (15.7.7 — the owner's). Beside that: the overlay permission still explained only at ride start (19.1.6), a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
 
 ---
 
@@ -258,11 +258,14 @@ race has to exclude.
    rows. The item to care about instead is **17.16.3**: which publishable key is
    on the internet matters more once the door is deliberately open. And this is
    the paragraph to re-read the day the project has more than four riders.
-2. **The deploy is written down nowhere (17.16.2), and it is now holding a fix
-   back rather than merely being untidy.** `link.js` carries the line that
-   lands a confirmed rider back on the pairing page instead of the site root
-   (15.7.6), and `./web/check-deployed.sh` reports it DRIFTED — so the fix is
-   in the repo and reaches nobody. The older account of it follows, and it is
+2. **The deploy is written down nowhere (17.16.2), and it has now held three
+   fixes back rather than merely being untidy.** The current one is the worst
+   of them: `link.js` carries the fix for **the fault the owner reported** —
+   a phone that was already signed in met three dots and nothing else, because
+   the page called Supabase from inside an auth callback and deadlocked its own
+   session lock (15.6.14). Until the site is pushed, the live page still does
+   that. `link.html` carries 17.16.9's rewrite in the same change, on purpose,
+   so one deploy closes both. Before that it was 15.7.6's `emailRedirectTo`. The older account of it follows, and it is
    what is left of a defect that has now been paid for twice. The pairing-page fix was verified
    against the live endpoint *from a local copy*, never shipped, and the owner
    scanned a QR the next day into the unfixed page. **That is fixed now** — the
