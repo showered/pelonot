@@ -1,8 +1,8 @@
 # Where Pelonot is
 
 **Written 4 August 2026, updated 5 August (thirty-second sitting).**
-Measured, not estimated: `assembleDebug` passes, **645 JVM tests, 0 failures**,
-and **490 of 713 plan boxes** are ticked across 27 phases. It is a summary —
+Measured, not estimated: `assembleDebug` passes, **661 JVM tests, 0 failures**,
+and **496 of 719 plan boxes** are ticked across 27 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -128,6 +128,16 @@ never on the overlay, which belongs to the next sixty seconds of pedalling.
 Both sides have to be watts the bike actually measured, so it does not appear on
 a simulated ride at all — which is the honest answer rather than a missing
 feature.
+
+**And there is always something ahead of you** (24.3.18). The board no longer
+needs somebody to have ridden the class: it generates targets — **the plan**
+(the class ridden at the middle of every band it prescribes, which is the only
+non-arbitrary one and needs no history at all), your own best plus five per
+cent, your usual, and a round number that rises as you do. A generated row
+carries a `○` and can never be mistaken for a person. Six rows are visible and
+the rest scrolls, and every non-human row is a sentence about the rider —
+*Your best this year*, *Your recent best* — rather than the durations that sat
+among real names until 24.3.12a was settled.
 
 **And that single gap is now a leaderboard** (24.3.10–24.3.13b), which is what
 the owner wanted and is Peloton's own shape. Start a class anybody on this bike

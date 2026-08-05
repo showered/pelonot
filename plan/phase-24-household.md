@@ -456,7 +456,7 @@ downgrade — it is why the feature can afford to be interesting.
       never the best of anything, and a housemate's 14-second ride with no
       samples at all.
 
-- [ ] **24.3.12a What the opponents are called — the owner's to decide, and
+- [x] **24.3.12a What the opponents are called — the owner's to decide, and
       they have said so.** The note, 5 August 2026, verbatim: *"We're still
       working on the fundamentals so let's no waste time getting hung up on
       what the 'opponents' are called. But just for the record '12 months' is
@@ -786,7 +786,7 @@ removed the friend graph, so "somebody has ridden it" is a fact about a
 four-person population. **The common case for a new rider is an empty board**,
 and no amount of social plumbing fixes that.
 
-- [ ] **24.3.18a The honesty rule, and it comes first.** Every row on this board
+- [x] **24.3.18a The honesty rule, and it comes first.** Every row on this board
       today is a ride that happened, with measured watts, enforced in the query
       (24.4.2). A generated row is **not that**, and the whole of 24.4's
       argument says the difference has to be visible rather than smoothed over.
@@ -799,7 +799,7 @@ and no amount of social plumbing fixes that.
         treatment, a rider must never come away thinking Ava did 300 kJ when
         300 was a number this app made up.
 
-- [ ] **24.3.18b What the ghosts could be — five candidates, and they are not
+- [x] **24.3.18b What the ghosts could be — five candidates, and they are not
       equally good.** The owner asked for the train of thought, so here it is
       with the argument attached rather than as a menu:
 
@@ -832,7 +832,7 @@ and no amount of social plumbing fixes that.
       5. **The house** — the household's average best. Sociable without naming
          anyone, and it degrades to absent in a household of one.
 
-- [ ] **24.3.18c Humans take precedence, and the rule has to be a rule.** The
+- [x] **24.3.18c Humans take precedence, and the rule has to be a rule.** The
       owner's worry, verbatim: *"if there are too many CPU targets then we might
       lose sight of the (more exciting) human targets."* The window is already
       three rows (24.3.13) and that is the budget. Proposed rule, and it is one
@@ -842,6 +842,22 @@ and no amount of social plumbing fixes that.
       the ghosts vanish entirely, which is the correct behaviour rather than a
       compromise. The exception is a board with no humans on it at all, where
       the ghosts are the board and more of them may be shown.
+
+      ***Built, and the owner overruled the one-row proposal — rightly, and it
+      was settled by measuring.*** *"There is space, as far as I remember, on
+      the screen for more than 3 items … it's exciting to overtake and be
+      overtaken so the more the merrier within reason."* They were right:
+      `uiautomator` on the ride screen puts the rows 66 px apart, the board's
+      first row at y = 228 and *View in Overlay Mode* at y ≈ 672 — **six rows
+      fit with nothing else moved**, and a seventh collides with the button.
+      So `WINDOW` is 6, the field cap is 16 rather than 8, and the rest is
+      reachable by scrolling with the list following the rider as they pass and
+      are passed. Up to three of the six may be generated.
+
+      **One thing to know before changing the padding.** The first attempt
+      wrote `heightIn(6 rows).padding(large)`, which bounds the *outer* box, so
+      the padding came out of the rows and the card drew five of the six it was
+      sized for. It is `contentPadding` now, with the cap adding it back.
 
 - [ ] **24.3.18d Your best, made to feel like something.** *"Your own PB should
       have some kind of UI to make it really exciting. If you're ahead of your
@@ -854,7 +870,7 @@ and no amount of social plumbing fixes that.
       `PositionCallTracker` (25.3) — an event with a latch, not a state read
       every frame.
 
-- [ ] **24.3.18e The labels, and this is 24.3.12a arriving from the other
+- [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and
       `30 DAYS` are durations where every other row is a person — and ghosts
@@ -864,7 +880,7 @@ and no amount of social plumbing fixes that.
       chosen, **the two questions have to be answered together** or the board
       ends up with two families of made-up name on it.
 
-- [ ] **24.3.18f Where it lives.** Live leaderboard only, on the owner's own
+- [x] **24.3.18f Where it lives.** Live leaderboard only, on the owner's own
       boundary. Nothing on the post-ride summary, nothing synced, nothing on
       the overlay — 24.3.16 is unresolved and a ghost is not the thing to
       reopen it with.

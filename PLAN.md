@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Forty-six entries have passed through it.** In order: standing and seated
+**Forty-seven entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -119,19 +119,13 @@ scrolling — which is also 11.6.16's fix — and **11.6.19** tapping the distan
 to change its units for one ride), the Start Class screen with the board on it
 (**22.7.3**, and it is 22.7.2's own admission coming true: that screen was
 designed on an AVD where the card could not draw), and the static board having
-no ceiling (**24.1.8**).
+no ceiling (**24.1.8**), and auto-generated leaderboard ghosts to ride
+against (**24.3.18** — five candidates written out with the argument
+attached, four of them chosen and built, and it forced **24.3.12a** shut
+after a fortnight open because ghosts would otherwise have put a second
+family of invented name on a board that already had `12 MONTHS` on it).
 
-### Leaderboard ghost riders
-
-Let's spend some effort thinking of some auto-generated leaderboard ghosts to ride against. They wouldn't go in the RideSummary screen, only in the live leaderboard, and they would serve as great targets to either catch, or stay in front of, to reach your fitness goals. There is already a plan item for his, but now it's time to actually do it. Let's work together. Please use your intelligence to come up with suggestions of what we can do. The more the merrier, really. There should always be some target. But then if there are too many "CPU" targets then we might lose sight of the (more exciting) human targets. So perhaps we should be intelligent about how we display these items on teh leaderboard, humans taking precedence. Your own PB should have some kind of UI to make it really exciting. If you're ahead of your PB then that should stand out. But no matter how high you go there should always be a target ahead of you. Perhaps total-output targets, like on a 30-min ride there should be a target for 200kj, 250, 300, 350, 400, etc. Maybe stretch goals so 5% higher than current PB. Please continue along this train of thought and come up with your own ideas and then we can decide on it. The labels should be self-explanatory but also personal and not too geeky. High priority let's get this done before recording the video demo.
-
-### Leaderboard target metric
-
-One for later, probably, unless it's really easy. Could toggle between Output and Distance as the target metric
-
-### New type of ride
-
-Maybe for the backlog some kind of ride where you set a distance and then try to set a new time record. Like 100 miles or 26.2 miles or 50km or whatever. Just an idea. For the backlog. Nothing urgent at all but i want to track it
+**The inbox is empty.**
 
 ---
 
@@ -263,6 +257,45 @@ correct all along — the board renders whole, `Hana / Simon / Ivy / and 6 more`
 Reverted in full. The lesson is the cheap check that was skipped: **scroll
 before believing a clip.**
 
+**Then the owner's inbox arrived mid-session with a high-priority note, and
+it is built.** *"Auto-generated leaderboard ghosts to ride against … there
+should always be some target … no matter how high you go there should always
+be a target ahead of you."* Written up as **24.3.18** with five candidates and
+the argument attached rather than as a menu, four of them chosen and built:
+
+- **The plan** — the class ridden at the middle of every band it prescribes,
+  and the one worth arguing for. It is the only non-arbitrary target, catching
+  it means *I rode what the class asked for*, and it needs no history — so it
+  is on the board for the first attempt at a class nobody has touched, which
+  with 72 classes and a four-person household is **the ordinary case**. It does
+  not touch `PowerModel`: a zone target is watts already.
+- **Just past your best**, **Your usual** (the median, and the only row
+  deliberately *behind* a rider on form), and **a round number that moves** —
+  a pace rather than a trace, because a fixed total cannot satisfy *however
+  high you go*.
+- And **"Tom's last ride"**, on the owner's follow-up: a best is a monument
+  and can be two years old, a last ride is news.
+
+**The board is six rows now, and the owner was right that there was space.**
+They said so from memory and it was settled by measuring rather than by
+agreeing: `uiautomator` puts the rows 66 px apart and the Overlay button at
+y ≈ 672, so six fit and a seventh collides. The rest scrolls, and the list
+follows the rider as they pass and are passed.
+
+**24.3.12a is finally shut**, after a fortnight open with the owner's name on
+it — and what closed it was ghosts arriving, because a second family of
+invented name on a board already reading `12 MONTHS / 30 DAYS / Ava` would
+have been two problems instead of one. The fault was nameable: every other row
+is a person and those two were durations. Every non-human row is a sentence
+about the rider now.
+
+**The one distinction worth carrying forward is two flags rather than one.**
+`GhostKind` has `isPerson` and `isGenerated` separately, because the rider's
+own best is neither a person nor invented — conflating them would either mark
+a real ride of theirs as fictional or let a generated target be counted as a
+rival, and the second is precisely what the honesty rule exists to prevent. So
+a generated row carries a `○` and colour goes on saying *is this me*.
+
 **Two things written up rather than built**, both because they are the owner's
 call and not a session's. **26.1.6**: there is no way to ride a class at the
 zones it was authored with — two intents, both ±5%, so every ride this app has
@@ -285,7 +318,14 @@ two things that need the owner and one loose end this sitting left on purpose.**
    rather than a bug.
 2. **19.1.4 — CI on every PR.** Written and never yet green. One run on GitHub
    ticks it, and it is the cheapest item left in the plan.
-3. **22.7.4 — the date header that did not move when the row did.** Small, and
+3. **24.3.18d — the moment you pass your own best.** Half of it is built: the
+   rider's own rows are drawn in the accent dimmed, so a row that is also them
+   never reads as an opponent. What is missing is the *event* — the owner asked
+   for passing your PB to *"really stand out"* and nothing marks it. Do it as
+   `PositionCallTracker`'s shape, latched: `standingsAt` runs four times a
+   second, so anything derived from *am I above that row now* fires 240 times
+   a minute.
+4. **22.7.4 — the date header that did not move when the row did.** Small, and
    it is the last screen of the demo recording, so it is the one a stranger is
    most likely to be looking at. **It needs a decision rather than a fix**:
    centre the heading over its row, or left-align the row and give up 22.7.1's
