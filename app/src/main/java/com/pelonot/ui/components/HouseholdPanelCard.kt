@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import com.pelonot.domain.social.HouseholdPanel
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -37,6 +39,10 @@ import com.pelonot.ui.theme.spacing
  * And it does not rank. The per-class board (24.1) is a comparison because the
  * class is the same; a month of somebody else’s riding is not, and turning
  * it into a table with places in it would invent a competition nobody entered.
+ *
+ * **It is windowed at six** ([HouseholdPanel]), which is 24.1.8 arriving on the
+ * card next door: the note capped the class leaderboard and this panel was left
+ * listing every profile that had ridden, twelve deep on the tablet AVD.
  */
 @Composable
 fun HouseholdPanelCard(
@@ -61,9 +67,10 @@ fun HouseholdPanelCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(Modifier.width(MaterialTheme.spacing.small))
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
 
-            riders.forEach { rider ->
+            val panel = HouseholdPanel.of(riders, youId)
+            panel.rows.forEachIndexed { index, rider ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -104,9 +111,31 @@ fun HouseholdPanelCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                // The rider's own row can be lifted from below the cut, and the
+                // skip has to be visible: two adjacent rows reading 4 rides and
+                // 1 ride with nothing between them look like the list is simply
+                // short, which is the false claim the window exists to avoid.
+                if (index == panel.breakAfter) {
+                    Text(
+                        text = "⋮",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = MaterialTheme.spacing.small)
+                    )
+                }
             }
 
-            Spacer(Modifier.width(MaterialTheme.spacing.small))
+            if (panel.hidden > 0) {
+                Text(
+                    text = "and ${panel.hidden} more",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = MaterialTheme.spacing.medium)
+                )
+            }
+
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
             Text(
                 text = "Everyone with a profile on this bike. Nothing leaves the tablet.",
                 style = MaterialTheme.typography.bodySmall,

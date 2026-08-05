@@ -363,17 +363,11 @@ private fun FtpHeroCard(
                 .fillMaxWidth()
                 .padding(MaterialTheme.spacing.extraLarge)
         ) {
-            // Accent gradient bar at top
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(brush = Brush.horizontalGradient(PelonotGradients.TealFlow))
-            )
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
+            // There was a 4 dp teal gradient bar across the top of this card,
+            // as decoration. On a card whose whole content is one measured
+            // number, a full-width filled bar is not decoration — it is read as
+            // a meter, and a meter that is always at 100% is a claim about the
+            // rider that nothing here is making. Phase 26: say less.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "FTP",
@@ -460,7 +454,11 @@ private fun PrimaryActionCard(
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                // The caller stretches this card to the FTP card beside it, and
+                // without the height here the Row wraps its content: the
+                // alignment below then centres nothing, and the title sits at
+                // the top of a 250 dp block of empty teal.
+                .fillMaxSize()
                 .padding(MaterialTheme.spacing.extraLarge),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

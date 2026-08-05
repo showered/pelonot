@@ -35,6 +35,73 @@ data class HouseholdRider(
 )
 
 /**
+ * The rows the dashboard's household panel actually draws (24.1.8, applied to
+ * the panel rather than the board).
+ *
+ * 24.1.8 capped the *class* leaderboard and stopped there, and the note's own
+ * argument carries straight over to this panel: the row count is not "how many
+ * people live here". Every profile on the tablet that has ridden in the last
+ * thirty days gets a row, so the panel's height is a fact about how much the
+ * app is used — which is exactly the thing the owner said "has the potential to
+ * really throw the screen out of alignment when it grows long". Twelve rows was
+ * observed, and there was no ceiling anywhere between the query and the screen.
+ *
+ * **The window is not the leaderboard's, because this is not a ranking.**
+ * `ClassLeaderboard.visible` keeps a podium because somebody won; the panel is
+ * ordered by how much a person has ridden and explicitly refuses to rank it
+ * (see `HouseholdPanelCard`), so there is no podium to protect. What it keeps
+ * is the top of the list — the housemates who have actually been on the bike —
+ * and **always the rider's own row**, because *am I on it* is the one question
+ * they came to this card with.
+ *
+ * @property rows in the query's order, most active first.
+ * @property hidden how many riders are not drawn at all — carried out rather
+ *   than left to the caller, since a list that quietly stops at six is a false
+ *   claim about the size of the household.
+ * @property breakAfter index within [rows] after which the list skips riders,
+ *   or null when what is drawn is contiguous.
+ */
+data class HouseholdPanel(
+    val rows: List<HouseholdRider>,
+    val hidden: Int,
+    val breakAfter: Int?
+) {
+    companion object {
+        /**
+         * Above this many riders the panel is windowed rather than listed.
+         *
+         * Six is `ClassLeaderboard.MAX_ROWS`, deliberately: the two cards sit
+         * on the same dashboard and a household that windows one at six and the
+         * other at nine would look like a bug in whichever is shorter.
+         */
+        const val MAX_ROWS = 6
+
+        fun of(riders: List<HouseholdRider>, youId: Int?): HouseholdPanel {
+            if (riders.size <= MAX_ROWS) {
+                return HouseholdPanel(riders, hidden = 0, breakAfter = null)
+            }
+
+            val youIndex = riders.indexOfFirst { it.localUserId == youId }
+            // A rider already inside the window needs no special case, and a
+            // guest (no profile) has no row to keep.
+            val keep = if (youIndex < 0 || youIndex < MAX_ROWS) {
+                (0 until MAX_ROWS).toList()
+            } else {
+                (0 until MAX_ROWS - 1) + youIndex
+            }
+
+            return HouseholdPanel(
+                rows = keep.map { riders[it] },
+                hidden = riders.size - keep.size,
+                breakAfter = keep.zipWithNext()
+                    .indexOfFirst { (above, below) -> below - above > 1 }
+                    .takeIf { it >= 0 }
+            )
+        }
+    }
+}
+
+/**
  * How many days in a row a rider has ridden.
  *
  * Pure and JVM-tested, with the clock and the timezone injected, for the same
