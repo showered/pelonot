@@ -1,7 +1,7 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 5 August (thirty-second sitting).**
-Measured, not estimated: `assembleDebug` passes, **661 JVM tests, 0 failures**,
+**Written 4 August 2026, updated 5 August (thirty-fourth sitting).**
+Measured, not estimated: `assembleDebug` passes, **677 JVM tests, 0 failures**,
 and **496 of 719 plan boxes** are ticked across 27 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -48,7 +48,7 @@ currently open and should not be, and one deploy that has not been run.
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. Seen on the real bike as well as the emulator; what is owed is watching it move under somebody actually pedalling |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
-| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. What is left is the overlay permission still being explained only at ride start (19.1.6) and a green CI run (19.1.4). See *How close to done*, below |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). What is left is the overlay permission still being explained only at ride start (19.1.6), a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
 
 ---
 
@@ -258,8 +258,12 @@ race has to exclude.
    rows. The item to care about instead is **17.16.3**: which publishable key is
    on the internet matters more once the door is deliberately open. And this is
    the paragraph to re-read the day the project has more than four riders.
-2. **The deploy is written down nowhere (17.16.2)**, which is what is left of a
-   defect that has now been paid for twice. The pairing-page fix was verified
+2. **The deploy is written down nowhere (17.16.2), and it is now holding a fix
+   back rather than merely being untidy.** `link.js` carries the line that
+   lands a confirmed rider back on the pairing page instead of the site root
+   (15.7.6), and `./web/check-deployed.sh` reports it DRIFTED — so the fix is
+   in the repo and reaches nobody. The older account of it follows, and it is
+   what is left of a defect that has now been paid for twice. The pairing-page fix was verified
    against the live endpoint *from a local copy*, never shipped, and the owner
    scanned a QR the next day into the unfixed page. **That is fixed now** — the
    owner redeployed and `./web/check-deployed.sh` reports seven files the same,
