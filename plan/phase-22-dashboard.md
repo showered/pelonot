@@ -1200,7 +1200,7 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       664 dp viewport — and the check was that a 700 px swipe moved nothing,
       with the two frames differing only in the clock.
 
-- [~] **22.8.6** **Decide what earns the space before filling it, and keep
+- [x] **22.8.6** **Decide what earns the space before filling it, and keep
       22.1.1's sentence as the test.** *Should I ride today, and what should I
       ride.* The candidates, ranked by how much of that sentence they answer:
       1. **A class to ride** — the second half of the question, unanswered
@@ -1232,6 +1232,127 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       class, on what basis, and what it says when the rider has ridden nothing
       yet. That is a design decision with the owner's name on it rather than a
       layout job.
+
+      ***Candidate 1 is built, and the rule is written down at 22.8.11 below.***
+      **Done and observed on the tablet AVD**, all four of its branches. The
+      screen answers the second half of its own sentence now: where *Begin
+      Class* was there is a class — *"Ride this / Sweet Spot 3×5 / 30 min ·
+      Sweet Spot · new to you"* — with the library beside it as a full-size door
+      of its own and *Just Ride* unchanged.
+
+      **It cost nothing vertically**, which was the constraint rather than a
+      nice outcome: the dashboard was 609 dp against a 664 dp viewport with the
+      backup nag showing, so a new card of its own would have put it back to
+      scrolling and undone the sitting before. The row is the same row, the
+      primary card is the same card in the same colour at the same weight, and
+      the height is still set by *Just Ride* beside it. Checked the way 22.8.9
+      asked: a 700 px swipe with the two frames identical but for the clock.
+
+- [x] **22.8.11** **The rule: which class, on what basis, and what it says to a
+      rider who has ridden nothing.** 22.8.6 left this open with the owner's
+      name on it; it is answered here, in one sentence and with the reasoning
+      kept, because a suggestion nobody can argue with is a suggestion nobody
+      should trust. **Something the length you usually ride, that you have
+      ridden least — and an easy one if you rode hard in the last day.**
+
+      **What it is not, and this is the load-bearing half.** It is **not a
+      training plan**. This app has no periodisation, no fatigue model, and one
+      FTP number that only moves upward (7.11); a card saying *"today is your
+      interval day"* would be inventing all three, on the first screen a rider
+      sees and therefore the one they trust most. Everything the card says is an
+      **observation about the rider's own history** — *you have not ridden this
+      one*, *not since March*, *you rode hard yesterday* — and every one of them
+      is a fact on this tablet that the rider can check.
+
+      The single advisory claim is *don't stack two hard days*, and it is the
+      same rule Phase 28 states from the other end when it forbids an
+      achievement that rewards what a coach would advise against. Hard is read
+      off the class's **own blocks** (Z4+, threshold and above) rather than off
+      its category name, because the category is a label and the blocks are the
+      workout.
+
+      **A Just Ride tells it nothing**, and that is deliberate rather than a
+      gap: a free ride's intensity lives in `workout_metrics`, which this screen
+      may not read (22.1.8) and which would need measured power to mean anything
+      at all (`PowerProvenance`). Unknown makes no claim, so the card suggests
+      the ordinary way rather than saying *"easy after a hard one"* about a ride
+      it cannot see. Same for a ride of a class the library has since retired.
+
+      **Why "ridden least" is the ranking.** The library is 72 authored classes
+      (23.2.6) and a rider settles on three. Breadth is the one thing an offline
+      app with a fixed library is unusually well placed to offer — no account,
+      no network, no measurement — which is the same argument Phase 28 makes for
+      its own breadth family. The tie is broken by the **category** ridden
+      least, so the card walks the rider around the library rather than down one
+      corner of it, then by longest since, then by id.
+
+      **Why it is deterministic.** Nothing is random. A card that re-rolls on
+      every glance is noise: the rider cannot ask *why this one* and get an
+      answer, and cannot come back tomorrow to the class they were half-decided
+      about. It is also what makes the whole thing testable.
+
+      **What it says to a rider who has ridden nothing: the shortest Endurance
+      class, and *"a good place to start"*.** Endurance rather than Recovery,
+      and the reason is the interesting one — **a recovery class is a class that
+      only makes sense *after* something**, so offering one as a first ever ride
+      describes a workout nobody has earned. It is also the branch that most
+      needed building: this is the rider with no idea what to ride.
+
+      **One thing settled rather than fixed: the card will offer a hard class to
+      a rider who has only ever done easy ones.** Seen on the AVD — a rider with
+      five Endurance rides and nothing else was offered `SPR-04 Tabata 3×8`,
+      because Sprints was the category they had ridden least. That is correct
+      and it stays: **every class in this library is prescribed in percentages
+      of the rider's own FTP**, so its difficulty is already scaled to them, and
+      an app with no fitness model has no basis whatever for deciding somebody
+      is "not ready" for a class in its own library. Deciding that is the
+      periodisation model this rule exists to refuse.
+
+      ***Observed on the tablet AVD, all four branches, with the database
+      edited by hand between them:***
+      - **`FirstRide`** — a guest, who has no profile and therefore no history:
+        *"Zone 2 Steady · 20 min · Endurance · a good place to start"*, on a
+        dashboard with `0 rides` and no last-ride card beside it.
+      - **`NewToYou`** — *"Sweet Spot 3×5 · 30 min · Sweet Spot · new to you"*.
+      - **`NotSince`** — with `REC-01` and `REC-02` seeded as ridden in March
+        and June, the card picked the March one and said *"not since Mar 15,
+        2026"*. The claim that must never be false — *new to you* on something
+        they rode — was gone the moment the ride existed.
+      - **`EasyAfterHard`** — a 30-minute Sprints ride inserted an hour ago
+        turned *Sweet Spot 3×5* into *"Recovery Flow · 30 min · Recovery · easy
+        after a hard one"*, with the last-ride card underneath reading *Sprint
+        30/30 · Today*.
+
+      **And it was checked against the rule rather than against the fixture**:
+      moving that same hard ride from one hour ago to thirty put *Sweet Spot
+      3×5* straight back, so the 24-hour window is doing the work and not the
+      presence of the row.
+
+      **Tapped through, both cards** (22.8.1's lesson about lambdas swapped
+      between call sites): the suggestion lands on the class's own screen —
+      profile, description, *Start class* — and *All Classes* on the library's
+      category row. **The suggestion opens a class and never starts one**: the
+      class screen is the last screen between a rider and a ride (22.7.2), and a
+      dashboard that could begin a class in one tap begins one by accident.
+
+- [ ] **22.8.12** **An abandoned ride is not a statement about how long this
+      rider rides, and the rule currently counts it as one.** *"The length you
+      usually ride"* is the median of the last ten rides' `duration_sec`, and a
+      class quit after ninety seconds writes a row with `duration_sec = 90`.
+      A median is robust to one of them and not to a habit of them — and the
+      AVD is the demonstration, where every ride is a 20-to-500-second test stub
+      and the card therefore offers 15-minute classes to a rider whose profile
+      claims 10 rides in 30 days.
+
+      Two candidate answers and neither is obviously right. **A floor** — ignore
+      rides under about five minutes when taking the median, since no class in
+      the library is shorter than fifteen — is one line and would be wrong for a
+      rider who genuinely does short sessions. **Nothing** is the other, on the
+      grounds that a rider who abandons classes at twelve minutes is a rider who
+      should be offered fifteen, which is what the rule already does and is
+      arguably its best behaviour. **Left unbuilt deliberately**: it needs a
+      real riding pattern to judge, and every ride on the test device is a stub.
+      Not a defect until somebody's real history says so.
 - [ ] **22.8.7** **A social feed — what it would be, and the two rules it
       cannot break.** The owner's *"maybe some kind of social feed"*. What a
       feed item is here: *Kilo rode Zone 2 Steady, 22 min, this morning*; *Ava
