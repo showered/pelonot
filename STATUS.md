@@ -2,7 +2,7 @@
 
 **Written 4 August 2026, updated 10 August (thirty-eighth sitting).**
 Measured, not estimated: `assembleDebug` passes, **706 JVM tests, 0 failures**,
-and **547 of 789 plan boxes** are ticked across 28 phases. It is a summary —
+and **548 of 789 plan boxes** are ticked across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.

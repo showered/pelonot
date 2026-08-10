@@ -47,7 +47,7 @@ right one — same device shape, same distance, same job.
       That is an accessibility action, not a gesture — a real press-and-hold
       fell straight through to the click and opened the dashboard. It needs
       `Modifier.combinedClickable`
-- [ ] **20.1.6** **Past about twenty riders the grid clips its last tile and
+- [x] **20.1.6** **Past about twenty riders the grid clips its last tile and
       nothing says it scrolls.** Seen on the tablet AVD at 23 tiles: the heading
       is on screen, three full rows are on screen, and the fourth row is a bare
       `+` cut off at y 1080 with *New rider* and *Add a profile* below the fold.
@@ -68,6 +68,23 @@ right one — same device shape, same distance, same job.
       because the failure is silent and the threshold is unknown: nobody has
       measured where it starts, and *"a household of six"* is 20.1's own stated
       target rather than a ceiling
+
+      ***Done and observed on the tablet AVD at 22 tiles.*** Taken the second
+      way this item offered — **the heading stays put and the grid scrolls under
+      it** — with the hint pinned below it as well, which turned out to be the
+      half that does the work: the last visible row is now cut **against a line
+      of text** rather than against the edge of the display, and the difference
+      between those two is the whole fault. A soft edge fades whichever end has
+      tiles past it, **both ends**, because once the grid has been scrolled it
+      is the riders *above* that have gone missing.
+
+      **The floor is untouched and so is the ordinary case.** Checked by cutting
+      the database back to a household of three: one centred row, no fades, and
+      the screen identical to what it was — the tile column still wraps its
+      content, so nothing about this is paid for by the household 20.1 was
+      designed for. The threshold this item said nobody had measured is now
+      *irrelevant* rather than measured, which is the better answer: the screen
+      admits an overflow at whatever count it happens at
 
 ### 20.2 Avatars
 
