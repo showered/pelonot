@@ -268,6 +268,31 @@ a profile claiming ten rides in thirty days. A five-minute floor is one line and
 would be wrong for a rider who genuinely does short sessions; it needs a real
 riding pattern to judge, and the test device cannot produce one.
 
+**Two more came off the list once the dashboard was done, and both are
+observations rather than features.** **20.1.6** — past about twenty riders the
+profile picker sliced its last row off at the bottom of the display with the
+hint below the fold. The heading and the hint are fixed now and only the riders
+scroll, with a soft edge at whichever end has tiles past it: the last visible
+row is cut **against a line of text** rather than against the edge of the
+screen, and that difference is the entire fault. Seen at 22 tiles, then seen the
+other way with the database cut back to a household of three — one centred row,
+no fades, unchanged, which is the check that the fix costs the common case
+nothing.
+
+**And 26.1.4, the Settings audit, applied per row as the item asked**: keep the
+sentence that changes what a rider would choose, cut the one that explains how
+it works. Nine cuts, and what they have in common is worth more than the list —
+each answered a question nobody standing on that row was asking. *Units*
+defended not offering calories; *Use wallpaper colours* opened with Android's
+name for the mechanism; the maximum-heart-rate row printed the Tanaka formula;
+the opacity slider explained why it stops where it visibly stops; *Position*
+justified its own default instead of saying which edge to pick. **One row was
+audited and left alone**, which is the other half of doing this honestly: the
+FTP field keeps both its lines, because Settings is the one screen where that
+number is *typed* rather than read. A naming fault fell out of the opacity cut —
+the copy said *"strip"*, which CLAUDE.md says is never the rider-facing word for
+the overlay.
+
 ### The sitting before — 10 August 2026 (thirty-seventh sitting): the dashboard was loose rather than full, and a helper that had been lying for a fortnight
 
 **The owner left two inbox entries and the brief was to empty them and then
