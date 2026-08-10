@@ -34,6 +34,9 @@ import com.pelonot.domain.progress.RideRecord
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
 import com.pelonot.domain.social.StreakCalculator
+import com.pelonot.domain.suggest.ClassRideCount
+import com.pelonot.domain.suggest.RecentRide
+import com.pelonot.domain.suggest.RiderRides
 
 /**
  * What the dashboard's progress section is built from (PLAN 22.1.8).
@@ -139,6 +142,41 @@ class WorkoutRepository(
             atEpochMs = row.timestamp,
             durationSec = row.durationSec,
             standing = standing
+        )
+    }
+
+    /**
+     * What the suggestion rule reads about this rider (22.8.6).
+     *
+     * Two queries rather than one because they answer two different questions
+     * over two different windows — every class they have *ever* ridden, and the
+     * *last few* rides of any kind — and a join that produced both would have to
+     * pick one of the two windows.
+     *
+     * Both mention `workouts` and nothing else, so both re-emit whenever a ride
+     * lands or is deleted, which is the rule the household panel is built on.
+     * Neither touches `workout_metrics`: this feeds the first screen anybody
+     * sees (22.1.8).
+     */
+    fun observeRiderRides(userId: Int): Flow<RiderRides> = combine(
+        workoutDao.observeClassRideCounts(userId),
+        workoutDao.observeRecentRides(userId, RIDE_HISTORY_WINDOW)
+    ) { counts, recent ->
+        RiderRides(
+            perClass = counts.map {
+                ClassRideCount(
+                    classId = it.classId,
+                    rides = it.rides,
+                    lastRiddenAtMs = it.lastRiddenAtMs
+                )
+            },
+            recent = recent.map {
+                RecentRide(
+                    classId = it.classId,
+                    atEpochMs = it.timestamp,
+                    durationSec = it.durationSec
+                )
+            }
         )
     }
 
@@ -772,6 +810,14 @@ class WorkoutRepository(
          * itself while anything is left rather than doing a year in one job.
          */
         const val SYNC_BATCH = 20
+
+        /**
+         * How many recent rides the suggestion reads to decide how long this
+         * rider rides (22.8.6). Ten is the same window `ClassToRide` takes its
+         * median over — read here so the query does not fetch rows the rule
+         * throws away.
+         */
+        private const val RIDE_HISTORY_WINDOW = 10
 
         /**
          * Stands in for "no profile" when excluding the rider's own rides

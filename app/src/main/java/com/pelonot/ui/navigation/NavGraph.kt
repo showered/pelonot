@@ -262,6 +262,14 @@ fun PelonotNavGraph(
                     showIntentPrompt = true
                 },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
+                suggestion = uiState.suggestion,
+                classCount = uiState.classes.size.takeIf { it > 0 },
+                // The class's own screen, which is where the library lands too
+                // (22.7.2). One tap fewer than browsing, and not one fewer than
+                // starting a ride.
+                onRideSuggestion = { classId ->
+                    navController.navigate(Destination.ClassDetail.of(classId))
+                },
                 onHistory = { navController.navigate(Destination.History.route) },
                 onSettings = { navController.navigate(Destination.Settings.route) },
                 ridingHistory = uiState.ridingHistory,

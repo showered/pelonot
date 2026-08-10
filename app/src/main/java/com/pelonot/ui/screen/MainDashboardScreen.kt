@@ -44,6 +44,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -75,6 +76,7 @@ import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.loneCard
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.ui.components.HouseholdPanelCard
 import com.pelonot.ui.theme.spacing
 
@@ -112,6 +114,16 @@ fun MainDashboardScreen(
     onDismissAccountOffer: () -> Unit = {},
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
+    /**
+     * The class this screen is offering, and why (22.8.6). Null only while the
+     * library is loading, which is the one state in which the app cannot name a
+     * class — a rider who has ridden nothing still gets one.
+     */
+    suggestion: ClassSuggestion? = null,
+    /** How many classes there are to browse, for the door beside the offer. */
+    classCount: Int? = null,
+    /** Opens the suggested class's own screen — never starts a ride (22.7.2). */
+    onRideSuggestion: (String) -> Unit = {},
     onHistory: () -> Unit,
     onSettings: () -> Unit,
     /** How much and how often (16.3.2, 16.3.5), for the card that opens *Your riding*. */
@@ -182,21 +194,51 @@ fun MainDashboardScreen(
                 // Just Ride keeps a place beside it rather than moving down a
                 // level, because it is what somebody already sitting on the
                 // bike reaches for and it should be hittable without reading.
+                //
+                // **And the primary card names a class** (22.8.6). *Begin
+                // Class* was a door to a list: the screen's own question is
+                // *should I ride today, **and what should I ride*** (22.1.1),
+                // and a door answers the first half by inviting a choice it
+                // does not help with. The card is the suggestion itself, the
+                // library keeps a full-size door of its own beside it, and
+                // nothing has moved down a level — the row is the same row.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
                 ) {
-                    PrimaryActionCard(
-                        title = "Begin Class",
-                        subtitle = "Pick one and ride it with a plan",
-                        icon = Icons.Default.FitnessCenter,
-                        onClick = onBeginClass,
-                        modifier = Modifier
-                            .weight(2f)
-                            .fillMaxHeight()
-                    )
+                    if (suggestion != null) {
+                        SuggestedClassCard(
+                            suggestion = suggestion,
+                            onClick = { onRideSuggestion(suggestion.classId) },
+                            modifier = Modifier
+                                .weight(2f)
+                                .fillMaxHeight()
+                        )
+                        SecondaryActionCard(
+                            title = "All Classes",
+                            subtitle = classCount?.let { "$it to choose from" } ?: "Browse them all",
+                            icon = Icons.AutoMirrored.Filled.List,
+                            onClick = onBeginClass,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    } else {
+                        // No library — a fresh install whose seed has not landed
+                        // yet, and the only state in which this app cannot name
+                        // a class. The door still works.
+                        PrimaryActionCard(
+                            title = "Begin Class",
+                            subtitle = "Pick one and ride it with a plan",
+                            icon = Icons.Default.FitnessCenter,
+                            onClick = onBeginClass,
+                            modifier = Modifier
+                                .weight(2f)
+                                .fillMaxHeight()
+                        )
+                    }
                     SecondaryActionCard(
                         title = "Just Ride",
                         subtitle = "No plan — pedal",
@@ -520,6 +562,100 @@ private fun PrimaryActionCard(
             Icon(
                 imageVector = icon,
                 contentDescription = title,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+    }
+}
+
+// =========================================================================
+// The class this screen is offering (22.8.6)
+// =========================================================================
+/**
+ * *What should I ride?* — answered with a class rather than with a door.
+ *
+ * **It sits exactly where *Begin Class* sat**, in the primary colour, at the
+ * same weight, in the same row: the owner's instruction that beginning a class
+ * is the primary action (22.8.1) is honoured more directly by naming one than
+ * by pointing at a list. The library keeps a full-size card of its own beside
+ * it, because a rider who wants a different class must not have to go through
+ * this one.
+ *
+ * **It opens the class, it does not start it.** The class screen is the last
+ * screen between a rider and a ride (22.7.2) — the shape of the workout, the
+ * board, and a Start button — and a dashboard that could begin a class on one
+ * tap would be a dashboard that begins one by accident.
+ *
+ * **The reason is the third fact on the line and it is never decoration.**
+ * Every phrase here is an observation about this rider's own history, drawn
+ * from `ClassSuggestion.Reason` so that what is *said* and what was *decided*
+ * cannot drift apart.
+ */
+@Composable
+private fun SuggestedClassCard(
+    suggestion: ClassSuggestion,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val reason = when (val reason = suggestion.reason) {
+        ClassSuggestion.Reason.FirstRide -> "a good place to start"
+        ClassSuggestion.Reason.EasyAfterHard -> "easy after a hard one"
+        ClassSuggestion.Reason.NewToYou -> "new to you"
+        is ClassSuggestion.Reason.NotSince ->
+            "not since " + DateFormat.getDateInstance(DateFormat.MEDIUM)
+                .format(Date(reason.atEpochMs))
+    }
+    val detail = "${suggestion.minutes} min · ${suggestion.category} · $reason"
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Ride ${suggestion.title}, $detail. Opens the class."
+            },
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        ),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Ride this",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = suggestion.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(40.dp)
             )

@@ -16,6 +16,10 @@ import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.suggest.ClassSuggestion
+import com.pelonot.domain.suggest.ClassToRide
+import com.pelonot.domain.suggest.RiderRides
+import com.pelonot.domain.suggest.SuggestableClass
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -84,6 +88,12 @@ data class AppUiState(
     val ftpTrend: FtpTrend = FtpTrend(),
     /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
     val ridingHistory: RidingHistory = RidingHistory(),
+    /**
+     * The class the dashboard offers, and why (22.8.6). Null only while the
+     * library is still loading — a rider with no history has a suggestion too,
+     * and is the one who needs it most.
+     */
+    val suggestion: ClassSuggestion? = null,
     /**
      * How much riding a backup would be protecting (PLAN 23.3.1). Only *due*
      * once ten rides have gone by unprotected, and the dashboard draws nothing
@@ -204,6 +214,21 @@ class AppViewModel(
         }
 
     /**
+     * What the rider has ridden, for the class the dashboard offers (22.8.6).
+     *
+     * A guest gets `RiderRides()` rather than nothing, and that is the
+     * interesting case: with no history the rule returns its first-ride
+     * suggestion, so a guest — and a brand-new profile — still gets an answer to
+     * *what should I ride*. It is the rider who most needs one.
+     */
+    private val riderRides = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            if (profileId == null) flowOf(RiderRides())
+            else workoutRepository.observeRiderRides(profileId)
+        }
+
+    /**
      * How many rides have been recorded since the last backup — or since the
      * last "not now", whichever is later (23.3.1).
      *
@@ -220,14 +245,21 @@ class AppViewModel(
             }
         }
 
+    /**
+     * The two flows about the rider's own riding, paired for the same reason
+     * [rideStatus] is a pair: the typed `combine` overload stops at five and
+     * [dashboard] is already at it.
+     */
+    private val riding = combine(ridingHistory, riderRides) { history, rides -> history to rides }
+
     private val dashboard = combine(
         dashboardStats,
         workoutRepository.observeHousehold(),
         ftpTrend,
         backupReminder,
-        ridingHistory
-    ) { stats, household, ftp, backup, riding ->
-        DashboardState(stats, household, ftp, backup, riding)
+        riding
+    ) { stats, household, ftp, backup, (history, rides) ->
+        DashboardState(stats, household, ftp, backup, history, rides)
     }
 
     /**
@@ -242,7 +274,8 @@ class AppViewModel(
         val household: List<HouseholdRider>,
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
-        val ridingHistory: RidingHistory
+        val ridingHistory: RidingHistory,
+        val riderRides: RiderRides
     )
 
     val uiState: StateFlow<AppUiState> = combine(
@@ -261,6 +294,18 @@ class AppViewModel(
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,
+            // Computed here rather than in a flow of its own because it is a
+            // function of two things the state already carries — the library and
+            // the rider's rides — and a third flow that re-derives one of them
+            // is a second answer to the same question.
+            suggestion = ClassToRide.suggest(
+                library = classes.map { it.toSuggestable() },
+                rides = dashboard.riderRides,
+                // Read once, at the moment the state is built. The rule's only
+                // use of the clock is "did they ride hard in the last day", and
+                // that must not change under a rider looking at the card.
+                nowMs = System.currentTimeMillis()
+            ),
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active
@@ -480,6 +525,25 @@ class AppViewModel(
         }
     }
 }
+
+/**
+ * A class as the suggestion rule sees it (22.8.6).
+ *
+ * The hardest zone comes straight off the blocks rather than through
+ * `ClassProfile`, which builds a whole drawable profile to answer it — this runs
+ * over all 72 classes every time the dashboard state is rebuilt, and the rule
+ * needs one integer.
+ *
+ * The mapping lives here rather than beside `ClassPlan` so that nothing in the
+ * data layer has to know the rule exists.
+ */
+private fun ClassPlan.toSuggestable() = SuggestableClass(
+    id = id,
+    title = title,
+    category = category,
+    durationSec = durationSec,
+    hardestZone = intervals.maxOfOrNull { it.powerZoneNumber }
+)
 
 /** Small helper so each ViewModel's factory is a single expression. */
 inline fun <reified VM : ViewModel> viewModelFactory(

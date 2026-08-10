@@ -287,6 +287,55 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     fun observeCompletedCount(userId: Int): Flow<Int>
 
+    /**
+     * How much of each class this rider has ridden, and when they last did
+     * (22.8.6) — the two facts the suggestion ranks on.
+     *
+     * Over all of history rather than a window, because *"you have never ridden
+     * this"* is a claim about all of it: a rider told a class is new to them
+     * when they rode it last spring has been told something false, and it is the
+     * kind of false a rider notices immediately.
+     *
+     * `class_id` is not null by the predicate, so the projection is non-null —
+     * a Just Ride is not a class anybody can be offered again.
+     */
+    @Query(
+        """
+        SELECT class_id AS class_id,
+               COUNT(*) AS rides,
+               MAX(timestamp) AS last_ridden_at
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND class_id IS NOT NULL
+        GROUP BY class_id
+        """
+    )
+    fun observeClassRideCounts(userId: Int): Flow<List<ClassRideCountRow>>
+
+    /**
+     * The rider's last few rides, newest first — how long they ride, and what
+     * they last did (22.8.6).
+     *
+     * Three columns and a `LIMIT`, for the same reason [observeLastRide] is a
+     * projection rather than a `WorkoutEntity`: the suggestion needs the length,
+     * the class and the clock, and a screen handed thirty columns finds uses for
+     * them.
+     *
+     * **Every ride, not only classes.** The length a rider rides is a fact about
+     * their evening, and a Just Ride takes exactly as long as a class does.
+     */
+    @Query(
+        """
+        SELECT class_id AS class_id,
+               timestamp AS timestamp,
+               duration_sec AS duration_sec
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1
+        ORDER BY timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun observeRecentRides(userId: Int, limit: Int): Flow<List<RecentRideRow>>
+
     @Query(
         """
         SELECT * FROM workouts
