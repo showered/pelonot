@@ -586,10 +586,12 @@ private fun UnitsSection(
         Spacer(Modifier.size(MaterialTheme.spacing.small))
 
         Text(
-            text = "Applies to distance, speed and your body weight. Power, cadence, " +
-                "heart rate and output have no imperial form and stay as they are — " +
-                "and kilojoules is what the bike measures, so Pelonot doesn't offer " +
-                "calories.",
+            // 26.1.4. What was here also defended *not* offering calories and
+            // explained why watts are not converted — two answers to questions
+            // nobody standing on this row is asking. What changes the choice is
+            // knowing what the switch actually moves.
+            text = "Applies to distance, speed and your weight. Power, cadence and " +
+                "heart rate have no imperial form and stay as they are.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -619,8 +621,11 @@ private fun AppearanceSection(
 
         SettingsToggle(
             title = "Use wallpaper colours",
-            description = "Material You. Overrides the Pelonot palette, including " +
-                "the metric accent colours the ride screen uses.",
+            // 26.1.4: "Material You" is Android's name for the mechanism, not
+            // the rider's name for anything. What matters is how far the change
+            // reaches.
+            description = "Uses your wallpaper's colours instead of Pelonot's, " +
+                "including the ride screen's.",
             checked = useDynamicColor,
             onCheckedChange = onDynamicColorChange
         )
@@ -801,8 +806,11 @@ private fun HeartRateZonesSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "Pelonot can estimate one from your age — Tanaka's 208 − 0.7 × age. " +
-                "It is only an estimate: two riders the same age can be 12 bpm apart.",
+            // 26.1.4: the formula was named on screen. It is the right formula
+            // (21.1.4) and naming it is the author talking; what a rider needs
+            // is that the number is a guess and how wrong it can be.
+            text = "Pelonot can estimate one from your age. It is only an estimate: " +
+                "two riders the same age can be 12 bpm apart.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1132,8 +1140,12 @@ private fun RideHudSection(
         }
         Spacer(Modifier.size(MaterialTheme.spacing.small))
         Text(
+            // 26.1.4: the second half used to explain why the default is the
+            // default. Turned round, the same fact is the reason a rider would
+            // choose one edge over the other.
             text = "You can also drag the overlay's handle to move it between edges " +
-                "mid-ride. Top is the default because subtitles live along the bottom.",
+                "mid-ride. Subtitles live along the bottom, so top is usually the " +
+                "safer edge.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1224,9 +1236,11 @@ private fun HudOpacityControl(opacity: Float, onOpacityChange: (Float) -> Unit) 
 
     Spacer(Modifier.size(MaterialTheme.spacing.small))
     Text(
-        text = "It will not go below ${(floor * 100).roundToInt()}% — under that " +
-            "the strip's smallest labels stop being readable over a bright scene. " +
-            "Check it against something actually moving; a still frame is kinder " +
+        // 26.1.4: the floor explained itself — why the slider stops where it
+        // stops, which the slider demonstrates by stopping. What is left is the
+        // sentence that changes what the rider does next. (It also said
+        // "strip", which is not the rider-facing name for this thing.)
+        text = "Check it against something actually moving; a still frame is kinder " +
             "than a film is.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1305,10 +1319,10 @@ private fun CalibrationSection(
                 // Said plainly rather than hidden: the shipped numbers are
                 // measurably wrong, and a rider comparing them to a gym bike
                 // deserves to know why they disagree.
-                "The built-in curve is a rough guess and is known to be well out. Ride " +
-                    "the bike normally and Pelonot will learn this one's own curve — " +
-                    "no calibration ride needed. Your recorded watts are unaffected " +
-                    "either way: the board measures those."
+                "The built-in curve is a rough guess and is known to be well out. " +
+                    "Ride normally and Pelonot will learn this bike's own. Your " +
+                    "recorded watts are unaffected either way: the board measures " +
+                    "those."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1375,8 +1389,9 @@ private fun VolumeSection(
         )
         Spacer(Modifier.size(MaterialTheme.spacing.small))
         Text(
-            text = "Both are also on the overlay mid-ride, behind the volume button — " +
-                "which is when you actually find out the film is too loud.",
+            // 26.1.4: the clause after the dash was the author explaining why
+            // the control is also somewhere else.
+            text = "Both are also on the overlay mid-ride, behind the volume button.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1403,9 +1418,10 @@ private fun BackupSection(
                 // copy has to say what it is for — including the part nobody
                 // would guess, that a backup restores onto a replacement
                 // tablet (23.3.2).
-                "Your rides live on this tablet and nowhere else. A backup is " +
-                    "one file — copy it somewhere safe and it can be restored onto " +
-                    "any tablet running Pelonot."
+                // 26.1.4: the first sentence was *Your rides*' sentence, one
+                // card up the same screen. Said twice it stops being read.
+                "A backup is one file — copy it somewhere safe and it can be " +
+                    "restored onto any tablet running Pelonot."
             } else {
                 "A backup is one file holding every ride on this tablet, including " +
                     "riders without an account. Copy it somewhere safe and it can be " +
@@ -1514,16 +1530,17 @@ private fun HouseholdSection(
             // setting is the one place a rider goes to find out what other
             // people can see, so being a month out of date about it is the
             // worst place for the drift to land.
-            description = "Your rides appear on this bike's leaderboards and on the " +
-                "last 30 days everyone here can see.",
+            description = "Your rides appear on this bike's leaderboards.",
             checked = visible,
             onCheckedChange = onVisibleChange
         )
         Text(
             text = if (visible) {
-                "Turn this off and you disappear from those screens. Your own history, " +
-                    "dashboard and records are untouched — this is only about what other " +
-                    "people on this tablet see."
+                // 26.1.4: two paragraphs on one switch, and only one of them
+                // was answering the question a rider actually has, which is
+                // whether turning it off costs them anything.
+                "Your own history, dashboard and records are untouched either way " +
+                    "— this is only about what other people on this tablet see."
             } else {
                 "You're hidden from this bike's leaderboards and from the last 30 days. " +
                     "Your own rides are all still here."

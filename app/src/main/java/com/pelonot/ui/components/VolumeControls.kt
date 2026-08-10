@@ -65,8 +65,11 @@ fun VolumeSliders(
 
         VolumeSlider(
             label = "Coach",
-            hint = "Set independently, so the coach can sit under the film rather " +
-                "than over it",
+            // Was "Set independently, so the coach can sit under the film rather
+            // than over it" — an explanation of why there are two sliders, on a
+            // screen already showing two sliders (26.1.4). What a hint is for
+            // here is saying which sound each one moves.
+            hint = "The spoken cues during a ride",
             value = coachVolume,
             onValueChange = onCoachVolumeChange,
             icon = if (coachVolume <= 0f) Icons.Default.VoiceOverOff
