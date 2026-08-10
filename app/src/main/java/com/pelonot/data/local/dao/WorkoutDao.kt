@@ -777,23 +777,10 @@ interface WorkoutDao {
     @Query("SELECT DISTINCT class_id FROM workouts WHERE class_id IS NOT NULL")
     suspend fun referencedClassIds(): List<String>
 
-    /** Total output since [sinceEpochMs], for the dashboard's "today" figure. */
-    @Query(
-        """
-        SELECT COALESCE(SUM(total_output_kj), 0) FROM workouts
-        WHERE user_id = :userId AND is_complete = 1 AND timestamp >= :sinceEpochMs
-        """
-    )
-    fun observeOutputSince(userId: Int, sinceEpochMs: Long): Flow<Double>
-
-    @Query(
-        """
-        SELECT * FROM workouts
-        WHERE user_id = :userId AND is_complete = 1
-        ORDER BY timestamp DESC LIMIT 1
-        """
-    )
-    fun observeLatestWorkout(userId: Int): Flow<WorkoutEntity?>
+    // `observeOutputSince` and `observeLatestWorkout` lived here and are gone
+    // with the two cards they fed (22.1.2, 22.1.8). `observeLastRide` above is
+    // the replacement for the second, projecting six columns rather than
+    // handing a screen a whole `WorkoutEntity` to find uses for.
 
     /**
      * The most recent ride that was never finalised — i.e. the app was killed

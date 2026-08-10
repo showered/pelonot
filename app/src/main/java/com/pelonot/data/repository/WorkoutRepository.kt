@@ -34,7 +34,6 @@ import com.pelonot.domain.progress.RideRecord
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
 import com.pelonot.domain.social.StreakCalculator
-import java.util.Calendar
 
 /**
  * What the dashboard's progress section is built from (PLAN 22.1.8).

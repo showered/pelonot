@@ -45,7 +45,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -997,81 +996,10 @@ private fun LastRideCard(
     }
 }
 
-// =========================================================================
-// Progress Metric Card
-// =========================================================================
-@Composable
-private fun ProgressMetricCard(
-    label: String,
-    value: String,
-    unit: String,
-    icon: ImageVector,
-    accentColor: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = MaterialTheme.elevationTokens.level1
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacing.large),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Leading icon in a tonal circle
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(MaterialTheme.expressiveShapes.pill)
-                    .background(accentColor.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Black
-                    )
-                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
-                    Text(
-                        text = unit,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
+// `ProgressMetricCard` — a label, a big number and a unit — lived here and is
+// gone with the two kilojoule totals it drew (22.1.2). Nothing on this screen
+// is a bare measurement any more, which is Phase 26 arriving on the dashboard:
+// the two cards left both say a sentence.
 
 /**
  * The rider's FTP over time, on the card that shows the number (7.10.2 / 22.1.4).
