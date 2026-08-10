@@ -6,9 +6,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
@@ -154,77 +153,72 @@ fun HistoryScreen(
                     "or pick a class from the library."
             )
 
-            // 22.4.3, and the owner's rule of 4 August: use the width, and no
-            // single card gets all of it. A ride is a card in a set, so the
-            // list is a grid — two across the bike's panel, one on a phone —
-            // with the day headings still spanning it, because a heading that
-            // only covered half the rides under it would be a lie about which
-            // day they belong to.
+            // 22.7.6, and it overturns 22.4.3's verdict on this one screen.
+            // History was a grid — two ride cards across the bike's panel — and
+            // the owner's note is that a **list** should not change shape with
+            // how much is in it: *"keep it all constrained to one narrower grid
+            // column in the middle, rather than expanding widthways for days
+            // with large numbers of workouts."*
+            //
+            // So the column is one grid cell wide, centred, and every day is
+            // the same shape as every other. It is the same arithmetic as
+            // before — `columnsFor` still decides how wide a cell is on this
+            // screen — with one column drawn instead of all of them, so a phone
+            // is unchanged and the bike gets the width a single-ride day
+            // already had.
+            //
+            // Two things fall out of it and both were separate items before.
+            // 22.7.1's centring is now structural rather than per-row: nothing
+            // can be hard against the left with 600 dp of nothing beside it,
+            // because the whole list is in the middle. And 22.7.4's heading is
+            // over its day by construction — one left edge for the labels and
+            // the cards, with no inset to keep in step.
             else -> BoxWithConstraints(
                 Modifier
+                    // `fillMaxWidth` is load-bearing, not decoration: without it
+                    // the box wraps its one child and there is nothing left to
+                    // centre the column *in*, so it sits hard against the left
+                    // edge at exactly the right width — which looks like the
+                    // centring failing rather than the box shrinking.
+                    .fillMaxWidth()
                     .fillMaxHeight()
                     .padding(padding)
             ) {
+                val available = maxWidth - MaterialTheme.spacing.large * 2
                 val columns = columnsFor(
-                    available = maxWidth - MaterialTheme.spacing.large * 2,
+                    available = available,
                     minCellWidth = RIDE_CARD_MIN_WIDTH,
                     spacing = MaterialTheme.spacing.small
                 )
+                val columnWidth =
+                    (available - MaterialTheme.spacing.small * (columns - 1)) / columns
 
                 LazyColumn(
+                    modifier = Modifier
+                        .width(columnWidth)
+                        .align(Alignment.TopCenter),
                     contentPadding = PaddingValues(
-                        horizontal = MaterialTheme.spacing.large,
                         vertical = MaterialTheme.spacing.medium
                     ),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
                     state.days.forEach { day ->
-                        // 22.7.4: the heading takes the **same** inset as the
-                        // row it labels, so it sits over its own section rather
-                        // than hard against the left edge while the card it
-                        // names starts 500 dp away. It is the first row that
-                        // decides — a day with three rides in a two-wide grid
-                        // has a full first row and a half-empty second, and the
-                        // heading belongs over the first.
-                        val firstRow = minOf(day.rides.size, columns)
                         item(key = "header-${day.startOfDayMs}") {
-                            DayGridRow(columns = columns, occupied = firstRow) {
-                                DayHeader(day, Modifier.weight(firstRow.toFloat()))
-                            }
+                            DayHeader(day)
                         }
-                        // Row-major, so the order down a phone's single column
-                        // is the order across the tablet's rows (see `WideGrid`).
-                        val rows = day.rides.chunked(columns)
-                        items(rows, key = { row -> "row-${row.first().id}" }) { row ->
-                            // Equal heights across a row: one ride carrying the
-                            // recovered-after-a-crash note is taller than its
-                            // neighbour, and two cards of different heights side
-                            // by side read as a rendering fault.
-                            DayGridRow(
-                                columns = columns,
-                                occupied = row.size,
-                                modifier = Modifier.height(IntrinsicSize.Min)
-                            ) {
-                                row.forEach { ride ->
-                                    RideRow(
-                                        ride = ride,
-                                        onClick = { onRideSelected(ride.id) },
-                                        onDelete = { confirming = ride },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                    )
-                                }
-                            }
+                        items(day.rides, key = { ride -> ride.id }) { ride ->
+                            RideRow(
+                                ride = ride,
+                                onClick = { onRideSelected(ride.id) },
+                                onDelete = { confirming = ride }
+                            )
                         }
                     }
 
                     if (state.hasMore) {
                         item(key = "load-more") {
-                            // 22.7.1, and the same rule as the cards above it:
-                            // one control does not band across 1232 dp. It is
-                            // the last thing on the screen and it is centred
-                            // under the list rather than drawn as a bar.
+                            // The same rule as the cards above it: one control
+                            // does not band across the column it ends.
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -243,38 +237,6 @@ fun HistoryScreen(
                 }
             }
         }
-    }
-}
-
-/**
- * One row of a day, inset the way 22.7.1 centres a day that does not fill the
- * grid.
- *
- * The day's **heading** goes through here as well as its rides (22.7.4), and
- * that is the whole reason it is a function: the inset is one computation, so
- * the label cannot end up somewhere its cards are not. A heading at x = 24 dp
- * over a card starting at x ≈ 500 was 22.7.1's own fix leaving a loose end, and
- * two copies of the arithmetic is how it would come back.
- *
- * The cells keep their width — the gap is split into two half-spacers rather
- * than handed to the card — because a lone ride stretched to the width of two
- * is the day looking more important than the day above it (22.6).
- */
-@Composable
-private fun DayGridRow(
-    columns: Int,
-    occupied: Int,
-    modifier: Modifier = Modifier,
-    content: @Composable RowScope.() -> Unit
-) {
-    val gap = columns - occupied
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-    ) {
-        if (gap > 0) Spacer(Modifier.weight(gap / 2f))
-        content()
-        if (gap > 0) Spacer(Modifier.weight(gap - gap / 2f))
     }
 }
 

@@ -517,6 +517,49 @@ one is a screen the audit never reached.
       Both branches in one screenshot, which is what makes it convincing: the
       full row is untouched at the left margin and the two lone rides carry
       their headings out with them.
+
+      **And then the owner looked at that screenshot and 22.7.6 replaced the
+      whole mechanism**, which is worth leaving here rather than tidying away:
+      this fix was correct and it was a fix to the wrong thing. The inset only
+      needed keeping in step because the list changed shape between days.
+- [x] **22.7.6** **A list should not change shape with how much is in it** —
+      the owner's note, 10 August 2026, verbatim: *"keep it all constrained to
+      one narrower grid column in the middle, rather than expanding widthways
+      for days with large number of workouts."*
+
+      **This overturns 22.4.3's verdict on History and only on History**, and
+      the audit's own prediction is what was wrong: it said *"History is a list
+      of rides and may well want two columns"*, and the two columns were built
+      and shipped. What the note adds is the thing an audit of seven screens at
+      once could not see — a **list** is read down, and a set of tiles is
+      looked at, and History is the first one dressed as the second. A day with
+      seven rides drew two columns 1232 dp wide; the day above it drew one card
+      centred at 616. Same screen, same scroll, two shapes.
+
+      So the column is **one grid cell wide and centred**, and every day is the
+      same shape as every other. The arithmetic is unchanged — `columnsFor`
+      still decides how wide a cell is here, so a phone is untouched and the
+      bike gets the width a single-ride day already had.
+
+      **It subsumes two items rather than sitting beside them.** 22.7.1's
+      centring is structural now instead of per-row: nothing *can* be hard
+      against the left edge with 600 dp of nothing beside it, because the whole
+      list is in the middle. And 22.7.4's heading is over its day by
+      construction — one left edge for the labels and the cards, with no inset
+      to keep in step and therefore nothing to drift. The `DayGridRow` written
+      an hour earlier is deleted.
+
+      *Observed on the 1280 × 720 dp AVD, top of the list and bottom:* headings
+      at x = 495 and cards at x = 497 for **every** day on screen — Today with
+      one ride, Wednesday 5 August with seven, Friday 31 July, Saturday 6 June
+      and Tuesday 1 July with one each.
+
+      **One thing was got wrong and it is worth knowing about**, because it
+      looks exactly like a different fault: `BoxWithConstraints` with only
+      `fillMaxHeight` **wraps its child horizontally**, so `maxWidth` still
+      reported the full 1280 dp and the column came out at precisely the right
+      width, hard against the left edge, with nothing to centre it in. It reads
+      as `align` failing rather than as the box shrinking.
 - [x] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
       *"I'm sure this is already on the todo list but it needs some work.
       Visualisation should be much more beautiful and also adhere to the rules
