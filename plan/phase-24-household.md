@@ -301,9 +301,41 @@ downgrade — it is why the feature can afford to be interesting.
 
       *Four JVM tests, and the one worth naming is `a board of nothing but
       generated targets still draws` — one generated row plus you is a race,
-      which is the owner's sentence as an assertion. **Not yet observed on the
-      AVD**: what it changes is only visible on a simulated ride with a seeded
-      class, and that is the check this item still owes.*
+      which is the owner's sentence as an assertion.*
+
+      ***Now observed on the tablet AVD, and the moving part is the half the
+      tests could not assert.*** A simulated ride of `END-01 Zone 2 Steady` — a
+      class **thirteen** riders on this bike have ridden, with a static board
+      of `Ava 330 kJ / Ben 320 / Cleo 310 / Hana 260 / Simon 240 / Kilo 194`
+      showing on the screen immediately before Start. During the ride the live
+      board is:
+
+      | 0:32 | 1:25 |
+      |------|------|
+      | `300` 8 | `300` 21 |
+      | `JUST PAST YOUR BEST` 6 | `JUST PAST YOUR BEST` 17 |
+      | `CLASS TARGET` 3 | **`YOU` 13** |
+      | **`YOU` 3** | `CLASS TARGET` 9 |
+      | `YOUR USUAL` 2 | `YOUR USUAL` 5 |
+
+      **Not one of the thirteen is on it, and it is not empty** — which is the
+      owner's sentence happening rather than being asserted. `CLASS TARGET` is
+      there too, so the rename went out with it. And **the rider is genuinely
+      racing**: `YOU` climbs from fourth to third between the two readings,
+      passing the class's own prescription, which is the thing four JVM tests
+      of a narrowing function cannot show.
+
+      *The ride is corroborated in the database rather than taken from the
+      screen: 155 s, 21.6 kJ, and **156 of 156 samples with
+      `power_is_measured = 0`.** So the watts really were modelled, and the
+      ride is correctly excluded afterwards from every static board — which is
+      this item's last paragraph, observed from the other end.*
+
+      *The log line `Modelled watts at Ns: racing generated targets only` was
+      **not** seen, and that is the code being right rather than wrong: it is
+      guarded on `rivalTrace != null || raceBoard != null`, so it says nothing
+      when the gate fires before the board has landed. The screen is the
+      better witness here anyway.*
 
       **One rename went with it and it is not 24.3.12a.** `Prescribed` read as
       *"The plan"*, which on a board of names is a duration-shaped placeholder
