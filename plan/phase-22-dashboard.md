@@ -466,7 +466,7 @@ one is a screen the audit never reached.
       edge case at the bottom of a dense fixture list is the ordinary reading
       of this screen. That is 22.5.5's warning arriving on a second surface,
       and it is the reason this is worth a change rather than a shrug.*
-- [ ] **22.7.4** **The date header did not move when the row did**, and it is
+- [x] **22.7.4** **The date header did not move when the row did**, and it is
       22.7.1's own fix leaving a loose end. Centring a day that holds one ride
       was right — a lone card stretched across the panel reads as a more
       important day than the one above it — but the day's *heading* is still
@@ -489,6 +489,34 @@ one is a screen the audit never reached.
       guessed at. Judge it on the AVD with one ride on some days and two on
       others (22.7.1's own instruction, and it is what makes the difference —
       a two-ride day fills the row and its header lines up already)
+
+      ***Done, and the owner decided it rather than a session guessing.*** Asked
+      as the four-way it actually was — centre the heading over its row,
+      left-align everything and lose 22.7.1's centring, a middle path that
+      left-aligns both but keeps the card at cell width, or leave it — and the
+      answer was **centre the heading over its row**.
+
+      **The heading takes the same inset as the row it labels**, and the reason
+      it is one function rather than two call sites is this item itself: a
+      heading at x = 24 while its card starts at x ≈ 500 is two computations of
+      one offset drifting apart, and writing it twice again is how it comes
+      back. `DayGridRow` is the row's centring, used by the day's rides *and* by
+      its heading. **The first row is what decides** — a day with three rides in
+      a two-wide grid has a full first row and a half-empty second, and the
+      heading belongs over the first, not over the average of them.
+
+      *Measured on the 1280 × 720 dp AVD against exactly the database this item
+      asked for — one ride on some days, seven on another:*
+
+      | Day | Rides | Heading x | First card x |
+      |-----|-------|-----------|--------------|
+      | Today | 1 | 498 | 498 |
+      | Wednesday, August 5, 2026 | 7 | 24 | 24 |
+      | Friday, July 31, 2026 | 1 | 498 | 498 |
+
+      Both branches in one screenshot, which is what makes it convincing: the
+      full row is untouched at the left margin and the two lone rides carry
+      their headings out with them.
 - [x] **22.7.2** **The Start Class screen wants real design work.** Verbatim:
       *"I'm sure this is already on the todo list but it needs some work.
       Visualisation should be much more beautiful and also adhere to the rules

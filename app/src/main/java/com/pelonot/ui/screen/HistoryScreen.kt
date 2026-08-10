@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -178,8 +179,18 @@ fun HistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
                     state.days.forEach { day ->
+                        // 22.7.4: the heading takes the **same** inset as the
+                        // row it labels, so it sits over its own section rather
+                        // than hard against the left edge while the card it
+                        // names starts 500 dp away. It is the first row that
+                        // decides — a day with three rides in a two-wide grid
+                        // has a full first row and a half-empty second, and the
+                        // heading belongs over the first.
+                        val firstRow = minOf(day.rides.size, columns)
                         item(key = "header-${day.startOfDayMs}") {
-                            DayHeader(day)
+                            DayGridRow(columns = columns, occupied = firstRow) {
+                                DayHeader(day, Modifier.weight(firstRow.toFloat()))
+                            }
                         }
                         // Row-major, so the order down a phone's single column
                         // is the order across the tablet's rows (see `WideGrid`).
@@ -189,30 +200,11 @@ fun HistoryScreen(
                             // recovered-after-a-crash note is taller than its
                             // neighbour, and two cards of different heights side
                             // by side read as a rendering fault.
-                            // 22.7.1. A day that holds fewer rides than the grid
-                            // is wide **centres** them rather than pushing them
-                            // left against an empty right-hand column. The
-                            // owner's note was "panels need to be centrally
-                            // aligned — look in particular at the bottom", and
-                            // the bottom is where the one-ride days are: at the
-                            // cadence 22.5 established, one ride a week, most
-                            // days are a single card and the old layout drew
-                            // every one of them hard against the left with 600
-                            // dp of nothing beside it.
-                            //
-                            // The cards keep their cell width — the gap is
-                            // split into two half-spacers rather than given to
-                            // the card — because a lone ride stretched to the
-                            // width of two is the day looking more important
-                            // than the day above it (22.6).
-                            val gap = columns - row.size
-                            Row(
-                                modifier = Modifier.height(IntrinsicSize.Min),
-                                horizontalArrangement = Arrangement.spacedBy(
-                                    MaterialTheme.spacing.small
-                                )
+                            DayGridRow(
+                                columns = columns,
+                                occupied = row.size,
+                                modifier = Modifier.height(IntrinsicSize.Min)
                             ) {
-                                if (gap > 0) Spacer(Modifier.weight(gap / 2f))
                                 row.forEach { ride ->
                                     RideRow(
                                         ride = ride,
@@ -223,7 +215,6 @@ fun HistoryScreen(
                                             .fillMaxHeight()
                                     )
                                 }
-                                if (gap > 0) Spacer(Modifier.weight(gap - gap / 2f))
                             }
                         }
                     }
@@ -255,8 +246,40 @@ fun HistoryScreen(
     }
 }
 
+/**
+ * One row of a day, inset the way 22.7.1 centres a day that does not fill the
+ * grid.
+ *
+ * The day's **heading** goes through here as well as its rides (22.7.4), and
+ * that is the whole reason it is a function: the inset is one computation, so
+ * the label cannot end up somewhere its cards are not. A heading at x = 24 dp
+ * over a card starting at x ≈ 500 was 22.7.1's own fix leaving a loose end, and
+ * two copies of the arithmetic is how it would come back.
+ *
+ * The cells keep their width — the gap is split into two half-spacers rather
+ * than handed to the card — because a lone ride stretched to the width of two
+ * is the day looking more important than the day above it (22.6).
+ */
 @Composable
-private fun DayHeader(day: RideDayGrouping.Day<WorkoutListItem>) {
+private fun DayGridRow(
+    columns: Int,
+    occupied: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
+) {
+    val gap = columns - occupied
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        if (gap > 0) Spacer(Modifier.weight(gap / 2f))
+        content()
+        if (gap > 0) Spacer(Modifier.weight(gap - gap / 2f))
+    }
+}
+
+@Composable
+private fun DayHeader(day: RideDayGrouping.Day<WorkoutListItem>, modifier: Modifier = Modifier) {
     val label = when (day.relative) {
         RideDayGrouping.Relative.Today -> "Today"
         RideDayGrouping.Relative.Yesterday -> "Yesterday"
@@ -270,7 +293,7 @@ private fun DayHeader(day: RideDayGrouping.Day<WorkoutListItem>) {
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
+        modifier = modifier
             .padding(top = MaterialTheme.spacing.large, bottom = MaterialTheme.spacing.extraSmall)
             .semantics { heading() }
     )
