@@ -1087,7 +1087,7 @@ and there is nothing on it that says what to ride. *Begin Class* is a door to a
 list. That is the gap the owner's primary-CTA note is standing next to, and
 22.8.6 is where it is picked up.
 
-- [ ] **22.8.1** **Begin Class is the primary action; Just Ride is the
+- [x] **22.8.1** **Begin Class is the primary action; Just Ride is the
       secondary.** The owner's instruction and their reasoning — *"i feel like
       95%+ of usage will be classes"* — and the current screen has it exactly
       backwards: *Just Ride* is a 616 × 152 dp card in `primaryContainer` teal
@@ -1097,7 +1097,17 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       swap of *emphasis*, not a deletion: Just Ride keeps its place, and it
       should keep a place a rider can hit without reading, because it is what
       somebody already on the bike reaches for
-- [ ] **22.8.2** **Take the vertical fat out, itemised against the table
+
+      ***Done and observed on the tablet AVD.*** *Begin Class* is a
+      `primaryContainer` card at `weight(2f)` with *Just Ride* beside it at
+      `weight(1f)` in the secondary treatment — the exact inverse of what was
+      there. Both were tapped through: *Begin Class* lands on the class
+      library's category row (`All / Climbs / Endurance / Recovery / Sprints /
+      Sweet Spot`) and *Just Ride* on *What's your goal today?*, which is the
+      check worth doing rather than assuming, because **swapping two lambdas
+      between two call sites is exactly the change that goes silently wrong**.
+
+- [x] **22.8.2** **Take the vertical fat out, itemised against the table
       above.** Named because "make it denser" is how a screen loses the
       breathing room 22.4 bought it, and each of these is a specific claim that
       can be argued with:
@@ -1112,7 +1122,27 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
         caption. *"Functional Threshold Power — your baseline for all training
         zones"* is a definition, and a definition is read once
       - The three tiles are 111 dp each for a 32 dp icon and two words
-- [ ] **22.8.3** **Navigation is not content, and three doors should not weigh
+
+      ***Done, and each of the four was taken for its own reason.***
+      - *"Ready to ride?"* is gone and the greeting is **one line**, 86 dp of
+        stacked block down to a 44 dp row that also carries 22.8.3's doors.
+      - *Your Progress* and *"Track your performance over time"* are gone. 44 dp
+        of heading over two cards that say `Last 30 days` and `Last ride` on
+        their own faces.
+      - **The FTP definition moved rather than being deleted**, and that turned
+        out to be the interesting part. It was setting the height of a whole
+        row — `WideRow` equalises heights, so a caption on the FTP card decided
+        how tall *Just Ride* was — and *Your FTP*, the one screen in this app
+        where the number is genuinely **read**, had never spelled the acronym
+        out at all. Phase 26's rule about where a *unit* belongs is the same
+        rule about where a *definition* belongs. It opens that screen now, at
+        `readableText` width, because the rest of the surface is charts and this
+        one line is prose.
+      - The primary card's padding is `large` rather than `extraLarge`: at the
+        wider figure it was 107 dp tall to hold 43 dp of text, and it is the
+        widest card on the screen, so the emptiness read as a field of teal.
+
+- [x] **22.8.3** **Navigation is not content, and three doors should not weigh
       the same as the ride.** *History* and *Settings* are the same kind of
       thing as the bottom navigation bar the tablet already draws
       (`HARDWARE.md`), and they are given 405 × 111 dp each on the first screen.
@@ -1120,18 +1150,57 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       either — but it does not have to be a card. **Do this one after 22.8.1**,
       since the tile row is what *Begin Class* is currently hiding in and
       changing both at once makes neither measurable
-- [ ] **22.8.4** **The empty rail below the fold.** The household panel is a
+
+      ***Done — they are labelled doors in the header row.*** Two 405 × 111 dp
+      cards became two text buttons at the right-hand end of the greeting,
+      costing nothing vertically because that row already existed. **They keep
+      their words**: a bare gear-and-clock pair would have been smaller again,
+      and 20.4's whole lesson is about the rider meeting this app for the first
+      time — a glyph is a guess and *Settings* is not. Both tapped through, to
+      the ride list and to the rider's own settings.
+
+- [x] **22.8.4** **The empty rail below the fold.** The household panel is a
       lone card holding a column's width (22.6, correct) with **633 dp of
       nothing beside it**, at the bottom of a screen the owner says is
       stretched. Whatever comes out of 22.8.6 goes there first, because it is
       free space that costs no density anywhere else
-- [ ] **22.8.5** **Then judge whether the household belongs above the fold.**
+
+      ***Done — the rail is what the rider's own cards now sit in.*** The
+      household is a `weight(1f)` column with the FTP, thirty-day and last-ride
+      cards stacked in the other, so nothing was invented to fill 633 dp of
+      tablet: **the thing that fills it is the thing that used to be under
+      it.** The two nags (the account offer, the backup reminder) were also
+      being held to half a row by a weighted spacer, which is `loneCard`'s cap
+      arrived at by accident and 100 dp narrower than the token says; they use
+      the token now, and the sentence stopped wrapping to three lines.
+
+      ***And the no-household branch had to be built rather than inherited.***
+      A household of one is the ordinary case for a new rider, and the first
+      version of this change would have drawn the three own-cards at
+      `fillMaxWidth` across 1232 dp — the owner's rule broken by the change that
+      cites it. They go abreast through `WideGrid` instead, which is the token
+      for a set that is *looked at*. **Seen** by turning `household_visible` off
+      for every profile but one: three cards at 405 dp, `9 rides · 35 min · 3
+      weeks in a row` still on one line, and a large honest emptiness below
+      them, which is 22.2.3's rule about the empty case rather than a gap to be
+      filled.
+
+- [x] **22.8.5** **Then judge whether the household belongs above the fold.**
       18.2's rule — the rider's own training first, everyone else's second — put
       it last, and that rule is right about *order* and says nothing about
       *visibility*. A panel nobody scrolls to is a panel nobody has. This is a
       real decision and not a tidy-up: the owner's social-feed note and Phase 28
       both want room in the same place
-- [ ] **22.8.6** **Decide what earns the space before filling it, and keep
+
+      ***Decided: yes, and beside rather than above.*** 18.2's ordering is
+      kept by left-before-right and both are above the fold, which is the
+      answer this item was hoping for rather than the trade it expected.
+      **Measured on the tablet AVD**: the whole dashboard, household included,
+      is **609 dp with the backup nag showing and 513 dp without**, against a
+      664 dp viewport — and the check was that a 700 px swipe moved nothing,
+      with the two frames differing only in the clock.
+
+- [~] **22.8.6** **Decide what earns the space before filling it, and keep
       22.1.1's sentence as the test.** *Should I ride today, and what should I
       ride.* The candidates, ranked by how much of that sentence they answer:
       1. **A class to ride** — the second half of the question, unanswered
@@ -1144,6 +1213,25 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       **A rethink is not a licence to fill it.** The dashboard got to three
       summaries of the past by accretion, one honest card at a time, and 22.1.1
       exists because of it
+
+      ***Half-answered, and deliberately so: the room is made and nothing has
+      been invented to fill it.*** 22.8.4 and 22.8.5 took candidate 2 — the
+      household, promoted rather than added — and that is the whole of what
+      this sitting put in the space, because it was already on the screen and
+      only in the wrong place. **What is left below the cards is honest
+      emptiness**: 22.2.3's rule is that a card with nothing to say draws
+      nothing, and the solo-rider branch shows what that looks like at 273 dp of
+      nothing under three cards. *A dashboard with room on it is a better place
+      to be than a dashboard without, and filling it is the next decision
+      rather than a consequence of this one.*
+
+      **Candidate 1 is still the one to build and its argument got stronger.**
+      Nothing on this screen says what to ride, and the primary action is now a
+      door labelled *Begin Class* — so the screen invites a choice it does not
+      help with. What it needs before it can be built is the rule: *which*
+      class, on what basis, and what it says when the rider has ridden nothing
+      yet. That is a design decision with the owner's name on it rather than a
+      layout job.
 - [ ] **22.8.7** **A social feed — what it would be, and the two rules it
       cannot break.** The owner's *"maybe some kind of social feed"*. What a
       feed item is here: *Kilo rode Zone 2 Steady, 22 min, this morning*; *Ava
@@ -1167,9 +1255,38 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       (*"one for the backlog"*), and 28.6 is the dashboard's share of it. What
       this item asks of 22.8 is only that the layout it lands on has somewhere
       for it to go — which 22.8.4's empty rail already is
-- [ ] **22.8.9** **Judged on the tablet AVD at 1280 × 720 dp with a household on
+- [x] **22.8.9** **Judged on the tablet AVD at 1280 × 720 dp with a household on
       it, and 22.2.5 still applies.** The claim *"fits on one screen without
       scrolling"* was made against a dashboard with no household panel and is
       the reason this note was needed. Seed one before measuring anything here.
       **The number to beat is 993 dp**, and the target is the fold: 664 dp on
       the AVD, 672 dp on the bike
+
+      ***Done, and the number is the item.*** **993 dp → 609 dp with the backup
+      nag showing, 513 dp without**, against a 664 dp viewport on the AVD and
+      672 dp on the bike. The check that it genuinely does not scroll was a
+      700 px swipe with the two frames compared: identical but for the clock.
+      Measured with a household of fourteen seeded on the device — which this
+      item asked for, and which is the condition the previous sitting's *"fits
+      on one screen without scrolling"* was **not** measured under.
+
+      **22.2.5 is still owed on all of it.** Everything here is the AVD's
+      furniture, not the tablet's.
+
+- [x] **22.8.10** **A defect nobody had met, found by deleting the thing that
+      carried it.** `WideRow` — this screen's private "cards abreast where there
+      is room, stacked where there is not" — **did not stack.** Its content is
+      written against `RowScope`, so the narrow branch could not put the
+      children in a `Column`; it wrapped them in a *second* `Row` instead,
+      weights and all, and a phone would have got three cards at 130 dp each.
+      The comment above it asserted the opposite in as many words (*"in the
+      stacked case the weights are ignored"*), which is what kept it invisible,
+      and the bike is 1280 dp so nothing ever took that branch.
+
+      It is gone with the layout that used it, and the residue is a rule worth
+      more than the fix: **a helper that takes `RowScope` content can only ever
+      make rows.** `WideGrid` takes *items* and that is why it can do both, and
+      it is the reason 22.8.4's no-household branch could be built at all. The
+      comment that lied is preserved in the source where `WideRow` used to be —
+      **a wrong comment above working code on the only path anybody walks is
+      the cheapest possible place for a defect to hide.**
