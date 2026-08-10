@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -57,6 +60,13 @@ import com.pelonot.ui.theme.PowerZone6Anaerobic
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
 import kotlin.math.absoluteValue
+
+/**
+ * How much of the bottom edge fades out while there is more grid below it
+ * (20.1.6). A little under half a tile at the floor size, which is enough to
+ * read as a soft edge from two metres and not enough to hide a face.
+ */
+private val SCROLL_FADE = 48.dp
 
 /** Deterministic avatar colours, so a profile keeps the same one every launch. */
 private val AvatarColors = listOf(
@@ -129,10 +139,19 @@ fun ProfileSelectorScreen(
             tiles = tiles
         )
 
+        // **The heading and the hint are fixed; only the riders scroll**
+        // (20.1.6). Past about twenty tiles the grid has to overflow — that is
+        // 20.1.2's floor doing its job, and the floor is right — but the whole
+        // screen used to scroll as one piece, so the overflow arrived as a row
+        // of tiles sliced off at y 1080 with nothing under it. A row cut by the
+        // *edge of the screen* reads as a rendering fault; the same row cut
+        // above a line of text reads as more to come.
+        //
+        // The column still wraps its content, so a household of three is
+        // centred exactly as before and nothing here costs them anything.
+        val scroll = rememberScrollState()
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -145,56 +164,85 @@ fun ProfileSelectorScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    MaterialTheme.spacing.large,
-                    Alignment.CenterHorizontally
-                ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            Box(
+                // `fill = false`: take the room the tiles need and no more, so
+                // the screen is still one centred block when they fit.
+                modifier = Modifier.weight(1f, fill = false)
             ) {
-                profiles.forEach { user ->
-                    ProfileTile(
-                        name = user.name,
-                        // 26.1.1, the owner's own example. It read
-                        // `150 W FTP`: two pieces of jargon and the least
-                        // useful fact about a rider on a screen whose only
-                        // question is *which of you is it*. Nobody picks their
-                        // profile by their FTP, the number moves on its own
-                        // (Phase 7), and the FTP already has two screens of its
-                        // own. A name and a face is the whole answer.
-                        accent = AvatarColors[user.localUserId.absoluteValue % AvatarColors.size],
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(scroll),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        MaterialTheme.spacing.large,
+                        Alignment.CenterHorizontally
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    profiles.forEach { user ->
+                        ProfileTile(
+                            name = user.name,
+                            // 26.1.1, the owner's own example. It read
+                            // `150 W FTP`: two pieces of jargon and the least
+                            // useful fact about a rider on a screen whose only
+                            // question is *which of you is it*. Nobody picks
+                            // their profile by their FTP, the number moves on
+                            // its own (Phase 7), and the FTP already has two
+                            // screens of its own. A name and a face is the
+                            // whole answer.
+                            accent = AvatarColors[
+                                user.localUserId.absoluteValue % AvatarColors.size
+                            ],
+                            size = tileSize,
+                            onClick = { onProfileSelected(user) },
+                            onLongClick = { editing = user.localUserId }
+                        )
+                    }
+
+                    // Guest and "new" are peers of the riders in *layout*
+                    // (20.1.4) and deliberately not in weight (20.1.3): both
+                    // are outlined rather than filled, so the eye lands on a
+                    // real rider first without having to read anything.
+                    SecondaryTile(
+                        icon = Icons.Default.PersonOutline,
+                        label = "Guest",
+                        detail = "Not saved to a profile",
                         size = tileSize,
-                        onClick = { onProfileSelected(user) },
-                        onLongClick = { editing = user.localUserId }
+                        onClick = onGuestSelected,
+                        contentDescription = "Ride as a guest, without saving to a profile"
+                    )
+                    SecondaryTile(
+                        icon = Icons.Default.Add,
+                        label = "New rider",
+                        detail = "Add a profile",
+                        size = tileSize,
+                        onClick = onCreateProfile,
+                        contentDescription = "Create a new profile"
                     )
                 }
 
-                // Guest and "new" are peers of the riders in *layout* (20.1.4)
-                // and deliberately not in weight (20.1.3): both are outlined
-                // rather than filled, so the eye lands on a real rider first
-                // without having to read anything.
-                SecondaryTile(
-                    icon = Icons.Default.PersonOutline,
-                    label = "Guest",
-                    detail = "Not saved to a profile",
-                    size = tileSize,
-                    onClick = onGuestSelected,
-                    contentDescription = "Ride as a guest, without saving to a profile"
-                )
-                SecondaryTile(
-                    icon = Icons.Default.Add,
-                    label = "New rider",
-                    detail = "Add a profile",
-                    size = tileSize,
-                    onClick = onCreateProfile,
-                    contentDescription = "Create a new profile"
-                )
+                // Each edge fades into the background while there is more past
+                // it, and is not drawn at all when there is not. Two metres
+                // away on a bike is too far to notice half a tile; a soft edge
+                // is visible from there and says the same thing. Both ends,
+                // because once the grid has been scrolled the riders above it
+                // are the ones that have gone missing.
+                if (scroll.canScrollBackward) {
+                    ScrollEdgeFade(Alignment.TopCenter)
+                }
+                if (scroll.canScrollForward) {
+                    ScrollEdgeFade(Alignment.BottomCenter)
+                }
             }
 
             if (profiles.isNotEmpty()) {
                 Spacer(Modifier.size(MaterialTheme.spacing.large))
                 Text(
+                    // The hint earns a second job here: it is the line the last
+                    // visible row is cut against, which is what makes the cut
+                    // legible as "there is more" rather than as a clipped
+                    // screen. It says nothing about scrolling — a rider who can
+                    // see half a tile does not need to be told (Phase 26).
                     text = "Press and hold a rider to rename or remove them.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -202,6 +250,27 @@ fun ProfileSelectorScreen(
             }
         }
     }
+}
+
+/**
+ * One soft edge on the scrolling grid (20.1.6), fading towards whichever side
+ * the hidden tiles are on.
+ */
+@Composable
+private fun BoxScope.ScrollEdgeFade(edge: Alignment) {
+    val background = MaterialTheme.colorScheme.background
+    val colours = if (edge == Alignment.TopCenter) {
+        listOf(background, Color.Transparent)
+    } else {
+        listOf(Color.Transparent, background)
+    }
+    Box(
+        modifier = Modifier
+            .align(edge)
+            .fillMaxWidth()
+            .height(SCROLL_FADE)
+            .background(Brush.verticalGradient(colours))
+    )
 }
 
 /**
