@@ -8,6 +8,79 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 10 August 2026 (thirty-sixth sitting): the progress section that showed no progress, and a list that changed shape
+
+**Phase 22 is complete but for one line, and the line needs the bike.** The
+brief was the dashboard; the owner had no access to the tablet and made
+themselves available instead, which is what closed the two items that had been
+waiting on a decision rather than on work. **690 JVM tests, 0 failures.**
+Everything below was observed on the 1280 × 720 dp AVD.
+
+**The AVD said the thing the plan had been arguing about since the sixth
+sitting.** *Your Progress* opened as `Today's Output 73 kJ` beside `Recent Ride
+73 kJ` — the same number, twice, because the last ride happened to be today.
+22.1's original complaint was that *"both are the same quantity on the same
+axis"*, and it arrived as a screenshot rather than as an argument. **The
+today figure is also 22.5's defect surviving on the card next to the one that
+fixed it**: at one ride a week it reads `0.0 kJ` for six days out of seven, and
+22.5.4's audit walked past it because that audit was looking for *weeks* and
+this card counts *hours*.
+
+**So 22.1.1 was settled first, in one sentence, in `DashboardStats`' own
+KDoc** — *the dashboard answers should I ride today, and what should I ride* —
+and the section follows from it: `Today's Output` is deleted, and `Recent Ride`
+became a real last-ride card. **It says no kilojoules on purpose.** A unit
+belongs where a measurement is being *read* (Phase 26), and this is a glance;
+the kJ are one tap away on the ride itself, where they are a measurement again.
+
+**The claim on that card has one branch and three refusals, and the refusals
+are the work.** *Best you've ridden it* needs measured watts on this ride **and**
+on the rides it is put above; a free ride, a first ride of a class and a
+modelled ride all decline to say anything. `NotBest` and `Unclaimed` draw the
+same nothing and are still kept apart, for `PowerProvenance`'s reason about
+`Unknown` against `Modelled`. **All four branches were seen**, which needed the
+database edited by hand because every AVD ride is simulated: the verdict
+appeared when the earlier measured rides were small, and **disappeared again
+when a 240 kJ measured ride was restored** — the pass that makes it a
+comparison rather than a constant.
+
+**A gap in the measured-power gate turned up while building it.**
+`NOT EXISTS (a sample that is not a measurement)` is passed *trivially* by a
+ride with **no samples at all**, so an evidence-free ride arrives as "measured
+all the way through". `householdLeaderboard` guards it and `ownTotalsForClass`
+— which feeds the `Usual` ghost — does not.
+
+**And the owner settled two things a session should not have guessed at.**
+22.7.4, the day heading that did not move when its row did, was asked as the
+four-way it actually was and answered *centre the heading over its row*; it was
+built and measured, and then **the owner looked at the screenshot and replaced
+the whole mechanism**: *"keep it all constrained to one narrower grid column in
+the middle, rather than expanding widthways for days with large number of
+workouts."* That is **22.7.6**, and it overturns 22.4.3's verdict on History
+alone. The audit predicted this screen *"may well want two columns"* and was
+wrong for a reason seven screens at once could not show: **a list is read down
+and a set of tiles is looked at**, and History was the first dressed as the
+second — a seven-ride day drawing two columns across 1232 dp with a one-ride
+day centred at 616 above it. One centred column subsumes 22.7.1 and 22.7.4
+rather than sitting beside them, and the `DayGridRow` written an hour earlier
+was deleted. *The correct fix to the wrong thing is worth leaving in the plan.*
+
+**One layout fault was found by looking rather than reasoning**, and it is a
+rule: the verdict began as a line of its own, `WideRow` equalises heights, so
+the whole row grew and pushed the good news off the bottom of a screen 22.4.3
+had got fitting without a scroll. **A card that grows is a row that grows.**
+
+**Also closed in the same sitting:** 24.3.7a, carried over unfinished — a
+modelled ride now **narrows** the live leaderboard to the targets this app
+generated instead of emptying it, on the owner's rule that *"there should
+ALWAYS be a leaderboard even if it's only CPU ghosts you're up against"*; and
+22.5.5, judged against the once-a-week fixture it insisted on (`6 rides ·
+32 min · 8 weeks in a row`), where the weekly streak is 22.5.2's whole argument
+arriving as a number — under the old day-counting streak that rider scored 1
+and was shown nothing.
+
+---
+
 ### 5 August 2026 (thirty-fifth sitting): the three dots, and a lock nobody could see
 
 **The owner's two inbox entries are written up and emptied, and the first one

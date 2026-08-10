@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 10 August (thirty-seventh sitting).**
-Measured, not estimated: `assembleDebug` passes, **690 JVM tests, 0 failures**,
-and **545 of 787 plan boxes** are ticked across 28 phases. It is a summary —
+**Written 4 August 2026, updated 10 August (thirty-eighth sitting).**
+Measured, not estimated: `assembleDebug` passes, **706 JVM tests, 0 failures**,
+and **547 of 789 plan boxes** are ticked across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -16,10 +16,12 @@ names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 >
 > **The dashboard in it is out of date as of 10 August.** The owner's note —
 > *"seems very stretched"* — was measured at 993 dp of content in a 664 dp
-> viewport and answered: *Begin Class* is the primary action rather than *Just
-> Ride*, History and Settings are doors in the greeting row rather than cards,
-> and the household panel is beside the rider's own numbers instead of below
-> the fold. Everything else in the recording still stands (22.8).
+> viewport and answered: History and Settings are doors in the greeting row
+> rather than cards, and the household panel is beside the rider's own numbers
+> instead of below the fold. **And the primary action is no longer a door at
+> all** — it names a class to ride, chosen from the rider's own history and
+> saying why (22.8.6, 22.8.11). Everything else in the recording still
+> stands.
 
 > This page exists because the plan answers *why* extremely well and *where are
 > we* not at all (19.1.7). It is rewritten by whichever sitting changes the
@@ -30,10 +32,11 @@ names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 ## The one-paragraph answer
 
 **The bike half is finished and the cloud half is a week old.** A rider gets on
-a stock Peloton, picks a profile, starts one of 72 designed classes, watches
-Netflix with a translucent overlay of their own numbers on top, and ends up with
-a per-second record that is theirs — measured watts off the board, not estimated
-— with charts, an FTP that corrects itself, heart-rate zones, a household
+a stock Peloton, picks a profile, is offered a class to ride by name — chosen
+from their own history and saying why — starts it or picks another of the 72,
+watches Netflix with a translucent overlay of their own numbers on top, and ends
+up with a per-second record that is theirs — measured watts off the board, not
+estimated — with charts, an FTP that corrects itself, heart-rate zones, a household
 leaderboard and an export. All of that is built and has been observed working on
 the real hardware. What arrived in the last two sittings is everything *off* the
 bike: accounts, a cloud backup that has been seen making the round trip, a
