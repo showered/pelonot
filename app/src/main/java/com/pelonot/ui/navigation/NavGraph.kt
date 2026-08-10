@@ -266,7 +266,13 @@ fun PelonotNavGraph(
                 onSettings = { navController.navigate(Destination.Settings.route) },
                 ridingHistory = uiState.ridingHistory,
                 onFtpProgress = { navController.navigate(Destination.FtpProgress.route) },
-                onRiding = { navController.navigate(Destination.Riding.route) }
+                onRiding = { navController.navigate(Destination.Riding.route) },
+                // The same destination history and the FTP trend use (22.1.5):
+                // a ride opened from the dashboard is the ride, not a third
+                // rendering of one.
+                onLastRide = { workoutId ->
+                    navController.navigate(Destination.RideDetail.of(workoutId))
+                }
             )
         }
 

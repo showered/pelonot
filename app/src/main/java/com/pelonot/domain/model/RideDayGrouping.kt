@@ -70,6 +70,29 @@ object RideDayGrouping {
         }
     }
 
+    /**
+     * How [epochMs] reads against today — the same two days [group] names,
+     * for one ride rather than a list of them (22.1.5).
+     *
+     * Shared rather than re-derived: the dashboard's last-ride card and
+     * history's day headings must agree about where midnight is, and a rider
+     * looking at a ride labelled *Today* on one screen and *9 August* on the
+     * other has found a bug in the app rather than in their memory.
+     */
+    fun relativeTo(
+        epochMs: Long,
+        now: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Relative {
+        val today = startOfDay(now, timeZone)
+        val yesterday = startOfDay(today - HALF_A_DAY_MS, timeZone)
+        return when (startOfDay(epochMs, timeZone)) {
+            today -> Relative.Today
+            yesterday -> Relative.Yesterday
+            else -> Relative.Earlier
+        }
+    }
+
     private fun startOfDay(epochMs: Long, timeZone: TimeZone): Long =
         Calendar.getInstance(timeZone).apply {
             timeInMillis = epochMs

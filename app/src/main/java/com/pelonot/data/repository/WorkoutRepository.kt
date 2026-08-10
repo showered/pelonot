@@ -2,6 +2,7 @@ package com.pelonot.data.repository
 
 import com.pelonot.data.local.dao.ActiveRideRivalDao
 import com.pelonot.data.local.dao.HouseholdRivalRow
+import com.pelonot.data.local.dao.LastRideRow
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
@@ -21,7 +22,10 @@ import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.social.RaceCompetitor
+import com.pelonot.domain.progress.LastRide
+import com.pelonot.domain.progress.LastRideStanding
 import com.pelonot.domain.progress.MeanMaximalPower
+import com.pelonot.domain.progress.RideStanding
 import com.pelonot.domain.progress.PersonalBest
 import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.domain.progress.PowerSample
@@ -33,15 +37,27 @@ import com.pelonot.domain.social.StreakCalculator
 import java.util.Calendar
 
 /**
- * Headline figures for the dashboard.
+ * What the dashboard's progress section is built from (PLAN 22.1.8).
  *
- * These replace hardcoded literals — "12.5" kJ today, "8.3" kJ last ride and a
- * permanent "FTP Stable" badge — which were shown to the rider as their own
- * statistics on a device that had never recorded a single workout.
+ * **One field, and that is the item.** It used to carry `todayOutputKj` and the
+ * whole `WorkoutEntity` of the last ride, which the screen drew as two cards
+ * reading *"Today's Output 73 kJ"* and *"Recent Ride 73 kJ"* — the same number,
+ * twice, whenever the last ride happened to be today. 22.1's original complaint
+ * was that *"both are the same quantity on the same axis"*, and on a rider who
+ * rides once a week the today figure spends six days out of seven at `0.0`,
+ * which is 22.5's defect surviving on the card next to the one that fixed it.
+ *
+ * 22.1.1 settles what belongs here: the dashboard answers *should I ride today,
+ * and what should I ride*. A total of work already done answers neither, and
+ * lives on history (12) and *Your riding* (16.3.2) where it is being read
+ * rather than glanced at.
+ *
+ * Before either of those it held hardcoded literals — "12.5" kJ today, "8.3" kJ
+ * last ride and a permanent *FTP Stable* badge — shown to riders as their own
+ * statistics on a device that had never recorded a workout.
  */
 data class DashboardStats(
-    val todayOutputKj: Double = 0.0,
-    val lastRide: WorkoutEntity? = null
+    val lastRide: LastRide? = null
 ) {
     val hasRidden: Boolean get() = lastRide != null
 }
@@ -84,28 +100,48 @@ class WorkoutRepository(
         workoutDao.observeCompletedCount(userId)
 
     /**
-     * Headline figures for the dashboard.
+     * What the dashboard's progress section draws (22.1.5, 22.1.8).
      *
-     * "Today" is measured from local midnight rather than a rolling 24 hours,
-     * because a rider comparing this morning's ride against yesterday's
-     * expects the number to reset overnight.
+     * The standing is resolved off the row rather than in a second flow, and
+     * re-resolved every time the row changes — which is every time a ride ends
+     * and every time one is deleted, since both write `workouts` and that is
+     * the table this query mentions (the rule the household panel is built on).
      */
-    fun observeDashboardStats(userId: Int): Flow<DashboardStats> = combine(
-        workoutDao.observeOutputSince(userId, startOfToday()),
-        workoutDao.observeLatestWorkout(userId)
-    ) { todayKj, latest ->
-        DashboardStats(
-            todayOutputKj = todayKj,
-            lastRide = latest
+    fun observeDashboardStats(userId: Int): Flow<DashboardStats> =
+        workoutDao.observeLastRide(userId).map { row ->
+            DashboardStats(lastRide = row?.let { lastRide(userId, it) })
+        }
+
+    /**
+     * One row, plus the two questions the card's claim depends on (22.1.7).
+     *
+     * Both are only asked when there is a class to ask about: a Just Ride has
+     * nothing to be compared with, so the provenance lookup — which counts the
+     * whole ride's samples — is not paid for at all on the commonest case.
+     */
+    private suspend fun lastRide(userId: Int, row: LastRideRow): LastRide {
+        val standing = row.classId?.let { classId ->
+            LastRideStanding.of(
+                classId = classId,
+                outputKj = row.totalOutputKj,
+                isMeasured = metricDao.getPowerProvenanceCounts(row.id)
+                    .provenance.isTrustworthyAsMeasured,
+                earlierMeasuredTotals = workoutDao.ownTotalsForClassExcluding(
+                    userId = userId,
+                    classId = classId,
+                    excludingWorkoutId = row.id
+                )
+            )
+        } ?: RideStanding.Unclaimed
+
+        return LastRide(
+            workoutId = row.id,
+            classTitle = row.classTitle,
+            atEpochMs = row.timestamp,
+            durationSec = row.durationSec,
+            standing = standing
         )
     }
-
-    private fun startOfToday(): Long = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
 
     suspend fun getWorkout(id: String): WorkoutEntity? = workoutDao.getWorkoutById(id)
 

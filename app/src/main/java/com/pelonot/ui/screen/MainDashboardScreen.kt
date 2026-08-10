@@ -3,9 +3,11 @@ package com.pelonot.ui.screen
 import androidx.compose.ui.graphics.Color
 import java.util.Date
 import java.text.DateFormat
-import com.pelonot.core.Formatters
 import com.pelonot.domain.backup.BackupReminder
+import com.pelonot.domain.model.RideDayGrouping
 import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.domain.progress.LastRide
+import com.pelonot.domain.progress.RideStanding
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingWindow
 import com.pelonot.data.local.entity.FtpChangeSource
@@ -63,6 +65,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,6 +121,8 @@ fun MainDashboardScreen(
     /** The full-size trend behind the card's sparkline (16.3.1). */
     onFtpProgress: () -> Unit = {},
     onRiding: () -> Unit = {},
+    /** The last ride, opened on the same detail screen history uses (22.1.5). */
+    onLastRide: (String) -> Unit = {},
     onDismissBackupReminder: () -> Unit = {}
 ) {
     // The whole screen fades in when first composed.
@@ -252,7 +258,12 @@ fun MainDashboardScreen(
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
 
                 // ── 5️⃣ Progress Section ─────────────────────────────────
-                ProgressSection(stats = stats, riding = ridingHistory, onRiding = onRiding)
+                ProgressSection(
+                    stats = stats,
+                    riding = ridingHistory,
+                    onRiding = onRiding,
+                    onLastRide = onLastRide
+                )
 
                 // ── 6️⃣ The household ───────────────────────────────────
                 // Below the rider's own numbers and never above them: 18.2's
@@ -665,7 +676,8 @@ private fun AccountOfferCard(
 private fun ProgressSection(
     stats: DashboardStats,
     riding: RidingHistory,
-    onRiding: () -> Unit
+    onRiding: () -> Unit,
+    onLastRide: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -696,12 +708,15 @@ private fun ProgressSection(
             return@Column
         }
 
-        // How much and how often, and the door to the screen that draws it
-        // (16.3.2, 16.3.5). Above the two output cards deliberately: the first
-        // thing a rider wants from a progress section is whether they have been
-        // riding, and 22.1.2 has been saying so since the sixth sitting. This is
-        // not that item — the kJ cards below are still what they were — but it
-        // is the number that item asked for, in the place it asked for it.
+        // Two cards, and 22.1.2 is what took the third away. *Today's Output*
+        // and *Recent Ride* were both kilojoule totals, on the same axis, and
+        // on a rider who rides once a week (22.5) they read `73 kJ` and `73 kJ`
+        // on ride day and `0.0 kJ` and `73 kJ` for the six days after it — the
+        // same number twice, then a zero, on the first screen anybody sees.
+        //
+        // What is left answers the two halves of 22.1.1's question. *Have I
+        // been riding* is the thirty-day count, and *how did the last one go*
+        // is the ride itself with a door onto it.
         WideRow {
             RecentRidingCard(
                 recent = riding.recent,
@@ -709,21 +724,10 @@ private fun ProgressSection(
                 onClick = onRiding,
                 modifier = Modifier.weight(1f)
             )
-            ProgressMetricCard(
-                label = "Today's Output",
-                value = Formatters.kilojoulesValue(stats.todayOutputKj),
-                unit = "kJ",
-                icon = Icons.AutoMirrored.Filled.TrendingUp,
-                accentColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
             stats.lastRide?.let { lastRide ->
-                ProgressMetricCard(
-                    label = "Recent Ride",
-                    value = Formatters.kilojoulesValue(lastRide.totalOutputKj),
-                    unit = "kJ",
-                    icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                    accentColor = MaterialTheme.colorScheme.tertiary,
+                LastRideCard(
+                    ride = lastRide,
+                    onClick = { onLastRide(lastRide.workoutId) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -853,6 +857,135 @@ private fun RecentRidingCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * The last ride: what it was, when, and whether it went well (PLAN 22.1.5).
+ *
+ * **It replaced a kilojoule total**, and that is the item rather than a detail
+ * of it. *"Recent Ride 73 kJ"* is a measurement on a screen where no
+ * measurement is being read (Phase 26), and it sat beside *"Today's Output"*
+ * showing the identical figure whenever the last ride was today. What a rider
+ * glancing at this wants is the name of the thing they did and whether to be
+ * pleased about it.
+ *
+ * **The claim is one phrase and it is only ever made when it is true**
+ * (22.1.7). *Best you've ridden it* needs measured watts on this ride **and**
+ * on the rides it is being put above — a modelled ride scoring RMSE 137 W
+ * placed over a real one is the app inventing a personal best, and the rider
+ * being the same person on both sides makes that worse rather than better.
+ * `RideStanding.NotBest` and `RideStanding.Unclaimed` therefore draw the same
+ * thing: the facts, and no verdict.
+ *
+ * **The shortfall is deliberately not drawn.** *"3 kJ off your best"* was
+ * written and taken out: it is a number, in a unit, on a card whose question is
+ * *do I ride today*, and it turns a neutral ride into a small failure. The kJ
+ * are one tap away on the ride itself, where they are a measurement again.
+ */
+@Composable
+private fun LastRideCard(
+    ride: LastRide,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val whenText = remember(ride.atEpochMs) {
+        when (RideDayGrouping.relativeTo(ride.atEpochMs)) {
+            RideDayGrouping.Relative.Today -> "Today"
+            RideDayGrouping.Relative.Yesterday -> "Yesterday"
+            // The same format the FTP card uses for the day it changed. A bare
+            // weekday would be ambiguous past a week, and at one ride a week
+            // (22.5) past a week is the ordinary case.
+            RideDayGrouping.Relative.Earlier ->
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(ride.atEpochMs))
+        }
+    }
+    val title = ride.classTitle ?: "Just Ride"
+    val verdict = "best you've ridden it".takeIf { ride.standing == RideStanding.Best }
+    val detail = listOfNotNull(whenText, "${ride.minutes} min", verdict).joinToString(" · ")
+
+    // The verdict is a clause of the same line rather than a line of its own,
+    // and it is not only typography: a fourth line grew the whole row —
+    // `WideRow` equalises heights — and pushed the good news off the bottom of
+    // a screen 22.4.3 got fitting without a scroll. Seen doing exactly that on
+    // the AVD before it was folded in. The colour is what carries the emphasis
+    // the line break was carrying.
+    val accent = MaterialTheme.colorScheme.primary
+    val detailText = remember(detail, verdict, accent) {
+        buildAnnotatedString {
+            append(detail)
+            if (verdict != null) {
+                addStyle(
+                    SpanStyle(color = accent, fontWeight = FontWeight.Medium),
+                    detail.length - verdict.length,
+                    detail.length
+                )
+            }
+        }
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics {
+                contentDescription = "Last ride: $title, $detail. Opens the ride."
+            },
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.DirectionsBike,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.size(MaterialTheme.spacing.large))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Last ride",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = detailText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Icon(

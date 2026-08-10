@@ -257,6 +257,32 @@ interface WorkoutDao {
     )
     fun observeHistory(userId: Int, limit: Int): Flow<List<WorkoutListItem>>
 
+    /**
+     * The most recent finished ride, with the class it was (22.1.5).
+     *
+     * A projection of its own rather than `observeHistory(limit = 1)`, because
+     * the dashboard needs the class **id** as well as its title — the title is
+     * what the rider reads and the id is what the comparison is made against —
+     * and history has no use for the id. `LEFT JOIN`, so a Just Ride and a ride
+     * of a class since retired both still come back with the ride intact.
+     */
+    @Query(
+        """
+        SELECT w.id AS id,
+               w.class_id AS class_id,
+               c.title AS class_title,
+               w.duration_sec AS duration_sec,
+               w.total_output_kj AS total_output_kj,
+               w.timestamp AS timestamp
+        FROM workouts w
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE w.user_id = :userId AND w.is_complete = 1
+        ORDER BY w.timestamp DESC
+        LIMIT 1
+        """
+    )
+    fun observeLastRide(userId: Int): Flow<LastRideRow?>
+
     /** How many rides exist, so the screen knows whether the window is full. */
     @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     fun observeCompletedCount(userId: Int): Flow<Int>
@@ -697,6 +723,48 @@ interface WorkoutDao {
         """
     )
     suspend fun ownTotalsForClass(userId: Int, classId: String): List<Double>
+
+    /**
+     * The same totals, minus one ride — for asking whether *that* ride was the
+     * best of them (22.1.5).
+     *
+     * A separate query rather than a filter in Kotlin because the answer is a
+     * list of doubles with no ids on it: dropping "the one equal to this ride's
+     * total" would also drop a genuine earlier ride that happened to tie, and
+     * a rider who matched their best to the kilojoule would be told they had
+     * beaten it.
+     *
+     * Measured watts only, by the same `NOT EXISTS` clause every comparison in
+     * this app carries (24.4.2) — **and the `EXISTS` beside it**, which
+     * `ownTotalsForClass` above is missing. A ride with no samples at all
+     * passes a bare `NOT EXISTS` trivially, so it would arrive here as
+     * "measured all the way through" on no evidence whatever. The other side
+     * of this same comparison asks `PowerProvenance`, which answers `Unknown`
+     * for a ride of no samples for exactly that reason (`of(0, 0, 0)`), and
+     * two sides of one comparison disagreeing about what counts as measured is
+     * how a rider gets told they beat something that was never ridden.
+     */
+    @Query(
+        """
+        SELECT total_output_kj FROM workouts w
+        WHERE w.class_id = :classId
+          AND w.user_id = :userId
+          AND w.id != :excludingWorkoutId
+          AND w.is_complete = 1
+          AND w.total_output_kj > 0
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
+          AND NOT EXISTS (
+            SELECT 1 FROM workout_metrics m
+            WHERE m.workout_id = w.id
+              AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
+          )
+        """
+    )
+    suspend fun ownTotalsForClassExcluding(
+        userId: Int,
+        classId: String,
+        excludingWorkoutId: String
+    ): List<Double>
 
     /**
      * Every class id some ride still points at.

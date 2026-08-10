@@ -16,17 +16,77 @@ state (see *Corrections*) fixed an outright lie — it used to show hardcoded
 figures on a device that had never recorded a ride — without making what
 replaced it mean anything.
 
-- [ ] **22.1.1** **Decide in one sentence what the dashboard is for**, and let
+- [x] **22.1.1** **Decide in one sentence what the dashboard is for**, and let
       the section follow from that rather than from what fits. The candidate
       answer: *"should I ride today, and what should I ride?"* — anything that
       is really "what have I done" belongs to history (12) and trends (16.3)
-- [ ] **22.1.2** Replace the two kJ cards with **consistency**: rides this week
+
+      ***Settled as the candidate answer, and the section now follows from
+      it.*** The sentence is in `DashboardStats`' KDoc, where the next person
+      to add a card will meet it:
+
+      > **The dashboard answers *should I ride today, and what should I
+      > ride*.** A total of work already done answers neither, and belongs on
+      > history (12) and *Your riding* (16.3.2) where it is being **read**
+      > rather than glanced at.
+
+      *What makes it worth writing down rather than assuming is that the
+      section had drifted the other way by accretion, one honest card at a
+      time, until the first screen of the app was three summaries of the past
+      and no answer to the question a rider standing next to a bike is
+      actually asking.*
+- [x] **22.1.2** Replace the two kJ cards with **consistency**: rides this week
       against the rider's own recent norm, and the calendar heatmap (16.3.5).
       What gets somebody onto a bike is a streak they do not want to break, not
       a kilojoule total they cannot interpret
-- [ ] **22.1.3** **A trend that is genuinely a trend** — output or minutes per
+
+      ***Done, nine sittings after the *Last 30 days* card answered the first
+      half of it.*** What was left was the two kJ cards themselves, and the AVD
+      settled it before any argument had to: on 10 August the section read
+      **`Today's Output 73 kJ`** beside **`Recent Ride 73 kJ`** — the same
+      number, twice, because the last ride happened to be today. That is this
+      item's own sentence (*"both are the same quantity on the same axis"*)
+      arriving as a screenshot.
+
+      **`Today's Output` is deleted outright**, and the reason is 22.5's rather
+      than this item's: at one ride a week it reads `0.0 kJ` for six days out of
+      seven. That is the *This Week* defect surviving on the card immediately
+      beside the one built to fix it, and 22.5.4's audit — which checked the
+      household panel and the backup reminder — walked straight past it because
+      it was looking for weeks and this one counts hours.
+
+      **`Recent Ride` became 22.1.5**, which is the other half of the same
+      change and is written up there. The section is two cards now: *have I
+      been riding* and *how did the last one go*.
+
+      *The calendar heatmap this item also asks for is **not** on the
+      dashboard, deliberately: it is one tap away on* Your riding*, the card
+      that opens it says the same thing in a sentence, and a second copy of
+      16.3.5 on the first screen is a third answer to a question already
+      answered twice. 22.1.3 is where that argument is made in full.*
+- [x] **22.1.3** **A trend that is genuinely a trend** — output or minutes per
       week over the last six to eight weeks, sparkline-sized. The history query
       already returns what this needs
+
+      ***Answered, and answered "already built" rather than by building a third
+      one.*** Two trends are on this screen: the FTP card's stepped sparkline
+      of every value it has ever held (22.1.4), and the thirty-day count with
+      the weekly streak beside it (22.5.1), which is a trend in the only unit a
+      once-a-week rider has.
+
+      **What this item asked for specifically — weekly minutes over six to
+      eight weeks — is the wrong picture at the cadence 22.5 established.** One
+      ride a week makes those bars a row of near-identical stubs with the
+      occasional zero, which reads as *inconsistency* rather than as the
+      metronomic rider it actually describes. The picture that works at this
+      cadence is the day calendar, and it exists, at seventeen weeks, on *Your
+      riding* — where there is room to see the pattern rather than a
+      thumbnail of it.
+
+      *So the decision is that the dashboard carries the **number** and the
+      **door**, and the drawing lives behind the door. Reopen this if the
+      cadence assumption changes; it is the assumption doing the work, not the
+      chart.*
 - [x] **22.1.4** FTP, with the date it last changed and what changed it
       (7.10.2, 16.3.1). The app already computes this (7.1) and it is the
       closest thing to a real progress number it owns — but it currently keeps
@@ -36,20 +96,126 @@ replaced it mean anything.
       and who moved it. **The first thing in this section that is a trend rather
       than a total.** The two kJ cards below it (22.1.2) are still what they
       were*
-- [ ] **22.1.5** A **last ride** card that opens the ride detail (12.2) —
+- [x] **22.1.5** A **last ride** card that opens the ride detail (12.2) —
       class name, RPE, and whether it beat the rider's own previous ride of the
       same class, which `leaderboardFor` already computes and nothing renders
-- [ ] **22.1.6** Personal bests (16.3.3), suppressed entirely until there are
+
+      ***Done and observed on the tablet AVD, across all four branches.***
+      `Last ride / Zone 2 Steady / Today · 8 min · best you've ridden it`, with
+      the verdict in the primary colour, opening the ride it names.
+
+      **It says no kilojoules, and that is the point of it rather than an
+      omission.** The card it replaced was `Recent Ride 73 kJ`: a measurement,
+      on a screen where nothing is being measured, answering a question nobody
+      standing next to a bike asks. Phase 26's rule is that a unit belongs where
+      a measurement is being *read*, and the kJ are one tap away on the ride
+      itself, where they are one again. What is here instead is the name of the
+      thing they did, when, how long, and whether to be pleased about it.
+
+      **The verdict is one phrase, and three of its four branches are
+      refusals** — which is where the work went. `RideStanding` is `Best`,
+      `NotBest` or `Unclaimed`, and `Unclaimed` covers a free ride (not a
+      repeat of anything), a first ride of a class (a best from one ride is
+      noise wearing a trophy — **22.1.6's own argument, applied here**), and
+      watts that were not measured on either side (22.1.7). `NotBest` and
+      `Unclaimed` draw the same nothing and are still kept apart, for
+      `PowerProvenance`'s reason about `Unknown` against `Modelled`: *"they did
+      not beat it"* and *"nothing here can be compared"* are different claims,
+      and folding them together is how a screen ends up asserting the first
+      when it only knows the second.
+
+      **RPE was in the ask and is deliberately not on the card.** It is the
+      rider's own answer to a question the app asked them an hour ago, so it
+      tells them nothing they do not know, and it is a fourth fact on a card
+      whose job is a glance (Phase 26). It is on the ride behind the tap.
+
+      ***The shortfall is not drawn either.*** *"3 kJ off your best"* was
+      written and taken out: a number, in a unit, turning a perfectly good ride
+      into a small failure on the first screen of the app.
+
+      **What was observed, and how**, since the interesting half of this cannot
+      happen on an emulator (24.4.2 — every AVD ride is modelled):
+      - *Simulated ride, straight off the AVD:* `Today · 8 min`, no verdict.
+        That is 22.1.7 refusing, and it is the branch every emulator ride
+        takes.
+      - *Then by hand, the technique in CLAUDE.md:* today's ride and one 13 kJ
+        ride of the same class marked measured, the three seeded 180/210/240 kJ
+        rides marked modelled — `best you've ridden it` appears.
+      - *Then the 240 kJ ride put back to measured:* the verdict **disappears**
+        while nothing else on the card moves. That is the pass that makes it a
+        comparison rather than a constant, and the ride detail behind the tap
+        corroborates it with its own `Ride against · Your best · 240 kJ` chip.
+      - *And the tap lands on the right ride* — `Zone 2 Steady`, Monday 10
+        August 2026 2:29 PM, 73 kJ — on the same `RideDetail` destination
+        history and the FTP trend use, not a third rendering of one.
+
+      **One layout fault was found by looking and is worth keeping.** The
+      verdict started as a line of its own, which made the card four lines
+      deep; `WideRow` equalises heights, so the whole row grew and pushed the
+      good news off the bottom of a screen 22.4.3 had got fitting without a
+      scroll. It is a clause of the detail line now, coloured rather than
+      broken out. *A card that grows is a row that grows.*
+- [x] **22.1.6** Personal bests (16.3.3), suppressed entirely until there are
       enough rides for them to be true. A "best" computed from one ride is noise
       wearing a trophy
-- [ ] **22.1.7** Every figure here has to be honest about whose watts it is
+
+      ***Answered as a rule rather than a card, and the rule is enforced in
+      22.1.5.*** A best-by-duration table belongs on *Your FTP*, where 16.3.3
+      built it and where it is being read; what the dashboard needed from this
+      item was its *argument*, and `LastRideStanding` applies it directly — a
+      class with no earlier ride returns `Unclaimed`, so a rider's first ever
+      ride of anything is never congratulated for topping a field of one.
+
+      *Kept open only as a heading in case a bests **card** is ever wanted here;
+      the failure mode it names is closed.*
+- [x] **22.1.7** Every figure here has to be honest about whose watts it is
       (16.1.6). A rider who moved from simulated to hardware telemetry gets a
       step change in their own history, and an unexplained cliff in a progress
       chart reads as the app being broken
-- [ ] **22.1.8** Rebuild `DashboardStats` and the dashboard ViewModel around
+
+      ***Done, and the section no longer draws a figure that could lie about
+      it.*** The two kJ totals are gone (22.1.2), so nothing here sums
+      modelled watts and measured ones into one number; the thirty-day card
+      counts **rides and minutes**, which are the same quantity whoever
+      measured them; and the one claim that *is* a comparison —
+      *best you've ridden it* — is gated on
+      `PowerProvenance.isTrustworthyAsMeasured` on this ride and on the same
+      `NOT EXISTS` clause every raceable query in the app carries for the ones
+      it is put above.
+
+      **A gap was found in that clause while building it and is fixed here.**
+      `NOT EXISTS (a sample that is not a measurement)` is passed *trivially*
+      by a ride with **no samples at all**, so an evidence-free ride would have
+      arrived as "measured all the way through". `householdLeaderboard` guards
+      it with an `EXISTS` beside the `NOT EXISTS` and
+      `ownTotalsForClassExcluding` now does too — because the other side of
+      this same comparison asks `PowerProvenance`, which answers `Unknown` for
+      a ride of no samples (`of(0, 0, 0)`), and two sides of one comparison
+      disagreeing about what counts as measured is how a rider gets told they
+      beat something nobody rode. **`ownTotalsForClass`, which feeds the
+      `Usual` ghost (24.3.18b), still has the gap** and is flagged separately.
+- [x] **22.1.8** Rebuild `DashboardStats` and the dashboard ViewModel around
       whatever 22.1.1 decides, rather than bolting cards onto the current two
       totals. Keep every query windowed the way 12.1.6 does — this is the first
       screen after profile selection and it must never touch `workout_metrics`
+
+      ***Done. `DashboardStats` is one field*** — `lastRide: LastRide?` — where
+      it was a kilojoule total and a whole `WorkoutEntity`. The entity is the
+      quiet half of this: a screen handed thirty columns **finds uses for
+      them**, and that is how `Recent Ride 73 kJ` got onto a surface whose
+      question is *should I ride today*. `LastRideRow` is a six-column
+      projection, so the next card added here has to ask for what it wants.
+
+      **The one instruction in this item is broken on purpose, and it is worth
+      saying plainly.** *"It must never touch `workout_metrics`"* — the
+      provenance check does, once, through `getPowerProvenanceCounts`, which
+      counts a single ride's samples by primary key. The alternative was
+      drawing a comparison whose honesty this app has spent two phases
+      establishing, and the cost is bounded: **it is not paid at all for a Just
+      Ride**, since the class id is what the whole standing hangs off and there
+      is nothing to ask about without one. The rule the item was protecting —
+      never scan the series table across a rider's whole history on the first
+      screen — is intact.
 
 ### 22.2 A tablet-shaped dashboard
 

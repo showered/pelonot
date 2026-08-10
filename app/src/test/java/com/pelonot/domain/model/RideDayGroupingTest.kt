@@ -133,4 +133,42 @@ class RideDayGroupingTest {
 
         assertEquals(at(2026, 7, 30, 0), days.single().startOfDayMs)
     }
+
+    // ── One ride at a time, for the dashboard's last-ride card (22.1.5) ──
+
+    @Test
+    fun oneRideIsNamedTheSameWayAGroupOfThemIs() {
+        val now = at(2026, 7, 31, 20)
+
+        assertEquals(
+            RideDayGrouping.Relative.Today,
+            RideDayGrouping.relativeTo(at(2026, 7, 31, 6), now, london)
+        )
+        assertEquals(
+            RideDayGrouping.Relative.Yesterday,
+            RideDayGrouping.relativeTo(at(2026, 7, 30, 23), now, london)
+        )
+        assertEquals(
+            RideDayGrouping.Relative.Earlier,
+            RideDayGrouping.relativeTo(at(2026, 7, 29, 23), now, london)
+        )
+    }
+
+    /**
+     * The clock-change case, which is the whole reason this is not
+     * `now - 86_400_000`: the day Britain leaves BST is 25 hours long, and a
+     * fixed offset lands an hour inside the wrong one.
+     */
+    @Test
+    fun yesterdayIsStillYesterdayAcrossTheAutumnClockChange() {
+        // 25 October 2026, the day the clocks go back in Europe/London.
+        assertEquals(
+            RideDayGrouping.Relative.Yesterday,
+            RideDayGrouping.relativeTo(
+                at(2026, 10, 25, 12),
+                now = at(2026, 10, 26, 10),
+                timeZone = london
+            )
+        )
+    }
 }
