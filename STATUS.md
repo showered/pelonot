@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 5 August (thirty-fourth sitting).**
-Measured, not estimated: `assembleDebug` passes, **677 JVM tests, 0 failures**,
-and **496 of 719 plan boxes** are ticked across 27 phases. It is a summary —
+**Written 4 August 2026, updated 10 August (thirty-seventh sitting).**
+Measured, not estimated: `assembleDebug` passes, **690 JVM tests, 0 failures**,
+and **545 of 787 plan boxes** are ticked across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -13,6 +13,13 @@ names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 > countdown, the ride screen with the board running live, **the overlay over
 > YouTube**, the post-ride summary and charts, and history. It is the shortest
 > answer to *what is this* that exists.
+>
+> **The dashboard in it is out of date as of 10 August.** The owner's note —
+> *"seems very stretched"* — was measured at 993 dp of content in a 664 dp
+> viewport and answered: *Begin Class* is the primary action rather than *Just
+> Ride*, History and Settings are doors in the greeting row rather than cards,
+> and the household panel is beside the rider's own numbers instead of below
+> the fold. Everything else in the recording still stands (22.8).
 
 > This page exists because the plan answers *why* extremely well and *where are
 > we* not at all (19.1.7). It is rewritten by whichever sitting changes the
