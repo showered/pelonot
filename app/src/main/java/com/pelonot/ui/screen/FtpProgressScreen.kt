@@ -61,6 +61,7 @@ import com.pelonot.ui.components.ChartFrame
 import com.pelonot.ui.viewmodel.PersonalBestsViewModel
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.loneCard
+import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
 import java.text.DateFormat
 import java.util.Date
@@ -179,6 +180,25 @@ fun FtpProgressScreen(
 
 @Composable
 private fun CurrentValue(current: Int, trend: FtpTrend) {
+    // The definition lives here, and it arrived from the dashboard (22.8.2).
+    // It was a caption under the glance card on the first screen, where it set
+    // the height of a whole row to say a thing that is read once — and this
+    // screen, the one place in the app where the number is genuinely being
+    // *read*, never spelled the acronym out at all. Phase 26's rule about where
+    // a unit belongs is the same rule about where a definition belongs.
+    Text(
+        text = "Functional Threshold Power — the hardest you could hold for an " +
+            "hour, and the basis of every zone target.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // A paragraph loose on a screen that is otherwise charts, which is
+        // exactly what `readableText` is for: the rest of this surface is
+        // looked at and takes the panel, and this one line is read.
+        modifier = Modifier.readableText()
+    )
+
+    Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = "$current",

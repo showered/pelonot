@@ -39,12 +39,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -62,7 +62,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -70,13 +69,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pelonot.ui.theme.PelonotGradients
 import com.pelonot.ui.theme.elevationTokens
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.WideGrid
+import com.pelonot.ui.theme.loneCard
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.ui.components.HouseholdPanelCard
-import androidx.compose.foundation.layout.RowScope
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -162,29 +161,45 @@ fun MainDashboardScreen(
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-                // ── 1️⃣ Greeting Header ──────────────────────────────────
-                GreetingHeader(userName = userName)
+                // ── 1️⃣ The greeting, and the two doors ─────────────────
+                GreetingHeader(
+                    userName = userName,
+                    onHistory = onHistory,
+                    onSettings = onSettings
+                )
 
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-                // ── 2️⃣ Where the rider is, and the way onto the bike ───
-                // Side by side on the panel: the FTP is *who you are* and Just
-                // Ride is *go*, and a rider who opens this app to ride should
-                // not have to scroll past their own number to find the button.
-                WideRow {
-                    FtpHeroCard(
-                        ftp = ftp,
-                        trend = ftpTrend,
-                        // A guest has no profile and therefore no history of
-                        // one, so the card does not invite a tap that lands on
-                        // an empty screen. Nothing is disabled — it simply is
-                        // not a door.
-                        onClick = onFtpProgress.takeIf { ftpTrend.current != null },
-                        modifier = Modifier.weight(1f)
-                    )
+                // ── 2️⃣ The way onto the bike ───────────────────────────
+                // **Begin Class is the primary action** (22.8.1), on the
+                // owner's instruction and their reasoning: *"i feel like 95%+
+                // of usage will be classes."* It had been the leftmost of three
+                // identical grey tiles that also held History and Settings,
+                // while *Just Ride* — the 5% — was the one card on the screen
+                // in the primary colour. A rider whose next act is a class had
+                // to pick it out of the furniture.
+                //
+                // Just Ride keeps a place beside it rather than moving down a
+                // level, because it is what somebody already sitting on the
+                // bike reaches for and it should be hittable without reading.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
                     PrimaryActionCard(
+                        title = "Begin Class",
+                        subtitle = "Pick one and ride it with a plan",
+                        icon = Icons.Default.FitnessCenter,
+                        onClick = onBeginClass,
+                        modifier = Modifier
+                            .weight(2f)
+                            .fillMaxHeight()
+                    )
+                    SecondaryActionCard(
                         title = "Just Ride",
-                        subtitle = "Jump on the bike and ride free",
+                        subtitle = "No plan — pedal",
                         icon = Icons.AutoMirrored.Filled.DirectionsBike,
                         onClick = onJustRide,
                         modifier = Modifier
@@ -193,94 +208,67 @@ fun MainDashboardScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-
-                // ── 4️⃣ Secondary Actions ────────────────────────────────
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
-                ) {
-                    SecondaryActionCard(
-                        title = "Begin Class",
-                        subtitle = "Structured workout",
-                        icon = Icons.Default.FitnessCenter,
-                        onClick = onBeginClass,
-                        modifier = Modifier.weight(1f)
-                    )
-                    SecondaryActionCard(
-                        title = "History",
-                        subtitle = "Every ride you've finished",
-                        icon = Icons.Default.History,
-                        onClick = onHistory,
-                        modifier = Modifier.weight(1f)
-                    )
-                    SecondaryActionCard(
-                        title = "Settings",
-                        subtitle = "FTP, weight, units",
-                        icon = Icons.Default.Settings,
-                        onClick = onSettings,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // ── 4️⃣a The account offer or the backup reminder ────────
+                // ── 2️⃣a The account offer or the backup reminder ────────
                 // Under the actions rather than above them, and never as a
                 // dialog — same shape as 23.3.1, and 15.8.5 folds them into
                 // one slot rather than stacking two nags about the same risk:
                 // a rider being offered the fuller answer does not also need
                 // the lesser one.
+                // A card on its own keeps a column's width rather than
+                // stretching across the panel — the owner's rule (22.6). It was
+                // held to half the row by a weighted spacer, which is the same
+                // cap arrived at by accident and 100 dp narrower than the token
+                // says; at that width the sentence wrapped to three lines with
+                // 633 dp of nothing beside it.
                 if (showAccountOffer) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-                    WideRow {
-                        AccountOfferCard(
-                            onLink = onAccountOffer,
-                            onDismiss = onDismissAccountOffer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.weight(1f))
-                    }
+                    AccountOfferCard(
+                        onLink = onAccountOffer,
+                        onDismiss = onDismissAccountOffer,
+                        modifier = Modifier.loneCard()
+                    )
                 } else if (backupReminder.isDue) {
                     Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
-                    WideRow {
-                        BackupReminderCard(
-                            reminder = backupReminder,
-                            onBackup = onSettings,
-                            onDismiss = onDismissBackupReminder,
-                            modifier = Modifier.weight(1f)
-                        )
-                        // A card on its own keeps a column's width rather than
-                        // stretching across the panel — the owner's rule.
-                        Spacer(Modifier.weight(1f))
-                    }
+                    BackupReminderCard(
+                        reminder = backupReminder,
+                        onBackup = onSettings,
+                        onDismiss = onDismissBackupReminder,
+                        modifier = Modifier.loneCard()
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
-                // ── 5️⃣ Progress Section ─────────────────────────────────
+                // ── 3️⃣ Where the rider is, and who else is on the bike ──
+                //
+                // **The household moved from below the fold to beside it**
+                // (22.8.4, 22.8.5). It used to sit last, as a lone card holding
+                // a column's width with 633 dp of nothing to its right, on a
+                // screen 329 dp taller than the viewport — so the only part of
+                // this surface about anybody else was the part nobody saw.
+                //
+                // 18.2's rule is that the rider's own training comes first and
+                // everyone else's second. That is a rule about *order*, and it
+                // said nothing about visibility; a panel nobody scrolls to is a
+                // panel nobody has. Left before right keeps the order and puts
+                // both above the fold, and it is what fills the rail rather
+                // than a card invented to fill it (22.8.6).
                 ProgressSection(
                     stats = stats,
                     riding = ridingHistory,
                     onRiding = onRiding,
-                    onLastRide = onLastRide
+                    onLastRide = onLastRide,
+                    ftp = ftp,
+                    ftpTrend = ftpTrend,
+                    // A guest has no profile and therefore no history of one,
+                    // so the card does not invite a tap that lands on an empty
+                    // screen. Nothing is disabled — it simply is not a door.
+                    onFtpProgress = onFtpProgress.takeIf { ftpTrend.current != null },
+                    household = householdRecent.takeIf { it.size >= 2 },
+                    youId = youId
                 )
 
-                // ── 6️⃣ The household ───────────────────────────────────
-                // Below the rider's own numbers and never above them: 18.2's
-                // rule, applied here (24.2.1). This screen is about their
-                // training first, and everyone else's second.
-                if (householdRecent.size >= 2) {
-                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
-                    WideRow {
-                        HouseholdPanelCard(
-                            riders = householdRecent,
-                            youId = youId,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraLarge))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
             }
         }
     }
@@ -310,44 +298,93 @@ private fun greetingFor(hour: Int): String = when (hour) {
     else -> "Good evening,"
 }
 
+/**
+ * The greeting and the two doors that are navigation rather than content
+ * (22.8.2, 22.8.3).
+ *
+ * **Three lines became one.** The greeting was a stacked block 86 dp tall on a
+ * screen carrying 993 dp of content into a 664 dp viewport, and its third line
+ * — *"Ready to ride?"* — was a question under the rider's own name that neither
+ * asked nor said anything (Phase 26).
+ *
+ * **And *History* and *Settings* are here rather than in the card grid.** They
+ * were two of three 405 × 111 dp cards, which gave two doors the same weight as
+ * the ride itself on the screen whose question is *should I ride today*. They
+ * are the same kind of thing as the navigation bar the tablet already draws
+ * (`HARDWARE.md`), and this row is where a tablet puts them.
+ *
+ * **They keep their words.** A bare icon pair would have been smaller still,
+ * and 20.4's whole lesson is about the rider meeting this app for the first
+ * time — a gear glyph is a guess and *Settings* is not.
+ */
 @Composable
-private fun GreetingHeader(userName: String) {
+private fun GreetingHeader(
+    userName: String,
+    onHistory: () -> Unit,
+    onSettings: () -> Unit
+) {
     // Was hardcoded "Good morning," — cheerfully wrong for two thirds of the
     // day, and on a bike that mostly gets ridden in the evening.
     val greeting = remember {
         greetingFor(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY))
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
-            text = greeting,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Normal
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = userName,
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.ExtraBold,
+            text = buildAnnotatedString {
+                append("$greeting ")
+                pushStyle(SpanStyle(fontWeight = FontWeight.ExtraBold))
+                append(userName)
+            },
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Ready to ride?",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+        HeaderDoor(text = "History", icon = Icons.Default.History, onClick = onHistory)
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+        HeaderDoor(text = "Settings", icon = Icons.Default.Settings, onClick = onSettings)
+    }
+}
+
+@Composable
+private fun HeaderDoor(text: String, icon: ImageVector, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
         )
+        Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
+        Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
 // =========================================================================
-// FTP Hero Card
+// FTP glance card
 // =========================================================================
+/**
+ * The number the whole app is built on, in the same shape as the two cards
+ * below it (22.8.2).
+ *
+ * **It was a 152 dp hero and it set the height of a row.** `WideRow` equalises
+ * heights, so the FTP card's own caption — *"Functional Threshold Power — your
+ * baseline for all training zones"* — was deciding how tall *Just Ride* was.
+ * That caption is a **definition**, and a definition is read once: it has moved
+ * to *Your FTP*, the one screen in this app where the number is genuinely being
+ * read rather than glanced at, and where the acronym had never been spelled out
+ * at all.
+ *
+ * **What is kept is the trend**, which is the part 22.1.4 built and the only
+ * thing here that is progress rather than a total: the stepped sparkline, how
+ * far the number moved, when, and who moved it.
+ */
 @Composable
-private fun FtpHeroCard(
+private fun FtpGlanceCard(
     ftp: Int,
     trend: FtpTrend,
     onClick: (() -> Unit)? = null,
@@ -360,82 +397,71 @@ private fun FtpHeroCard(
                 if (onClick == null) base
                 else base.clickable(onClickLabel = "See how your FTP has changed") { onClick() }
             },
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = MaterialTheme.elevationTokens.level2
+            defaultElevation = MaterialTheme.elevationTokens.level1
         )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.extraLarge)
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // There was a 4 dp teal gradient bar across the top of this card,
             // as decoration. On a card whose whole content is one measured
             // number, a full-width filled bar is not decoration — it is read as
             // a meter, and a meter that is always at 100% is a claim about the
             // rider that nothing here is making. Phase 26: say less.
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bolt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.size(MaterialTheme.spacing.large))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "FTP",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (onClick != null) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    // Not "History" — that word is already a card on this same
-                    // screen and it means the rider's rides.
+                Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "How it changed",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "$ftp",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Black
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                    Spacer(modifier = Modifier.width(MaterialTheme.spacing.extraSmall))
+                    Text(
+                        text = "W",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 3.dp)
                     )
                 }
+                FtpTrendLine(trend)
             }
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-
-            Row(
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text(
-                    text = "$ftp",
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
-                Text(
-                    text = "W",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            if (onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
-
-            FtpTrendLine(trend)
-
-            Text(
-                text = "Functional Threshold Power — your baseline for all training zones",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -464,12 +490,16 @@ private fun PrimaryActionCard(
     ) {
         Row(
             modifier = Modifier
-                // The caller stretches this card to the FTP card beside it, and
+                // The caller stretches this card to the one beside it, and
                 // without the height here the Row wraps its content: the
                 // alignment below then centres nothing, and the title sits at
                 // the top of a 250 dp block of empty teal.
                 .fillMaxSize()
-                .padding(MaterialTheme.spacing.extraLarge),
+                // `large`, not `extraLarge` (22.8.2). At the wider padding this
+                // card was 107 dp tall to hold 43 dp of text, and it is the
+                // widest card on the screen — so the emptiness showed up as a
+                // field of teal rather than as breathing room.
+                .padding(MaterialTheme.spacing.large),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -671,108 +701,139 @@ private fun AccountOfferCard(
 // =========================================================================
 // Progress Section
 // =========================================================================
+/**
+ * Which of the rider's own glance cards a cell is drawing.
+ *
+ * A list rather than three call sites because the same three cards are laid out
+ * two ways — down a column beside the household, or abreast when there is no
+ * household — and `WideGrid` takes items rather than content (22.8.4).
+ */
+private enum class OwnCard { Ftp, Recent, Last }
+
+/**
+ * The rider's own three glance cards, and the household beside them.
+ *
+ * **The heading is gone** (22.8.2). *Your Progress* and *"Track your
+ * performance over time"* cost 44 dp to introduce cards that say `FTP`,
+ * `Last 30 days` and `Last ride` on themselves. A section heading earns its
+ * place when a surface has sections to tell apart, and this one has one.
+ *
+ * **Two columns rather than a stack**, because the alternative was the rail:
+ * the household is a lone card at a column's width, so put the rider's own
+ * numbers in the other column instead of leaving 633 dp of tablet empty and
+ * pushing the household off the bottom (22.8.4).
+ */
 @Composable
 private fun ProgressSection(
     stats: DashboardStats,
     riding: RidingHistory,
     onRiding: () -> Unit,
-    onLastRide: (String) -> Unit
+    onLastRide: (String) -> Unit,
+    ftp: Int,
+    ftpTrend: FtpTrend,
+    onFtpProgress: (() -> Unit)?,
+    /** Null when there is nobody to show — never an empty panel (22.2.3). */
+    household: List<HouseholdRider>?,
+    youId: Int?
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    if (!stats.hasRidden && household == null) {
+        // An honest empty state. This section used to show "12.5 kJ" today
+        // and "8.3 kJ" last ride as hardcoded literals, on a device that
+        // had never recorded a workout.
         Text(
-            text = "Your Progress",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
-        Text(
-            text = "Track your performance over time",
-            style = MaterialTheme.typography.bodySmall,
+            text = "No rides recorded yet — your riding will appear here.",
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
+        return
+    }
 
-        Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+    // 22.1.2 took a third card away from this set. *Today's Output* and
+    // *Recent Ride* were both kilojoule totals on the same axis, and on a rider
+    // who rides once a week (22.5) they read `73 kJ` and `73 kJ` on ride day
+    // and `0.0 kJ` and `73 kJ` for the six days after — the same number twice,
+    // then a zero, on the first screen anybody sees. What is here answers the
+    // first half of 22.1.1's question: *have I been riding*, and *how did the
+    // last one go*, with the number the whole app is built on above them.
+    val own = listOfNotNull(
+        OwnCard.Ftp,
+        OwnCard.Recent,
+        OwnCard.Last.takeIf { stats.lastRide != null }
+    )
 
-        if (!stats.hasRidden) {
-            // An honest empty state. This section used to show "12.5 kJ" today
-            // and "8.3 kJ" last ride as hardcoded literals, on a device that
-            // had never recorded a workout.
-            Text(
-                text = "No rides recorded yet — your output and recent rides " +
-                    "will appear here.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
-            return@Column
-        }
+    @Composable
+    fun ownCard(which: OwnCard, modifier: Modifier) = when (which) {
+        OwnCard.Ftp -> FtpGlanceCard(ftp, ftpTrend, onFtpProgress, modifier)
+        OwnCard.Recent -> RecentRidingCard(
+            recent = riding.recent,
+            streakWeeks = riding.streakWeeks,
+            onClick = onRiding,
+            modifier = modifier
+        )
+        OwnCard.Last -> stats.lastRide?.let { ride ->
+            LastRideCard(ride, { onLastRide(ride.workoutId) }, modifier)
+        } ?: Unit
+    }
 
-        // Two cards, and 22.1.2 is what took the third away. *Today's Output*
-        // and *Recent Ride* were both kilojoule totals, on the same axis, and
-        // on a rider who rides once a week (22.5) they read `73 kJ` and `73 kJ`
-        // on ride day and `0.0 kJ` and `73 kJ` for the six days after it — the
-        // same number twice, then a zero, on the first screen anybody sees.
-        //
-        // What is left answers the two halves of 22.1.1's question. *Have I
-        // been riding* is the thirty-day count, and *how did the last one go*
-        // is the ride itself with a door onto it.
-        WideRow {
-            RecentRidingCard(
-                recent = riding.recent,
-                streakWeeks = riding.streakWeeks,
-                onClick = onRiding,
-                modifier = Modifier.weight(1f)
-            )
-            stats.lastRide?.let { lastRide ->
-                LastRideCard(
-                    ride = lastRide,
-                    onClick = { onLastRide(lastRide.workoutId) },
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val abreast = maxWidth >= CARDS_ABREAST_BREAKPOINT
+        if (household != null && abreast) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    own.forEach { ownCard(it, Modifier.fillMaxWidth()) }
+                }
+                HouseholdPanelCard(
+                    riders = household,
+                    youId = youId,
                     modifier = Modifier.weight(1f)
                 )
             }
-        }
-    }
-}
-
-/**
- * Cards abreast where there is room for them, stacked where there is not.
- *
- * The dashboard's answer to the owner's rule of 4 August — *use the width, and
- * no one card takes all of it*. A `Row` on a phone would squeeze three cards
- * into 130 dp each; a `Column` on the bike would be the banner this replaces.
- *
- * The children take `Modifier.weight(1f)` either way: in the stacked case the
- * weights are ignored, which is exactly what is wanted and is why this is a
- * layout rather than two copies of the call site.
- */
-@Composable
-private fun WideRow(content: @Composable RowScope.() -> Unit) {
-    BoxWithConstraints {
-        if (maxWidth >= CARDS_ABREAST_BREAKPOINT) {
-            // `IntrinsicSize.Min` so the cards in a row are the same height as
-            // each other. Without it a short card sits at the top of its column
-            // with a hole under it, which reads as something failing to load
-            // rather than as a card that had less to say.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-                content = content
-            )
+        } else if (household == null && abreast) {
+            // **Nobody else on the bike, so the cards go abreast rather than
+            // down the left-hand side** — a household of one is the ordinary
+            // case for a new rider, and three cards stacked in half a panel is
+            // the empty rail all over again. `WideGrid` is the token for a set
+            // of things that are *looked at* (22.4), and no cell takes the
+            // panel, which is the other half of the owner's rule.
+            WideGrid(items = own, minCellWidth = 320.dp, equalHeightRows = true) { card ->
+                ownCard(card, Modifier.fillMaxWidth())
+            }
         } else {
+            // Too narrow for two of anything: one column, and the panel — if
+            // there is one — under it at a column's width rather than banded
+            // across whatever it has been given (22.6).
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
             ) {
-                // `RowScope` is what the content is written against; a column
-                // that provides it is a small lie with no consequence, since
-                // `weight` is the only member any of these callers uses.
-                Row(Modifier.fillMaxWidth()) { content() }
+                own.forEach { ownCard(it, Modifier.fillMaxWidth()) }
+                household?.let {
+                    HouseholdPanelCard(riders = it, youId = youId, modifier = Modifier.loneCard())
+                }
             }
         }
     }
 }
+
+// `WideRow` lived here and is gone with the layout that used it (22.8). It was
+// this screen's private answer to the owner's rule of 4 August, and every one
+// of its five call sites is now either a plain `Row` (the actions), a `Column`
+// inside one (the rider's own cards) or a `loneCard` (the nags) — each of which
+// says what it is doing at the call site rather than behind a name.
+//
+// **It also carried a defect nothing had met**, worth recording rather than
+// deleting silently: its narrow branch claimed to stack the cards and did not.
+// `RowScope` is what the content is written against, so the fallback wrapped
+// the whole content in a *second* `Row` — weights and all — and a phone got
+// three cards at 130 dp each rather than three stacked. The comment above it
+// asserted the opposite ("in the stacked case the weights are ignored"), which
+// is what kept it invisible: the bike is 1280 dp and never took that branch.
 
 /**
  * The last 30 days, and the way through to every other one (16.3.2, 16.3.5).
@@ -1044,13 +1105,13 @@ private fun FtpTrendLine(trend: FtpTrend) {
     }
     val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(change.atEpochMs))
 
-    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+    Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         FtpSparkline(
             trend = trend,
             color = accent,
-            modifier = Modifier.size(width = 76.dp, height = 24.dp)
+            modifier = Modifier.size(width = 60.dp, height = 18.dp)
         )
         Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
         Text(
@@ -1060,11 +1121,11 @@ private fun FtpTrendLine(trend: FtpTrend) {
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodySmall,
             color = accent,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
-
-    Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
 }
 
 /**
