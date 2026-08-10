@@ -89,12 +89,50 @@ claim (14.4.7, 21.1).
       what replaces it where it is not. Note it cannot simply go: the household
       leaderboard ranks on it (24.1) and two riders' kJ is the only fair
       comparison the app has
-- [ ] **26.1.4** **Settings, and the difference between a setting and an
+- [x] **26.1.4** **Settings, and the difference between a setting and an
       explanation.** Several rows carry a paragraph of body text under them.
       Some of it is load-bearing (the telemetry source, the consent gate — 23.1)
       and some is the author talking. The audit is per row: keep the sentence
       that changes what a rider would choose, cut the one that explains how it
       works
+
+      ***Done, per row, and read on the tablet AVD rather than in the diff.***
+      Nine cuts, and the useful part is *which* nine — every one of them is a
+      sentence answering a question nobody standing on that row was asking:
+      - **Units** defended *not offering calories* and explained why watts have
+        no imperial form. What a rider needs is what the switch moves.
+      - **Use wallpaper colours** opened with *"Material You"* — Android's name
+        for the mechanism, and nobody's name for anything they want.
+      - **Maximum heart rate** printed the formula, *"Tanaka's 208 − 0.7 ×
+        age"*. It is the right formula (21.1.4) and naming it is the author
+        talking; that it is a **guess**, and how wrong it can be, is the part
+        that changes what a rider types.
+      - **How solid the overlay is** explained why the slider stops where it
+        stops — which the slider demonstrates by stopping. It also said
+        *"strip"*, which CLAUDE.md says is never the rider-facing word for the
+        overlay, so the cut fixed a naming fault nobody had noticed.
+      - **Position** justified its own default (*"Top is the default because
+        subtitles live along the bottom"*). Turned round, the same fact is the
+        reason to choose an edge: *"Subtitles live along the bottom, so top is
+        usually the safer edge."*
+      - **Coach volume** explained why there are two sliders, on a screen
+        showing two sliders — and it is shared with the overlay's own volume
+        panel, so the cut lands twice.
+      - **Volume**'s footnote ended *"— which is when you actually find out the
+        film is too loud"*, which is the author enjoying themselves.
+      - **Backup** repeated *Your rides*' sentence from the card directly above
+        it. Said twice it stops being read.
+      - **Show me to the others** carried **two** paragraphs on one switch, and
+        only the second answers the question a rider actually has, which is
+        whether turning it off costs them anything.
+
+      **One row was audited and left alone, which is the other half of doing
+      this honestly.** The FTP field keeps *both* its lines: Settings is the one
+      screen where that number is **typed** rather than read, so spelling the
+      acronym out earns its place here even though 22.8.2 moved the same
+      definition off the dashboard — and the provenance line under it (*"up from
+      198 W · the app's first guess"*) is 7.10.4's rule that a number which
+      moves by itself and cannot be traced is indistinguishable from a bug
 - [x] **26.1.5** **The pre-ride goal prompt named its own multiplier.** *"Push
       targets 5% higher than your zones prescribe"* and *"Ease targets 5% below
       your zones for a sustainable effort"* — on the one dialog standing between
