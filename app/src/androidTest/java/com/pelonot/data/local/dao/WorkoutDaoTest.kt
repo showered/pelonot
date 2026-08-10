@@ -465,6 +465,90 @@ class WorkoutDaoTest {
         )
     }
 
+    // ── A ride with no samples at all (22.1.7) ──────────────────────
+    //
+    // The gap these three pin is a *trivially true* `NOT EXISTS`. Every
+    // measured-power gate in this app is phrased "no sample here is
+    // unmeasured", and a ride carrying no samples whatever satisfies that on
+    // no evidence at all — so it arrives as measurement all the way through
+    // and gets ranked, raced and averaged against rides somebody really rode.
+    //
+    // It is not a hypothetical shape: `total_output_kj` is written by the
+    // finalise out of the session, while the samples are whatever survived the
+    // plausibility fence, and 2.7's `TelemetryAssembler` throws away four
+    // seconds of readings on every rejection. The other side of the same
+    // comparison already refuses — `PowerProvenance.of(0, 0, 0)` is `Unknown`,
+    // never `Measured` — and two halves of one comparison disagreeing about
+    // what counts as measured is how a rider is told they beat something that
+    // was never ridden.
+
+    @Test
+    fun theHouseholdBoardExcludesARideWithNoSamplesAtAll() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(
+            workout("no-evidence", userId = OTHER_USER_ID, outputKj = 999.0, classId = CLASS_ID)
+        )
+        // Deliberately no `samplesFor` call: the row exists, the total is on
+        // it, and nothing was ever recorded underneath it.
+
+        assertEquals(
+            listOf(USER_ID),
+            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+        )
+    }
+
+    /** 24.3.18b — the same gap on the query that feeds the *usual* ghost. */
+    @Test
+    fun theUsualTotalsExcludeARideWithNoSamplesAtAll() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", outputKj = 150.0, classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(workout("no-evidence", outputKj = 999.0, classId = CLASS_ID))
+
+        assertEquals(
+            listOf(150.0),
+            workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID)
+        )
+    }
+
+    /** 22.1.5 — and the sibling query, which has carried the `EXISTS` since. */
+    @Test
+    fun theStandingTotalsExcludeARideWithNoSamplesAtAll() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", outputKj = 150.0, classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(workout("no-evidence", outputKj = 999.0, classId = CLASS_ID))
+        workoutDao.insertWorkout(workout("this-one", outputKj = 200.0, classId = CLASS_ID))
+        samplesFor("this-one", measured = true)
+
+        // Without the `EXISTS`, the 999 kJ phantom is in this list and today's
+        // genuinely-best ride is told it came second.
+        assertEquals(
+            listOf(150.0),
+            workoutDao.ownTotalsForClassExcluding(
+                userId = USER_ID,
+                classId = CLASS_ID,
+                excludingWorkoutId = "this-one"
+            )
+        )
+    }
+
+    /**
+     * And the gate still passes the ordinary case, which is the half a fence
+     * this tight can quietly break: a ride with samples, all measured, counts.
+     */
+    @Test
+    fun theUsualTotalsStillIncludeAnOrdinaryMeasuredRide() = runBlocking {
+        workoutDao.insertWorkout(workout("one", outputKj = 150.0, classId = CLASS_ID))
+        samplesFor("one", measured = true)
+        workoutDao.insertWorkout(workout("two", outputKj = 190.0, classId = CLASS_ID))
+        samplesFor("two", measured = true)
+
+        assertEquals(
+            listOf(150.0, 190.0),
+            workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID).sorted()
+        )
+    }
+
     // ── Riding against a housemate (24.3.1) ─────────────────────────
 
     @Test

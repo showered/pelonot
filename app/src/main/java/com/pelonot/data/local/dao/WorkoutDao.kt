@@ -701,12 +701,22 @@ interface WorkoutDao {
      * Every total this rider has recorded on one class, for *your usual*
      * (24.3.18b).
      *
-     * **Measured watts only**, by the same `NOT EXISTS` clause every other
-     * raceable query carries (24.4.2): a median that includes simulated rides
-     * is a target built partly out of `PowerModel`, and the whole reason
+     * **Measured watts only**, by the same `EXISTS` / `NOT EXISTS` pair every
+     * other raceable query carries (24.4.2): a median that includes simulated
+     * rides is a target built partly out of `PowerModel`, and the whole reason
      * `power_is_measured` exists is that the two must never be averaged
      * together. `total_output_kj > 0` drops the abandoned ten-second attempts
      * that would otherwise drag a median down.
+     *
+     * **The `EXISTS` is not redundant and was missing here for a sitting**
+     * (22.1.7). A bare `NOT EXISTS (a sample that is not a measurement)` is
+     * passed *trivially* by a ride with **no samples at all**, so an
+     * evidence-free ride arrived as "measured all the way through" and
+     * contributed its total to the *usual* ghost's median. `PowerProvenance`
+     * answers `Unknown` for the same ride (`of(0, 0, 0)`), which is what makes
+     * this a disagreement rather than a preference — and a ride can reach that
+     * state honestly, since `total_output_kj` is written by the finalise from
+     * the session while the samples are what survived the plausibility fence.
      */
     @Query(
         """
@@ -715,6 +725,7 @@ interface WorkoutDao {
           AND w.user_id = :userId
           AND w.is_complete = 1
           AND w.total_output_kj > 0
+          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
           AND NOT EXISTS (
             SELECT 1 FROM workout_metrics m
             WHERE m.workout_id = w.id

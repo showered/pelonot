@@ -891,6 +891,19 @@ and no amount of social plumbing fixes that.
          candidate that is deliberately *behind* a good rider, and that is its
          point: on a bad day every other row is demoralising and this one is
          beatable. Cheap, same query family as 24.3.12.
+
+         ***And its query carried 22.1.7's gap for a sitting, now closed.***
+         `ownTotalsForClass` gated on a bare `NOT EXISTS (a sample that is not
+         a measurement)`, which **a ride with no samples at all passes
+         trivially** — so an evidence-free row contributed its `total_output_kj`
+         to this median on no evidence whatever, and the *usual* ghost is the
+         one candidate here made of nothing but the rider's own totals. It
+         carries the `EXISTS` beside it now, the way `householdLeaderboard` and
+         `ownTotalsForClassExcluding` already did. **Checked against the bug as
+         well as against the fix**: with the clause taken back out,
+         `theUsualTotalsExcludeARideWithNoSamplesAtAll` is the one failure of 36
+         in `WorkoutDaoTest`, and a fourth test holds the ordinary measured ride
+         in — half a fence this tight is easy to over-tighten.
       5. **The house** — the household's average best. Sociable without naming
          anyone, and it degrades to absent in a household of one.
 
