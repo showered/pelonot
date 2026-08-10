@@ -8,6 +8,76 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 5 August 2026 (thirty-fifth sitting): the three dots, and a lock nobody could see
+
+**The owner's two inbox entries are written up and emptied, and the first one
+was reproduced rather than guessed at.** *"I tried signing up and nothing
+happened. I then tried scanning a new QR code and i just get 3 dots on the web
+application"* — and then, mid-sitting, the sentence that solved it: *"Because i
+was already signed in and it tried to link me. If i then click 'sign out' and
+try again the page shows."* 677 JVM tests, 0 failures.
+
+**The three dots are a deadlock, and the measurement is the story** (15.6.14).
+The dots are `device-label`, the placeholder the pairing page writes before
+asking the server what a code is pairing. A stored session is the trigger, so
+the fixture was a stored session — a plausible but invalid one written into
+`localStorage`, no account and no credentials — and the live page wedged
+exactly as reported. `navigator.locks.query()` then named it outright: **one
+holder and two waiters on `lock:sb-<ref>-auth-token`**, nothing in the network
+log, and a freshly built client hanging in `getSession()` for a full eight
+seconds. auth-js runs `onAuthStateChange` callbacks **while holding that
+lock**, and `link.js` had `onAuthStateChange(() => route())` with `route()`
+opening on `await client.auth.getSession()`. A signed-out phone never noticed;
+a signed-in one deadlocked on arrival, which is why signing out "fixed" it.
+
+**The other half of the note was a second defect on the same page.** Supabase
+hands a confirmed sign-up back **in the fragment**, and the page read whatever
+was in the fragment as a pairing code — so a rider returning from their inbox,
+having done everything right, was told *"That code has expired"* about a code
+they never had. And `describe()` now has a ten-second timeout with a state of
+its own, because nothing here may wait for ever without saying so. **The first
+version of that timeout hung in the same three dots**: `client.rpc(...)`
+returns a **thenable, not a promise**, so a `.catch` on it throws inside an
+`async` function nobody catches. A fix for a silent failure has to be run
+against the thing that failed.
+
+**The second entry was one line and it landed on two screens** (15.6.15).
+*"Can it just be shown by default please"* — so both screens that offer an
+account mint a code as they open, and the card that used to explain that a code
+could be *asked for* is gone. **A code replaces itself five times over while
+the screen is up**, which is the same note arriving from the other end: signing
+up means leaving for an inbox, and what the rider came back to was *"That code
+has expired"* and a button to press. Two things fell out of drawing it: the
+account screen's two routes are side by side now, because stacked in a 760 dp
+reading column the QR pushed the typed form below the fold (**20.4.4 on a
+second screen**), and on profile creation *Not now* was clipped by 36 px until
+the QR block was tightened — measured after at `[916,947][1004,977]` inside a
+viewport ending at 984.
+
+**And the thing actually blocking the owner is the mailer** (15.7.7). Read off
+the live auth config while chasing the deadlock: **no custom SMTP, and
+`rate_limit_email_sent = 2`** — two confirmation emails an hour, project-wide,
+through a sender Supabase documents as being for testing and as refusing
+addresses outside the project's team. That reframes 15.7.3 from a *From* line
+being wrong to the sign-up path being capped, and it is the wall the owner hit
+from the other side: *"i've run out of email address accounts i can use"*.
+**`+` addressing is the answer that costs nothing** and needs nothing deleted;
+15.7.8 writes up the other option — turning confirmation off — as the decision
+it is, because 18.11.1 left public sign-up open on the grounds that the mailer
+was the lock.
+
+**17.16.9 was done in the same change, on purpose.** The pairing page's voice
+was next in *What to do next* and it needed the same deploy, so one push now
+carries both. The happy path reads *"Link a bike / **Scanned — this will sign
+in** / PLTN-RB1VQ / Sign in here and the bike signs itself in"* — the owner's
+own sentence — with the echoed pairing code, the duplicated subtitle and a
+maintainer's aside removed. The fallback warning was **probed rather than
+rewritten blind**, which the item asked for: `/functions/v1/link-device`
+answers 401 rather than 404, so this project mints the bike a session of its
+own and the phone keeps its own.
+
+---
+
 ### 5 August 2026 (thirty-fourth sitting): the whole first-run journey, and the code that outlived the screen showing it
 
 **Two inbox entries arrived during the sitting and both are written up and
