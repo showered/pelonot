@@ -658,7 +658,7 @@ class WorkoutService : Service() {
             return
         }
 
-        raceBoard = LiveLeaderboard(
+        val built = LiveLeaderboard(
             ghosts = field,
             // The ladder's floor is the best thing already on the board, so
             // the first rung is above the field rather than above nothing.
@@ -671,10 +671,21 @@ class WorkoutService : Service() {
                     )
                 }
         )
+
+        // 24.3.7a, the other ordering. This runs asynchronously, so the first
+        // modelled sample can arrive before the board does — in which case the
+        // gate has already fired against a board that did not exist yet, and
+        // narrowing it there narrowed nothing. Read the flag on arrival rather
+        // than trusting the sample to come round again.
+        raceBoard = (if (raceDiscredited) built.generatedOnly() else built)
+            .takeUnless { it.isEmpty }
+
         Log.i(
             TAG,
-            "Racing ${field.size} on $classId (${generated.size} generated): " +
-                field.joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
+            "Racing ${raceBoard?.ghosts?.size ?: 0} on $classId " +
+                "(${generated.size} generated, ${if (raceDiscredited) "modelled" else "measured"}): " +
+                raceBoard?.ghosts.orEmpty()
+                    .joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
         )
     }
 
@@ -1060,12 +1071,17 @@ class WorkoutService : Service() {
      * The live leaderboard at this second, or null when there is no honest one
      * to draw (24.3.10).
      *
-     * Same clock and same gate as [rivalStatus], because it is the same race
-     * with the `LIMIT 1` taken off.
+     * Same clock as [rivalStatus], and **no longer the same gate** (24.3.7a).
+     * The rival is one real ride and a modelled ride cannot honestly race it,
+     * so `raceDiscredited` still removes it whole; the board is the same race
+     * with the `LIMIT 1` taken off and it has generated rows on it, which
+     * survive. `raceBoard` is already narrowed by the time it is read here —
+     * done once when the gate fires rather than per tick, because this runs
+     * four times a second and the race is not allowed to touch anything that
+     * allocates.
      */
     private fun standings(elapsedSec: Int, outputKj: Double, distanceKm: Double) =
         raceBoard
-            ?.takeUnless { raceDiscredited }
             ?.let { board ->
                 board.standingsAt(
                     elapsedSec,
@@ -1143,11 +1159,29 @@ class WorkoutService : Service() {
         // this side cannot be known until the watts actually arrive, and one
         // modelled sample is enough — `Mixed` fails `isTrustworthyAsMeasured`
         // too.
-        if (!reading.powerIsMeasured && !raceDiscredited && !RaceDebug.ignoreMeasuredGate &&
-            (rivalTrace != null || raceBoard != null)
-        ) {
+        //
+        // 24.3.7a: it narrows the board rather than dropping it. The rows that
+        // go are the ones that are somebody's actual ride — humans, and the
+        // rider's own past bests; what stays is what this app generated, which
+        // has no measurement on the other side of it to misrepresent. The
+        // single rival is a real ride by construction, so `raceDiscredited`
+        // still takes it away whole.
+        //
+        // The flag is set on the sample rather than on the sample *and* a race
+        // existing, because `loadRaceBoard` is asynchronous: gating it on
+        // `raceBoard != null` let a board that landed a tick later arrive
+        // un-narrowed, with real rides on it, for as long as it took the next
+        // sample to notice. `loadRaceBoard` reads the flag for the other
+        // ordering.
+        if (!reading.powerIsMeasured && !raceDiscredited && !RaceDebug.ignoreMeasuredGate) {
             raceDiscredited = true
-            Log.i(TAG, "Dropping the race at ${elapsedSec}s: these watts are modelled")
+            if (rivalTrace != null || raceBoard != null) {
+                Log.i(
+                    TAG,
+                    "Modelled watts at ${elapsedSec}s: racing generated targets only"
+                )
+            }
+            raceBoard = raceBoard?.generatedOnly()?.takeUnless { it.isEmpty }
         }
 
         // 2.2a.1: the ride is already the calibration dataset. Kept in memory

@@ -106,6 +106,46 @@ data class LiveLeaderboard(
     val isEmpty: Boolean get() = ghosts.isEmpty() && pacer == null
 
     /**
+     * The board with every **real ride** taken off it, leaving only what this
+     * app generated (PLAN 24.3.7a).
+     *
+     * What the measured-power gate is actually for is a *comparison between a
+     * modelled number and a measured one* — a rider on `PowerModel`'s guess
+     * finishing above a housemate who really rode it, or below one they would
+     * have beaten. That argument is about **rows that are somebody's ride**,
+     * and 24.3.7 applied it to the whole board, which took *the plan* and the
+     * milestone ladder down with it for no reason anybody could state: those
+     * are numbers this app computed from the rider's own FTP, so there is no
+     * measurement on the other side of the comparison to misrepresent.
+     *
+     * The owner's rule, in the thirty-sixth sitting: *"There should ALWAYS be
+     * a leaderboard even if it's only CPU ghosts you're up against."*
+     *
+     * The rider's **own** past rides go too, and that is the same rule rather
+     * than an exception to it: `Your best` is a real ride of theirs, recorded
+     * with measured watts, and racing it on modelled ones is exactly the
+     * false comparison 24.3.7 exists to prevent — the fact that both rides are
+     * the same person's makes it more misleading rather than less.
+     *
+     * [Pacer.floor] is recomputed from what survives, because the floor's job
+     * is to put the first rung *above the field*: keeping a floor set by a
+     * housemate's real ride would leave a rider chasing a rung nothing on
+     * their board can reach.
+     *
+     * Nothing here touches what is written down. `power_is_measured` still
+     * records what actually happened, sample by sample, so the ride is still
+     * excluded afterwards from every static board, every FTP proposal and
+     * every calibration fit.
+     */
+    fun generatedOnly(): LiveLeaderboard {
+        val kept = ghosts.filter { it.kind.isGenerated }
+        return copy(
+            ghosts = kept,
+            pacer = pacer?.copy(floor = kept.maxOfOrNull { it.trace.finalValue } ?: 0.0)
+        )
+    }
+
+    /**
      * The board as it stands at [second], with [yourValue] as the rider's own
      * cumulative total in [metric]'s units.
      *

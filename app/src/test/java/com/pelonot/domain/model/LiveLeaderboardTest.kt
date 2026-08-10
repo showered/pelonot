@@ -1,5 +1,6 @@
 package com.pelonot.domain.model
 
+import com.pelonot.domain.social.GhostKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -204,5 +205,76 @@ class LiveLeaderboardTest {
     @Test
     fun `no race means no chip`() {
         assertEquals(null, board().standingsAt(100, yourValue = 50.0))
+    }
+
+    // ── Modelled watts narrow the board, they do not empty it (24.3.7a) ──
+
+    private fun ghost(name: String, perSecond: Double, seconds: Int, kind: GhostKind) =
+        ghost(name, perSecond, seconds).copy(kind = kind)
+
+    @Test
+    fun `a modelled ride keeps the generated targets and loses the real rides`() {
+        val narrowed = LiveLeaderboard(
+            listOf(
+                ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human),
+                ghost("Your best", perSecond = 0.9, seconds = 600, kind = GhostKind.YourBest),
+                ghost("The plan", perSecond = 0.8, seconds = 600, kind = GhostKind.Prescribed),
+                ghost("Your usual", perSecond = 0.7, seconds = 600, kind = GhostKind.Usual)
+            )
+        ).generatedOnly()
+
+        assertEquals(
+            listOf("The plan", "Your usual"),
+            narrowed.ghosts.map { it.name }
+        )
+    }
+
+    /**
+     * The owner's rule: *"There should ALWAYS be a leaderboard even if it's
+     * only CPU ghosts you're up against."* A class nobody has ridden gives one
+     * generated row, and one generated row plus you is still a race.
+     */
+    @Test
+    fun `a board of nothing but generated targets still draws`() {
+        val standings = LiveLeaderboard(
+            listOf(ghost("The plan", perSecond = 1.0, seconds = 600, kind = GhostKind.Prescribed))
+        ).generatedOnly().standingsAt(100, yourValue = 50.0)
+
+        assertEquals(2, standings!!.fieldSize)
+        assertEquals("The plan", standings.nearest!!.name)
+        assertTrue(standings.nearest!!.isGhost)
+    }
+
+    /** Every row was somebody's real ride, so there is honestly nothing left. */
+    @Test
+    fun `a modelled ride against real rides only is no race at all`() {
+        val narrowed = LiveLeaderboard(
+            listOf(
+                ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human),
+                ghost("Your best", perSecond = 0.9, seconds = 600, kind = GhostKind.YourBest)
+            )
+        ).generatedOnly()
+
+        assertTrue(narrowed.isEmpty)
+        assertNull(narrowed.standingsAt(100, yourValue = 50.0))
+    }
+
+    /**
+     * The floor exists to put the first rung above the field. Keeping one set
+     * by a housemate's real ride would leave the rider chasing a rung nothing
+     * on their board can reach.
+     */
+    @Test
+    fun `the milestone floor comes down with the rides that set it`() {
+        val narrowed = LiveLeaderboard(
+            ghosts = listOf(
+                ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human),
+                ghost("The plan", perSecond = 0.2, seconds = 600, kind = GhostKind.Prescribed)
+            ),
+            pacer = LiveLeaderboard.Pacer(durationSec = 600, floor = 600.0)
+        ).generatedOnly()
+
+        // Ava's 600 set the old floor; the plan's 120 is what is left.
+        assertEquals(120.0, narrowed.pacer!!.floor, 0.001)
     }
 }

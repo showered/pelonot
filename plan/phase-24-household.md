@@ -249,6 +249,68 @@ downgrade — it is why the feature can afford to be interesting.
       a race, and the rider cannot tell. If either side is not measured there is
       no ghost — the offer simply is not made on the class detail screen, which
       is 24.1.6's rule about not drawing an empty comparison
+- [x] **24.3.7a** **A modelled ride narrows the board rather than emptying it**
+      — the owner's rule, thirty-sixth sitting, verbatim: *"There should ALWAYS
+      be a leaderboard even if it's only CPU ghosts you're up against."*
+
+      **24.3.7 above is right about what it was written for and was applied
+      wider than its own argument.** The thing the gate exists to prevent is a
+      *comparison between a modelled number and a measured one* — a rider on
+      `PowerModel`'s guess (137 W RMSE) finishing above a housemate who really
+      rode it, or below one they would have beaten. That argument is about
+      **rows that are somebody's ride**. 24.3.7 took the whole board down with
+      them, which also removed *the plan* and the milestone ladder — numbers
+      this app computed from the rider's own FTP, with no measurement on the
+      other side of the comparison to misrepresent. Nothing could state why
+      those had to go, and the owner is right that a rider with no board is
+      worse off than one racing a target the app invented.
+
+      `LiveLeaderboard.generatedOnly()` is the narrowing: `GhostKind.isGenerated`
+      already told the two kinds apart, so the rule needed no new field. **The
+      rider's own past rides go too, and that is the rule rather than an
+      exception to it** — `Your best` is a real ride of theirs recorded with
+      measured watts, and racing it on modelled ones is the false comparison
+      24.3.7 exists to prevent; both rides being the same person's makes it
+      more misleading rather than less. `Pacer.floor` is recomputed from what
+      survives, because the floor's job is to put the first rung *above the
+      field* and a floor set by a housemate's real ride leaves the rider
+      chasing a rung nothing on their board can reach. A board that is nothing
+      but real rides still comes out empty, and honestly so.
+
+      **The single rival still goes whole**, because it is one real ride by
+      construction (24.3.2). `raceDiscredited` is unchanged for it.
+
+      **The ordering is the part that would have been a defect.** The gate
+      fires on the first modelled sample and `loadRaceBoard` is asynchronous,
+      so either can be first. Gating on `rivalTrace != null || raceBoard !=
+      null` — which is what it did — meant a board landing a tick *after* the
+      gate arrived un-narrowed, with housemates' real rides on it, until some
+      later sample noticed; and by then no later sample would, because the flag
+      was already set. So the flag is now set on the sample alone and
+      `loadRaceBoard` reads it on arrival. Both orderings narrow.
+
+      The narrowing is done **once**, when the gate fires and when the board
+      lands, rather than per tick: `standings` runs four times a second and the
+      race may not allocate.
+
+      **Nothing here touches what is written down.** `power_is_measured` still
+      records what happened sample by sample, so the ride is still excluded
+      afterwards from every static board, every FTP proposal and every
+      calibration fit. This is about what a rider may be shown *during* a ride
+      they are already being told is simulated.
+
+      *Four JVM tests, and the one worth naming is `a board of nothing but
+      generated targets still draws` — one generated row plus you is a race,
+      which is the owner's sentence as an assertion. **Not yet observed on the
+      AVD**: what it changes is only visible on a simulated ride with a seeded
+      class, and that is the check this item still owes.*
+
+      **One rename went with it and it is not 24.3.12a.** `Prescribed` read as
+      *"The plan"*, which on a board of names is a duration-shaped placeholder
+      of the same family the owner rejected; it is *"Class target"* now. That
+      is one row, chosen because a modelled ride can now be racing it alone
+      and it is the first thing such a rider reads. **24.3.12a stays open** —
+      it is the owner's, and it is about the set.
 - [x] **24.3.8** **It must survive a pause, a resume and a crash.** The ride can
       be paused (auto-pause), resumed after a crash and reopened after being
       ended by accident (8.3d, 12.6.2), and `elapsedSeconds()` has excluded

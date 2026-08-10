@@ -260,7 +260,7 @@ enum class GhostKind(
     YourRecentBest("Your recent best", isPerson = false, isGenerated = false),
 
     /** The class ridden exactly as prescribed (24.3.18b, candidate 3). */
-    Prescribed("The plan", isPerson = false, isGenerated = true),
+    Prescribed("Class target", isPerson = false, isGenerated = true),
 
     /** Their own best plus five per cent (24.3.18b, candidate 2). */
     Stretch("Just past your best", isPerson = false, isGenerated = true),
