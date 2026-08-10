@@ -8,6 +8,97 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 5 August 2026 (thirty-fourth sitting): the whole first-run journey, and the code that outlived the screen showing it
+
+**Two inbox entries arrived during the sitting and both are written up and
+emptied.** The brief was the happy path — onboarding end to end, and taking a
+first ride — and it was walked from *"New rider"* to the post-ride summary on
+the tablet AVD. 677 JVM tests, 0 failures. Everything below was observed
+except where it says otherwise.
+
+**The owner reported the same two controls a second time, and *that* is the
+interesting part** (20.4.5). *"Year born and Weight are out of alignment"* —
+after 20.4.1 had fixed them one sitting earlier by measuring one against the
+other. Every number in that fix was right and the pair still did not line up,
+because **an `OutlinedTextField` is taller than the box it draws**: with a
+label it reserves 8 sp above for the label to float onto the border, so its
+outline is the *bottom* 56 dp of a 64 dp control. Two children of one
+`Alignment.Top` row, laid out from the same y, drew their outlines 12 px apart
+— and once the year was answered its label floated to y 295, **outside its own
+control**. The fix is to stop copying Material's numbers and call Material's
+decoration: `PickerField` is `OutlinedTextFieldDefaults.DecorationBox` now,
+one component drawn twice. Measured after: both outlines `[319 … 403]`, both
+labels `[307 … 331]`, `68` and `1986` on one baseline.
+
+**The second note was about the back button, and analysing the journey as
+asked found something worse than what was reported** (15.6.13, 20.4.6). The
+report: back from the QR code lands on *"Who's riding?"* with the new profile
+sitting there. The cause reaches the whole screen — profile creation is a
+`Dialog`, a dialog dismisses itself on back, and **no step ever saw the
+press**, so back on *A bit about you* was throwing away a name and three
+answers while the *Back* control two inches below it went one step.
+
+**Underneath it, the pairing code outlived the screen showing it.**
+`AccountViewModel` outlives the dialog, so backing out left the poll running
+with a live five-minute code. Measured: a rider backed out of **Ada**'s code,
+created a second profile, and the offer for **Bee** opened on *Ada's* QR — the
+same `Y4TM VX5W`, counting down from where it had got to. And `startPairing`
+captures the profile id it *began* with, so a phone scanning that code would
+have handed the session to Ada while Bee was the profile on screen. Two
+riders, one code, and the wrong one signed in.
+
+**The confirmation email pointed at `localhost`, and it does not any more**
+(15.7.6, closing 17.16.4 with it). `site_url` was still Supabase's scaffold
+value and `uri_allow_list` was empty. What made it safe to touch a live auth
+config is `supabase/auth_config.py`: `backup` writes the whole thing to a
+git-ignored file first, `set-site-url` sends **only** the two keys, `diff`
+re-reads and reports what moved — two fields out of 242. And `check-link`
+mints the confirmation link `generate_link` would send *without sending it*,
+on a throwaway account it deletes again, so the check is that a rider's link
+carries the value rather than that the API stored it. **It prints the shape of
+the link and never the link**: the token beside it is a live single-use
+credential. The owner authorised the change directly.
+
+**`emailRedirectTo` changed shape while being built and the reason is worth
+keeping.** It was going to carry the pairing code back on the fragment, which
+is wrong twice: Supabase hands the confirmed session back **in the fragment**,
+so a code sitting there is exactly what it overwrites — and after an inbox
+round trip the five minutes are gone anyway, which is **15.6.12 arriving from
+the other end**. It names the pairing *page* instead. `link.js` is in the repo
+and not on the internet: `./web/check-deployed.sh` says DRIFTED.
+
+**And the bike says the link landed** (15.6.11). The owner asked for it; half
+existed, because the poll does redeem the pairing. The missing half was the
+*moment* — `resolve` called `onDone` straight through, so the QR did not
+confirm, it **vanished**, and the dashboard appeared. It names the account,
+because on a household bike the interesting failure is signing in as the wrong
+person and an address is the only thing on the screen that would show it. One
+button and no timer: the rider may still be two steps away with their phone.
+The panel is observed; the trigger needs a real sign-in and was not performed.
+
+**Riding it end to end turned up one asymmetry and one silent overflow.**
+Settings has fenced `weight_kg` since 13.8 and **profile creation never did**
+— two writers of one column disagreeing about what a weight is, and the one
+with no fence is the first screen a rider meets (20.5.1). `RiderBounds` is the
+single answer now. The honest note is that the `68`-in-a-pounds-field which
+found it is 31 kg, *inside* any defensible bound: what the fence catches is
+the neighbouring failure, and 20.5.2 writes up the other half — the estimate
+names its inputs and not their values — and leaves it to the owner's eye
+rather than building it. Separately, **past about twenty riders the selector
+clips its last tile with nothing saying it scrolls** (20.1.6): it does scroll
+and the tile is reachable, so it is an affordance fault, and the threshold is
+unmeasured.
+
+**Two things looked like defects on the emulator and are the design working.**
+The live leaderboard does not draw during a simulated ride, and the
+post-ride board does not carry the rider's own row — both are the measured-power
+gate (24.3.7, 24.4.2) refusing to race modelled watts, which is CLAUDE.md's
+own warning that anything gated on measured power shows nothing on an AVD.
+Worth writing down because the top-right of the ride screen is a large empty
+rectangle whenever it applies.
+
+---
+
 ### 5 August 2026 (thirty-third sitting): the first ride, watched over somebody's shoulder
 
 **The owner showed the app to their wife, who signed up for the first time, and

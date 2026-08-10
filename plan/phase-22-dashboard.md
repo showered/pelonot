@@ -236,21 +236,53 @@ time.
       them card by card is exactly what 22.2.3 says produces three columns of
       unrelated things. **Observed on the tablet AVD**; 22.2.5's check on the
       bike itself is still owed*
-- [ ] **22.2.2** Then use the two rails that opens up **deliberately**, rather
+- [x] **22.2.2** Then use the two rails that opens up **deliberately**, rather
       than leaving symmetrical dead space: for instance who is riding and
       today's context on one side, the last ride and the streak on the other.
       The rails exist only in landscape and must fold back into the column below
       a breakpoint
-- [ ] **22.2.3** Decide the three regions as one layout — what the middle is
+
+      ***Answered by 22.4.3, and the answer is simpler than the question.***
+      There are no rails: the dashboard is **rows**, stacked and each one used —
+      the FTP beside Just Ride, the three actions abreast, the progress cards
+      abreast — with `WideRow` folding every one of them below 900 dp, which is
+      the "must fold back into the column" clause satisfied by construction
+      rather than per row. *The item's own guess at the content was close: the
+      last ride and the consistency count are indeed a pair, they are just
+      side by side in the flow rather than parked in a margin.*
+- [x] **22.2.3** Decide the three regions as one layout — what the middle is
       for, what a rail is for, and what a rail does when it has nothing to say
       (it disappears; it does not show an empty card). Doing this card by card
       produces three columns of unrelated things, which is worse than one
-- [ ] **22.2.4** The same question applies to Settings and History, which are
+
+      ***Answered by 22.4.3 with 22.2.2.*** There are two regions rather than
+      three and they are rows, so the warning this item exists to give — three
+      columns of unrelated things — cannot arise. **Its rule about the empty
+      case survived and is load-bearing elsewhere**: a card with nothing to say
+      draws nothing at all rather than an empty version of itself, which is
+      what the household panel does below two riders (24.1.6), what the FTP
+      sparkline does before the number has moved, and what 22.1.5's verdict
+      does when it cannot honestly be made.
+- [x] **22.2.4** The same question applies to Settings and History, which are
       also full-width cards on a wide screen. Do the dashboard first and find
       out whether the answer generalises before rolling it out
+
+      ***Done as 22.4.3's audit — seven screens, a verdict each — and this
+      item's instinct to check before generalising was right twice over.***
+      Settings kept the cap and History did not, and then **History changed its
+      mind again** (22.7.6): the owner's note settled it as one centred column,
+      which is neither of the two answers the audit was choosing between. Three
+      passes at one screen is the evidence for this item's caution rather than
+      against it.
 - [ ] **22.2.5** Verify against the real system furniture — a 48 dp bottom
       navigation bar and no top status bar (`HARDWARE.md`) — and on the tablet
       itself before ticking anything here
+
+      *Still open and **owed**, on everything in 22.1, 22.5.5, 22.7.4 and
+      22.7.6. All of it is measured on the 1280 × 720 dp AVD, which is the
+      right geometry and the wrong furniture. The owner had no access to the
+      bike on 10 August and said so at the start of the sitting, so this is
+      deferred deliberately rather than skipped.*
 - [x] **22.2.6** **Make the width cap a rule rather than one screen's fix.**
       *Done and observed.* `Layout.readableWidth` (760 dp) and
       `Modifier.readableColumn()` in the theme; the dashboard's private
@@ -373,13 +405,26 @@ length, tile what is looked at.**
         always for.*
 
       *All observed on the 1280 × 720 dp tablet AVD (22.4.5).*
-- [ ] **22.4.4** **A rail is not a grid, and 22.2.2/22.2.3 are still the harder
+- [x] **22.4.4** **A rail is not a grid, and 22.2.2/22.2.3 are still the harder
       question.** This item is about surfaces that have *one kind of thing* and
       too much room for it, which is a layout with an obvious answer. The
       dashboard has three kinds of thing and no obvious answer, and filling its
       rails card by card is what 22.2.3 already warns against. Do 22.4.2 first
       and see whether the grid helper it produces is any use to the dashboard
       before deciding
+
+      ***Done, and the instruction it gave itself is what answered it.*** 22.4.2
+      was done first, and the helper it produced turned out **not** to be the
+      one the dashboard wanted: `WideGrid` lays a *set* out in rows, and the
+      dashboard's cards are pairs and triples of unlike things rather than a
+      set. So the dashboard got `WideRow` instead — one row, cards abreast,
+      stacked below 900 dp — and the rails never happened (22.2.2, 22.2.3).
+
+      *The rule this leaves behind, which is the useful residue: **the number
+      of kinds of thing on a surface decides which helper it takes.** One kind
+      and too much room is `WideGrid`; several kinds is a row per group; prose
+      is the cap. And a **list** is none of the three — that is 22.7.6, learnt
+      the hard way on History a fortnight later.*
 - [x] **22.4.5** **Measured on the 1280 × 720 dp AVD, never on a phone**
       (`HARDWARE.md`, and the same condition as every other item in 22.2). A
       grid that looks right on a phone AVD is a single column, which is the
@@ -514,13 +559,40 @@ is a decision handed over rather than a shrug:**
       right at this cadence — a calendar with one square lit a week is a good
       picture of a once-a-week rider (22.5.3) — and the backup reminder counts
       rides, not days.*
-- [ ] **22.5.5** **The empty state is the case to design for, not the exception.**
+- [x] **22.5.5** **The empty state is the case to design for, not the exception.**
       At this cadence the card spends most of its life with a small number on
       it, so "4 rides · 96 min · last Sunday" is the *normal* reading and
       "0 rides" must be unreachable for anyone who has ridden in the last
       month. Judged on the 1280 × 720 dp AVD with a database that has one ride a
       week in it, not with the dense fixture data the current card was built
       against
+
+      ***Done, and judged against the fixture this item insisted on rather than
+      the dense one.*** Simon's cluster of seven rides on 5 August was spread to
+      one a week — 2 Aug, 26 Jul, 19 Jul, 12 Jul, 5 Jul, 28 Jun, 21 Jun — and
+      the section read:
+
+      > **Last 30 days** · 6 rides · 32 min · **8 weeks in a row**
+      > **Last ride** · Zone 2 Steady · Today · 8 min
+
+      **That is the design working, and the weekly streak is the part doing the
+      work.** *8 weeks in a row* is 22.5.2's whole argument arriving as a
+      number: under the old day-counting streak this rider scored **1** and was
+      shown nothing at all, because a streak of 1 is not a streak. The rolling
+      window never resets, so `0 rides` is unreachable for a rider who has
+      ridden in the month — which is what this item asked to be true.
+
+      **The one state that *does* reach zero was measured too, and it is
+      correct rather than a hole.** With every ride pushed 60 days back the pair
+      reads `Last 30 days · 0 rides` beside `Last ride · Zone 2 Steady ·
+      Jun 11, 2026 · 8 min`. That is a rider who genuinely has not ridden in a
+      month, and 22.5's objection does not apply to them: the complaint was
+      never that zero is unsayable, it was that the app was saying it to
+      somebody **doing exactly what they meant to do**. **22.1.5's card is what
+      makes it bearable** — the zero no longer stands alone, it has the date of
+      the last ride beside it, so the screen says *when* rather than only
+      *nothing*. Neither card was written with the other in mind and the pairing
+      is the accident worth recording.
 
 ---
 
