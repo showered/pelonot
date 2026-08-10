@@ -1037,3 +1037,139 @@ answer — the owner says so directly, *"I like the chart"*.
       that today it answers *here are 52 numbers*. Look at it on the tablet AVD
       at 1280 × 720 dp, on a long class and a short one, with a board and
       without
+
+---
+
+### 22.8 "Very stretched" — the dashboard reconsidered — the owner's note, 10 August 2026
+
+**The owner's words, verbatim:** *"Seems very stretched. Feel like more info can
+be shown 'above the fold'. I won't try and design it for you but perhaps try and
+rethink the design of the dashboard with this in mind. Primary CTA should
+probably be Begin Class rather than 'Just Ride' though as i feel like 95%+ of
+usage will be classes. Maybe some kind of social feed. With achievements in mind
+(next section) that should be considered too for the future."*
+
+**This is the fourth note on this screen and the first one about its vertical
+axis.** 22.2 was a single column stretched across 1280 dp, 22.4 was the width
+being capped rather than used, and 22.1 was the progress section not showing
+progress. Every one of those was answered, and the sitting that answered the
+last of them said the dashboard *"fits on one screen without scrolling"*. **That
+claim was measured against the screen without a household on it.** With one, it
+does not — and the part below the fold is the only part of this surface that is
+about anybody else.
+
+**The measurements, taken on the 1280 × 720 dp AVD before any of this was
+written** (px at 240 dpi; ÷ 1.5 for dp):
+
+| What | Bounds | In dp |
+|------|--------|-------|
+| The scrolling viewport | `[0,36][1920,1032]` | 1280 × **664** |
+| Everything in it | — | ~**993 dp tall** — *one and a half screens* |
+| Greeting block | `[24,60][255,189]` | 86 dp tall, three lines |
+| FTP card | `[24,225][948,453]` | 616 × **152** |
+| Just Ride card | `[972,225][1896,453]` | 616 × **152**, of which its text is **43** |
+| Three action tiles | `[24,477][1896,644]` | 405 × **111** each |
+| *Your Progress* heading + subtitle | `[24,680][338,746]` | **44 dp** of label |
+| Two progress cards | `[24,770][1896,890]` | 616 × **80** |
+| Household panel | from y 930, clipped | 616 × **413**, **entirely below the fold** |
+
+**"Stretched" is the right word and it is vertical.** The horizontal complaint
+was fixed in 22.4 and the fix is holding — nothing here bands across the panel.
+What is left is that **eight cards occupy 993 dp of a 664 dp screen**, and the
+reason is not how many things there are but how much room each one takes to say
+what it says: a card 152 dp tall carrying 43 dp of text, three navigation tiles
+at 111 dp each, and 130 dp of headings and greetings introducing cards that
+already name themselves. **The screen is not full. It is loose.**
+
+**And it does not answer the second half of its own question.** 22.1.1 settled
+that the dashboard answers *should I ride today, and what should I ride* —
+and there is nothing on it that says what to ride. *Begin Class* is a door to a
+list. That is the gap the owner's primary-CTA note is standing next to, and
+22.8.6 is where it is picked up.
+
+- [ ] **22.8.1** **Begin Class is the primary action; Just Ride is the
+      secondary.** The owner's instruction and their reasoning — *"i feel like
+      95%+ of usage will be classes"* — and the current screen has it exactly
+      backwards: *Just Ride* is a 616 × 152 dp card in `primaryContainer` teal
+      beside the FTP, and *Begin Class* is the leftmost of three identical grey
+      tiles that also contain *History* and *Settings*. **A rider whose next
+      action is a class has to pick it out of the furniture.** Note this is a
+      swap of *emphasis*, not a deletion: Just Ride keeps its place, and it
+      should keep a place a rider can hit without reading, because it is what
+      somebody already on the bike reaches for
+- [ ] **22.8.2** **Take the vertical fat out, itemised against the table
+      above.** Named because "make it denser" is how a screen loses the
+      breathing room 22.4 bought it, and each of these is a specific claim that
+      can be argued with:
+      - *"Ready to ride?"* under the rider's own name is a third line of
+        greeting saying nothing (Phase 26). The greeting is 86 dp
+      - *Your Progress* + *"Track your performance over time"* is 44 dp
+        introducing two cards that say `Last 30 days` and `Last ride` on
+        themselves. A section heading earns its place when a surface has
+        sections to tell apart; this one has one
+      - The two hero cards are 152 dp tall for 43 dp of content, because a
+        `WideRow` equalises heights and the FTP card sets the height with its
+        caption. *"Functional Threshold Power — your baseline for all training
+        zones"* is a definition, and a definition is read once
+      - The three tiles are 111 dp each for a 32 dp icon and two words
+- [ ] **22.8.3** **Navigation is not content, and three doors should not weigh
+      the same as the ride.** *History* and *Settings* are the same kind of
+      thing as the bottom navigation bar the tablet already draws
+      (`HARDWARE.md`), and they are given 405 × 111 dp each on the first screen.
+      Whatever replaces them has to stay reachable — this is the only way to
+      either — but it does not have to be a card. **Do this one after 22.8.1**,
+      since the tile row is what *Begin Class* is currently hiding in and
+      changing both at once makes neither measurable
+- [ ] **22.8.4** **The empty rail below the fold.** The household panel is a
+      lone card holding a column's width (22.6, correct) with **633 dp of
+      nothing beside it**, at the bottom of a screen the owner says is
+      stretched. Whatever comes out of 22.8.6 goes there first, because it is
+      free space that costs no density anywhere else
+- [ ] **22.8.5** **Then judge whether the household belongs above the fold.**
+      18.2's rule — the rider's own training first, everyone else's second — put
+      it last, and that rule is right about *order* and says nothing about
+      *visibility*. A panel nobody scrolls to is a panel nobody has. This is a
+      real decision and not a tidy-up: the owner's social-feed note and Phase 28
+      both want room in the same place
+- [ ] **22.8.6** **Decide what earns the space before filling it, and keep
+      22.1.1's sentence as the test.** *Should I ride today, and what should I
+      ride.* The candidates, ranked by how much of that sentence they answer:
+      1. **A class to ride** — the second half of the question, unanswered
+         today. The library is bundled, `ClassTemplate` is already queryable,
+         and *"here is one, start it"* is one tap where *Begin Class* is two and
+         a decision
+      2. **The household, promoted** (22.8.5)
+      3. **A social feed** (22.8.7) — the owner's *"maybe"*, and it is a maybe
+      4. **Achievements** (Phase 28) — the owner's own *"for the backlog"*
+      **A rethink is not a licence to fill it.** The dashboard got to three
+      summaries of the past by accretion, one honest card at a time, and 22.1.1
+      exists because of it
+- [ ] **22.8.7** **A social feed — what it would be, and the two rules it
+      cannot break.** The owner's *"maybe some kind of social feed"*. What a
+      feed item is here: *Kilo rode Zone 2 Steady, 22 min, this morning*; *Ava
+      beat your time on Climb Builder*; *Ben's first ride in three weeks*. Two
+      rules, both from things already settled:
+      - **The connectivity model, rule 3.** An offline rider gets social with
+        the people on their own bike, so the household feed is a Room query and
+        must never touch the network. The across-bikes feed is Phase 18 and
+        needs an account. **Two tiers, one component**, the way 18.9 says every
+        social screen is built on top of its Phase 24 equivalent
+      - **The first screen must not wait for the network.** 22.1.8's rule about
+        `workout_metrics` is the same rule one level up: this surface is what a
+        rider sees between choosing a profile and riding, and a spinner where
+        the feed goes is worse than no feed
+      **And a feed is a thing you scroll**, which is in tension with a screen
+      whose complaint is that it already scrolls. The honest shape is probably
+      *three lines and a door*, the way `RecentRidingCard` is a number and a
+      door — not a timeline
+- [ ] **22.8.8** **The achievements slot is deliberately left as a hole.**
+      Phase 28 is where achievements are designed, at the owner's weighting
+      (*"one for the backlog"*), and 28.6 is the dashboard's share of it. What
+      this item asks of 22.8 is only that the layout it lands on has somewhere
+      for it to go — which 22.8.4's empty rail already is
+- [ ] **22.8.9** **Judged on the tablet AVD at 1280 × 720 dp with a household on
+      it, and 22.2.5 still applies.** The claim *"fits on one screen without
+      scrolling"* was made against a dashboard with no household panel and is
+      the reason this note was needed. Seed one before measuring anything here.
+      **The number to beat is 993 dp**, and the target is the fold: 664 dp on
+      the AVD, 672 dp on the bike
