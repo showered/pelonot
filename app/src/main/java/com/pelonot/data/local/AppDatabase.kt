@@ -38,14 +38,19 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ftpHistoryDao(): FtpHistoryDao
     abstract fun activeRideRivalDao(): ActiveRideRivalDao
 
-    companion object {
+    /**
+     * The schema version this database is actually open at (12.4.4).
+     *
+     * Asked of the open file rather than restated as a constant beside the
+     * annotation. There *was* a constant here, kept equal to
+     * `@Database(version = …)` by a comment saying so, and it drifted the first
+     * time somebody bumped the version without reading it: at 16 against a
+     * database at 17, every backup this build wrote was refused on restore as
+     * *"made by a newer version of Pelonot"*. The number has one source now.
+     */
+    fun schemaVersion(): Int = openHelper.readableDatabase.version
 
-        /**
-         * Kept beside the `@Database(version = …)` above and equal to it. A
-         * restore has to refuse a backup from a newer schema (12.4.4), and
-         * that comparison needs the number at runtime.
-         */
-        const val SCHEMA_VERSION = 16
+    companion object {
 
         private const val DATABASE_NAME = "pelonot_database"
 

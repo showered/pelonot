@@ -95,6 +95,39 @@ has simply never been written down.
       and refused by name; the real backup restored — process 20063 → 20270,
       the profile created after the backup was taken gone, and 5 workouts /
       491 samples back exactly as the file had them*
+- [x] **19.1.3a** **Restore refused every backup this build made, and it is the
+      same defect as 19.1.3's twice over.** `BackupFile.verdictFor` compares the
+      file's schema version against the app's and refuses one from the future,
+      which is right — Room's answer to a database from the future is to empty
+      it (12.5.1). The app's half of that comparison was
+      `AppDatabase.SCHEMA_VERSION`, a `const` sitting under a comment reading
+      *"kept beside the `@Database(version = …)` above and equal to it"*, and it
+      drifted the first time somebody bumped the version without reading the
+      comment: **16 against a database at 17**, since `de3f968`. So a rider who
+      backed up and then restored was told *"That backup was made by a newer
+      version of Pelonot. Update the app, then restore it"* — advice that cannot
+      be followed, about the newest version there is, on the one safety net that
+      exists before Phase 15.
+
+      *Two things make it worth more than its one-line fix. **It is 19.1.3's own
+      bug again**: that item found the magic bytes written with a trailing space
+      and wrote down that no test built out of the same constant could have
+      caught it. This is the neighbouring argument to the same function going
+      wrong the same way — `BackupFileTest` was green throughout, because the
+      arithmetic was always right and only one of its inputs was a lie. **And a
+      number kept equal to another number by a comment is the mechanism**, so
+      the fix is not to correct the constant but to delete it: `AppDatabase
+      .schemaVersion()` asks the open file, which is the only place the answer
+      actually lives.*
+
+      ***Observed on the tablet AVD**, and checked against the bug as well as
+      against the fix: `DatabaseBackupTest` writes a backup through the real
+      `backupTo` and puts it straight back through `inspect`, which passes now
+      and — with `schemaVersion()` pinned to 16 — fails with the rider's own
+      message,* expected:&lt;Accept&gt; but was:&lt;Refuse(reason=That backup was made by
+      a newer version of Pelonot…)&gt;. *It stops at the verdict on purpose:
+      `restoreFrom` closes the shared database and overwrites the live file, and
+      the half worth testing is over before then.*
 - [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
 
       *Written — `.github/workflows/ci.yml`, JDK 17, the Gradle wrapper,

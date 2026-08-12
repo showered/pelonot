@@ -105,12 +105,20 @@ class DatabaseBackup(
         }
     }
 
-    /** Opens the staged copy read-only to ask what it actually is. */
-    private fun inspect(staged: File): BackupFile.Verdict {
+    /**
+     * Opens the staged copy read-only to ask what it actually is.
+     *
+     * `internal` rather than private so a test can ask the question without
+     * taking the destructive half with it: [restoreFrom] closes the database
+     * and replaces the live file, which is not a thing to do in the middle of a
+     * test run.
+     */
+    internal fun inspect(staged: File): BackupFile.Verdict {
         val header = ByteArray(BackupFile.HEADER_BYTES)
         staged.inputStream().use { it.read(header) }
+        val current = database.schemaVersion()
         if (!BackupFile.looksLikeSqlite(header)) {
-            return BackupFile.verdictFor(header, 0, AppDatabase.SCHEMA_VERSION, emptySet())
+            return BackupFile.verdictFor(header, 0, current, emptySet())
         }
 
         return SQLiteDatabase.openDatabase(
@@ -122,7 +130,7 @@ class DatabaseBackup(
             db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null).use { cursor ->
                 while (cursor.moveToNext()) tables += cursor.getString(0)
             }
-            BackupFile.verdictFor(header, db.version, AppDatabase.SCHEMA_VERSION, tables)
+            BackupFile.verdictFor(header, db.version, current, tables)
         }
     }
 
