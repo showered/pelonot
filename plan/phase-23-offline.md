@@ -315,7 +315,7 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       and `PowerProvenance` itself still does not — anything else asking
       `workout_metrics` "was this ride measured?" gets a different answer after
       a trim. 16.3.3a wrote the verdict down for its own reader only*
-- [ ] **23.4.9** **Audit the other three readers and say what each does with a
+- [x] **23.4.9** **Audit the other three readers and say what each does with a
       trimmed ride**, rather than finding out from a chart. They are:
       `RideDetailViewModel` (the ride's own charts — 16.1, and the 24.3.1
       housemate trace and 16.3.4 previous-best comparison drawn behind it),
@@ -326,6 +326,80 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       *not* one**: `CalibrationRepository` accumulates its grid live and stores
       it serialised, so it never re-reads `workout_metrics` and trimming cannot
       touch this bike's power curve. Checked rather than assumed
+
+      ***Done — and "the other three" was wrong. There are eight, in four
+      families**, and the family this item did not know about is the one that
+      matters most. What follows is the audit; each line is what a **completed,
+      trimmed** ride does to that reader.*
+
+      ***1. The charts — `RideDetailViewModel` via `buildRideCharts`.** Draws
+      whatever is left, which under 23.4.2 is a 10-second trace and under a bare
+      delete is nothing. **This is what 23.4.3 exists for and the audit
+      strengthens it**: the danger is not the empty case, which is obvious, but
+      the coarse one, which looks exactly like a ride. The same call draws the
+      24.3.1 housemate trace and the 16.3.4 previous-best comparison behind it,
+      so a trimmed ghost is a comparison that silently stops being offered.*
+
+      ***2. The post-ride summary — `PostRideViewModel`.** Safe by construction,
+      as this item said: it only ever reads a ride minutes old.*
+
+      ***3. The upload — `WorkoutSyncWorker`**, `getMetrics(workout.id)`. A
+      trimmed ride that never reached the cloud uploads an **empty series**,
+      which is worse than not uploading it: the cloud copy is then the
+      authoritative-looking short version. 23.4.6 is the rule and `synced_at`
+      makes it enforceable; the audit's contribution is that it must be enforced
+      in the **trimmer**, not in the worker, because by the time the worker runs
+      the samples are already gone.*
+
+      ***4. The resume paths — `recoverWorkout`, `resumeInterruptedWorkout`,
+      `interruptionFor`.** All read samples, all operate on rides that are
+      `is_complete = 0`. Safe **only if the trimmer never touches an incomplete
+      ride**, which is 8.3b's rule arriving in a fourth place and is now written
+      down rather than assumed.*
+
+      ***5. The live race — `WorkoutService`**, which reads a *rival's* samples
+      for the ghost trace (24.3.3) and the race board (24.3.10). A trimmed rival
+      draws no ghost, so the board narrows quietly. Degrades correctly rather
+      than lying, and 24.3.7a's rule means the board is never empty — but a
+      rider's own reachable ghost disappearing off old rides is a real cost.*
+
+      ***6. The maximum heart rate offered in Settings — `getHighestHeartRate`
+      (21.1.3).** The suggestion drops. It is offered and never written, so this
+      is the mildest one in the list.*
+
+      ***7. Calibration — not a reader**, checked as this item asked.
+      `CalibrationRepository` accumulates its grid live and stores it
+      serialised, so trimming cannot touch this bike's power curve.*
+
+      ***8. And the family this item missed, which is six queries rather than
+      one reader.** `householdLeaderboard`, `householdRivals`,
+      `householdLatestRides`, `previousBestOfClass`, `ownTotalsForClass` and
+      `ownTotalsForClassExcluding` each gate on `EXISTS (a sample) AND NOT
+      EXISTS (a sample that is not a measurement)` — the measured-power rule
+      (24.4.2) asked of the samples. **A trimmed ride fails the first clause and
+      falls off every one of them**: out of the per-class board, out of the
+      household board, out of the *"best you've ridden it"* verdict on the
+      dashboard. Nothing is wrong on any screen; the rider's history just gets
+      smaller. It is exactly the defect 16.3.3a fixed for one reader, still
+      live for six, and **23.4.12 is the general answer.***
+- [ ] **23.4.12** **Write a ride's power provenance down, once, the way 16.3.3a
+      wrote its bests down.** `PowerProvenance` is derived from
+      `workout_metrics` on every read, so it is a question a trimmed ride cannot
+      answer — and six queries (23.4.9, item 8) plus the FTP proposal (7.10.7)
+      ask it. A `power_provenance` column on `workouts`, written at finalise
+      beside `power_bests_at`, is the same fix for the general case: the
+      denominator recorded at the one moment it is knowable, which is 7.8,
+      21.2.3 and 16.3.3a for the third and fourth time.
+
+      *Two things to decide when it is built, both already visible.
+      **`power_bests_at` becomes redundant** as a provenance marker and should
+      probably become a plain "when the scan ran", with the measured question
+      asked of the new column — one fact, one place. And **the backfill has the
+      same shape as 16.3.3a's**: derivable while the samples are there, lost
+      afterwards, so it wants the same self-healing pass rather than a migration.
+      Not a blocker on 23.4 by itself — trimming can simply refuse to run until
+      this lands, which is the honest ordering rather than shipping a feature
+      that shrinks the boards*
 - [ ] **23.4.10** **A signed-in rider's cloud copy makes trimming reversible,
       and an offline rider's does not.** That is the most interesting thing the
       connectivity model does to this feature and it must not be papered over:
