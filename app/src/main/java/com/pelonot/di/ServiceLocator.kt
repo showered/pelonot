@@ -141,7 +141,8 @@ object ServiceLocator {
             authRepository = authRepository,
             userRepository = userRepository,
             userDao = database.userDao(),
-            workoutDao = database.workoutDao()
+            workoutDao = database.workoutDao(),
+            deleteCloudCopy = syncRepository::deleteCloudCopy
         )
     }
 

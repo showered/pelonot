@@ -754,6 +754,28 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM workout_metrics")
     suspend fun storedSampleCount(): Int
 
+    /**
+     * This rider's rides that are outlines and that a cloud has taken (15.4.2).
+     *
+     * The one sentence a rider deleting their cloud copy is owed beyond
+     * *"nothing on this bike changes"*: for these rides the bike is holding the
+     * outline and the seconds behind it are not here. 23.4.6 is why the two
+     * conditions belong together — a signed-in rider's ride is only ever
+     * condensed *because* the cloud had taken it, so `synced_at` is what
+     * separates "the copy up there is fuller than the one down here" from a
+     * ride that was condensed while the rider was offline and never had a
+     * fuller copy anywhere.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts
+        WHERE user_id = :userId
+          AND metrics_detail_sec IS NOT NULL
+          AND synced_at IS NOT NULL
+        """
+    )
+    suspend fun condensedSyncedRideCount(userId: Int): Int
+
     /** And over how many finished rides. */
     @Query("SELECT COUNT(*) FROM workouts WHERE is_complete = 1")
     suspend fun completeRideCount(): Int

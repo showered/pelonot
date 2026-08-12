@@ -4,8 +4,10 @@ import android.util.Log
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.remote.AuthRepository
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.AuthAttempt
+import com.pelonot.domain.cloud.CloudDeletion
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -24,7 +26,19 @@ class AccountRepository(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val userDao: UserDao,
-    private val workoutDao: WorkoutDao
+    private val workoutDao: WorkoutDao,
+    /**
+     * The cloud half of 15.4.2, taken as a function rather than as the
+     * repository that implements it.
+     *
+     * The interesting half of deleting a cloud copy is what it does to *this
+     * tablet* — a history left alone, a `synced_at` column that must stop
+     * lying, an account detached — and all of that is testable against a real
+     * database without a network, but only if the one line that goes out can be
+     * stood in for. Same reason [com.pelonot.data.remote.CloudAccess] takes its
+     * three questions as lambdas.
+     */
+    private val deleteCloudCopy: suspend (localUserId: Int) -> SyncOutcome<CloudDeletion>
 ) {
 
     val accountState: Flow<AccountState> = authRepository.accountState
@@ -113,6 +127,56 @@ class AccountRepository(
         if (user?.authUserId != null) {
             userRepository.save(user.copy(authUserId = null))
         }
+        return outcome
+    }
+
+    /**
+     * How many of this rider's rides are outlines the cloud has the fuller copy
+     * of — the one thing deleting it genuinely costs (15.4.2).
+     */
+    suspend fun condensedRideCount(localUserId: Int): Int =
+        workoutDao.condensedSyncedRideCount(localUserId)
+
+    /**
+     * Removes this profile's cloud copy and leaves the tablet's record alone
+     * (PLAN 15.4.2, 15.4.4).
+     *
+     * **It signs the rider out as well, and that is not tidiness.** Two
+     * mechanical consequences make "delete but stay signed in" a state the app
+     * cannot honestly hold:
+     *
+     * - `synced_at` on every ride now records a backup that no longer exists,
+     *   so Settings would say *"nothing is waiting to go up"* about a cloud with
+     *   nothing in it — and worse, **the trimmer believes that column**
+     *   (`WorkoutDao.trimmableRides`, 23.4.6). A signed-in rider's ride is only
+     *   condensed because the cloud has the full one. Left as it was, this
+     *   action would quietly license the destruction of seconds whose only other
+     *   copy it had just deleted.
+     * - clearing `synced_at` instead — which is what stops that — puts the whole
+     *   history back in the backlog, and an attached account drains a backlog.
+     *   The delete would undo itself at the next ride.
+     *
+     * So it is delete *and stop*: the rows go, the tablet forgets that any cloud
+     * ever had them, and the profile drops back to the offline rung it can
+     * always climb again. The rider is told that in those words before they
+     * press it, because "delete my cloud data" sounding like "delete my rides"
+     * is the fear 15.4.4 exists to answer.
+     *
+     * A failure changes nothing local: the sign-out and the two writes happen
+     * only after the endpoint has said what it removed.
+     */
+    suspend fun deleteCloudData(localUserId: Int): SyncOutcome<CloudDeletion> {
+        val outcome = deleteCloudCopy(localUserId)
+        if (outcome !is SyncOutcome.Success) return outcome
+
+        workoutDao.clearSyncedFor(localUserId)
+        signOut(localUserId)
+
+        Log.i(
+            TAG,
+            "Profile $localUserId deleted its cloud copy " +
+                "(${outcome.value.rides} rides) and is offline again"
+        )
         return outcome
     }
 

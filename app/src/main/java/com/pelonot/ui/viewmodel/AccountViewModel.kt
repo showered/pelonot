@@ -10,8 +10,10 @@ import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.AuthAttempt
+import com.pelonot.domain.cloud.CloudDeletion
 import com.pelonot.domain.cloud.CredentialCheck
 import com.pelonot.domain.cloud.PairingState
 import kotlinx.coroutines.Job
@@ -36,6 +38,28 @@ import kotlinx.coroutines.launch
  */
 enum class AccountMode { SignIn, SignUp }
 
+/**
+ * Deleting the cloud copy, which is four states and not a boolean (PLAN 15.4.2).
+ *
+ * [Asking] carries what the tablet knows at the moment of asking rather than a
+ * flag, because the sentence the rider is owed depends on it: a rider with
+ * condensed rides is giving up seconds the bike does not hold, and a rider with
+ * none is giving up nothing but a backup. Counted when the dialog opens, so it
+ * cannot be stale by the time it is read.
+ *
+ * [Done] is a state rather than a snackbar because the screen behind it has
+ * changed underneath the rider — deleting signs them out — and a line saying
+ * what was removed is the only thing that makes that make sense.
+ */
+sealed interface DeletionState {
+    data object Idle : DeletionState
+
+    /** @param condensedRides rides held here as an outline (23.4.3). */
+    data class Asking(val condensedRides: Int) : DeletionState
+    data object Deleting : DeletionState
+    data class Done(val removed: CloudDeletion) : DeletionState
+}
+
 data class AccountUiState(
     /** The profile this action would attach to — always the selected rider. */
     val profile: UserEntity? = null,
@@ -56,7 +80,9 @@ data class AccountUiState(
     val pairing: PairingState = PairingState.Idle,
     val pairingAvailable: Boolean = false,
     /** Redrawn once a second while a code is up, for the countdown alone. */
-    val nowMs: Long = 0L
+    val nowMs: Long = 0L,
+    /** The confirm step in front of deleting the cloud copy (15.4.2). */
+    val deletion: DeletionState = DeletionState.Idle
 ) {
     val isGuest: Boolean get() = profile == null
 
@@ -119,6 +145,8 @@ class AccountViewModel(
      */
     private val now = MutableStateFlow(0L)
 
+    private val deletion = MutableStateFlow<DeletionState>(DeletionState.Idle)
+
     private var pollJob: Job? = null
 
     private val profile = settingsRepository.settings
@@ -133,15 +161,23 @@ class AccountViewModel(
             if (id == null) flowOf(0) else workoutRepository.observeBacklog(id).map { it.pending }
         }
 
-    private val pairingState = combine(pairing, now) { state, tick -> state to tick }
+    /**
+     * The pairing clock and the deletion step, folded together because
+     * `combine` takes five flows and this screen has six things on it. They are
+     * both moments rather than facts, which is the only thing they have in
+     * common — see the destructuring at the bottom of the block.
+     */
+    private val moments = combine(pairing, now, deletion) { pairing, tick, deletion ->
+        Triple(pairing, tick, deletion)
+    }
 
     val uiState: StateFlow<AccountUiState> = combine(
         profile,
         accountRepository.accountState,
         form,
         backlog,
-        pairingState
-    ) { profile, session, form, waiting, (pairing, tick) ->
+        moments
+    ) { profile, session, form, waiting, (pairing, tick, deletion) ->
         AccountUiState(
             profile = profile,
             session = session,
@@ -156,7 +192,8 @@ class AccountViewModel(
             ridesWaiting = waiting,
             pairing = pairing,
             pairingAvailable = deviceLinkRepository.pairingAvailable,
-            nowMs = tick
+            nowMs = tick,
+            deletion = deletion
         )
     }.stateIn(
         scope = viewModelScope,
@@ -345,6 +382,60 @@ class AccountViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Opens the confirm step, having first asked what it would cost (15.4.2).
+     *
+     * The count is taken here rather than kept on the state all the time
+     * because it is read once, at the one moment it changes what the rider is
+     * being told, and a screen that carries it permanently would be asking the
+     * database about condensed rides every time anybody looked at their account.
+     */
+    fun askToDeleteCloudData() {
+        val localUserId = uiState.value.profile?.localUserId ?: return
+        viewModelScope.launch {
+            deletion.value = DeletionState.Asking(
+                condensedRides = accountRepository.condensedRideCount(localUserId)
+            )
+        }
+    }
+
+    fun dismissDeletion() {
+        deletion.value = DeletionState.Idle
+    }
+
+    /**
+     * Deletes the cloud copy (15.4.2). The screen behind this changes as it
+     * lands — the rider is signed out by the same action — so the outcome is
+     * held on screen rather than announced and dismissed.
+     */
+    fun deleteCloudData() {
+        val localUserId = uiState.value.profile?.localUserId ?: return
+        deletion.value = DeletionState.Deleting
+        form.update { it.copy(problem = null) }
+        viewModelScope.launch {
+            when (val outcome = accountRepository.deleteCloudData(localUserId)) {
+                is SyncOutcome.Success -> deletion.value = DeletionState.Done(outcome.value)
+
+                // Nothing local has changed on any of these, which is why they
+                // return the rider to the signed-in screen with a sentence
+                // rather than to a half-deleted one.
+                is SyncOutcome.Rejected -> failDeletion(outcome.reason)
+                is SyncOutcome.Failed -> failDeletion(
+                    "Couldn't reach your account just now. Nothing has been deleted."
+                )
+
+                SyncOutcome.Disabled -> failDeletion(
+                    "This profile isn't signed in on this bike, so there is nothing to delete."
+                )
+            }
+        }
+    }
+
+    private fun failDeletion(message: String) {
+        deletion.value = DeletionState.Idle
+        form.update { it.copy(problem = message) }
     }
 
     private suspend fun resolve(outcome: AuthAttempt, localUserId: Int, onSignedIn: () -> Unit) {

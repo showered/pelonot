@@ -15,7 +15,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.domain.cloud.AccountState
+import com.pelonot.domain.cloud.CloudDeletion
 import com.pelonot.domain.cloud.PairingState
 import com.pelonot.ui.components.QrCode
 import com.pelonot.ui.theme.readableColumn
@@ -57,6 +60,7 @@ import com.pelonot.ui.theme.spacing
 import com.pelonot.ui.viewmodel.AccountMode
 import com.pelonot.ui.viewmodel.AccountUiState
 import com.pelonot.ui.viewmodel.AccountViewModel
+import com.pelonot.ui.viewmodel.DeletionState
 
 /**
  * Backing up a rider's rides (PLAN 15.1).
@@ -140,9 +144,27 @@ fun AccountScreen(
             when {
                 !state.cloudConfigured -> ReadablePanel { NoCloudHere() }
                 state.isGuest -> ReadablePanel { GuestCannotBackUp() }
+
+                // Before the session check, because deleting the cloud copy
+                // signs the rider out (15.4.2) — by the time this is drawn the
+                // branch that offered it is no longer true, and a screen that
+                // silently became the sign-in form would read as the app
+                // undoing what they just asked for.
+                state.deletion is DeletionState.Done -> ReadablePanel {
+                    CloudCopyDeleted(
+                        removed = (state.deletion as DeletionState.Done).removed,
+                        onDone = onBack
+                    )
+                }
+
                 state.session == AccountState.Unknown -> ReadablePanel { Loading() }
-                state.signedInAsThisProfile ->
-                    ReadablePanel { SignedIn(state, viewModel::signOut) }
+                state.signedInAsThisProfile -> ReadablePanel {
+                    SignedIn(
+                        state = state,
+                        onSignOut = viewModel::signOut,
+                        onDeleteCloudCopy = viewModel::askToDeleteCloudData
+                    )
+                }
 
                 state.awaitingConfirmationFor != null -> ReadablePanel {
                     ConfirmYourEmail(
@@ -190,6 +212,19 @@ fun AccountScreen(
                 else -> ReadablePanel { SignInForm(state, viewModel, onDone = onBack) }
             }
         }
+    }
+
+    // Outside the column so it is a dialog over whichever branch asked for it,
+    // and drawn while `Deleting` too — the request is a network round trip and
+    // taking the question away mid-flight loses the only explanation on screen.
+    val deletion = state.deletion
+    if (deletion is DeletionState.Asking || deletion is DeletionState.Deleting) {
+        ConfirmCloudDeletion(
+            condensedRides = (deletion as? DeletionState.Asking)?.condensedRides ?: 0,
+            busy = deletion is DeletionState.Deleting,
+            onConfirm = viewModel::deleteCloudData,
+            onDismiss = viewModel::dismissDeletion
+        )
     }
 }
 
@@ -258,7 +293,11 @@ internal fun Loading() {
 }
 
 @Composable
-private fun SignedIn(state: AccountUiState, onSignOut: () -> Unit) {
+private fun SignedIn(
+    state: AccountUiState,
+    onSignOut: () -> Unit,
+    onDeleteCloudCopy: () -> Unit
+) {
     val email = (state.session as? AccountState.SignedIn)?.email
     Text("Your rides are backed up", style = MaterialTheme.typography.titleLarge)
     Text(
@@ -298,6 +337,117 @@ private fun SignedIn(state: AccountUiState, onSignOut: () -> Unit) {
     )
     OutlinedButton(onClick = onSignOut, enabled = !state.busy) { Text("Sign out") }
     state.problem?.let { ProblemLine(it) }
+
+    // 15.4.2. Quieter than sign-out and further down, because it is the rarer
+    // and the heavier of the two: a text button in the error colour, with no
+    // paragraph selling it. What it does is said in the dialog, at the moment
+    // of asking, rather than here where it would be four more lines on a screen
+    // whose subject is backup working.
+    Spacer(Modifier.size(MaterialTheme.spacing.medium))
+    TextButton(
+        onClick = onDeleteCloudCopy,
+        enabled = !state.busy,
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+        )
+    ) { Text("Delete my cloud copy") }
+}
+
+/**
+ * The confirm step in front of the one action here that destroys anything
+ * (PLAN 15.4.2, 15.4.4).
+ *
+ * **It answers the fear rather than the question.** A rider reading "delete my
+ * cloud data" on a bike is not worried about rows in Postgres, they are worried
+ * about their training history, and the natural reading of this button is
+ * exactly backwards from what it does. So the first sentence is what does *not*
+ * happen, in the words 15.4.4 asks for.
+ *
+ * The second is the consequence they did not ask for and must not be surprised
+ * by: this signs them out. The reasoning is in
+ * [com.pelonot.data.repository.AccountRepository.deleteCloudData] — without it
+ * the next ride would put the copy straight back.
+ *
+ * The third only appears for a rider it is true of, and it is the one honest
+ * loss (23.4.3, 23.4.6): a condensed ride's seconds are not on this bike. It is
+ * conditional in its wording as well as in its appearance, because the tablet
+ * knows the cloud took the ride and does not know whether what it took was
+ * still intact — 23.4.13 is the item that would let it say.
+ */
+@Composable
+private fun ConfirmCloudDeletion(
+    condensedRides: Int,
+    busy: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Delete your cloud copy?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                Text(
+                    text = "Every ride stays on this bike. Your history, your dashboard " +
+                        "and the household leaderboard are unchanged.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "This profile stops backing up as well, so nothing puts the " +
+                        "copy back. You can sign in again whenever you like.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (condensedRides > 0) {
+                    Text(
+                        text = "$condensedRides older ${if (condensedRides == 1) "ride is" else "rides are"} " +
+                            "kept here as an outline. If your account still holds the " +
+                            "seconds behind them, those go too.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = !busy,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) { Text(if (busy) "Deleting…" else "Delete it") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !busy) { Text("Keep it") }
+        }
+    )
+}
+
+/**
+ * What was removed, said once (PLAN 15.4.2).
+ *
+ * A count rather than "done", because a delete that matched nothing and a
+ * delete that took two years of riding both return quietly — that is the whole
+ * argument in [com.pelonot.domain.cloud.CloudDeletion] — and a rider deserves
+ * to see which of the two just happened.
+ */
+@Composable
+private fun CloudCopyDeleted(removed: CloudDeletion, onDone: () -> Unit) {
+    Text("Your cloud copy is gone", style = MaterialTheme.typography.titleLarge)
+    Text(
+        text = when (removed.rides) {
+            0 -> "There were no rides in your account to remove."
+            1 -> "One ride was removed from your account."
+            else -> "${removed.rides} rides were removed from your account."
+        },
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Text(
+        text = "Everything is still on this bike, and this profile is no longer " +
+            "backing up.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Button(onClick = onDone) { Text("Done") }
 }
 
 /**

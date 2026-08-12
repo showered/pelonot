@@ -8,10 +8,12 @@ import com.pelonot.data.remote.dto.ClassTemplateDto
 import com.pelonot.data.remote.dto.LeaderboardRowDto
 import com.pelonot.data.remote.dto.ProfileDto
 import com.pelonot.data.remote.dto.WorkoutDto
+import com.pelonot.domain.cloud.CloudDeletion
 import com.pelonot.domain.cloud.SyncFailure
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -82,6 +84,44 @@ class SupabaseSyncRepository(
             supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user, accountId)) {
                 onConflict = "id"
             }
+        }
+
+    /**
+     * Removes this rider's own rows from the cloud (PLAN 15.4.2).
+     *
+     * **The rides first and the profile second**, which is not the order the
+     * schema needs — `workouts.user_id` is `ON DELETE CASCADE` onto `profiles`
+     * (`003`), so deleting the profile alone would take them all. It is the
+     * order that lets the app *count* them: a cascade happens inside the
+     * database and hands nothing back, and this returns a number a rider is
+     * shown. Both statements are `select`ed for the same reason
+     * ([CloudDeletion]).
+     *
+     * Every row it can reach is the rider's own, and that is a property of the
+     * endpoint rather than of this filter: `003`'s delete policies are
+     * `USING (auth.uid() = id)` and `USING (auth.uid() = user_id)`, so a
+     * mistyped account id here deletes nothing rather than somebody else's
+     * history. The filter is still written out, because a delete whose scope
+     * exists only in a policy on a server is not a thing to read this file and
+     * be confident about.
+     *
+     * What it deliberately does not touch is `device_link`: those rows have no
+     * policy at all (`004`), belong to a pairing rather than to a history, and
+     * expire in five minutes. There is nothing there for a rider to be rid of.
+     */
+    suspend fun deleteCloudCopy(localUserId: Int): SyncOutcome<CloudDeletion> =
+        executeReturning("deleteCloudCopy", localUserId) { supabase, accountId ->
+            val rides = supabase.from(TABLE_WORKOUTS).delete {
+                select()
+                filter { eq("user_id", accountId) }
+            }.decodeList<JsonObject>().size
+
+            val profiles = supabase.from(TABLE_PROFILES).delete {
+                select()
+                filter { eq("id", accountId) }
+            }.decodeList<JsonObject>().size
+
+            CloudDeletion(rides = rides, profileRemoved = profiles > 0)
         }
 
     /**
