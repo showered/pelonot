@@ -253,26 +253,98 @@ sized off a model that a real bike can contradict.
       `pelonot_database`, and how many rides are actually on there. A year of
       household riding is ~61 MB by the model; if the tablet says something
       else, the model is wrong and everything below is sized off it
-- [ ] **23.4.2** Trim = drop the `workout_metrics` rows for rides older than a
+
+      ***Still open, and it now needs no adb.*** *Settings → Storage answers all
+      three in one line —* "2 rides · 432 kB" *on the AVD — because the rider is
+      owed the same figure this item wants and there is no honest way to offer
+      condensing without first saying what there is to condense. So the trip to
+      the bike is now* looking at a screen *rather than pulling a database, and
+      it is still owed: everything in this section is sized off a model, and*
+      **the one thing the AVD cannot contradict is the model, because the AVD's
+      database is one this session seeded.** *What the AVD did establish is the
+      shape of the reduction, which the model can be checked against: a
+      25-minute ride of 1,500 samples comes back as 300.*
+- [x] **23.4.2** Trim = drop the `workout_metrics` rows for rides older than a
       chosen age, keeping the workout row, its aggregates, its time-in-zone and
       a **downsampled trace** (10 s buckets is ~30× smaller and still draws a
       recognisable ride). Peaks preserved by min/max per bucket, exactly as
       16.2.2 already does for drawing
-- [ ] **23.4.3** **A trimmed ride is marked as trimmed** — a
+
+      ***Done, and one number in this item was wrong in the safe direction.***
+      `MetricTrim` *keeps the lowest and highest watt of every ten seconds as
+      **real rows**, so a 25-minute ride of 1,500 samples comes back as 300 —
+      **five-fold, not thirty**. The item's estimate was for a trace of means,
+      and a mean is the one thing this must not write: a chart redraws and a
+      trim does not, so an average written back over the samples is a number the
+      bike never measured, filed permanently where the measurements used to be.
+      Every row a condensed ride has left is a second the rider really rode, and
+      the peak is preserved exactly — 612 W before and after, on the ride that
+      was watched.*
+
+      ***The time-in-zone half needed a column of its own***, `distributions
+      _json`*, and it is the part of this item that was easiest to under-read.
+      Time in zone and the cadence spread are **counts of seconds** rather than
+      lines through them, so recomputing either from a fifth of the rows says a
+      25-minute ride pedalled for five. Written by the trimmer at the moment the
+      seconds are still there, which is 7.8, 21.2.3, 16.3.3a and 23.4.12 for the
+      fifth time. Measured: the zone table reads* Z2 00:31, Z3 07:59, Z4 07:44,
+      Z5 07:30, Z6 01:15, Z7 00:01 *before the trim and identically after it.*
+- [x] **23.4.3** **A trimmed ride is marked as trimmed** — a
       `metrics_detail_sec` column, or equivalent — and every chart and export
       says what resolution it is showing. A coarse line drawn as if it were the
       record is the same defect family as 7.8 and 16.1.6: a derived number
       whose provenance was thrown away. This column is the whole discipline of
       the feature; without it, do not ship it
-- [ ] **23.4.4** **Off by default, and never silent.** The rider chooses the
+
+      ***Done. The column is `workouts.metrics_detail_sec`, null means the
+      record is intact, and it reaches four surfaces:*** *the power card's
+      caption beside the provenance (*"condensed to a 10-second outline"*), the
+      two charts made of counted seconds (*"counted before this ride was
+      condensed"*), the summary sentence — which says the peak and **drops the
+      average**, because min/max sampling preserves the first exactly and
+      destroys the second — and the export, in a CSV comment line and a TCX
+      note. The compliance percentage is withdrawn rather than recomputed: the
+      blocks come from the class and are as true as they ever were, while*
+      "inside the target for 14 of 20 minutes" *is a count of seconds that are
+      no longer on disk.*
+
+      ***And one thing the item did not ask for and should have:*** *the CSV's
+      own description on the ride screen said* "Every recorded second" *for a
+      ride that is an outline. It is the button that takes the file out of the
+      app, so it is the one place a wrong claim can never be corrected.*
+- [x] **23.4.4** **Off by default, and never silent.** The rider chooses the
       age, or chooses never. An app that quietly deletes the second-by-second
       record of a rider's best ever ride has done the thing this project exists
       not to do
-- [ ] **23.4.5** Offer the export first — 12.4.3 (one ride) and 12.4.4 (all of
+
+      ***Done.*** `RetentionAge` *is* Never *(the default),* After 6 months *and*
+      After a year *— three answers rather than six, which is 26.3, because the
+      difference between 90 and 120 days is not a decision anybody can make
+      about a ride they have not done yet. Turning it **off** needs no
+      confirmation and gets none; turning it on opens a dialog that says how
+      many rides it would take now and what is lost. It is a **device** setting
+      rather than a rider one, like the telemetry source: one database, several
+      profiles, so the screen says* for every rider on this bike *out loud
+      (23.4.11 in miniature).*
+- [x] **23.4.5** Offer the export first — 12.4.3 (one ride) and 12.4.4 (all of
       it) both already exist, so this can be an honest offer rather than a
       warning
-- [ ] **23.4.6** Never trim a ride that has not reached the cloud, for a rider
+
+      ***Done, and the offer leaves the choice unmade***: Back up first *opens
+      the file picker and the rider comes back to a Storage section that still
+      says* Never. *A dialog that condensed anyway would make the offer
+      decorative. The section sits directly under Backup for the same reason —
+      the offer to keep a copy is the sentence before the offer to throw one
+      away.*
+- [x] **23.4.6** Never trim a ride that has not reached the cloud, for a rider
       who has an account. Needs 14.2.4's `synced_at` to be knowable at all
+
+      ***Done, in the trimmer's own SQL and not in the worker*** *(23.4.9's
+      finding): the eligibility query left-joins* `profiles` *and admits a ride
+      only when* `auth_user_id IS NULL OR synced_at IS NOT NULL`*. An offline
+      rider is gated by nothing, because there is no copy for them to be ahead
+      of — which is rule 1 arriving somewhere nobody would have thought to put
+      it. A test asserts both directions.*
 - [ ] **23.4.7** The cloud counterpart is the same policy applied server-side.
       **The owner has now asked for it** (14.10.4), so it is wanted rather than
       hypothetical — but the rule it was written with is unchanged and is the
@@ -451,7 +523,7 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       'Measured'` *to leave out, and an evidence-free ride is* `Unknown` *by the
       same* `PowerProvenance.of(0, 0, 0)` *the other side of the comparison
       already used.*
-- [ ] **23.4.10** **A signed-in rider's cloud copy makes trimming reversible,
+- [x] **23.4.10** **A signed-in rider's cloud copy makes trimming reversible,
       and an offline rider's does not.** That is the most interesting thing the
       connectivity model does to this feature and it must not be papered over:
       for a rider with an account, local trimming is a **cache eviction** and
@@ -460,6 +532,16 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       name. Either build only the offline-safe half and say so plainly, or build
       rehydration as its own item — but do not offer one confirmation dialog
       that means different things to two riders on the same tablet
+
+      ***Closed by taking the first of the two options: the offline-safe half is
+      built and the dialog says which rider it is talking to.*** *An offline
+      rider reads* "the second-by-second detail goes, and this tablet is the only
+      copy of it"*; a signed-in one reads* "your account has a copy of the rides
+      it has taken, but Pelonot cannot yet bring one back down to the bike"*.
+      Both are true and neither is the other's sentence. **Rehydration is not
+      built and is not hinted at** — nothing in `RetentionRepository` is called
+      a cache — and it wants an item of its own the day 15.3.2's pull exists,
+      because it is the same download in the other direction.*
 - [ ] **23.4.11** **Retention on a shared household endpoint is a policy about
       other people's data.** 23.4.7 applies server-side, and the endpoint now
       has *"one or two friends"* on it (14.10.4). A server-side trim decided by
@@ -468,6 +550,18 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       whether it is per rider and rider-controlled — and note this is the first
       item in the project where one person's setting reaches another person's
       history
+- [ ] **23.4.13** **Bringing the seconds back down, for a rider who has an
+      account.** 23.4.10 was closed by building the offline-safe half and saying
+      so; this is the other half, and it is deliberately its own item because it
+      is a *download*, not a retention policy. The shape is 15.3.2's pull with a
+      narrower argument — one ride's payload, on demand, from the detail screen
+      of a ride marked as an outline — and the two things to decide when it is
+      built are what the row then says (`metrics_detail_sec` back to null is a
+      claim that the record is intact, which it would be) and whether a rehydrated
+      ride re-runs 16.3.3a's scan, since its bests were computed from the seconds
+      it has just got back. **Not a blocker on anything.** Condensing is honest
+      without it: what it would change is the *sentence in the dialog*, from
+      "Pelonot cannot yet bring one back down" to an offer
 
 ---
 

@@ -8,6 +8,82 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 12 August 2026 (thirty-ninth sitting): a number kept equal by a comment, and a best that would not have survived being tidied up
+
+**The inbox was empty and the top of *What to do next* was five things needing
+the owner or the bike, so the brief — continue, no owner, no bike — pointed at
+the one substantial item that needs neither: 16.3.3a.** It was filed as an
+optimisation to leave until somebody felt it be slow. **That is the one thing
+about it that did not survive**, and the reason is written at 16.3.3a and
+23.4.8. **709 JVM tests and 78 instrumented, 0 failures**, everything below
+observed on the 1280 × 720 dp AVD.
+
+**On the way to it, a live defect nobody had met: restore refused every backup
+this build makes.** `BackupFile.verdictFor` turns away a file from a newer
+schema, which is right — Room's answer to a database from the future is to empty
+it. The app's half of that comparison was a `const` under a comment reading
+*"kept beside the `@Database(version = …)` above and equal to it"*, and it
+drifted the first time somebody bumped the version without reading it: **16
+against a database at 17**. So a rider who backed up and then restored was told
+*"That backup was made by a newer version of Pelonot. Update the app"* — about
+the newest version there is, on the only safety net that exists before Phase 15.
+**It is 19.1.3's own bug a second time**: that item found the SQLite magic bytes
+written with a trailing space and wrote down that no test built out of the same
+constant could catch it. This is the *neighbouring argument to the same
+function*, and `BackupFileTest` was green throughout, because the arithmetic was
+always right and one of its inputs was a lie. The fix is therefore to delete the
+constant rather than correct it — `schemaVersion()` asks the open file — and the
+new test writes a real backup and puts it straight back, failing with the
+rider's own message when the number is pinned back to 16.
+
+**Then 16.3.3a, and 23.4.8 is what turned it from *later* into *first*.**
+`personalBests` re-walked every measured ride's samples on every visit to *Your
+FTP*. Trimming (23.4, which the owner asked for) destroys exactly those samples,
+so a rider's bests would silently get worse — and **a best that was never
+computed cannot be recovered from a trimmed ride**. Nobody would ever have felt
+this be slow before they felt it be wrong. `workout_power_bests` now holds a row
+per stretch a ride actually held, and `workouts.power_bests_at` records the
+scan; **the marker carries the provenance**, so the existence of the rows *is*
+the measured claim rather than a question re-asked of samples that may be gone.
+The backfill is deliberately not in the migration: a sliding window over a series
+with gaps is not expressible in SQL, and an approximation would file numbers no
+version of this app would ever compute again.
+
+**It was verified as an upgrade rather than a fresh install, which is the only
+version worth doing.** A v17 database seeded with four rides — a 25-minute
+steady ride with a 20-second surge in it, a shorter harder one, a modelled one
+at 500 W, and one with a 49-second bottle stop — read on the **previous build**
+first as the control: *5 seconds 400 W, 1 minute 253 W, 5 minutes 220 W,
+20 minutes 184 W*, no hour row, *From 3 rides the bike measured, of 4*.
+Installing this build over it migrated 17 → 18 and drew **the same screen
+unchanged** off nine stored rows, with the modelled ride storing nothing and the
+bottle-stop ride holding a five-second and a one-minute effort and **no
+five-minute one** — its longest unbroken run is 201 seconds, so the gap rule
+survived into storage.
+
+**Then the point of the item, measured in both directions.** Deleting every
+sample of all three measured rides left this build's screen identical, counts
+included. The build immediately before it, on the same trimmed data, says
+*"Nothing here yet… 1 ride was estimated"* — **worse than 23.4.8 predicted**: it
+does not merely lose four bests quietly, it gives the *wrong reason* for their
+absence, blaming the one modelled ride for something housekeeping did.
+
+**And 23.4.9's audit, which was three readers and is eight.** The family it
+missed is the biggest: `householdLeaderboard`, `householdRivals`,
+`householdLatestRides`, `previousBestOfClass`, `ownTotalsForClass` and
+`ownTotalsForClassExcluding` each gate on `EXISTS (a sample)`, so **a trimmed
+ride falls off every leaderboard and out of the dashboard's *best you've ridden
+it* verdict** — nothing wrong on any screen, the rider's history just gets
+smaller. That is 16.3.3a's defect fixed for one reader and live for six, and
+**23.4.12** is the general answer: write a ride's `PowerProvenance` down at
+finalise, the way 7.8 wrote its FTP and 21.2.3 its maximum heart rate. Two
+smaller findings came with it — the trimmer must exclude `is_complete = 0`,
+because three resume paths read samples, and 23.4.6 has to be enforced in the
+**trimmer** rather than in the sync worker, since by the time the worker runs
+the samples are already gone.
+
+---
+
 ### 10 August 2026 (thirty-eighth sitting): the screen finally answers the second half of its own question
 
 **The dashboard has said *should I ride today* for six sittings and never

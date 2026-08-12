@@ -337,6 +337,18 @@ Two consequences to know before you are surprised by them:
   `SensorReading.powerIsMeasured` is true. The uncalibrated-coefficients
   caveat below applies to simulated rides, and to the 11.2.1 resistance band
   that 11.7.3 has since stopped drawing.
+- **A ride's samples may have been thinned out, and `workout_metrics` will not
+  tell you.** Since 23.4 a rider can ask for old rides to be condensed —
+  `workouts.metrics_detail_sec` is null for an intact record and `10` for a ride
+  reduced to the lowest and highest watt of each ten seconds. Two rules follow.
+  **Never count seconds out of a condensed ride**: time in zone and the cadence
+  spread are counts, not lines, and recomputing either says a 25-minute ride
+  pedalled for five — `workouts.distributions_json` holds what they counted
+  while the seconds were still there, and `RideChartBuilder` prefers it. And
+  **anything drawing or exporting the trace says what resolution it is**, which
+  is the whole of 23.4.3: the line has the same shape, the same peak and the
+  same axis either way. Trimming is off by default, so the first time you meet
+  this it will be on a rider's tablet rather than on yours.
 - **`workout_metrics.power_is_measured` is nullable and null means *nobody
   wrote it down*** — not "modelled". Ask `PowerProvenance`, never the raw
   column: `Unknown` and `Modelled` are different claims and only `Measured`
