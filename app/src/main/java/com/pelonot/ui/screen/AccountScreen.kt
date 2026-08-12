@@ -397,10 +397,14 @@ private fun ConfirmCloudDeletion(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (condensedRides > 0) {
+                    // Both halves of the sentence have to agree, and the first
+                    // version only did the first half — *"1 older ride is kept
+                    // here… the seconds behind them"*, seen on the AVD.
+                    val one = condensedRides == 1
                     Text(
-                        text = "$condensedRides older ${if (condensedRides == 1) "ride is" else "rides are"} " +
+                        text = "$condensedRides older ${if (one) "ride is" else "rides are"} " +
                             "kept here as an outline. If your account still holds the " +
-                            "seconds behind them, those go too.",
+                            "seconds behind ${if (one) "it" else "them"}, those go too.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
