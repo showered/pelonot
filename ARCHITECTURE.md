@@ -324,9 +324,10 @@ system ducks the rider's video under it instead of the cue being drowned by it.
 ## 3. Where data comes to rest
 
 ```
-profiles ──┬─< workouts ──< workout_metrics
-           │      │           (CASCADE delete)
-class_templates ──┘
+profiles ──┬─< workouts ──┬─< workout_metrics
+           │      │       │     (CASCADE delete)
+           │      │       └─< workout_power_bests
+class_templates ──┘             (CASCADE delete)
 ```
 
 | Table | Written when | Contains |
@@ -335,6 +336,18 @@ class_templates ──┘
 | `class_templates` | First launch (seeded from assets) | Title, category, duration, `intervals_json` |
 | `workouts` | Ride **start**, updated at end | Aggregates, RPE, `is_complete` |
 | `workout_metrics` | Every second | Cadence, resistance, power, HR, `power_is_measured` |
+| `workout_power_bests` | Ride **finalise**, once | The best mean power the ride held over 5 s / 1 min / 5 min / 20 min / 1 hour |
+
+**`workout_power_bests` is a derived table on purpose** (PLAN 16.3.3a). Personal
+bests used to be recomputed by walking every measured ride's samples on every
+visit to *Your FTP*; they are now worked out at the moment a ride ends and kept,
+because retention (23.4) will delete the samples they are derived from and a
+best that was never computed cannot be recovered from a trimmed ride. Its
+companion is `workouts.power_bests_at`, which records the scan and is **only set
+for a ride whose watts the board measured** — so the presence of these rows is
+itself the provenance claim, rather than a question re-asked of
+`workout_metrics` afterwards. A window a ride never held has no row, which is
+the same *absence is a claim* rule as nullable `heartRateBpm`.
 
 `is_complete` does double duty: it keeps in-progress rides out of history and
 leaderboards, and it is the crash-recovery marker — an unfinished row means the
@@ -415,7 +428,7 @@ fires foreign-key actions:
 |---|---|---|
 | `class_templates` | `workouts.class_id` → SET NULL | every ride of that class its link |
 | `profiles` | `workouts.user_id` → SET NULL | that rider their entire history |
-| `workouts` | `workout_metrics.workout_id` → CASCADE | the whole time series |
+| `workouts` | `workout_metrics.workout_id` → CASCADE | the whole time series, **and now `workout_power_bests` with it** |
 
 The middle one was live: `UserRepository.save` is what every FTP change, weight
 change and rename goes through, so editing an FTP quietly unattributed that

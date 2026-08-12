@@ -8,6 +8,99 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 10 August 2026 (thirty-seventh sitting): the dashboard was loose rather than full, and a helper that had been lying for a fortnight
+
+**The owner left two inbox entries and the brief was to empty them and then
+triage.** Both are written up — the dashboard as **22.8**, achievements as
+**Phase 28** — and the first was then built, because the owner's instruction in
+it was one sentence and unambiguous. **690 JVM tests, 0 failures**, and
+everything below was observed on the 1280 × 720 dp AVD.
+
+**The complaint was measured before it was answered, which turned out to matter
+twice.** *"Seems very stretched. Feel like more info can be shown above the
+fold."* The dashboard held **993 dp of content in a 664 dp viewport**, with the
+household panel — the only part of this surface about anybody else — entirely
+below it. **The previous sitting's claim that the dashboard *"fits on one
+screen without scrolling"* was measured on a dashboard with no household on
+it**, which is the same failure as 22.7.2's: a card gated on data the test
+device cannot produce is a card that has not been designed.
+
+**"Stretched" is the right word and it is *vertical*.** The horizontal fix from
+22.4 is holding — nothing bands across the panel — so what was left was 152 dp
+cards carrying 43 dp of text, three navigation tiles at 111 dp, and 130 dp of
+greetings and headings introducing cards that name themselves. **The screen was
+not full, it was loose**, and that distinction is what stopped the answer being
+"add more cards".
+
+**Begin Class is the primary action** (22.8.1), on the owner's reasoning that
+*"95%+ of usage will be classes"*. It had been the leftmost of three identical
+grey tiles that also held History and Settings, while *Just Ride* — the 5% —
+was the one card on the screen in the primary colour. Both were **tapped
+through** rather than assumed, because swapping two lambdas between two call
+sites is exactly the change that goes silently wrong.
+
+**The household moved from below the fold to beside it, and that is what filled
+the rail** (22.8.4, 22.8.5) — nothing was invented to fill 633 dp of tablet;
+the thing that fills it is the thing that used to be under it. 18.2's rule that
+the rider's own training comes first is about **order**, not visibility, and a
+panel nobody scrolls to is a panel nobody has. Result: **993 dp → 609 dp with
+the backup nag showing and 513 dp without**, and the check that it genuinely
+does not scroll was a 700 px swipe with the two frames identical but for the
+clock.
+
+**One definition moved rather than being deleted, and that was the interesting
+find.** *"Functional Threshold Power — your baseline for all training zones"*
+was setting the height of a whole row, because `WideRow` equalises heights — so
+a caption on the FTP card decided how tall *Just Ride* was. And ***Your FTP*,
+the one screen in this app where the number is genuinely read, had never
+spelled the acronym out at all.** Phase 26's rule about where a *unit* belongs
+is the same rule about where a *definition* belongs.
+
+**Deleting `WideRow` exposed a defect nobody had met** (22.8.10). It did not
+stack: its content is written against `RowScope`, so the narrow branch wrapped
+the children in a *second* `Row`, weights and all — three cards at 130 dp each
+on a phone — while the comment above it asserted the opposite in as many words.
+The bike is 1280 dp, so nothing ever took that branch. **A wrong comment above
+working code on the only path anybody walks is the cheapest possible place for
+a defect to hide.** The residue is a rule: a helper taking `RowScope` content
+can only ever make rows, which is why `WideGrid` takes *items* — and it is what
+made the no-household branch buildable.
+
+**That branch had to be built rather than inherited, and it nearly shipped
+broken.** A household of one is the ordinary case for a new rider, and the
+first version would have drawn the three own-cards at `fillMaxWidth` across
+1232 dp: **the owner's rule broken by the change that cites it.** Seen by
+turning `household_visible` off for every profile but one.
+
+**24.3.7a was carried over owed a look, and the look was worth more than the
+tests.** A simulated ride of `END-01` — a class **thirteen** riders on this
+bike have ridden, with their static board on screen a moment before Start —
+draws a live board of nothing but generated targets and not one housemate. That
+is the owner's *"there should ALWAYS be a leaderboard"* happening rather than
+asserted. **And it moves**: `YOU` climbs from fourth to third between 0:32 and
+1:25, passing the class's own prescription — which four JVM tests of a
+narrowing function cannot show. Corroborated in the database at **156 of 156
+samples with `power_is_measured = 0`**, so the watts really were modelled.
+
+**And the measured-power gap 22.1.7 flagged next door is closed.**
+`ownTotalsForClass` gated on a bare `NOT EXISTS (a sample that is not a
+measurement)`, which **a ride with no samples at all passes trivially** — so an
+evidence-free row fed its total to the median behind the *usual* ghost, while
+`PowerProvenance` answered `Unknown` for the same ride. Four tests, and it was
+**checked against the bug as well as the fix**: with the clause taken back out,
+exactly one of 36 fails.
+
+**Phase 28 is written at length and deliberately not started.** The owner's
+weighting is *"one for the backlog"*. Its opening section is the part that
+matters and it is not a badge list: **an alert is an event and fails on
+frequency; an achievement is a possession and fails on meaning** — which makes
+Phase 27 the delivery mechanism and forbids this phase from growing a second
+one. It is also **the honest form of the thing 26.4 was right to refuse**: the
+owner asked to *"gamify it all even further"* and separately agreed to leave a
+game-style score, and those only disagree if a score is what gamifying means.
+
+---
+
 ### 10 August 2026 (thirty-sixth sitting): the progress section that showed no progress, and a list that changed shape
 
 **Phase 22 is complete but for one line, and the line needs the bike.** The

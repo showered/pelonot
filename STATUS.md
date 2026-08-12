@@ -1,8 +1,9 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 10 August (thirty-eighth sitting).**
-Measured, not estimated: `assembleDebug` passes, **706 JVM tests, 0 failures**,
-and **549 of 789 plan boxes** are ticked across 28 phases. It is a summary —
+**Written 4 August 2026, updated 12 August (thirty-ninth sitting).**
+Measured, not estimated: `assembleDebug` passes, **709 JVM tests and 78
+instrumented tests, 0 failures**, and **553 of 791 plan boxes** are ticked
+across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -55,7 +56,7 @@ currently open and should not be, and one deploy that has not been run.
 | Tier | What it is | State |
 |------|-----------|-------|
 | **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
-| **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog and one deferred retention decision |
+| **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog. Retention (23.4) is no longer *deferred* — its hard prerequisite landed this sitting (16.3.3a), so trimming an old ride can no longer silently make a rider's personal bests worse. Two things still stand in front of it and both are written down: one measurement on the bike (23.4.1) and the same fix applied to power provenance (23.4.12). **And restore has been fixed after refusing every backup this build made** — a version number kept equal to another version number by a comment, which drifted (19.1.3a) |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. Seen on the real bike as well as the emulator; what is owed is watching it move under somebody actually pedalling |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. Sign-out, account deletion and pull-to-a-new-device are not built |
 | **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). **The thirty-fifth sitting then fixed the one the owner could not get past**: signing in by QR from a phone that was *already* signed in sat on three dots for ever, because the pairing page called Supabase from inside an auth callback and deadlocked the session lock it holds (15.6.14) — reproduced, measured with `navigator.locks.query()`, and fixed. The code is also shown by default rather than behind a button and replaces itself while the screen is up (15.6.15). What is left is **not the app**: the project's confirmation emails go through Supabase's built-in test sender, capped at **two an hour** and documented as refusing addresses outside the project team, so a real sign-up cannot be completed or repeated until custom SMTP exists (15.7.7 — the owner's). Beside that: the overlay permission still explained only at ride start (19.1.6), a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
@@ -194,9 +195,17 @@ for.
 
 ### Deliberately deferred, with the reason written down
 
-- **23.4 retention** — condensing old rides to aggregates. Blocked *on purpose*
-  by **16.3.3a**: personal bests are re-scanned from every measured ride's
-  samples on every load, so trimming would silently make a rider's bests worse.
+- **23.4 retention** — condensing old rides to aggregates. **No longer blocked
+  by 16.3.3a, which landed this sitting**: a ride's mean-maximal efforts are
+  worked out once when it is recorded and kept, so trimming its samples leaves
+  the rider's bests exactly where they were. Measured both ways round — the
+  build before it, on the same trimmed data, loses all four and blames the wrong
+  ride. What still stands in front of trimming is **23.4.1**, one measurement on
+  the bike that everything below it is sized off, and **23.4.12**, which is
+  16.3.3a's fix applied to the other question derived from samples: six queries
+  ask `workout_metrics` whether a ride's watts were measured, so a trimmed ride
+  currently falls off every leaderboard (23.4.9's audit, which found eight
+  readers where the item had listed three).
 - **17.5 / 18.1 friends** — dropped in favour of "everyone registered"
   (18.11) while the population is four people. The item stays open for the day
   the answer changes.
@@ -348,13 +357,14 @@ ride needs it (19.1.6), and a green CI run so the project can take a patch
 parts — a stock bike, honest telemetry, migrations, an overlay that survives
 Netflix — are behind us.
 
-**Done as the plan is written: 67%, and it will never be 100.** 459 of 689
-boxes, and the remaining 230 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 70%, and it will never be 100.** 553 of 791
+boxes, and the remaining 238 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
-things it had already decided against. **It went *down* the sitting before this one while
+things it had already decided against. **It has gone *down* in a sitting where
 three things were finished**, which is the clearest possible demonstration of
-why not to read it as progress: three of the owner's notes added forty boxes
-between them, most of Phase 27's. A closed box and an open one are not the same
+why not to read it as progress: three of the owner's notes once added forty
+boxes between them, most of Phase 27's, and an audit this sitting closed one box
+by opening another (23.4.9 → 23.4.12). A closed box and an open one are not the same
 unit of work either: Phase 25 is 12 boxes and one afternoon; 20.3 was six boxes
 and a screen that had to be designed. **Read the percentage as an inventory count,
 never as a completion estimate.**
@@ -366,6 +376,12 @@ mattered — the mislabelled frames, the FTP save that put the old value back, t
 that never travelled — was found by *using it and then looking at the database*,
 not by reading code or writing tests. The next twenty hours of riding will find
 things this list does not have on it.
+
+*One honest exception, from this sitting: **restore had been refusing every
+backup this build made** and was found by reading the schema version on the way
+past to something else (19.1.3a). It is the counter-example that proves the
+shape of the rule rather than breaking it — nobody had restored a backup since
+the version drifted, so there was no use to find it by.*
 
 ---
 
