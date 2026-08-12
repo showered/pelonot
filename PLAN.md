@@ -211,7 +211,7 @@ the latest, it goes to the top of `plan/session-log.md`.
 owner-and-bike work — so the brief pointed at the unfinished half of a
 half-built phase: 15.4, *Leaving*.** A rider could sign in and sign out and had
 **no way to take anything back down**, which is a gap with a legal name on it
-as well as a plain one. **728 JVM tests and 99 instrumented, 0 failures**, and
+as well as a plain one. **731 JVM tests and 99 instrumented, 0 failures**, and
 everything below was watched on the 1280 × 720 dp AVD **against the real
 endpoint** — a throwaway account made through the admin API, so nothing went
 near the mailer that 15.7.7 says is in the way.
