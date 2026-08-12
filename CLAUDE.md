@@ -49,6 +49,19 @@ keyboard's top edge at 590. Related trap — `imePadding()` is a **no-op inside 
 `Dialog`** unless the dialog is given `decorFitsSystemWindows = false`, because
 the dialog gets its own window and that window reports no IME insets.
 
+**A long-running emulator silently loses DNS, and every cloud call then looks
+like a broken feature.** The AVD's resolvers are fixed at launch from the host's
+— `netsimd --host-dns=…` in `ps` shows which — so an emulator started on one
+network and left running keeps asking servers that are no longer reachable.
+Measured: eight days up, `ping 8.8.8.8` fine, `ping google.com` *unknown host*,
+and the app reporting *"Unable to resolve host …supabase.co"* on every sign-in
+and pairing attempt. Restart it with the DNS you want before believing anything
+about the cloud:
+
+```bash
+adb -s emulator-5554 emu kill && ~/Library/Android/sdk/emulator/emulator -avd Pelonot_Tablet -no-snapshot-load -no-boot-anim -dns-server 8.8.8.8,1.1.1.1 &
+```
+
 **Do not check UI work on `Medium_Phone_API_36.1`.** The bike is a landscape
 **1920 × 1080 at 240 dpi — 1280 × 720 dp** — with a 48 dp bottom navigation bar
 and no top status bar. A phone AVD hides every layout problem this app has, and

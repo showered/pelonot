@@ -119,10 +119,76 @@ something they could have had offline.**
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
 
 ### 15.4 Leaving
-- [ ] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history. **They drop from Account to Local profile** — a rung down the ladder, not out of the app: the household leaderboard (24.1) still has them on it, with all the same rides
-- [ ] **15.4.4** Deleting the cloud copy (15.4.2) or the whole account (15.4.3) likewise changes nothing on this tablet. Say so in the confirm dialog, in those words, because the natural fear is exactly the opposite
-- [ ] **15.4.2** "Delete my cloud data" as a separate, explicit action, with the local record untouched
-- [ ] **15.4.3** Account deletion end to end, since GDPR applies to a hobby project too
+- [x] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history. **They drop from Account to Local profile** — a rung down the ladder, not out of the app: the household leaderboard (24.1) still has them on it, with all the same rides.
+
+      ***Done and observed, forty-second sitting.*** Built long before it was
+      ticked and never watched, which is the failure mode the house rule exists
+      for. Watched now on the tablet AVD against a real account: *Sign out*
+      returns the screen to the two sign-in routes, `profiles.auth_user_id`
+      goes null, and **2 rides and 1,020 samples are still on the tablet**
+      afterwards. The one thing to know is that it does **not** clear
+      `synced_at` — only *attaching* an account does (`clearSyncedFor`, 15.3.1),
+      and it is right that way round: the rides genuinely are up there, under an
+      account this tablet has merely stopped holding a session for
+- [x] **15.4.4** Deleting the cloud copy (15.4.2) or the whole account (15.4.3) likewise changes nothing on this tablet. Say so in the confirm dialog, in those words, because the natural fear is exactly the opposite.
+
+      ***Done for 15.4.2, and it is the dialog's first sentence*** — *"Every
+      ride stays on this bike. Your history, your dashboard and the household
+      leaderboard are unchanged."* Two sentences were added underneath it that
+      the item did not ask for and both earn their place: **the sign-out**
+      (below), and the one honest loss, drawn only for a rider it is true of —
+      *"1 older ride is kept here as an outline. If your account still holds the
+      seconds behind it, those go too."* The conditional is not hedging: after
+      23.4 the tablet knows the cloud **took** the ride and cannot know whether
+      what it took was still intact, and 23.4.13 is the item that would let it
+      say. When 15.4.3 is built it inherits the same dialog
+- [x] **15.4.2** "Delete my cloud data" as a separate, explicit action, with the local record untouched.
+
+      ***Done and observed end to end, forty-second sitting*** — against the
+      real endpoint, with a throwaway account created through the admin API so
+      no email was sent (15.7.7 is the mailer, and it is not in the way of
+      this). The measurement is four states of the same two tables: **cloud 2
+      workouts + 1 profile → 0 and 0**, tablet **2 rides and 1,020 samples
+      before and after**, `synced_at` cleared on both rows and `auth_user_id`
+      null. Signing in again put all of it back, which is the dialog's *"you can
+      sign in again whenever you like"* being true rather than reassuring.
+
+      **It signs the rider out, and that is mechanical rather than tidy.** The
+      argument is in `AccountRepository.deleteCloudData` and it is worth keeping
+      here too, because it is the shape of every trap this project has: leaving
+      the account attached leaves `synced_at` recording a backup that no longer
+      exists, and **the trimmer reads that column as permission** (23.4.6) — so
+      *delete my cloud copy* would have licensed destroying the seconds whose
+      only other copy it had just deleted. Clearing `synced_at` instead, with
+      the account still attached, drains the backlog and puts the copy back at
+      the next ride. Only *delete and stop* is a state the app can hold.
+
+      Three smaller decisions: the rides are deleted **before** the profile,
+      which the schema does not need (`003` cascades) but the *count* does, and
+      the count is what a rider is shown; every statement asks for its rows back
+      (`select()`), because PostgREST answers a `DELETE` with 204 whether it
+      matched anything or not — `verify_rls.py` learnt that first; and
+      `device_link` is deliberately untouched, having no policy, no history in
+      it and a five-minute life
+- [ ] **15.4.3** Account deletion end to end, since GDPR applies to a hobby project too.
+
+      **Designed, not built, and the blocker is a deploy rather than a
+      decision.** Supabase has no user-initiated self-delete: `auth.admin
+      .deleteUser` needs the service-role key, which must never be on a tablet,
+      so this is an Edge Function taking the rider's own JWT — the same shape as
+      `supabase/functions/link-device`, and the same one-line deploy
+      (`supabase functions deploy delete-account --project-ref <ref>`), which is
+      the owner's to run. That is why it is not written speculatively: an app
+      button calling a function nobody has deployed fails in a way that reads
+      exactly like a broken feature.
+
+      What it should do when it exists: the same dialog as 15.4.2, one sentence
+      longer (*the address stops working; the rides on this bike stay*), then
+      the function deletes the auth user and `003`'s `ON DELETE CASCADE` from
+      `profiles.id` onto `auth.users` takes the rows. The app then does exactly
+      what 15.4.2 does locally — clear `synced_at`, detach, drop to offline —
+      and those two paths must share one implementation rather than growing a
+      second copy of the rule
 
 ### 15.5 RLS, properly
 

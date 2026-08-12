@@ -8,6 +8,64 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 12 August 2026 (fortieth sitting): the boards asked the ride instead of the samples, and the card that vanished said nothing about it
+
+**The inbox was empty and *What to do next* was unchanged again, so the brief —
+continue, no owner, no bike — pointed at item 9's own blocker: 23.4.12.** It is
+the sitting before's finding turned into the general fix. `PowerProvenance` was
+reduced from `workout_metrics` on every read, which makes *"were this ride's
+watts measured?"* a question a trimmed ride cannot answer — and 23.4.9 had
+counted the askers: six leaderboard queries, the FTP proposal, and (not
+separated out in that audit) the dashboard's own last-ride card. **711 JVM tests
+and 83 instrumented, 0 failures**, and everything below was measured on the
+1280 × 720 dp AVD.
+
+**`workouts.power_provenance` now holds it**, written at all three finalise paths
+beside `power_bests_at` and cleared on a 12.6.2 resume for the same reason
+`synced_at` is — the extra minutes can turn a `Measured` ride into a `Mixed`
+one. The seven queries that each spelled the measured-power rule out for
+themselves ask the one column instead. **It is the same four words the cloud has
+had since 18.5**: `supabase/007_everyone_leaderboard.sql` constrains its copy of
+this column to them and its board filters on `'Measured'`, so this is the local
+schema agreeing with the remote one rather than a second vocabulary.
+
+**The measurement is four cells and the control is what makes it worth
+anything.** A v18 database of two riders and four rides of `CLB-03` — three
+measured, one simulated at 999 kJ — read on the **previous build** first: the
+board says *Simon 240 kJ, Alex 200 kJ*, the dashboard says *best you've ridden
+it*. Deleting every sample on that build, which is 23.4.2 with the downsampled
+trace left out, **takes the whole *On this bike* card off the class screen and
+the verdict off the dashboard** — the chart just goes full width and nothing
+says anything is gone. Installing this build over the untrimmed copy migrated
+18 → 19, wrote provenance for all four rides at launch, and drew both screens
+**identically to the control**. Trimming it then changed nothing. The simulated
+ride stayed off the board after its samples went too, which is the exclusion
+surviving as well as the inclusion.
+
+**One of the item's two predictions was wrong, and it improved the design.**
+23.4.12 assumed the backfill had 16.3.3a's shape — derivable now, lost later, so
+a self-healing pass rather than a migration. It does not: mean-maximal power is a
+sliding window over a series with gaps and SQL cannot express it, whereas
+provenance is a reduction of one nullable flag and fits in four `CASE` branches.
+So the same conclusion needed a different argument, and the better one is that
+**a pass which can run again also covers the ride whose finalise was
+interrupted**, which a migration cannot. It is one `UPDATE`, run from
+`PelonotApp` at launch rather than lazily behind a screen, because the readers
+are the whole household's boards rather than *Your FTP*;
+`completeRidesWithoutProvenance` is the fence a test asserts against instead of
+trusting it to have run.
+
+**And 22.1.7's defect is now unspellable, which is the quiet win.** The old gate
+was `EXISTS (a sample) AND NOT EXISTS (a sample that is not a measurement)`, and
+one query was missing the first half for a sitting — a ride with no samples
+passes the second trivially and was ranked on no evidence at all. There is no
+half of `power_provenance = 'Measured'` to leave out. Two readers also stopped
+counting samples on the way past: the dashboard's last-ride card, which was the
+first screen's last read of `workout_metrics` (22.1.8), and `WorkoutDto`, whose
+wire value was a re-reduction of a series a trimmed ride no longer hae.
+
+---
+
 ### 12 August 2026 (thirty-ninth sitting): a number kept equal by a comment, and a best that would not have survived being tidied up
 
 **The inbox was empty and the top of *What to do next* was five things needing
