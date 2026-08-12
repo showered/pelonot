@@ -382,7 +382,15 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       dashboard. Nothing is wrong on any screen; the rider's history just gets
       smaller. It is exactly the defect 16.3.3a fixed for one reader, still
       live for six, and **23.4.12 is the general answer.***
-- [ ] **23.4.12** **Write a ride's power provenance down, once, the way 16.3.3a
+
+      ***All six are fixed as of 23.4.12**, and so is a seventh this audit did
+      not separate out — the dashboard's own last-ride card, which was counting
+      a whole ride's samples on the one screen that must not read
+      `workout_metrics` at all (22.1.8). Item 5's race and item 6's
+      maximum-heart-rate suggestion still degrade as described, and item 1's
+      charts still draw whatever is left — which is 23.4.3's job, not this one's,
+      though the caption above them now comes off the row.*
+- [x] **23.4.12** **Write a ride's power provenance down, once, the way 16.3.3a
       wrote its bests down.** `PowerProvenance` is derived from
       `workout_metrics` on every read, so it is a question a trimmed ride cannot
       answer — and six queries (23.4.9, item 8) plus the FTP proposal (7.10.7)
@@ -400,6 +408,49 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       Not a blocker on 23.4 by itself — trimming can simply refuse to run until
       this lands, which is the honest ordering rather than shipping a feature
       that shrinks the boards*
+
+      ***Done, and measured in all four cells rather than argued.*** *A v18
+      database of two riders and four rides of `CLB-03` — three measured, one
+      simulated at 999 kJ — was read on the **previous build** first as the
+      control: the household board says* Simon 240 kJ / 3.08 kJ/kg, Alex
+      200 kJ / 3.03 kJ/kg *and the dashboard's last ride says* best you've
+      ridden it. *Deleting every sample on that build — 23.4.2 with the
+      downsampled trace left out — **removes the whole* On this bike *card from
+      the class screen and the verdict from the dashboard**, with the chart
+      simply going full width and nothing saying anything is gone. Installing
+      this build over the untrimmed copy migrated 18 → 19, wrote provenance for
+      all four rides at launch (three `Measured`, one `Modelled`) and drew both
+      screens **identically to the control**; trimming it then changed nothing.
+      A simulated Just Ride finished afterwards was finalised straight to
+      `Modelled` with `power_bests_at` still null, and its summary captions the
+      power chart* Estimated from cadence and resistance *off the row.*
+      *709 → 711 JVM tests and 78 → 83 instrumented, 0 failures.*
+
+      ***The first of the two decisions above went as written; the second did
+      not, and the reason is worth keeping.*** `power_bests_at` *is now only*
+      "when the scan ran"*, with the measured question asked of the new column —
+      and* `ridesWithBestsCount` *still reads the marker, which is right, since
+      "counted towards your bests" and "measured" are now genuinely two facts.
+      But the **backfill is not 16.3.3a's shape at all**: mean-maximal power is a
+      sliding window over a series with gaps and SQL cannot express it, whereas
+      provenance is a reduction of one nullable flag and is four* `CASE`
+      *branches. So the choice of a runtime pass over a migration had to be made
+      on a different argument, and it is a better one: **a pass that can run
+      again also covers the ride whose finalise was interrupted**, which a
+      migration cannot. It is one* `UPDATE` *in* `WorkoutDao`*, run from*
+      `PelonotApp` *at launch — not lazily behind a screen, because the readers
+      are the whole household's boards rather than* Your FTP *— and* `Workout
+      Dao.completeRidesWithoutProvenance` *is the fence a test asserts against
+      instead of trusting it to have run.*
+
+      ***And a smaller thing that fell out: 22.1.7's defect is now
+      unspellable.*** *The gate the seven queries carried was* `EXISTS (a
+      sample) AND NOT EXISTS (a sample that is not a measurement)`*, and one of
+      them was missing the first half for a sitting — a ride with no samples
+      passes the second trivially. There is no half of* `power_provenance =
+      'Measured'` *to leave out, and an evidence-free ride is* `Unknown` *by the
+      same* `PowerProvenance.of(0, 0, 0)` *the other side of the comparison
+      already used.*
 - [ ] **23.4.10** **A signed-in rider's cloud copy makes trimming reversible,
       and an offline rider's does not.** That is the most interesting thing the
       connectivity model does to this feature and it must not be papered over:

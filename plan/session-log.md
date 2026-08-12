@@ -8,6 +8,96 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 10 August 2026 (thirty-eighth sitting): the screen finally answers the second half of its own question
+
+**The dashboard has said *should I ride today* for six sittings and never
+*what should I ride*.** 22.1.1 settled that sentence as the test for anything
+on this surface, the sitting before made room and deliberately left it empty,
+and 22.8.6's first candidate — *a class to ride* — was the best-argued unbuilt
+item on the screen with one thing missing: the rule. **The brief was to
+continue, so the rule was decided rather than asked for**, and it is written
+out with the reasoning at **22.8.11** so it can be argued with. **706 JVM
+tests, 0 failures**, and every branch below was observed on the 1280 × 720 dp
+AVD.
+
+**The rule is one sentence: *something the length you usually ride, that you
+have ridden least — and an easy one if you rode hard in the last day*.** The
+half that took the thinking is what it refuses. This app has no periodisation,
+no fatigue model and one FTP that only moves upward (7.11), so a card saying
+*"today is your interval day"* would be inventing all three on the first screen
+a rider sees. Everything it says is an **observation about their own history**
+instead — *new to you*, *not since Mar 15*, *easy after a hard one* — and each
+is a fact on this tablet that the rider can check. The single advisory claim is
+*don't stack two hard days*, which is Phase 28's rule about never rewarding
+what a coach would advise against, arriving from the other end.
+
+**Hard is read off the class's own blocks, not off its category name**, and a
+**Just Ride tells the rule nothing** — a free ride's intensity lives in
+`workout_metrics`, which the first screen may not read (22.1.8) and which needs
+measured power to mean anything at all. Unknown makes no claim, which is the
+right answer rather than a gap.
+
+**It cost nothing vertically, and that was the constraint rather than a happy
+outcome.** The dashboard was 609 dp against a 664 dp viewport, so a card of its
+own would have put the screen back to scrolling and undone the sitting before
+it. Where *Begin Class* was there is now the class itself, same row, same
+colour, same weight, with the library beside it as a full-size door and *Just
+Ride* untouched. A 700 px swipe still moves nothing.
+
+**All four branches were seen, and the important one was checked against the
+rule rather than against the fixture.** A 30-minute Sprints ride inserted an
+hour ago turned *Sweet Spot 3×5* into *Recovery Flow · easy after a hard one*;
+**moving that same row from one hour ago to thirty put Sweet Spot straight
+back**, so the 24-hour window is doing the work and not the insert. The
+first-ride branch is the one that most needed building — a guest, no history,
+no last-ride card — and it says *"Zone 2 Steady · 20 min · Endurance · a good
+place to start"*. **Endurance rather than Recovery on purpose: a recovery class
+is a class that only makes sense *after* something**, so offering one as a
+first ever ride describes a workout nobody has earned.
+
+**One behaviour was settled rather than fixed, and it is the honest one.** A
+rider with five Endurance rides and nothing else is offered `SPR-04 Tabata 3×8`,
+because Sprints is the category they have ridden least. That stays: **every
+class in this library is prescribed in percentages of the rider's own FTP**, so
+the difficulty is already scaled to them, and an app with no fitness model has
+no basis for deciding somebody is not ready for a class in its own library.
+Deciding that is the periodisation model the rule exists to refuse.
+
+**And one thing is left unbuilt with the argument written down (22.8.12):** an
+abandoned ride writes a short `duration_sec`, and the rule reads it as a
+statement about how long this rider rides. The AVD is the demonstration — every
+ride on it is a 20-to-500-second stub, so the card offers 15-minute classes to
+a profile claiming ten rides in thirty days. A five-minute floor is one line and
+would be wrong for a rider who genuinely does short sessions; it needs a real
+riding pattern to judge, and the test device cannot produce one.
+
+**Two more came off the list once the dashboard was done, and both are
+observations rather than features.** **20.1.6** — past about twenty riders the
+profile picker sliced its last row off at the bottom of the display with the
+hint below the fold. The heading and the hint are fixed now and only the riders
+scroll, with a soft edge at whichever end has tiles past it: the last visible
+row is cut **against a line of text** rather than against the edge of the
+screen, and that difference is the entire fault. Seen at 22 tiles, then seen the
+other way with the database cut back to a household of three — one centred row,
+no fades, unchanged, which is the check that the fix costs the common case
+nothing.
+
+**And 26.1.4, the Settings audit, applied per row as the item asked**: keep the
+sentence that changes what a rider would choose, cut the one that explains how
+it works. Nine cuts, and what they have in common is worth more than the list —
+each answered a question nobody standing on that row was asking. *Units*
+defended not offering calories; *Use wallpaper colours* opened with Android's
+name for the mechanism; the maximum-heart-rate row printed the Tanaka formula;
+the opacity slider explained why it stops where it visibly stops; *Position*
+justified its own default instead of saying which edge to pick. **One row was
+audited and left alone**, which is the other half of doing this honestly: the
+FTP field keeps both its lines, because Settings is the one screen where that
+number is *typed* rather than read. A naming fault fell out of the opacity cut —
+the copy said *"strip"*, which CLAUDE.md says is never the rider-facing word for
+the overlay.
+
+---
+
 ### 10 August 2026 (thirty-seventh sitting): the dashboard was loose rather than full, and a helper that had been lying for a fortnight
 
 **The owner left two inbox entries and the brief was to empty them and then

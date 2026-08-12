@@ -25,7 +25,7 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 616 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 711 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -345,6 +345,18 @@ Two consequences to know before you are surprised by them:
   purpose. **A consequence for verification: the emulator can only produce
   simulated rides, so anything gated on measured power shows nothing there
   until you set the column by hand.**
+- **And ask the *ride* for its provenance, not its samples.** Since 23.4.12 the
+  answer lives on `workouts.power_provenance`, written at finalise, because a
+  question asked of `workout_metrics` has no answer once 23.4 has trimmed it —
+  and eight readers were asking, six of them leaderboards. So the SQL gate is
+  `w.power_provenance = 'Measured'` and **never** the old
+  `EXISTS (a sample) AND NOT EXISTS (a sample that is not a measurement)` pair,
+  which seven queries each spelled out for themselves until one of them got it
+  half right and ranked a ride with no samples at all (22.1.7). Two places
+  legitimately still count samples: `WorkoutService` mid-ride, where the row has
+  no answer yet, and the fallback for a row whose column is null.
+  `WorkoutDao.backfillPowerProvenance` is that column's self-heal and runs at
+  launch; `completeRidesWithoutProvenance` is the fence.
 - **Sensor sources must not reconnect themselves.** `SensorRepository` owns the
   single retry policy. Adding another creates competing schedules.
 - **`sensorReading` is a `StateFlow`, so it holds its last value when the board
