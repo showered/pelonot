@@ -440,11 +440,51 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 17 → 18: a ride's mean-maximal efforts, kept rather than re-derived
+     * (PLAN 16.3.3a).
+     *
+     * `workout_power_bests` holds one row per stretch a ride actually held, and
+     * `workouts.power_bests_at` says when that scan ran — null for every ride
+     * that predates this, which is correct and is why there is **no backfill in
+     * SQL**. Mean-maximal power is a sliding window over a series with gaps in
+     * it; it is not expressible here, and inventing an approximation for old
+     * rides would fill the rider's record with numbers no version of the app
+     * would ever compute again. `WorkoutRepository.personalBests` scans the
+     * unscanned ones on its next run instead, which is exactly the work the old
+     * shape did on *every* run.
+     *
+     * The cascade is deliberate: an effort is meaningless without the ride it
+     * was ridden in, and `discardWorkout` already relies on that for
+     * `workout_metrics`.
+     */
+    val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `power_bests_at` INTEGER")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `workout_power_bests` (
+                    `workout_id` TEXT NOT NULL,
+                    `window_sec` INTEGER NOT NULL,
+                    `watts` REAL NOT NULL,
+                    PRIMARY KEY(`workout_id`, `window_sec`),
+                    FOREIGN KEY(`workout_id`) REFERENCES `workouts`(`id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_workout_power_bests_workout_id` " +
+                    "ON `workout_power_bests` (`workout_id`)"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-        MIGRATION_16_17
+        MIGRATION_16_17, MIGRATION_17_18
     )
 }

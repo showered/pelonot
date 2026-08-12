@@ -83,6 +83,24 @@ object MeanMaximalPower {
     fun bests(samples: List<PowerSample>, windows: List<Int> = WINDOWS): Map<Int, Double> =
         windows.mapNotNull { window -> best(samples, window)?.let { window to it } }.toMap()
 
+    /**
+     * The strongest effort at each window across a rider's whole history
+     * (16.3.3a).
+     *
+     * Pure, and separate from where the efforts came from, because since
+     * 16.3.3a they come off `workout_power_bests` rather than out of a sample
+     * scan and the reduction is the only part with a decision in it.
+     *
+     * **[efforts] is expected newest ride first**, which carries the tie-break:
+     * two rides at exactly the same watts over a window resolve to the more
+     * recent one, as they did when this was a loop over rides in that order.
+     * A window nobody has ever held is absent rather than zero.
+     */
+    fun strongest(efforts: List<PersonalBest>): List<PersonalBest> =
+        WINDOWS.mapNotNull { window ->
+            efforts.filter { it.windowSec == window }.maxByOrNull { it.watts }
+        }
+
     /** "5 seconds", "1 minute", "20 minutes", "1 hour" — the label a rider reads. */
     fun label(windowSec: Int): String = when {
         windowSec < 60 -> plural(windowSec, "second")

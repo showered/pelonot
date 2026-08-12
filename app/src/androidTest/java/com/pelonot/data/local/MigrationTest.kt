@@ -1080,6 +1080,75 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migrate17To18_addsTheEffortsTableAndLeavesEveryRideUnscanned() {
+        helper.createDatabase(TEST_DB, 17).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj,
+                    total_distance_km, avg_cadence, avg_power, avg_hr,
+                    intent_modifier, rpe_rating, is_complete, was_recovered,
+                    timestamp, ftp_proposal_declined, resume_count, interrupted_sec
+                ) VALUES ('w1', 1, NULL, 1800, 150.0, 10.0, 90.0, 200.0, 150.0,
+                          1.0, 7, 1, 0, 2000, 0, 0, 0)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence,
+                                             resistance, power, heart_rate)
+                VALUES ('w1', 1, 90.0, 40.0, 200.0, 150)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 18, true, AppMigrations.MIGRATION_17_18)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val db = migrated.openHelper.writableDatabase
+
+            // Not backfilled, and it cannot be: mean-maximal power is a sliding
+            // window over a series with gaps in it, so an existing ride is
+            // *unscanned* rather than given an approximation nothing would ever
+            // compute again. `personalBests` walks it on its next run.
+            db.query("SELECT power_bests_at FROM workouts WHERE id = 'w1'").use { cursor ->
+                assertTrue("the ride went missing", cursor.moveToFirst())
+                assertTrue("a pre-existing ride must not claim a scan", cursor.isNull(0))
+            }
+
+            // The cascade is the reason the table can be discarded with the
+            // ride and never orphan a best onto a workout that is gone.
+            db.execSQL(
+                "INSERT INTO workout_power_bests (workout_id, window_sec, watts) " +
+                    "VALUES ('w1', 5, 320.0)"
+            )
+            db.execSQL("DELETE FROM workouts WHERE id = 'w1'")
+            db.query("SELECT COUNT(*) FROM workout_power_bests").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

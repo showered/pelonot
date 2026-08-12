@@ -224,5 +224,33 @@ data class WorkoutEntity(
      * the same count and very different rides.
      */
     @ColumnInfo(name = "interrupted_sec")
-    val interruptedSec: Int = 0
+    val interruptedSec: Int = 0,
+
+    /**
+     * When this ride's samples were walked for mean-maximal power, or null if
+     * they never have been (16.3.3a).
+     *
+     * **Only ever set for a ride whose watts the board measured**, which makes
+     * this column two facts in one and deliberately so. A personal best derived
+     * from `PowerModel` — RMSE 137 W — is a fiction filed as a record, so the
+     * scan declines to run at all on a modelled ride; and once 23.4 starts
+     * trimming, the samples that gate was computed *from* are gone, so a
+     * question asked of `workout_metrics` today has no answer tomorrow. Written
+     * down at the one moment it is knowable, exactly like [ftpWatts] and
+     * [maxHrBpm] — a derived number whose source moves is this project's most
+     * repeated mistake.
+     *
+     * Null therefore means one of three things and none of them is *"has no
+     * bests"*: the ride is modelled, the ride predates this column, or the ride
+     * has been trimmed without ever being scanned. All three are honestly
+     * "not counted", which is what the rider is told.
+     *
+     * Written **after** the finalise rather than as part of it, like
+     * [syncedAt] and [rpeRating] — `WorkoutSession` does not carry it, and
+     * 8.3d.4's rule is that anything it does not carry is written back as its
+     * default by the finalise. Resuming a finished ride (12.6.2) clears it for
+     * the same reason it clears [syncedAt]: the ride is about to get longer.
+     */
+    @ColumnInfo(name = "power_bests_at")
+    val powerBestsAt: Long? = null
 )

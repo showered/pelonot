@@ -10,12 +10,14 @@ import com.pelonot.data.local.dao.FtpHistoryDao
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutMetricDao
+import com.pelonot.data.local.dao.WorkoutPowerBestDao
 import com.pelonot.data.local.entity.ActiveRideRivalEntity
 import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.local.entity.WorkoutPowerBestEntity
 
 @Database(
     entities = [
@@ -24,9 +26,10 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
         WorkoutEntity::class,
         WorkoutMetricEntity::class,
         FtpHistoryEntity::class,
-        ActiveRideRivalEntity::class
+        ActiveRideRivalEntity::class,
+        WorkoutPowerBestEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,6 +40,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workoutMetricDao(): WorkoutMetricDao
     abstract fun ftpHistoryDao(): FtpHistoryDao
     abstract fun activeRideRivalDao(): ActiveRideRivalDao
+    abstract fun workoutPowerBestDao(): WorkoutPowerBestDao
 
     /**
      * The schema version this database is actually open at (12.4.4).

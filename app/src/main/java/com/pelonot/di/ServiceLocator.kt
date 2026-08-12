@@ -161,7 +161,8 @@ object ServiceLocator {
         WorkoutRepository(
             database.workoutDao(),
             database.workoutMetricDao(),
-            database.activeRideRivalDao()
+            database.activeRideRivalDao(),
+            database.workoutPowerBestDao()
         )
     }
 

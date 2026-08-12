@@ -6,9 +6,11 @@ import com.pelonot.data.local.dao.LastRideRow
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutListItem
 import com.pelonot.data.local.dao.WorkoutMetricDao
+import com.pelonot.data.local.dao.WorkoutPowerBestDao
 import com.pelonot.data.local.entity.ActiveRideRivalEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.data.local.entity.WorkoutPowerBestEntity
 import com.pelonot.data.local.dao.PreviousBestRow
 import com.pelonot.data.local.dao.SyncBacklog
 import com.pelonot.data.service.RideInProgress
@@ -88,7 +90,8 @@ data class LeaderboardStats(
 class WorkoutRepository(
     private val workoutDao: WorkoutDao,
     private val metricDao: WorkoutMetricDao,
-    private val activeRideRivalDao: ActiveRideRivalDao
+    private val activeRideRivalDao: ActiveRideRivalDao,
+    private val workoutPowerBestDao: WorkoutPowerBestDao
 ) {
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
@@ -202,8 +205,22 @@ class WorkoutRepository(
     suspend fun beginWorkout(workout: WorkoutEntity) =
         workoutDao.insertWorkout(workout.copy(isComplete = false))
 
-    suspend fun finaliseWorkout(workout: WorkoutEntity) =
+    /**
+     * Ends a ride, and works out what it was the rider's best at (16.3.3a).
+     *
+     * The scan is here rather than at the one call site because there are three
+     * ways a ride is finalised — the service's, the crash recovery's, and the
+     * second finalise of a ride resumed under 12.6.2 — and a ride that missed
+     * it would be uncounted for ever once 23.4 has trimmed it.
+     *
+     * Strictly after the update: [recordPowerBests] writes `power_bests_at` on
+     * the same row, and `WorkoutSession` does not carry that column, so a scan
+     * running first would be overwritten by its own finalise (8.3d.4).
+     */
+    suspend fun finaliseWorkout(workout: WorkoutEntity) {
         workoutDao.updateWorkout(workout.copy(isComplete = true))
+        recordPowerBests(workout.id)
+    }
 
     suspend fun recordMetrics(metrics: List<WorkoutMetricEntity>) {
         if (metrics.isEmpty()) return
@@ -305,6 +322,7 @@ class WorkoutRepository(
             wasRecovered = true
         )
         workoutDao.updateWorkout(recovered)
+        recordPowerBests(workoutId)
         return recovered
     }
 
@@ -383,10 +401,18 @@ class WorkoutRepository(
             // backed up is never offered again (14.2.5). The upload is an
             // upsert on the ride's own id (15.3.3), so re-sending replaces it
             // rather than duplicating it.
+            //
+            // `powerBestsAt` for exactly `syncedAt`'s reason (16.3.3a): the
+            // efforts on record are the short ride's, and the longer one may
+            // hold a window this one did not. The stored rows go with it —
+            // leaving them would let a twenty-minute effort survive on a ride
+            // whose scan says it was never worked out.
             isComplete = false,
-            syncedAt = null
+            syncedAt = null,
+            powerBestsAt = null
         )
         workoutDao.updateWorkout(reopened)
+        workoutPowerBestDao.clearFor(workoutId)
 
         return ResumedRide(workout = reopened, aggregates = aggregates)
     }
@@ -484,46 +510,100 @@ class WorkoutRepository(
         workoutDao.householdRivals(classId, excludingWorkoutId, excludingUserId)
 
     /**
-     * The rider's personal bests by duration (16.3.3).
+     * The rider's personal bests by duration (16.3.3), read rather than
+     * re-derived (16.3.3a).
      *
-     * One ride at a time, and only the power column of it: the alternative is
-     * every sample of every ride in memory at once, which for a year of daily
-     * riding is about a million rows. Each ride's series is walked and dropped.
+     * Every ride's efforts were worked out once, when it was recorded, so this
+     * is one query over `workout_power_bests` and a reduction. What it used to
+     * be was one query *per ride* plus a full sample scan of each — bounded in
+     * memory but not in reads, and about a million rows for a year of daily
+     * riding.
+     *
+     * **The reason that changed is not speed.** 23.4 trims old rides down to
+     * their aggregates, and a best derived on read would silently get worse the
+     * moment the samples behind it went — on the one screen that exists to show
+     * a rider their training working, with nothing said. A best that was never
+     * computed cannot be recovered from a trimmed ride, so 23.4.8 makes this a
+     * prerequisite rather than the optimisation 16.3.3a first filed it as.
+     *
+     * [backfillPowerBests] is what keeps that true of rides recorded before the
+     * column existed. It runs here rather than at launch because this is the
+     * only screen that needs the answer, and after the first run it finds
+     * nothing.
      *
      * **Measured rides only**, and the count of the others comes back with them
      * — an empty list has to be able to say *why* it is empty rather than
      * implying the rider has never ridden.
-     *
-     * Not cached anywhere yet, and that is a deliberate not-yet: caching means
-     * a column or a table, and a schema change made before anybody has felt it
-     * be slow is a guess. The ceiling is written down in 16.3.3.
      */
     suspend fun personalBests(userId: Int): PersonalBests {
-        val rides = workoutDao.measuredRides(userId)
-        val best = mutableMapOf<Int, PersonalBest>()
+        backfillPowerBests(userId)
 
-        rides.forEach { ride ->
-            val samples = metricDao.getMetricsForWorkout(ride.workoutId)
-                .map { PowerSample(it.timestampSec, it.power) }
-            MeanMaximalPower.bests(samples).forEach { (window, watts) ->
-                val standing = best[window]
-                if (standing == null || watts > standing.watts) {
-                    best[window] = PersonalBest(
-                        windowSec = window,
-                        watts = watts,
-                        workoutId = ride.workoutId,
-                        atEpochMs = ride.recordedAt,
-                        classTitle = ride.classTitle
-                    )
-                }
-            }
+        val efforts = workoutPowerBestDao.bestsFor(userId).map { row ->
+            PersonalBest(
+                windowSec = row.windowSec,
+                watts = row.watts,
+                workoutId = row.workoutId,
+                atEpochMs = row.recordedAt,
+                classTitle = row.classTitle
+            )
         }
 
         return PersonalBests(
-            efforts = MeanMaximalPower.WINDOWS.mapNotNull { best[it] },
-            ridesCounted = rides.size,
-            ridesSkipped = workoutDao.unmeasuredRideCount(userId)
+            efforts = MeanMaximalPower.strongest(efforts),
+            ridesCounted = workoutDao.ridesWithBestsCount(userId),
+            ridesSkipped = workoutDao.ridesWithoutBestsCount(userId)
         )
+    }
+
+    /**
+     * Works out the efforts of any measured ride that has never been scanned
+     * (16.3.3a).
+     *
+     * The whole backfill, and it is deliberately not a migration: mean-maximal
+     * power is a sliding window over a series with gaps in it, which SQL cannot
+     * express and an approximation would falsify. So it is the old code path,
+     * run once per ride instead of once per visit.
+     *
+     * A ride 23.4 has already trimmed is **not** here and cannot be: it has no
+     * samples left to walk, so it stays uncounted rather than acquiring a best
+     * derived from a downsampled trace. That is the honest answer and it is
+     * also the argument for landing this before any trimming exists.
+     */
+    private suspend fun backfillPowerBests(userId: Int) {
+        workoutDao.measuredRidesAwaitingBests(userId).forEach { ride ->
+            recordPowerBests(ride.workoutId)
+        }
+    }
+
+    /**
+     * Walks one ride's samples for its mean-maximal efforts and stores them
+     * (16.3.3a).
+     *
+     * Called at every finalise — the service's (`stopWorkout`), the crash
+     * recovery's, and the second finalise of a ride resumed under 12.6.2 — so
+     * the stored answer is never older than the samples it came from.
+     *
+     * **Nothing is stored for a ride whose watts were not measured**, and
+     * `power_bests_at` is left null for it: the marker means *scanned and
+     * trustworthy*, which is the claim `bestsFor` then relies on instead of
+     * re-asking `workout_metrics` a question a trimmed ride cannot answer.
+     */
+    private suspend fun recordPowerBests(workoutId: String) {
+        workoutPowerBestDao.clearFor(workoutId)
+
+        val provenance = metricDao.getPowerProvenanceCounts(workoutId).provenance
+        if (!provenance.isTrustworthyAsMeasured) return
+
+        val samples = metricDao.getMetricsForWorkout(workoutId)
+            .map { PowerSample(it.timestampSec, it.power) }
+        val bests = MeanMaximalPower.bests(samples).map { (window, watts) ->
+            WorkoutPowerBestEntity(workoutId = workoutId, windowSec = window, watts = watts)
+        }
+        if (bests.isNotEmpty()) workoutPowerBestDao.upsert(bests)
+
+        // Last, and after the rows: a marker written before them would claim a
+        // scan that a crash in between had not finished.
+        workoutDao.markPowerBestsScanned(workoutId, System.currentTimeMillis())
     }
 
     /** The rider's own best earlier ride of this class (16.3.4). */

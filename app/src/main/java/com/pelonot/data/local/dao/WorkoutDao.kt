@@ -571,12 +571,19 @@ interface WorkoutDao {
     ): PreviousBestRow?
 
     /**
-     * Every ride of this rider's whose watts the **bike measured** (16.3.3).
+     * The rides whose watts the **bike measured** and whose efforts have not
+     * been worked out yet (16.3.3, 16.3.3a).
      *
-     * The gate is not decoration: a personal best derived from `PowerModel` —
-     * RMSE 137 W — is a fiction filed as a record, and it would sit in the same
-     * list as real ones. Same clause as [householdRivals], pointed at one
-     * rider's own history.
+     * The measured gate is not decoration: a personal best derived from
+     * `PowerModel` — RMSE 137 W — is a fiction filed as a record, and it would
+     * sit in the same list as real ones. Same clause as [householdRivals],
+     * pointed at one rider's own history.
+     *
+     * `power_bests_at IS NULL` is what makes this the **backfill** rather than
+     * the read: rides recorded before that column existed, and any ride whose
+     * scan did not happen. The list empties itself and stays empty, which is
+     * how the sample scan the old shape paid for on every load of *Your FTP*
+     * became a cost paid once per ride.
      */
     @Query(
         """
@@ -587,6 +594,7 @@ interface WorkoutDao {
         LEFT JOIN class_templates c ON c.id = w.class_id
         WHERE w.user_id = :userId
           AND w.is_complete = 1
+          AND w.power_bests_at IS NULL
           AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
           AND NOT EXISTS (
               SELECT 1 FROM workout_metrics m
@@ -596,22 +604,45 @@ interface WorkoutDao {
         ORDER BY w.timestamp DESC
         """
     )
-    suspend fun measuredRides(userId: Int): List<MeasuredRideRow>
+    suspend fun measuredRidesAwaitingBests(userId: Int): List<MeasuredRideRow>
 
-    /** The rides that gate excludes, so an empty list of bests can say why. */
+    /** This ride's samples have been walked, and its watts were measured. */
+    @Query("UPDATE workouts SET power_bests_at = :at WHERE id = :workoutId")
+    suspend fun markPowerBestsScanned(workoutId: String, at: Long)
+
+    /**
+     * Rides counted towards this rider's bests, and rides not.
+     *
+     * Asked of `power_bests_at` rather than of the samples, which is the point
+     * of the column: after 23.4 has trimmed a ride the samples cannot answer
+     * either question, and a rider watching the sentence *"from 22 rides the
+     * bike measured, of 23"* change because of housekeeping would be right to
+     * distrust the number above it.
+     *
+     * The pair is deliberately exhaustive — skipped is *everything not
+     * counted*, so a ride with no samples at all lands in it. Under the old
+     * sample-derived pair it fell out of both and was in neither total, which
+     * is the same trivially-passed-`NOT EXISTS` family as 22.1.7.
+     */
     @Query(
         """
         SELECT COUNT(*) FROM workouts w
         WHERE w.user_id = :userId
           AND w.is_complete = 1
-          AND EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_bests_at IS NOT NULL
         """
     )
-    suspend fun unmeasuredRideCount(userId: Int): Int
+    suspend fun ridesWithBestsCount(userId: Int): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts w
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.power_bests_at IS NULL
+        """
+    )
+    suspend fun ridesWithoutBestsCount(userId: Int): Int
 
     /**
      * Who has ridden since [sinceMs], one row per rider (PLAN 24.2.1).

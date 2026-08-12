@@ -78,6 +78,62 @@ class MeanMaximalPowerTest {
         assertEquals(150.0, MeanMaximalPower.best(shuffled, 300)!!, 0.001)
     }
 
+    private fun effort(windowSec: Int, watts: Double, rideId: String, atMs: Long) =
+        PersonalBest(
+            windowSec = windowSec,
+            watts = watts,
+            workoutId = rideId,
+            atEpochMs = atMs,
+            classTitle = null
+        )
+
+    @Test
+    fun `the strongest ride at each window wins, and an empty window is absent`() {
+        val efforts = listOf(
+            effort(5, 300.0, "recent", 3_000),
+            effort(60, 210.0, "recent", 3_000),
+            effort(5, 380.0, "older", 1_000),
+            effort(60, 190.0, "older", 1_000)
+        )
+
+        val best = MeanMaximalPower.strongest(efforts)
+
+        assertEquals(listOf(5, 60), best.map { it.windowSec })
+        // The sprint came off the older ride, the minute off the newer one:
+        // this list is per window rather than per ride.
+        assertEquals("older", best.first { it.windowSec == 5 }.workoutId)
+        assertEquals("recent", best.first { it.windowSec == 60 }.workoutId)
+        // A window nobody has held is missing rather than present at 0 W.
+        assertTrue(best.none { it.windowSec >= 300 })
+    }
+
+    @Test
+    fun `the windows come back in order however the efforts arrive`() {
+        val efforts = listOf(
+            effort(1_200, 190.0, "w", 1_000),
+            effort(5, 400.0, "w", 1_000),
+            effort(300, 210.0, "w", 1_000)
+        )
+
+        assertEquals(
+            listOf(5, 300, 1_200),
+            MeanMaximalPower.strongest(efforts).map { it.windowSec }
+        )
+    }
+
+    @Test
+    fun `an exact tie keeps the more recent ride`() {
+        // The rows arrive newest ride first, which is what carries the
+        // tie-break — the same answer the per-ride loop gave before the efforts
+        // were stored, and worth pinning because it is invisible either way.
+        val efforts = listOf(
+            effort(300, 250.0, "newer", 3_000),
+            effort(300, 250.0, "older", 1_000)
+        )
+
+        assertEquals("newer", MeanMaximalPower.strongest(efforts).single().workoutId)
+    }
+
     @Test
     fun `the labels are what a rider would say`() {
         assertEquals("5 seconds", MeanMaximalPower.label(5))
