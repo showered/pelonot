@@ -167,7 +167,9 @@ data class WorkoutDto(
                     unknown = metrics.count { it.powerIsMeasured == null }
                 )
                 ).name,
-            metrics = MetricsPayload.from(metrics)
+            // 23.4.14. The payload says what resolution it is, because an
+            // upload is an export and 23.4.3's rule covers exports.
+            metrics = MetricsPayload.from(metrics, workout.metricsDetailSec)
         )
     }
 }

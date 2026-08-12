@@ -190,4 +190,30 @@ class WorkoutDtoTest {
             WorkoutDto.from(workout(), listOf(metric), ACCOUNT_ID).powerProvenance
         )
     }
+    /**
+     * **The wire copy of a ride's resolution is the ride's own** (23.4.14).
+     *
+     * Not inferred from the spacing of the samples attached to it, because a
+     * gap in a series is a rider who stopped (2.4.4) and reading one as a
+     * resolution files a bottle stop as housekeeping. Same argument as the
+     * provenance above: the row knows, so ask the row.
+     */
+    @Test
+    fun `a condensed ride's payload says so, and an intact one does not`() {
+        val metric = WorkoutMetricEntity(
+            workoutId = "11111111-2222-3333-4444-555555555555",
+            timestampSec = 0,
+            cadence = 80.0,
+            resistance = 30.0,
+            power = 110.0,
+            powerIsMeasured = true
+        )
+        val condensed = workout().copy(metricsDetailSec = 10)
+
+        assertEquals(
+            10,
+            WorkoutDto.from(condensed, listOf(metric), ACCOUNT_ID).metrics.detailSec
+        )
+        assertNull(WorkoutDto.from(workout(), listOf(metric), ACCOUNT_ID).metrics.detailSec)
+    }
 }

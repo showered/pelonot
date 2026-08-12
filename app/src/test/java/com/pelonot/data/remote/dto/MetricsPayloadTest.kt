@@ -292,6 +292,42 @@ class MetricsPayloadTest {
         assertTrue(encoded.containsKey("v"))
     }
 
+    /**
+     * **An outline says so on the wire too** (PLAN 23.4.3, 23.4.14).
+     *
+     * The rule is that anything drawing or exporting a trimmed trace says what
+     * resolution it is, and an upload is an export. Without `d`, the cloud copy
+     * of a 25-minute ride condensed to every tenth second is indistinguishable
+     * from one recorded second by second — and the reader that will care most
+     * does not exist yet (23.4.13), which is exactly when a missing field is
+     * expensive.
+     */
+    @Test
+    fun `a condensed ride says how far apart its seconds are`() {
+        val encoded = wireJson.encodeToJsonElement(
+            MetricsPayload.serializer(),
+            MetricsPayload.from(listOf(sample(0), sample(10)), detailSec = 10)
+        ) as JsonObject
+
+        assertEquals("10", encoded["d"].toString())
+    }
+
+    /**
+     * And an intact one claims nothing, in the encoder production actually
+     * uses. Absent is *the record is intact* — the same claim null makes on
+     * `workouts.metrics_detail_sec`, and the reason 23.4.3 refuses to let that
+     * column default to 1.
+     */
+    @Test
+    fun `an intact ride carries no resolution at all`() {
+        val encoded = wireJson.encodeToJsonElement(
+            MetricsPayload.serializer(),
+            MetricsPayload.from(listOf(sample(0), sample(1)))
+        ) as JsonObject
+
+        assertTrue("an intact ride is claiming a resolution", !encoded.containsKey("d"))
+    }
+
     @Test
     fun `a 45-minute ride is a fraction of what it used to be`() {
         // The measured reason for the whole item, and the guard against

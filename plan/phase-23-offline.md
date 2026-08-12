@@ -562,6 +562,31 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       it has just got back. **Not a blocker on anything.** Condensing is honest
       without it: what it would change is the *sentence in the dialog*, from
       "Pelonot cannot yet bring one back down" to an offer
+- [x] **23.4.14** **The uploaded payload says what resolution it is.**
+      ***Done and measured in the cloud, forty-second sitting.***
+
+      Found on the way to 15.4.2, and it is 23.4.3's own rule broken on the one
+      surface nobody had counted as a drawing: **an upload is an export.**
+      `MetricsPayload` carried the samples and not the fact that there were
+      fewer of them than seconds, so the cloud copy of a 25-minute ride
+      condensed to every tenth second was **indistinguishable from one recorded
+      second by second** — same shape, same peak, same axis, and no way for any
+      reader to know which it was holding.
+
+      It is `"d"` inside the versioned payload rather than a column, so it needs
+      no cloud migration and nothing to be applied by the owner; absent means
+      *the record is intact*, exactly as null does on `workouts
+      .metrics_detail_sec`. It is read off the **row** rather than inferred from
+      the spacing of the samples, because a gap in a series is a rider who
+      stopped (2.4.4) and reading one as a resolution files a bottle stop as
+      housekeeping.
+
+      Measured the way 14.4.3 taught this project to measure a wire format —
+      in the cloud, not in a test: two rides uploaded from the tablet AVD by a
+      real sign-in, `metrics_payload->>'d'` **null with 900 samples** for the
+      intact one and **10 with 120 samples** for the outline. **23.4.13 is who
+      this is for**: a rehydration that cannot tell whether the copy up there is
+      fuller than the one down here has nothing to offer
 
 ---
 

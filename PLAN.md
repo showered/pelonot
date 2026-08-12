@@ -238,6 +238,17 @@ unbuilt** — self-deletion needs an Edge Function and therefore a deploy, and a
 app button calling a function nobody has deployed looks exactly like a broken
 feature.
 
+**One thing was found on the way and fixed, and it is 23.4.3's rule broken on a
+surface nobody had counted as a drawing: an upload is an export.** The payload
+carried a condensed ride's samples without carrying the fact that there were
+fewer of them than seconds, so **the cloud copy of an outline was
+indistinguishable from a ride recorded second by second**. `"d"` goes inside the
+versioned payload — no cloud migration, nothing for the owner to apply — and it
+is read off the row rather than inferred from the samples' spacing, because a
+gap in a series is a rider who stopped. Measured where 14.4.3 says to measure a
+wire format: `metrics_payload->>'d'` is **null with 900 samples** for the intact
+ride and **10 with 120** for the outline (23.4.14).
+
 **Two things the screen found that the diff could not.** The dialog's third
 sentence agreed with itself only in the plural — *"1 older ride is kept here as
 an outline… the seconds behind **them**"* — which is 26.x's sort of fault, small

@@ -94,7 +94,27 @@ data class MetricsPayload(
      * null where nobody wrote it down. Absent where no sample did.
      */
     @SerialName("pm")
-    val powerIsMeasured: List<@Serializable(CompactBoolean::class) Boolean?>? = null
+    val powerIsMeasured: List<@Serializable(CompactBoolean::class) Boolean?>? = null,
+    /**
+     * **How far apart these seconds are** — the wire copy of
+     * `workouts.metrics_detail_sec` (PLAN 23.4.3, 23.4.14).
+     *
+     * Absent means *the record is intact*, exactly as null does on the row, and
+     * a value means the ride was condensed to the lowest and highest watt of
+     * every `d` seconds before it went up. It is absent for every ride anybody
+     * has uploaded so far and for every ride that has not been trimmed, which is
+     * why it costs nothing: the encoder omits a property equal to its default.
+     *
+     * 23.4.3's rule is that **anything drawing or exporting the trace says what
+     * resolution it is**, and an upload is an export — without this the cloud
+     * copy of a 25-minute outline is indistinguishable from a 25-minute ride
+     * recorded second by second, which is precisely the fabricated-record
+     * failure `t` refuses above. It matters most to the reader that does not
+     * exist yet: 23.4.13 brings a condensed ride's seconds *back down*, and a
+     * copy that cannot say what it is cannot be trusted to be fuller than what
+     * is already on the tablet.
+     */
+    @SerialName("d") val detailSec: Int? = null
 ) {
 
     val size: Int get() = timestampSec.size
@@ -227,8 +247,16 @@ data class MetricsPayload(
          */
         const val FORTY_FIVE_MINUTE_BUDGET_BYTES = 60 * 1024
 
-        fun from(metrics: List<WorkoutMetricEntity>) = MetricsPayload(
+        /**
+         * @param detailSec the ride's own `metrics_detail_sec` — null for an
+         *   intact record. It is a parameter rather than something derived from
+         *   the samples' spacing on purpose: a gap in a series is a rider who
+         *   stopped (2.4.4), and inferring a resolution from one would file a
+         *   bottle stop as housekeeping.
+         */
+        fun from(metrics: List<WorkoutMetricEntity>, detailSec: Int? = null) = MetricsPayload(
             version = VERSION,
+            detailSec = detailSec,
             timestampSec = metrics.map { it.timestampSec },
             cadence = metrics.map { it.cadence },
             resistance = metrics.map { it.resistance },
