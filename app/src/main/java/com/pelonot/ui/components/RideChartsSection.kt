@@ -331,7 +331,7 @@ private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
         // the rider had that day, and they are not today's zones.
         charts.zoneFtpWatts
             ?.takeIf { it != charts.ftpWatts }
-            ?.let { "at ${'$'}it W, the FTP at the time" }
+            ?.let { "at $it W, the FTP at the time" }
     ).joinToString(" · ").takeIf { it.isNotEmpty() },
     summary = RideChartSummaries.timeInZone(charts.timeInZone),
     modifier = modifier

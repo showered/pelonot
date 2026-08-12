@@ -247,10 +247,15 @@ class RetentionTest {
         ride("old")
         ride("recent", atMs = lastWeek)
 
-        val facts = retention.facts(RetentionAge.SixMonths, nowMs = now)
+        val facts = retention.facts(nowMs = now)
 
         assertEquals(2, facts.rides)
         assertEquals(1_200, facts.samples)
-        assertEquals(1, facts.trimmable)
+        // Counted per age rather than for whatever the setting happens to say:
+        // the dialog asks about the age being offered, and a rider on `Never`
+        // was otherwise told nothing was old enough about a 14-month-old ride.
+        assertEquals(1, facts.trimmable(RetentionAge.SixMonths))
+        assertEquals(1, facts.trimmable(RetentionAge.OneYear))
+        assertEquals(0, facts.trimmable(RetentionAge.Never))
     }
 }

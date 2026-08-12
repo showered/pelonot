@@ -1485,7 +1485,7 @@ private fun StorageSection(
     pending?.let { chosen ->
         TrimConfirmDialog(
             age = chosen,
-            trimmable = storage?.trimmable ?: 0,
+            trimmable = storage?.trimmable(chosen) ?: 0,
             hasAccount = hasAccount,
             onBackupFirst = {
                 pending = null

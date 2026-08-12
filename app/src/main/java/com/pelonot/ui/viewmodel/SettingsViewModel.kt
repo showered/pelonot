@@ -465,10 +465,7 @@ class SettingsViewModel(
      * themselves trims.
      */
     fun refreshStorage() {
-        viewModelScope.launch {
-            val age = settingsRepository.settings.first().retentionAge
-            _storage.value = retentionRepository.facts(age)
-        }
+        viewModelScope.launch { _storage.value = retentionRepository.facts() }
     }
 
     /**
@@ -490,14 +487,18 @@ class SettingsViewModel(
             if (age.isOn) {
                 val result = retentionRepository.trim(age)
                 if (result.didAnything) {
+                    // "Condensed", never "trimmed": the screen the rider is
+                    // looking at says condense on the chip, in the heading and
+                    // on the button, and one feature with two names on one
+                    // screen is the HUD/overlay mistake in miniature (11.6.5).
                     onResult(
-                        "Trimmed ${result.ridesTrimmed} " +
+                        "Condensed ${result.ridesTrimmed} " +
                             (if (result.ridesTrimmed == 1) "ride" else "rides") +
                             " older than ${age.label.removePrefix("After ")}."
                     )
                 }
             }
-            _storage.value = retentionRepository.facts(age)
+            _storage.value = retentionRepository.facts()
         }
     }
 

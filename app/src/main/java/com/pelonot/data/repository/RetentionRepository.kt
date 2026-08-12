@@ -27,9 +27,20 @@ data class StorageFacts(
     val rides: Int = 0,
     val samples: Int = 0,
     val bytes: Long = 0,
-    /** Rides old enough to trim under the rider's current choice. */
-    val trimmable: Int = 0
-)
+    /**
+     * How many rides each age would condense **now**, one entry per age that
+     * is on.
+     *
+     * A map rather than a single count for the rider's current choice, and
+     * driving the AVD is what showed the difference: the dialog asks about the
+     * age being *offered*, so a rider on `Never` — which is everybody the first
+     * time — was told *"nothing is old enough yet"* about a fourteen-month-old
+     * ride. The count belongs to the question, not to the setting.
+     */
+    val trimmableByAge: Map<RetentionAge, Int> = emptyMap()
+) {
+    fun trimmable(age: RetentionAge): Int = trimmableByAge[age] ?: 0
+}
 
 /** What one pass of the trimmer did. */
 data class TrimResult(
@@ -95,15 +106,43 @@ class RetentionRepository(
         }
     )
 
-    suspend fun facts(age: RetentionAge, nowMs: Long = System.currentTimeMillis()): StorageFacts =
-        StorageFacts(
+    suspend fun facts(nowMs: Long = System.currentTimeMillis()): StorageFacts {
+        checkpoint()
+        return StorageFacts(
             rides = workoutDao.completeRideCount(),
             samples = workoutDao.storedSampleCount(),
             bytes = databaseBytes(),
-            trimmable = age.cutoffMs(nowMs)
-                ?.let { workoutDao.trimmableRideCount(it, currentRideId()) }
-                ?: 0
+            trimmableByAge = RetentionAge.entries
+                .mapNotNull { age ->
+                    age.cutoffMs(nowMs)?.let { cutoff ->
+                        age to workoutDao.trimmableRideCount(cutoff, currentRideId())
+                    }
+                }
+                .toMap()
         )
+    }
+
+    /**
+     * Folds the write-ahead log back into the database before it is measured,
+     * and after it is vacuumed.
+     *
+     * **Without it the figure goes up when a rider condenses their rides**,
+     * which is worse than the figure not moving: `VACUUM` in WAL mode writes
+     * the whole rewritten database through the log, so the first measurement
+     * afterwards counts the same pages twice. Observed on the tablet AVD —
+     * 436 kB before a trim and 782 kB after it, with 1,200 samples gone.
+     *
+     * A checkpoint is not a write to anybody's data; it is the same tidy-up
+     * Room does on its own schedule, asked for at the one moment the number is
+     * about to be read out loud.
+     */
+    private fun checkpoint() {
+        runCatching {
+            database.openHelper.writableDatabase
+                .query("PRAGMA wal_checkpoint(TRUNCATE)")
+                .use { it.moveToFirst() }
+        }
+    }
 
     /**
      * Condenses every ride old enough, and returns what it did.
@@ -139,6 +178,7 @@ class RetentionRepository(
         // and only when something was actually removed.
         if (rides > 0) {
             runCatching { database.openHelper.writableDatabase.execSQL("VACUUM") }
+            checkpoint()
         }
 
         return TrimResult(ridesTrimmed = rides, samplesDropped = dropped)

@@ -310,7 +310,11 @@ fun RideDetailScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
-            ExportSection(onExport = export, modifier = Modifier.loneCard())
+            ExportSection(
+                onExport = export,
+                detailSec = state.workout?.metricsDetailSec ?: 1,
+                modifier = Modifier.loneCard()
+            )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
@@ -403,7 +407,12 @@ private fun correctedAverage(
  * the thing the subscription product does.
  */
 @Composable
-private fun ExportSection(onExport: (ExportFormat) -> Unit, modifier: Modifier = Modifier) {
+private fun ExportSection(
+    onExport: (ExportFormat) -> Unit,
+    /** See [com.pelonot.domain.chart.RideCharts.detailSec] — 1 for an intact ride. */
+    detailSec: Int = 1,
+    modifier: Modifier = Modifier
+) {
   Column(modifier) {
     Text(
         text = "Take it with you",
@@ -425,7 +434,15 @@ private fun ExportSection(onExport: (ExportFormat) -> Unit, modifier: Modifier =
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = format.description,
+                    // 23.4.3. *"Every recorded second"* stops being true the
+                    // moment a ride is condensed, and this is the button that
+                    // takes the file out of the app — the one place a wrong
+                    // claim cannot be corrected later.
+                    text = if (detailSec > 1 && format == ExportFormat.Csv) {
+                        "Every stored point — this ride is a $detailSec-second outline"
+                    } else {
+                        format.description
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
