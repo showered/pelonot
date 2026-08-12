@@ -180,10 +180,15 @@ private fun PowerCard(
         // time-in-zone with them, and would make the ride's own screen disagree
         // with what the guest was looking at while they rode it.
         "no rider on this ride — zones from the app's default FTP"
-            .takeIf { isGuestRide }
+            .takeIf { isGuestRide },
+        // 23.4.3. The one sentence that separates a record from a sketch of
+        // one: the line has the same shape, the same peak and the same axis
+        // either way, and nothing else on the screen could tell them apart.
+        "condensed to a ${charts.detailSec}-second outline"
+            .takeIf { charts.isTrimmed }
     ).joinToString(" · "),
     summary = listOf(
-        RideChartSummaries.power(charts.power, charts.powerProvenance),
+        RideChartSummaries.power(charts.power, charts.powerProvenance, charts.detailSec),
         RideChartSummaries.prescribed(charts.prescribed),
         // 16.2.4: the canvas is inert to a screen reader, so a second trace
         // that is not in this sentence does not exist for the rider using one.
@@ -303,7 +308,13 @@ private fun CadenceTraceCard(charts: RideCharts, modifier: Modifier) = ChartCard
 @Composable
 private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     title = "Cadence spread",
-    caption = "How long was spent at each cadence",
+    caption = if (charts.isTrimmed) {
+        // Counted while the seconds were still there (23.4.2), which is why it
+        // still adds up to the length of the ride.
+        "How long was spent at each cadence, counted before this ride was condensed"
+    } else {
+        "How long was spent at each cadence"
+    },
     summary = RideChartSummaries.cadence(charts.cadence),
     modifier = modifier
 ) {
@@ -313,6 +324,15 @@ private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
 @Composable
 private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     title = "Time in zone",
+    caption = listOfNotNull(
+        "counted before this ride was condensed".takeIf { charts.isTrimmed },
+        // Only ever true of a ride that never recorded its own FTP (7.8) and
+        // has since been condensed: the counts were frozen against the number
+        // the rider had that day, and they are not today's zones.
+        charts.zoneFtpWatts
+            ?.takeIf { it != charts.ftpWatts }
+            ?.let { "at ${'$'}it W, the FTP at the time" }
+    ).joinToString(" · ").takeIf { it.isNotEmpty() },
     summary = RideChartSummaries.timeInZone(charts.timeInZone),
     modifier = modifier
 ) {

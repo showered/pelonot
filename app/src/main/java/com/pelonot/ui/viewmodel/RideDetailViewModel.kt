@@ -239,7 +239,10 @@ class RideDetailViewModel(
                 totalDistanceKm = workout.totalDistanceKm,
                 avgPower = workout.avgPower,
                 avgCadence = workout.avgCadence,
-                avgHeartRate = workout.avgHr
+                avgHeartRate = workout.avgHr,
+                // 23.4.3: the file says what resolution it is, because it is
+                // the copy that leaves the app and can never be asked again.
+                detailSec = workout.metricsDetailSec ?: 1
             )
             val samples = workoutRepository.getMetrics(workout.id).map { metric ->
                 ExportSample(

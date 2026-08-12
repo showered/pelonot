@@ -21,7 +21,19 @@ data class ExportRide(
     val totalDistanceKm: Double,
     val avgPower: Double?,
     val avgCadence: Double?,
-    val avgHeartRate: Double?
+    val avgHeartRate: Double?,
+    /**
+     * How many seconds one exported sample stands for — 1 for a ride whose
+     * record is intact, 10 for one 23.4 has condensed (23.4.3).
+     *
+     * *"Every chart **and export** says what resolution it is showing"* is the
+     * item's own sentence, and the export is the half that leaves the app. A
+     * file of 300 rows for a 25-minute ride, opened in a spreadsheet or handed
+     * to Strava with nothing saying it is an outline, is the record's
+     * provenance thrown away at exactly the moment nobody can ask this app
+     * about it any more.
+     */
+    val detailSec: Int = 1
 )
 
 /** One second of the ride. [heartRateBpm] null means **unknown**, never zero. */
@@ -92,6 +104,13 @@ object RideExport {
         appendLine("# Pelonot export — ${ride.title}")
         appendLine("# Started ${ISO_SECONDS.format(Date(ride.startedAtMillis))}")
         appendLine("# ${ride.durationSec} s, ${format(ride.totalOutputKj)} kJ")
+        if (ride.detailSec > 1) {
+            appendLine(
+                "# Condensed to a ${ride.detailSec}-second outline: the lowest and " +
+                    "highest watt of each ${ride.detailSec} seconds are kept and the " +
+                    "seconds between them were removed."
+            )
+        }
         appendLine("elapsed_sec,cadence_rpm,resistance_percent,power_watts,heart_rate_bpm")
         samples.sortedBy { it.timestampSec }.forEach { sample ->
             append(sample.timestampSec)
@@ -160,7 +179,14 @@ object RideExport {
 
         appendLine("        </Track>")
         appendLine("      </Lap>")
-        appendLine("      <Notes>${escape(ride.title)}</Notes>")
+        // The one place a TCX can carry a sentence, so the outline says so
+        // there rather than arriving at Strava looking like a sparse ride.
+        val note = if (ride.detailSec > 1) {
+            "${ride.title} — condensed to a ${ride.detailSec}-second outline"
+        } else {
+            ride.title
+        }
+        appendLine("      <Notes>${escape(note)}</Notes>")
         appendLine("    </Activity>")
         appendLine("  </Activities>")
         appendLine("</TrainingCenterDatabase>")
