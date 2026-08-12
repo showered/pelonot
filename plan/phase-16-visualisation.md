@@ -195,7 +195,7 @@ claim about the rider.
       measured, of 23. *Eight JVM tests. Two label bugs came off the screen
       rather than the tests — "1 minutes", and the calendar's invisible empty
       day — which is the argument for driving it.*
-- [ ] **16.3.3a** **The scan has a ceiling, and it is not reached yet.**
+- [x] **16.3.3a** **The scan has a ceiling, and it is not reached yet.**
       `personalBests` walks every measured ride's samples on every visit to
       *Your FTP* — one ride at a time, so memory is bounded by the longest ride
       rather than by the history, but the reads are not: a year of daily riding
@@ -205,6 +205,67 @@ claim about the rider.
       backfill. Deliberately not built today: a schema change made before
       anybody has felt it be slow is a guess, and this is the second time that
       argument has been written down (see 23.4)
+
+      ***Built, and the argument above is the one thing about it that did not
+      survive.*** *This item said wait until somebody feels it be slow, which is
+      the right rule for an optimisation and the wrong rule for this. **23.4.8
+      is what changed it**: trimming destroys the samples a best is derived
+      from, so the fix is not about speed at all — it is that a best which was
+      never computed cannot be recovered from a trimmed ride. Nobody will ever
+      feel this be slow before they feel it be **wrong**.*
+
+      ***`workout_power_bests`, a row per stretch a ride actually held**, plus
+      `workouts.power_bests_at` saying when the scan ran. A table rather than
+      five columns because a window a ride never held must be **absent** rather
+      than zero — a rider with no hour-long ride has no hour effort, which is
+      not an hour at 0 W — and absence is the natural state of a missing row and
+      the awkward state of a column.*
+
+      ***The marker carries the provenance, and that is the load-bearing
+      decision.** `power_bests_at` is only ever set for a ride whose watts the
+      board measured, so **the existence of the rows is itself the claim**. The
+      old gate asked `workout_metrics` whether every sample was a measurement —
+      a question a trimmed ride cannot answer, so the counts would have started
+      moving because of housekeeping. Same family as 7.8 and 21.2.3: write the
+      denominator down at the one moment it is knowable. Null therefore means
+      three things and none of them is "has no bests" — modelled, predates the
+      column, or trimmed before it was ever scanned — and all three are honestly
+      **not counted**, which is what the rider is told.*
+
+      ***The backfill is not in the migration, on purpose.** Mean-maximal power
+      is a sliding window over a series with gaps in it; SQL cannot express it,
+      and an approximation would file numbers no version of this app would ever
+      compute again. `personalBests` scans the unscanned ones on its next run —
+      the old code path, paid once per ride instead of once per visit — and
+      `measuredRidesAwaitingBests` empties itself and stays empty.*
+
+      ***Observed on the tablet AVD as an upgrade rather than as a fresh
+      install**, which is the only version of this worth doing: a v17 database
+      seeded with four rides — a 25-minute steady ride with a 20-second surge in
+      it, a shorter harder one, a modelled one at 500 W and one with a
+      49-second bottle stop — read on the **old** build first as the control.*
+      5 seconds 400 W, 1 minute 253 W, 5 minutes 220 W, 20 minutes 184 W, no
+      hour row, From 3 rides the bike measured, of 4. *Installing this build
+      over it migrated 17 → 18 and redrew **the same screen, unchanged**, off
+      nine stored rows: the modelled ride stored nothing and stayed unscanned,
+      and the bottle-stop ride has a five-second and a one-minute effort and
+      **no five-minute one**, because its longest unbroken run is 201 seconds.
+      The gap rule survived into storage rather than being re-derived.*
+
+      ***Then the point of the whole item, measured both ways.** Deleting every
+      sample of all three measured rides — 23.4 in one line — left this build's
+      screen **identical**, counts included. The same trimmed data on the build
+      before it says* "Nothing here yet. Best efforts are only counted from
+      rides where the bike measured the watts, and 1 ride was estimated" *— four
+      bests gone in silence, and worse than 23.4.8 predicted: it does not merely
+      get quieter, it gives **the wrong reason**, blaming the one modelled ride
+      for an absence that housekeeping caused.*
+
+      *Three JVM tests on the reduction (which window wins, the ordering, and
+      the tie-break that used to be implicit in a loop over rides), and seven
+      instrumented on the funnel — written against the repository rather than
+      the DAO because the claim is that **no way of finishing a ride can skip
+      the scan**, and two of them delete `workout_metrics` and ask again.*
 - [x] **16.3.4** This ride against your previous best at the same class (`leaderboardFor` already computes it — see 11.4)
 
       *It went in the picker the housemates are already in (24.3.1), because

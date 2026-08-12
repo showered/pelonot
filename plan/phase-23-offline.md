@@ -288,7 +288,7 @@ the one feature in this project that *destroys* data on purpose, so the
 question is not "can we drop the rows" but "what silently reads them". Four
 things do, and three of them are wrong afterwards in ways nobody would notice.
 
-- [ ] **23.4.8** **16.3.3a is now a hard prerequisite, not an optimisation.**
+- [x] **23.4.8** **16.3.3a is now a hard prerequisite, not an optimisation.**
       `WorkoutRepository.personalBests` re-scans **every measured ride's
       samples** on every load of *Your FTP* — that is how mean-maximal power is
       computed today. Trim a rider's older rides and their five-second and
@@ -299,6 +299,22 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       recording and stored on the row — is what makes trimming survivable, and
       it has to land **first**, because a best that was never computed cannot be
       recovered from a trimmed ride
+
+      ***Done — 16.3.3a is built and this was measured rather than argued.***
+      *A fixture of three measured rides had every sample deleted, which is
+      23.4.2 with the downsampled trace left out, and* Your best efforts *drew
+      identically: same four rows, same watts, same* From 3 rides the bike
+      measured, of 4. *The build immediately before it, on the same trimmed
+      data, drew* "Nothing here yet… 1 ride was estimated" *— which is worse
+      than this item predicted. The bests do not just get quietly worse; the
+      screen gives **the wrong reason for their absence**, naming the one
+      modelled ride when the cause was housekeeping. That is the strongest
+      possible argument for the ordering this item insisted on.*
+
+      ***What this does not yet cover, and 23.4.9 owns it**: the bests survive,
+      and `PowerProvenance` itself still does not — anything else asking
+      `workout_metrics` "was this ride measured?" gets a different answer after
+      a trim. 16.3.3a wrote the verdict down for its own reader only*
 - [ ] **23.4.9** **Audit the other three readers and say what each does with a
       trimmed ride**, rather than finding out from a chart. They are:
       `RideDetailViewModel` (the ride's own charts — 16.1, and the 24.3.1
