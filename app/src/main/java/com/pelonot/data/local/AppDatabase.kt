@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.pelonot.data.local.dao.ActiveRideRivalDao
 import com.pelonot.data.local.dao.ClassTemplateDao
 import com.pelonot.data.local.dao.FtpHistoryDao
@@ -29,9 +30,10 @@ import com.pelonot.data.local.entity.WorkoutPowerBestEntity
         ActiveRideRivalEntity::class,
         WorkoutPowerBestEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao

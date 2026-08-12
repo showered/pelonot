@@ -118,19 +118,24 @@ class WorkoutRepository(
         }
 
     /**
-     * One row, plus the two questions the card's claim depends on (22.1.7).
+     * One row, plus the question the card's claim depends on (22.1.7).
      *
-     * Both are only asked when there is a class to ask about: a Just Ride has
-     * nothing to be compared with, so the provenance lookup — which counts the
-     * whole ride's samples — is not paid for at all on the commonest case.
+     * It is only asked when there is a class to ask about: a Just Ride has
+     * nothing to be compared with, so the earlier totals are not fetched at all
+     * on the commonest case.
+     *
+     * **The provenance comes off the row** (23.4.12). It used to be a count over
+     * this ride's whole sample series — every second of a 45-minute ride, read to
+     * answer one yes-or-no question, on the one screen that must not touch
+     * `workout_metrics` (22.1.8). Now it is a column the finalise wrote, which
+     * is also the only answer that survives 23.4 trimming the ride.
      */
     private suspend fun lastRide(userId: Int, row: LastRideRow): LastRide {
         val standing = row.classId?.let { classId ->
             LastRideStanding.of(
                 classId = classId,
                 outputKj = row.totalOutputKj,
-                isMeasured = metricDao.getPowerProvenanceCounts(row.id)
-                    .provenance.isTrustworthyAsMeasured,
+                isMeasured = row.powerProvenance?.isTrustworthyAsMeasured == true,
                 earlierMeasuredTotals = workoutDao.ownTotalsForClassExcluding(
                     userId = userId,
                     classId = classId,
@@ -206,20 +211,22 @@ class WorkoutRepository(
         workoutDao.insertWorkout(workout.copy(isComplete = false))
 
     /**
-     * Ends a ride, and works out what it was the rider's best at (16.3.3a).
+     * Ends a ride, and writes down the two things about it that its samples will
+     * not be able to answer later (16.3.3a, 23.4.12).
      *
      * The scan is here rather than at the one call site because there are three
      * ways a ride is finalised — the service's, the crash recovery's, and the
      * second finalise of a ride resumed under 12.6.2 — and a ride that missed
      * it would be uncounted for ever once 23.4 has trimmed it.
      *
-     * Strictly after the update: [recordPowerBests] writes `power_bests_at` on
-     * the same row, and `WorkoutSession` does not carry that column, so a scan
-     * running first would be overwritten by its own finalise (8.3d.4).
+     * Strictly after the update: [recordPowerFacts] writes `power_provenance`
+     * and `power_bests_at` on the same row, and `WorkoutSession` carries
+     * neither, so either one written first would be handed back as its default
+     * by the finalise (8.3d.4).
      */
     suspend fun finaliseWorkout(workout: WorkoutEntity) {
         workoutDao.updateWorkout(workout.copy(isComplete = true))
-        recordPowerBests(workout.id)
+        recordPowerFacts(workout.id)
     }
 
     suspend fun recordMetrics(metrics: List<WorkoutMetricEntity>) {
@@ -322,7 +329,7 @@ class WorkoutRepository(
             wasRecovered = true
         )
         workoutDao.updateWorkout(recovered)
-        recordPowerBests(workoutId)
+        recordPowerFacts(workoutId)
         return recovered
     }
 
@@ -407,9 +414,16 @@ class WorkoutRepository(
             // hold a window this one did not. The stored rows go with it —
             // leaving them would let a twenty-minute effort survive on a ride
             // whose scan says it was never worked out.
+            //
+            // `powerProvenance` for the same reason and one of its own
+            // (23.4.12): the extra minutes can change the answer. A board that
+            // dies during them turns a `Measured` ride into a `Mixed` one, and
+            // the stale word would keep it on six leaderboards it no longer
+            // belongs on. The finalise writes it again either way.
             isComplete = false,
             syncedAt = null,
-            powerBestsAt = null
+            powerBestsAt = null,
+            powerProvenance = null
         )
         workoutDao.updateWorkout(reopened)
         workoutPowerBestDao.clearFor(workoutId)
@@ -526,7 +540,7 @@ class WorkoutRepository(
      * computed cannot be recovered from a trimmed ride, so 23.4.8 makes this a
      * prerequisite rather than the optimisation 16.3.3a first filed it as.
      *
-     * [backfillPowerBests] is what keeps that true of rides recorded before the
+     * [backfillPowerFacts] is what keeps that true of rides recorded before the
      * column existed. It runs here rather than at launch because this is the
      * only screen that needs the answer, and after the first run it finds
      * nothing.
@@ -536,7 +550,7 @@ class WorkoutRepository(
      * implying the rider has never ridden.
      */
     suspend fun personalBests(userId: Int): PersonalBests {
-        backfillPowerBests(userId)
+        backfillPowerFacts(userId)
 
         val efforts = workoutPowerBestDao.bestsFor(userId).map { row ->
             PersonalBest(
@@ -568,30 +582,55 @@ class WorkoutRepository(
      * samples left to walk, so it stays uncounted rather than acquiring a best
      * derived from a downsampled trace. That is the honest answer and it is
      * also the argument for landing this before any trimming exists.
+     *
+     * **Provenance first, and the order is not incidental** (23.4.12): the list
+     * this walks is now *"rides whose row says measured"*, so a ride with no
+     * provenance written yet is not in it and would never be scanned. The launch
+     * pass usually got there first; asking again here costs one `UPDATE` that
+     * matches nothing and means *Your FTP* does not depend on that.
      */
-    private suspend fun backfillPowerBests(userId: Int) {
+    private suspend fun backfillPowerFacts(userId: Int) {
+        backfillPowerProvenance()
         workoutDao.measuredRidesAwaitingBests(userId).forEach { ride ->
-            recordPowerBests(ride.workoutId)
+            recordPowerFacts(ride.workoutId)
         }
     }
 
     /**
-     * Walks one ride's samples for its mean-maximal efforts and stores them
-     * (16.3.3a).
+     * Gives every finished ride a `power_provenance`, and returns how many it
+     * had to write (23.4.12).
+     *
+     * Two callers, one on each side of the reason this exists. `PelonotApp` runs
+     * it at launch because the six household queries gated on this column are
+     * asked from screens all over the app and a ride missing it is a ride
+     * missing from all of them; [personalBests] runs it because its own backfill
+     * now reads the column. Idempotent, whole-tablet rather than per rider — a
+     * housemate's ride is on the board too — and after the first run it writes
+     * nothing.
+     */
+    suspend fun backfillPowerProvenance(): Int = workoutDao.backfillPowerProvenance()
+
+    /**
+     * Writes down where one ride's watts came from, and what its best efforts
+     * were (23.4.12, 16.3.3a).
      *
      * Called at every finalise — the service's (`stopWorkout`), the crash
      * recovery's, and the second finalise of a ride resumed under 12.6.2 — so
-     * the stored answer is never older than the samples it came from.
+     * the stored answers are never older than the samples they came from.
      *
-     * **Nothing is stored for a ride whose watts were not measured**, and
-     * `power_bests_at` is left null for it: the marker means *scanned and
-     * trustworthy*, which is the claim `bestsFor` then relies on instead of
-     * re-asking `workout_metrics` a question a trimmed ride cannot answer.
+     * **The provenance is written for every ride, the efforts only for a
+     * measured one.** That asymmetry is the whole of 23.4.12: `Modelled` is a
+     * real answer and a ride is entitled to have it recorded, whereas a personal
+     * best derived from `PowerModel` — RMSE 137 W — would be a fiction filed as
+     * a record. Before this, "modelled" and "never scanned" were the same null
+     * in `power_bests_at`, so six leaderboards had to go back to the samples to
+     * tell them apart.
      */
-    private suspend fun recordPowerBests(workoutId: String) {
+    private suspend fun recordPowerFacts(workoutId: String) {
         workoutPowerBestDao.clearFor(workoutId)
 
         val provenance = metricDao.getPowerProvenanceCounts(workoutId).provenance
+        workoutDao.markPowerProvenance(workoutId, provenance)
         if (!provenance.isTrustworthyAsMeasured) return
 
         val samples = metricDao.getMetricsForWorkout(workoutId)

@@ -37,8 +37,38 @@ class PelonotApp : Application() {
             runCatching { ServiceLocator.classTemplateSeeder.syncWithBundledLibrary() }
         }
 
+        backfillPowerProvenance()
+
         applyTelemetrySource()
         drainAnyBacklog()
+    }
+
+    /**
+     * Gives any ride that has none a `power_provenance` (PLAN 23.4.12).
+     *
+     * **One `UPDATE`, at launch, whole-tablet.** It is here rather than on the
+     * screen that needs it because there is no such screen: six queries gate on
+     * that column — the household board, the per-class board, *your usual*, the
+     * *best you've ridden it* verdict — and they are asked from the dashboard,
+     * the class detail, the post-ride summary and the race. A ride the pass has
+     * not reached is absent from all of them with nothing visibly wrong, which
+     * is the exact defect 23.4.12 exists to close, so the pass runs before any
+     * of those screens can be opened rather than lazily behind one of them.
+     *
+     * That is the opposite choice to 16.3.3a's per-rider bests backfill, and the
+     * difference is what each one costs: this is a single statement over
+     * `workouts` that matches nothing after the first launch, while that one
+     * walks a sample series per ride and only *Your FTP* ever needs the answer.
+     *
+     * `runCatching` for the seeder's reason above — a start-up task must not be
+     * able to take the process down — and the fence
+     * `WorkoutDao.completeRidesWithoutProvenance` is what a test asserts against
+     * instead of trusting this to have run.
+     */
+    private fun backfillPowerProvenance() {
+        appScope.launch {
+            runCatching { ServiceLocator.workoutRepository.backfillPowerProvenance() }
+        }
     }
 
     /**

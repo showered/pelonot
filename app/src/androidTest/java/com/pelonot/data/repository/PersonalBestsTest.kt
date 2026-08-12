@@ -8,6 +8,7 @@ import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -114,10 +115,11 @@ class PersonalBestsTest {
         // and no twenty minutes — absent rather than zero.
         assertEquals(listOf(5, 60, 300), stored.map { it.windowSec }.sorted())
         assertEquals(180.0, stored.first().watts, 0.001)
-        assertNotNull(
-            "the scan must be recorded on the ride",
-            database.workoutDao().getWorkoutById("w1")?.powerBestsAt
-        )
+        val row = database.workoutDao().getWorkoutById("w1")
+        assertNotNull("the scan must be recorded on the ride", row?.powerBestsAt)
+        // And where the watts came from, which is the other half of what a
+        // trimmed ride can no longer answer for itself (23.4.12).
+        assertEquals(PowerProvenance.Measured, row?.powerProvenance)
     }
 
     @Test
@@ -147,14 +149,28 @@ class PersonalBestsTest {
         assertEquals(0, bests.ridesCounted)
         assertEquals(1, bests.ridesSkipped)
         assertNull(database.workoutDao().getWorkoutById("modelled")?.powerBestsAt)
+        // **Written, not left null** — that asymmetry is 23.4.12. No efforts are
+        // stored for a modelled ride, but "the app made these watts up" is a
+        // real answer and the six leaderboards that used to re-count the samples
+        // to find it out now read it here.
+        assertEquals(
+            PowerProvenance.Modelled,
+            database.workoutDao().getWorkoutById("modelled")?.powerProvenance
+        )
     }
 
     @Test
     fun aRideRecordedBeforeTheColumnExistedIsScannedOnceAndThenLeftAlone() = runBlocking {
         ride("old", seconds = 400, watts = 200.0)
-        // Exactly what migration 17 → 18 leaves behind: samples, no scan.
-        database.openHelper.writableDatabase
-            .execSQL("UPDATE workouts SET power_bests_at = NULL WHERE id = 'old'")
+        // Exactly what migrations 17 → 18 and 18 → 19 leave behind: samples, no
+        // scan and no provenance. Both columns, because the list the backfill
+        // walks is now *"rides whose row says measured"* — so a ride with
+        // neither is only ever scanned if the provenance pass runs first, and
+        // that ordering is what this fixture exists to break if it is wrong.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE workouts SET power_bests_at = NULL, power_provenance = NULL " +
+                "WHERE id = 'old'"
+        )
         database.workoutPowerBestDao().clearFor("old")
 
         val first = repository.personalBests(riderId)
@@ -202,6 +218,11 @@ class PersonalBestsTest {
         // 12.6.2: the ride is being ridden again, so the efforts on record are
         // the short version's and the marker must not claim otherwise.
         assertTrue(database.workoutPowerBestDao().bestsFor(riderId).isEmpty())
-        assertNull(database.workoutDao().getWorkoutById("w1")?.powerBestsAt)
+        val row = database.workoutDao().getWorkoutById("w1")
+        assertNull(row?.powerBestsAt)
+        // And the provenance goes with them: the extra minutes can turn a
+        // measured ride into a mixed one, and a stale `Measured` would keep it
+        // on six boards it no longer belongs on (23.4.12).
+        assertNull(row?.powerProvenance)
     }
 }

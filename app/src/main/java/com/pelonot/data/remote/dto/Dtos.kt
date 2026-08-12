@@ -150,15 +150,23 @@ data class WorkoutDto(
             intentModifier = workout.intentModifier,
             rpeRating = workout.rpeRating,
             recordedAt = workout.timestamp.toIso8601Utc(),
-            // Reduced from the samples rather than read off the row, because
-            // the row does not carry it: `PowerProvenance` *is* the reduction,
-            // and computing it here means the wire value and the app's own
-            // answer cannot disagree.
-            powerProvenance = PowerProvenance.of(
-                measured = metrics.count { it.powerIsMeasured == true },
-                modelled = metrics.count { it.powerIsMeasured == false },
-                unknown = metrics.count { it.powerIsMeasured == null }
-            ).name,
+            // **Read off the row now that the row carries it** (23.4.12), with
+            // the sample reduction kept as the fallback for a ride recorded
+            // before the column existed and not yet backfilled. It was the
+            // reduction alone, on the argument that computing it here means the
+            // wire value and the app's own answer cannot disagree — which was
+            // right about the goal and became wrong about the means the moment
+            // the app's own answer moved onto the row. The cloud's copy of this
+            // column is the same four words (`007_everyone_leaderboard.sql`),
+            // and 23.4.6 keeps an unsynced ride out of the trimmer, so the
+            // fallback is never asked to answer for a series that has gone.
+            powerProvenance = (
+                workout.powerProvenance ?: PowerProvenance.of(
+                    measured = metrics.count { it.powerIsMeasured == true },
+                    modelled = metrics.count { it.powerIsMeasured == false },
+                    unknown = metrics.count { it.powerIsMeasured == null }
+                )
+                ).name,
             metrics = MetricsPayload.from(metrics)
         )
     }

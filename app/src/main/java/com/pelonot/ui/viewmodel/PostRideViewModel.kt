@@ -127,7 +127,7 @@ class PostRideViewModel(
             // reopened — so the answer has to be on the ride rather than in
             // this object's memory.
             val proposed = if (workout != null && currentFtp > 0 && !workout.ftpProposalDeclined) {
-                val provenance = powerProvenanceOf(metrics)
+                val provenance = powerProvenanceOf(workout, metrics)
                 // 7.10.7. An FTP is a fact about a rider, and this one is
                 // computed from a twenty-minute peak. On a simulated ride that
                 // peak is `PowerModel`'s invention — a curve measured at RMSE

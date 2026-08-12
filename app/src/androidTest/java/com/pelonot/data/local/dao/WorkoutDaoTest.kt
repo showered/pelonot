@@ -8,6 +8,7 @@ import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -339,6 +340,22 @@ class WorkoutDaoTest {
      * and it is not the same claim as `false` — but the leaderboard treats
      * both the same way, which is what these tests are checking.
      */
+    /**
+     * The DAO, after the provenance pass the app runs at launch (23.4.12).
+     *
+     * Every board below is gated on `workouts.power_provenance`, which is
+     * written from the samples once rather than reduced from them on each read.
+     * So the fixtures still say what they always said — *these samples, this
+     * provenance* — and this call is the step in between, which means each test
+     * checks the reduction and the board together instead of the board alone.
+     * It is idempotent and matches nothing on a second call, exactly as at
+     * launch.
+     */
+    private suspend fun settled(): WorkoutDao {
+        workoutDao.backfillPowerProvenance()
+        return workoutDao
+    }
+
     private suspend fun samplesFor(workoutId: String, measured: Boolean?, count: Int = 5) {
         metricDao.insertMetrics(
             (0 until count).map { second ->
@@ -363,7 +380,7 @@ class WorkoutDaoTest {
         )
         samplesFor("theirs", measured = true)
 
-        val board = workoutDao.householdLeaderboard(CLASS_ID)
+        val board = settled().householdLeaderboard(CLASS_ID)
 
         // One row per rider, not per ride, and my *best* is the one that counts.
         assertEquals(2, board.size)
@@ -380,7 +397,7 @@ class WorkoutDaoTest {
         workoutDao.insertWorkout(workout("guest", userId = null, outputKj = 999.0, classId = CLASS_ID))
         samplesFor("guest", measured = true)
 
-        val board = workoutDao.householdLeaderboard(CLASS_ID)
+        val board = settled().householdLeaderboard(CLASS_ID)
 
         assertEquals(listOf(USER_ID), board.map { it.localUserId })
     }
@@ -399,7 +416,7 @@ class WorkoutDaoTest {
         )
         samplesFor("simulated", measured = false)
 
-        val board = workoutDao.householdLeaderboard(CLASS_ID)
+        val board = settled().householdLeaderboard(CLASS_ID)
 
         assertEquals(listOf(USER_ID), board.map { it.localUserId })
     }
@@ -415,7 +432,7 @@ class WorkoutDaoTest {
 
         assertEquals(
             listOf(USER_ID),
-            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+            settled().householdLeaderboard(CLASS_ID).map { it.localUserId }
         )
     }
 
@@ -437,7 +454,7 @@ class WorkoutDaoTest {
             )
         )
 
-        assertEquals(emptyList<Int>(), workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId })
+        assertEquals(emptyList<Int>(), settled().householdLeaderboard(CLASS_ID).map { it.localUserId })
     }
 
     @Test
@@ -461,7 +478,7 @@ class WorkoutDaoTest {
 
         assertEquals(
             listOf(USER_ID),
-            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+            settled().householdLeaderboard(CLASS_ID).map { it.localUserId }
         )
     }
 
@@ -494,7 +511,7 @@ class WorkoutDaoTest {
 
         assertEquals(
             listOf(USER_ID),
-            workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId }
+            settled().householdLeaderboard(CLASS_ID).map { it.localUserId }
         )
     }
 
@@ -507,7 +524,7 @@ class WorkoutDaoTest {
 
         assertEquals(
             listOf(150.0),
-            workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID)
+            settled().ownTotalsForClass(userId = USER_ID, classId = CLASS_ID)
         )
     }
 
@@ -524,7 +541,7 @@ class WorkoutDaoTest {
         // genuinely-best ride is told it came second.
         assertEquals(
             listOf(150.0),
-            workoutDao.ownTotalsForClassExcluding(
+            settled().ownTotalsForClassExcluding(
                 userId = USER_ID,
                 classId = CLASS_ID,
                 excludingWorkoutId = "this-one"
@@ -545,7 +562,7 @@ class WorkoutDaoTest {
 
         assertEquals(
             listOf(150.0, 190.0),
-            workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID).sorted()
+            settled().ownTotalsForClass(userId = USER_ID, classId = CLASS_ID).sorted()
         )
     }
 
@@ -564,7 +581,7 @@ class WorkoutDaoTest {
         )
         samplesFor("theirs-best", measured = true)
 
-        val rivals = workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+        val rivals = settled().householdRivals(CLASS_ID, "mine", USER_ID)
 
         // One row per rider, and it carries the *ride* — a trace needs a
         // workout id, which is the whole reason this is not the board query.
@@ -598,7 +615,7 @@ class WorkoutDaoTest {
         )
         samplesFor("their-small", measured = true)
 
-        val rival = workoutDao.householdRivals(CLASS_ID, "mine", USER_ID).single()
+        val rival = settled().householdRivals(CLASS_ID, "mine", USER_ID).single()
 
         assertEquals("their-big", rival.workoutId)
         assertEquals(1800, rival.durationSec)
@@ -613,7 +630,7 @@ class WorkoutDaoTest {
 
         // Beating yourself is a personal history, not a household comparison —
         // and it is 12.2's screen, not this one.
-        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+        assertEquals(emptyList<String>(), settled().householdRivals(CLASS_ID, "mine", USER_ID)
             .map { it.workoutId })
     }
 
@@ -630,7 +647,7 @@ class WorkoutDaoTest {
         )
         samplesFor("simulated", measured = false)
 
-        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+        assertEquals(emptyList<String>(), settled().householdRivals(CLASS_ID, "mine", USER_ID)
             .map { it.workoutId })
     }
 
@@ -643,7 +660,7 @@ class WorkoutDaoTest {
             workout("theirs", userId = OTHER_USER_ID, outputKj = 240.0, classId = CLASS_ID)
         )
         samplesFor("theirs", measured = true)
-        assertEquals(1, workoutDao.householdRivals(CLASS_ID, "mine", USER_ID).size)
+        assertEquals(1, settled().householdRivals(CLASS_ID, "mine", USER_ID).size)
 
         userDao.insertUser(
             UserEntity(
@@ -653,7 +670,7 @@ class WorkoutDaoTest {
             )
         )
 
-        assertEquals(emptyList<String>(), workoutDao.householdRivals(CLASS_ID, "mine", USER_ID)
+        assertEquals(emptyList<String>(), settled().householdRivals(CLASS_ID, "mine", USER_ID)
             .map { it.workoutId })
     }
 
@@ -775,7 +792,7 @@ class WorkoutDaoTest {
         )
         samplesFor("this-month", measured = true)
 
-        suspend fun bestSince(sinceMs: Long) = workoutDao.previousBestOfClass(
+        suspend fun bestSince(sinceMs: Long) = settled().previousBestOfClass(
             classId = CLASS_ID,
             userId = USER_ID,
             excludingWorkoutId = "",
@@ -802,7 +819,7 @@ class WorkoutDaoTest {
         samplesFor("modelled", measured = false)
 
         assertNull(
-            workoutDao.previousBestOfClass(
+            settled().previousBestOfClass(
                 classId = CLASS_ID,
                 userId = USER_ID,
                 excludingWorkoutId = "",
@@ -810,6 +827,117 @@ class WorkoutDaoTest {
                 sinceMs = now - 86_400_000L
             )
         )
+    }
+
+    // ── Where a ride's watts came from, on the ride (23.4.12) ───────
+
+    /**
+     * The backfill is `PowerProvenance.of` written in SQL, so the two must give
+     * the same answer for every shape a ride can be in — and the assertion is
+     * against the enum itself rather than against four literals, because a
+     * `CASE` that had drifted from the Kotlin would otherwise still pass a test
+     * agreeing with the `CASE`.
+     */
+    @Test
+    fun theProvenancePassAgreesWithPowerProvenance() = runBlocking {
+        workoutDao.insertWorkout(workout("all-measured", classId = CLASS_ID))
+        samplesFor("all-measured", measured = true)
+        workoutDao.insertWorkout(workout("all-modelled", classId = CLASS_ID))
+        samplesFor("all-modelled", measured = false)
+        workoutDao.insertWorkout(workout("historic", classId = CLASS_ID))
+        samplesFor("historic", measured = null)
+        workoutDao.insertWorkout(workout("no-samples", classId = CLASS_ID))
+        // A board that dropped out mid-ride, which is the only way `Mixed`
+        // happens on real hardware.
+        workoutDao.insertWorkout(workout("dropout", classId = CLASS_ID))
+        samplesFor("dropout", measured = true, count = 10)
+        metricDao.insertMetric(
+            WorkoutMetricEntity(
+                workoutId = "dropout",
+                timestampSec = 10,
+                power = 200.0,
+                powerIsMeasured = false
+            )
+        )
+
+        assertEquals(0, settled().completeRidesWithoutProvenance())
+
+        suspend fun provenanceOf(id: String) = workoutDao.getWorkoutById(id)?.powerProvenance
+        assertEquals(PowerProvenance.of(5, 0, 0), provenanceOf("all-measured"))
+        assertEquals(PowerProvenance.of(0, 5, 0), provenanceOf("all-modelled"))
+        assertEquals(PowerProvenance.of(0, 0, 5), provenanceOf("historic"))
+        assertEquals(PowerProvenance.of(0, 0, 0), provenanceOf("no-samples"))
+        assertEquals(PowerProvenance.of(10, 1, 0), provenanceOf("dropout"))
+    }
+
+    /**
+     * The point of the column, and the defect 23.4.9 found live for six queries:
+     * a ride whose samples have gone stays on the board it earned.
+     *
+     * The delete is 23.4.2 with the downsampled trace left out — the most
+     * aggressive form trimming could take — and the assertion is that it changes
+     * nothing. Before this column the same delete took the ride off the
+     * household board, off *your usual* and out of the *best you've ridden it*
+     * verdict, with nothing wrong on any screen.
+     */
+    @Test
+    fun aTrimmedRideKeepsItsPlaceOnEveryBoard() = runBlocking {
+        workoutDao.insertWorkout(workout("old", outputKj = 240.0, classId = CLASS_ID))
+        samplesFor("old", measured = true)
+        workoutDao.insertWorkout(
+            workout("theirs", userId = OTHER_USER_ID, outputKj = 150.0, classId = CLASS_ID)
+        )
+        samplesFor("theirs", measured = true)
+
+        val boardBefore = settled().householdLeaderboard(CLASS_ID).map { it.localUserId }
+        val totalsBefore = workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID)
+
+        metricDao.deleteMetricsForWorkout("old")
+        metricDao.deleteMetricsForWorkout("theirs")
+
+        // Not `settled()`: the pass must not be able to *undo* the answer for a
+        // ride it can no longer work out. It only writes where there is nothing.
+        assertEquals(0, workoutDao.backfillPowerProvenance())
+        assertEquals(boardBefore, workoutDao.householdLeaderboard(CLASS_ID).map { it.localUserId })
+        assertEquals(
+            totalsBefore,
+            workoutDao.ownTotalsForClass(userId = USER_ID, classId = CLASS_ID)
+        )
+        assertEquals(
+            "old",
+            workoutDao.householdRivals(CLASS_ID, "theirs", OTHER_USER_ID).single().workoutId
+        )
+    }
+
+    /**
+     * A ride still being pedalled has no answer yet, and the pass must not
+     * invent one — the row's totals are zeroed at ride start (1.12) and its
+     * samples are still arriving, so any word written now is about a ride that
+     * has not happened.
+     */
+    @Test
+    fun theProvenancePassLeavesARideInProgressAlone() = runBlocking {
+        workoutDao.insertWorkout(workout("riding", classId = CLASS_ID, isComplete = false))
+        samplesFor("riding", measured = true)
+
+        assertEquals(0, workoutDao.backfillPowerProvenance())
+        assertNull(workoutDao.getWorkoutById("riding")?.powerProvenance)
+    }
+
+    /**
+     * The fence: after the pass, no finished ride is missing from the column.
+     * A ride that is would be absent from six leaderboards with nothing
+     * visibly wrong, which is why this is asserted rather than assumed.
+     */
+    @Test
+    fun noFinishedRideIsLeftWithoutProvenance() = runBlocking {
+        workoutDao.insertWorkout(workout("a", classId = CLASS_ID))
+        samplesFor("a", measured = true)
+        workoutDao.insertWorkout(workout("b", classId = CLASS_ID))
+        workoutDao.insertWorkout(workout("c", userId = OTHER_USER_ID, classId = CLASS_ID))
+        samplesFor("c", measured = false)
+
+        assertEquals(0, settled().completeRidesWithoutProvenance())
     }
 
     private companion object {

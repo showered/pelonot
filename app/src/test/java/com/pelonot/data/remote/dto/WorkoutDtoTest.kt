@@ -2,6 +2,7 @@ package com.pelonot.data.remote.dto
 
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -148,5 +149,45 @@ class WorkoutDtoTest {
         val payload = encoded["metrics_payload"] as kotlinx.serialization.json.JsonObject
         assertEquals("null", payload["hr"].toString())
         assertEquals("1", payload["v"].toString())
+    }
+
+    /**
+     * 23.4.12: the ride's own answer travels, not a re-count of whatever samples
+     * happen to be attached.
+     *
+     * The fixture is the state a trimmed ride is in — a row saying `Measured`
+     * with nothing under it — and it is the one the old shape got wrong: the
+     * reduction of an empty series is `Unknown`, so the cloud would have been
+     * handed the wrong word about a ride the bike really did measure, and 18.7's
+     * cross-bike board filters on exactly that word.
+     */
+    @Test
+    fun `the provenance on the wire is the ride's own, not a re-count of its samples`() {
+        val measured = workout().copy(powerProvenance = PowerProvenance.Measured)
+
+        assertEquals("Measured", WorkoutDto.from(measured, emptyList(), ACCOUNT_ID).powerProvenance)
+    }
+
+    /**
+     * And a ride recorded before the column existed still says something: the
+     * sample reduction is the fallback, so an upload that beats the backfill to
+     * it is no worse than it used to be.
+     */
+    @Test
+    fun `a ride with no provenance written falls back to counting its samples`() {
+        val metric = WorkoutMetricEntity(
+            workoutId = "11111111-2222-3333-4444-555555555555",
+            timestampSec = 0,
+            cadence = 80.0,
+            resistance = 30.0,
+            power = 110.0,
+            powerIsMeasured = false
+        )
+
+        assertNull(workout().powerProvenance)
+        assertEquals(
+            "Modelled",
+            WorkoutDto.from(workout(), listOf(metric), ACCOUNT_ID).powerProvenance
+        )
     }
 }

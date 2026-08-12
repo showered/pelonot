@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.pelonot.domain.model.PowerProvenance
 
 @Entity(
     tableName = "workouts",
@@ -252,5 +253,39 @@ data class WorkoutEntity(
      * the same reason it clears [syncedAt]: the ride is about to get longer.
      */
     @ColumnInfo(name = "power_bests_at")
-    val powerBestsAt: Long? = null
+    val powerBestsAt: Long? = null,
+
+    /**
+     * Where this ride's watts came from, written down once (PLAN 23.4.12).
+     *
+     * [com.pelonot.domain.model.PowerProvenance] was derived from
+     * `workout_metrics` on every read, which made it a question a **trimmed**
+     * ride cannot answer — and eight readers ask it (23.4.9), six of them
+     * leaderboards. So a rider whose old rides had been trimmed would fall off
+     * every board, out of *"best you've ridden it"* and out of the FTP proposal
+     * (7.10.7), with nothing wrong on any screen: their history would just get
+     * smaller. Same fix as [ftpWatts] (7.8), [maxHrBpm] (21.2.3) and
+     * [powerBestsAt] (16.3.3a) — the denominator recorded at the one moment it
+     * is knowable.
+     *
+     * **Null means nobody wrote it down**, exactly as
+     * `workout_metrics.power_is_measured` does — not `Unknown`, which is a
+     * claim about the samples. It is null for a ride still being ridden and for
+     * the instant between a finalise and the write that follows it;
+     * `WorkoutDao.backfillPowerProvenance` closes both, and it is the
+     * *unfinished* rides that keep this nullable rather than the old ones.
+     *
+     * The four names are the same four the cloud has had since 18.5 —
+     * `supabase/007_everyone_leaderboard.sql` constrains the column to them and
+     * its board filters on `'Measured'` — so this is the local schema agreeing
+     * with the remote one rather than a second vocabulary.
+     *
+     * Written **after** the finalise like [syncedAt] and [powerBestsAt], for
+     * 8.3d.4's reason: `WorkoutSession` does not carry it, so a value written
+     * first would be handed back as its default by the finalise. Resuming a
+     * finished ride (12.6.2) clears it — the ride is about to get longer, and
+     * a board dying during the extra minutes turns `Measured` into `Mixed`.
+     */
+    @ColumnInfo(name = "power_provenance")
+    val powerProvenance: PowerProvenance? = null
 )

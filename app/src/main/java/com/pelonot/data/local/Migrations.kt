@@ -480,11 +480,38 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 18 → 19: where a ride's watts came from, written on the ride (PLAN
+     * 23.4.12).
+     *
+     * The column and nothing else. **The backfill is deliberately not here**,
+     * and for the opposite reason to 17 → 18's: not because SQL cannot express
+     * it — a reduction over `power_is_measured` is four `CASE` branches and is
+     * exactly expressible — but because there is nowhere else to put a pass that
+     * has to be able to run *again*. A ride finalised by a build that crashed
+     * between the update and the write has a null here, and so does every ride
+     * still being pedalled; a migration runs once and can answer for neither.
+     * `WorkoutDao.backfillPowerProvenance` is one statement, runs at launch,
+     * and finds nothing after the first time — so it is the migration's
+     * backfill *and* the self-heal, in one place rather than two copies of one
+     * `CASE`.
+     *
+     * That matters more here than it did for the bests, because this column
+     * **gates six leaderboards**. A ride the backfill has not reached yet is
+     * off all of them, so the pass being re-runnable is the difference between
+     * a gap that closes itself and a rider's history quietly shrinking.
+     */
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `power_provenance` TEXT")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-        MIGRATION_16_17, MIGRATION_17_18
+        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
     )
 }

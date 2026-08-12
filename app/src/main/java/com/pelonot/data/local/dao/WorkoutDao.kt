@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.Flow
 
 /** One rider's week on the dashboard's household panel — see [WorkoutDao.householdRecent]. */
@@ -265,6 +266,11 @@ interface WorkoutDao {
      * what the rider reads and the id is what the comparison is made against —
      * and history has no use for the id. `LEFT JOIN`, so a Just Ride and a ride
      * of a class since retired both still come back with the ride intact.
+     *
+     * It carries `power_provenance` since 23.4.12, and that is what took the
+     * dashboard's last remaining read of `workout_metrics` away: whether the
+     * ride's watts can be compared with anything used to be a count over its
+     * whole sample series, asked on the first screen the app shows (22.1.8).
      */
     @Query(
         """
@@ -273,6 +279,7 @@ interface WorkoutDao {
                c.title AS class_title,
                w.duration_sec AS duration_sec,
                w.total_output_kj AS total_output_kj,
+               w.power_provenance AS power_provenance,
                w.timestamp AS timestamp
         FROM workouts w
         LEFT JOIN class_templates c ON c.id = w.class_id
@@ -382,6 +389,18 @@ interface WorkoutDao {
     // Everyone with a profile on this tablet, ranked on one class. No network,
     // no account, no RLS — and the fairest comparison this app can make, since
     // both sides came off the same board and the same knob.
+    //
+    // **`power_provenance = 'Measured'` is the measured-power rule (24.4.2) in
+    // the seven queries below, and it used to be a pair of correlated
+    // subqueries over `workout_metrics`.** The rule is unchanged: a simulated
+    // ride's watts are `PowerModel`'s output, RMSE 137 W against the real
+    // board, so ranking one beside a measured ride ranks a rider against a
+    // number the app made up — and a ride with no samples at all is not
+    // "measured all the way through", it is evidence-free (22.1.7 found that
+    // one the hard way). What changed is *where the answer lives*: on the ride,
+    // written at finalise, rather than re-reduced from samples 23.4 is about to
+    // delete (23.4.12). Null therefore excludes a ride, which is the same
+    // answer the old `EXISTS` gave for a ride with nothing to reduce.
 
     /**
      * Each rider's **best** ride of one class, best first.
@@ -390,14 +409,9 @@ interface WorkoutDao {
      *
      * - `user_id IS NOT NULL` via the join — a guest ride has no owner, so
      *   there is nobody to put on the board (24.1.4).
-     * - a ride with no samples at all cannot be ranked on work it has no
-     *   evidence of.
-     * - **any sample that is not a measurement disqualifies the ride**
-     *   (24.4.2). A simulated ride's watts are `PowerModel`'s output, which
-     *   scores RMSE 137 W against the real board; putting one beside a
-     *   measured ride would be ranking a rider against a number the app made
-     *   up. `NULL` counts as not-a-measurement for the same reason it does
-     *   everywhere else: nobody wrote it down, so it cannot be shown to be one.
+     * - `household_visible` — the per-profile opt-out (24.2.3).
+     * - the measured-power rule above, which is also what excludes a ride
+     *   carrying no evidence of the work it claims.
      *
      * One row per rider rather than per ride: a leaderboard listing somebody's
      * six attempts is a personal history, not a comparison.
@@ -414,12 +428,7 @@ interface WorkoutDao {
         WHERE w.class_id = :classId
           AND w.is_complete = 1
           AND p.household_visible = 1
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         GROUP BY p.local_user_id
         ORDER BY bestOutputKj DESC
         """
@@ -456,12 +465,7 @@ interface WorkoutDao {
           AND w.user_id != :excludingUserId
           AND w.is_complete = 1
           AND p.household_visible = 1
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         GROUP BY p.local_user_id
         ORDER BY outputKj DESC
         """
@@ -506,12 +510,7 @@ interface WorkoutDao {
           AND w.is_complete = 1
           AND w.total_output_kj > 0
           AND p.household_visible = 1
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         GROUP BY p.local_user_id
         ORDER BY lastRideAt DESC
         """
@@ -552,12 +551,7 @@ interface WorkoutDao {
           AND w.timestamp < :beforeMs
           AND w.timestamp >= :sinceMs
           AND w.is_complete = 1
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         ORDER BY w.total_output_kj DESC
         LIMIT 1
         """
@@ -584,6 +578,12 @@ interface WorkoutDao {
      * scan did not happen. The list empties itself and stays empty, which is
      * how the sample scan the old shape paid for on every load of *Your FTP*
      * became a cost paid once per ride.
+     *
+     * **The two columns now answer one question each** (23.4.12): the
+     * provenance says whether this ride's watts can be trusted as measurement,
+     * and `power_bests_at` says only whether the scan has run. That is what the
+     * older shape had wrong — the marker was carrying both facts, so "modelled"
+     * and "not scanned yet" were the same value.
      */
     @Query(
         """
@@ -595,20 +595,88 @@ interface WorkoutDao {
         WHERE w.user_id = :userId
           AND w.is_complete = 1
           AND w.power_bests_at IS NULL
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-              SELECT 1 FROM workout_metrics m
-              WHERE m.workout_id = w.id
-                AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         ORDER BY w.timestamp DESC
         """
     )
     suspend fun measuredRidesAwaitingBests(userId: Int): List<MeasuredRideRow>
 
-    /** This ride's samples have been walked, and its watts were measured. */
+    /** This ride's samples have been walked for mean-maximal efforts. */
     @Query("UPDATE workouts SET power_bests_at = :at WHERE id = :workoutId")
     suspend fun markPowerBestsScanned(workoutId: String, at: Long)
+
+    /**
+     * Writes where a ride's watts came from onto the ride (23.4.12).
+     *
+     * An `UPDATE` of the one column rather than a whole-entity write, because
+     * this runs immediately after the finalise has written every other column
+     * off `WorkoutSession` — and the session does not carry this one, so a
+     * round trip through the entity would be a second chance to hand back a
+     * stale copy of something (8.3d.4).
+     */
+    @Query("UPDATE workouts SET power_provenance = :provenance WHERE id = :workoutId")
+    suspend fun markPowerProvenance(workoutId: String, provenance: PowerProvenance)
+
+    /**
+     * Works out `power_provenance` for every finished ride that has none
+     * (23.4.12), and returns how many it wrote.
+     *
+     * **`PowerProvenance.of` in SQL, and it must stay equal to it.** The order
+     * of the branches is the whole of it: any sample nobody wrote down makes the
+     * ride `Unknown` outright — one unrecorded sample means it can no longer be
+     * *shown* to be measurement all the way through — and only then does an
+     * absence of modelled samples mean `Measured`. A ride with no samples at all
+     * is `Unknown` rather than measured, which is 22.1.7's defect fixed rather
+     * than reintroduced.
+     *
+     * Unlike 16.3.3a's backfill this **is** expressible here, and that is the
+     * only reason it is one statement instead of a walk: mean-maximal power is a
+     * sliding window over a series with gaps, whereas provenance is a reduction
+     * of one nullable flag. So the choice of runtime over migration is not about
+     * capability (18 → 19 says why) — it is that a pass which can run again
+     * covers the ride whose finalise was interrupted as well as the rides that
+     * predate the column.
+     *
+     * `is_complete = 1` deliberately: a ride being pedalled has no final answer
+     * yet, and every one of the seven queries above excludes it anyway.
+     */
+    @Query(
+        """
+        UPDATE workouts SET power_provenance = CASE
+            WHEN NOT EXISTS (
+                SELECT 1 FROM workout_metrics m WHERE m.workout_id = workouts.id
+            ) THEN 'Unknown'
+            WHEN EXISTS (
+                SELECT 1 FROM workout_metrics m
+                WHERE m.workout_id = workouts.id AND m.power_is_measured IS NULL
+            ) THEN 'Unknown'
+            WHEN NOT EXISTS (
+                SELECT 1 FROM workout_metrics m
+                WHERE m.workout_id = workouts.id AND m.power_is_measured = 0
+            ) THEN 'Measured'
+            WHEN NOT EXISTS (
+                SELECT 1 FROM workout_metrics m
+                WHERE m.workout_id = workouts.id AND m.power_is_measured = 1
+            ) THEN 'Modelled'
+            ELSE 'Mixed'
+        END
+        WHERE is_complete = 1 AND power_provenance IS NULL
+        """
+    )
+    suspend fun backfillPowerProvenance(): Int
+
+    /**
+     * Finished rides still carrying no provenance — nothing but a fence.
+     *
+     * The invariant [backfillPowerProvenance] exists to hold: after it has run,
+     * this is 0. A test asserts that rather than a comment claiming it, because
+     * a ride left out of this column is a ride left off six leaderboards with
+     * nothing visibly wrong.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM workouts WHERE is_complete = 1 AND power_provenance IS NULL"
+    )
+    suspend fun completeRidesWithoutProvenance(): Int
 
     /**
      * Rides counted towards this rider's bests, and rides not.
@@ -781,22 +849,23 @@ interface WorkoutDao {
      * Every total this rider has recorded on one class, for *your usual*
      * (24.3.18b).
      *
-     * **Measured watts only**, by the same `EXISTS` / `NOT EXISTS` pair every
-     * other raceable query carries (24.4.2): a median that includes simulated
-     * rides is a target built partly out of `PowerModel`, and the whole reason
-     * `power_is_measured` exists is that the two must never be averaged
-     * together. `total_output_kj > 0` drops the abandoned ten-second attempts
-     * that would otherwise drag a median down.
+     * **Measured watts only**, by the same one clause every other raceable query
+     * carries (24.4.2): a median that includes simulated rides is a target built
+     * partly out of `PowerModel`, and the whole reason `power_is_measured`
+     * exists is that the two must never be averaged together.
+     * `total_output_kj > 0` drops the abandoned ten-second attempts that would
+     * otherwise drag a median down.
      *
-     * **The `EXISTS` is not redundant and was missing here for a sitting**
-     * (22.1.7). A bare `NOT EXISTS (a sample that is not a measurement)` is
-     * passed *trivially* by a ride with **no samples at all**, so an
-     * evidence-free ride arrived as "measured all the way through" and
-     * contributed its total to the *usual* ghost's median. `PowerProvenance`
-     * answers `Unknown` for the same ride (`of(0, 0, 0)`), which is what makes
-     * this a disagreement rather than a preference — and a ride can reach that
-     * state honestly, since `total_output_kj` is written by the finalise from
-     * the session while the samples are what survived the plausibility fence.
+     * **22.1.7's defect is why this is one column rather than two subqueries.**
+     * The gate used to be `EXISTS (a sample) AND NOT EXISTS (a sample that is
+     * not a measurement)`, and the second half alone is passed *trivially* by a
+     * ride with **no samples at all** — which is a state a ride reaches
+     * honestly, since `total_output_kj` comes from the session while the samples
+     * are what survived the plausibility fence. This query was missing the
+     * `EXISTS` for a sitting and quietly counted such rides. Asking the row for
+     * a `PowerProvenance` cannot be got half right in the same way: an
+     * evidence-free ride is `Unknown` (`of(0, 0, 0)`) and no reader can spell
+     * that gate two ways.
      */
     @Query(
         """
@@ -805,12 +874,7 @@ interface WorkoutDao {
           AND w.user_id = :userId
           AND w.is_complete = 1
           AND w.total_output_kj > 0
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-            SELECT 1 FROM workout_metrics m
-            WHERE m.workout_id = w.id
-              AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         """
     )
     suspend fun ownTotalsForClass(userId: Int, classId: String): List<Double>
@@ -825,15 +889,12 @@ interface WorkoutDao {
      * a rider who matched their best to the kilojoule would be told they had
      * beaten it.
      *
-     * Measured watts only, by the same `NOT EXISTS` clause every comparison in
-     * this app carries (24.4.2) — **and the `EXISTS` beside it**, which
-     * `ownTotalsForClass` above is missing. A ride with no samples at all
-     * passes a bare `NOT EXISTS` trivially, so it would arrive here as
-     * "measured all the way through" on no evidence whatever. The other side
-     * of this same comparison asks `PowerProvenance`, which answers `Unknown`
-     * for a ride of no samples for exactly that reason (`of(0, 0, 0)`), and
-     * two sides of one comparison disagreeing about what counts as measured is
-     * how a rider gets told they beat something that was never ridden.
+     * Measured watts only, by the one clause every comparison in this app
+     * carries (24.4.2) — and now literally the same clause as the other side of
+     * this comparison, which is the point of 23.4.12. Both sides used to spell
+     * the rule out for themselves, one of them got it wrong (22.1.7), and two
+     * sides of a comparison disagreeing about what counts as measured is how a
+     * rider gets told they beat something that was never ridden.
      */
     @Query(
         """
@@ -843,12 +904,7 @@ interface WorkoutDao {
           AND w.id != :excludingWorkoutId
           AND w.is_complete = 1
           AND w.total_output_kj > 0
-          AND EXISTS (SELECT 1 FROM workout_metrics m WHERE m.workout_id = w.id)
-          AND NOT EXISTS (
-            SELECT 1 FROM workout_metrics m
-            WHERE m.workout_id = w.id
-              AND (m.power_is_measured IS NULL OR m.power_is_measured = 0)
-          )
+          AND w.power_provenance = 'Measured'
         """
     )
     suspend fun ownTotalsForClassExcluding(

@@ -57,10 +57,7 @@ internal fun buildRideCharts(
         )
     },
     ftpWatts = workout.ftpWatts ?: riderFtp ?: UserEntity.DEFAULT_FTP,
-    // 16.1.6: counted from the samples themselves rather than asked of the
-    // ride, because the samples are where the answer lives and a ride can be
-    // both.
-    powerProvenance = powerProvenanceOf(metrics),
+    powerProvenance = powerProvenanceOf(workout, metrics),
     intervals = intervals,
     intentMultiplier = workout.intentModifier,
     ftpIsTheRides = workout.ftpWatts != null,
@@ -73,14 +70,29 @@ internal fun buildRideCharts(
 )
 
 /**
- * Where a ride's watts came from, counted over its own samples.
+ * Where a ride's watts came from: the ride's own answer, or its samples'.
  *
- * `power_is_measured` is nullable and null means *nobody wrote it down* — not
- * "modelled" — so the three counts are three different claims and only
- * `Measured` passes `isTrustworthyAsMeasured`. Shared for the same reason as
- * the builder above: two screens asking this question differently is how one
- * of them ends up presenting a modelled watt as a measured one.
+ * **16.1.6 said to count the samples rather than ask the ride, and 23.4.12 is
+ * why that flipped.** The reasoning was that the samples are where the answer
+ * lives and a ride can be both measured and modelled — which is true, and is
+ * exactly what `workouts.power_provenance` now records, `Mixed` included. What
+ * the samples cannot do is answer *after 23.4 has trimmed them*, and a chart
+ * captioned "measured by the bike" off the four samples a trim left behind is
+ * the same defect 16.1.6 was written to prevent, arriving from the other side.
+ *
+ * The count is kept as the fallback for a row with no provenance on it — a ride
+ * still in progress, or one the backfill has not reached — because there the
+ * samples genuinely are the only answer. `power_is_measured` is nullable and
+ * null means *nobody wrote it down* rather than "modelled", so the three counts
+ * are three different claims and only `Measured` passes
+ * `isTrustworthyAsMeasured`.
  */
+internal fun powerProvenanceOf(
+    workout: WorkoutEntity,
+    metrics: List<WorkoutMetricEntity>
+): PowerProvenance = workout.powerProvenance ?: powerProvenanceOf(metrics)
+
+/** The sample reduction on its own, for a caller that has no row to ask. */
 internal fun powerProvenanceOf(metrics: List<WorkoutMetricEntity>): PowerProvenance =
     PowerProvenance.of(
         measured = metrics.count { it.powerIsMeasured == true },

@@ -6,6 +6,8 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.pelonot.domain.model.PowerProvenance
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -1144,6 +1146,102 @@ class MigrationTest {
                 cursor.moveToFirst()
                 assertEquals(0, cursor.getInt(0))
             }
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * 18 → 19: the column arrives empty, and the pass that fills it is the same
+     * pass that keeps filling it (PLAN 23.4.12).
+     *
+     * Three rides seeded at 18 — measured, modelled, and one from before
+     * `power_is_measured` existed — because the interesting assertion is not
+     * that a column appeared but that **an upgrade puts every existing ride back
+     * on the boards it was already on.** The column gates six of them, so a
+     * migration that added it and stopped would silently empty the household
+     * leaderboard for every rider on the tablet until each rode again.
+     */
+    @Test
+    fun migrate18To19_addsProvenanceEmptyAndTheLaunchPassFillsIt() {
+        helper.createDatabase(TEST_DB, 18).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0)
+                """.trimIndent()
+            )
+            listOf("measured", "modelled", "historic").forEach { id ->
+                db.execSQL(
+                    """
+                    INSERT INTO workouts (
+                        id, user_id, class_id, duration_sec, total_output_kj,
+                        total_distance_km, avg_cadence, avg_power, avg_hr,
+                        intent_modifier, rpe_rating, is_complete, was_recovered,
+                        timestamp, ftp_proposal_declined, resume_count,
+                        interrupted_sec
+                    ) VALUES ('$id', 1, NULL, 1800, 150.0, 10.0, 90.0, 200.0,
+                              150.0, 1.0, NULL, 1, 0, 2000, 0, 0, 0)
+                    """.trimIndent()
+                )
+            }
+            db.execSQL(
+                "INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence, " +
+                    "resistance, power, heart_rate, power_is_measured) " +
+                    "VALUES ('measured', 1, 90.0, 40.0, 200.0, 150, 1)"
+            )
+            db.execSQL(
+                "INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence, " +
+                    "resistance, power, heart_rate, power_is_measured) " +
+                    "VALUES ('modelled', 1, 90.0, 40.0, 200.0, 150, 0)"
+            )
+            db.execSQL(
+                "INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence, " +
+                    "resistance, power, heart_rate) " +
+                    "VALUES ('historic', 1, 90.0, 40.0, 200.0, 150)"
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 19, true, AppMigrations.MIGRATION_18_19)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val dao = migrated.workoutDao()
+
+            // Straight after the migration nothing claims anything, which is
+            // the state the pass exists to fix rather than a state to ship.
+            assertEquals(3, runBlocking { dao.completeRidesWithoutProvenance() })
+
+            assertEquals(3, runBlocking { dao.backfillPowerProvenance() })
+            assertEquals(0, runBlocking { dao.completeRidesWithoutProvenance() })
+
+            assertEquals(
+                PowerProvenance.Measured,
+                runBlocking { dao.getWorkoutById("measured") }?.powerProvenance
+            )
+            assertEquals(
+                PowerProvenance.Modelled,
+                runBlocking { dao.getWorkoutById("modelled") }?.powerProvenance
+            )
+            // Not `Modelled`: nobody wrote it down, and that is a different
+            // claim about the rider's record.
+            assertEquals(
+                PowerProvenance.Unknown,
+                runBlocking { dao.getWorkoutById("historic") }?.powerProvenance
+            )
+
+            // And it is idempotent, which is what makes it safe to run on every
+            // launch rather than once.
+            assertEquals(0, runBlocking { dao.backfillPowerProvenance() })
         } finally {
             migrated.close()
         }
