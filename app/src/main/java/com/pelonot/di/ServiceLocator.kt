@@ -12,6 +12,7 @@ import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
+import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -164,6 +165,18 @@ object ServiceLocator {
             database.activeRideRivalDao(),
             database.workoutPowerBestDao()
         )
+    }
+
+    /**
+     * Old rides condensed to an outline, when the rider has asked for it
+     * (23.4).
+     *
+     * Separate from [workoutRepository] on purpose: it is the only thing in the
+     * app that deletes a rider's seconds, and it is worth being able to see
+     * every caller of it in one grep.
+     */
+    val retentionRepository: RetentionRepository by lazy {
+        RetentionRepository(context, database)
     }
 
     val classTemplateSeeder: ClassTemplateSeeder by lazy {

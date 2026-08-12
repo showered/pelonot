@@ -38,9 +38,38 @@ class PelonotApp : Application() {
         }
 
         backfillPowerProvenance()
+        trimOldRides()
 
         applyTelemetrySource()
         drainAnyBacklog()
+    }
+
+    /**
+     * Condenses rides older than the age the rider chose (PLAN 23.4.2).
+     *
+     * **It does nothing at all unless they chose one**, which is 23.4.4: the
+     * default is `Never`, `RetentionRepository.trim` returns immediately under
+     * it, and no ride on any tablet has ever lost a second to this without
+     * somebody going to Settings and reading what the button said.
+     *
+     * At launch rather than after a ride, because the owner asked for
+     * *auto-cleanup* (14.10.4) and a housekeeping pass should never be a thing
+     * that happens to a rider who has just stopped pedalling — the post-ride
+     * summary reads the samples it would be deleting. The in-progress guard is
+     * in the repository as well, twice over.
+     *
+     * Deliberately silent when it finds nothing, and it finds nothing on almost
+     * every launch: the alternative is a message about housekeeping on a screen
+     * whose job is to start a ride. What is *not* silent is the choice itself
+     * and what Settings says about it.
+     */
+    private fun trimOldRides() {
+        appScope.launch {
+            runCatching {
+                val age = ServiceLocator.settingsRepository.settings.first().retentionAge
+                if (age.isOn) ServiceLocator.retentionRepository.trim(age)
+            }
+        }
     }
 
     /**

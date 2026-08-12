@@ -679,6 +679,86 @@ interface WorkoutDao {
     suspend fun completeRidesWithoutProvenance(): Int
 
     /**
+     * The rides old enough to trim, oldest first (PLAN 23.4.2).
+     *
+     * **Four clauses and three of them are somebody's defect written down.**
+     *
+     * `is_complete = 1` is 8.3b's rule reaching a fourth place: three resume
+     * paths read a ride's samples (`recoverWorkout`,
+     * `resumeInterruptedWorkout`, `interruptionFor`), and every one of them
+     * operates on `is_complete = 0`. A trimmer that took an unfinished ride
+     * would be deleting the record of the class somebody is pedalling right now.
+     * [excludingWorkoutId] is the same guard from the other side, for the ride
+     * that 12.6.2 has re-opened.
+     *
+     * `metrics_detail_sec IS NULL` keeps it idempotent: a ride is trimmed once
+     * and never re-bucketed, which matters because trimming an outline again
+     * would be a downsample of a downsample.
+     *
+     * And the join is **23.4.6, enforced in the trimmer** rather than in the
+     * sync worker, which is 23.4.9's own finding: by the time the worker runs
+     * the samples are already gone and it would upload an authoritative-looking
+     * short version. So a rider with an account only has rides trimmed that the
+     * cloud has taken (`synced_at`), and an offline rider — which under rule 1
+     * is everybody today — is gated by nothing, because there is no copy for
+     * them to be ahead of. `LEFT JOIN`, so a ride with no rider on it is still
+     * eligible.
+     */
+    @Query(
+        """
+        SELECT w.id FROM workouts w
+        LEFT JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.is_complete = 1
+          AND w.metrics_detail_sec IS NULL
+          AND w.timestamp < :cutoffMs
+          AND w.id <> :excludingWorkoutId
+          AND (p.auth_user_id IS NULL OR w.synced_at IS NOT NULL)
+        ORDER BY w.timestamp ASC
+        """
+    )
+    suspend fun trimmableRides(cutoffMs: Long, excludingWorkoutId: String): List<String>
+
+    /** [trimmableRides]' own count, for the sentence Settings shows first. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts w
+        LEFT JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.is_complete = 1
+          AND w.metrics_detail_sec IS NULL
+          AND w.timestamp < :cutoffMs
+          AND w.id <> :excludingWorkoutId
+          AND (p.auth_user_id IS NULL OR w.synced_at IS NOT NULL)
+        """
+    )
+    suspend fun trimmableRideCount(cutoffMs: Long, excludingWorkoutId: String): Int
+
+    /**
+     * Says a ride is now an outline, and keeps what its seconds counted
+     * (23.4.3).
+     *
+     * One statement for both, because they are one fact: a ride whose detail
+     * column said 10 while its distributions were missing would be an outline
+     * that had thrown its own time-in-zone away, and the screen would have no
+     * way to tell that from a ride that never had one.
+     */
+    @Query(
+        """
+        UPDATE workouts
+        SET metrics_detail_sec = :detailSec, distributions_json = :distributionsJson
+        WHERE id = :workoutId
+        """
+    )
+    suspend fun markTrimmed(workoutId: String, detailSec: Int, distributionsJson: String?)
+
+    /** How many seconds of riding this tablet is holding (23.4.1). */
+    @Query("SELECT COUNT(*) FROM workout_metrics")
+    suspend fun storedSampleCount(): Int
+
+    /** And over how many finished rides. */
+    @Query("SELECT COUNT(*) FROM workouts WHERE is_complete = 1")
+    suspend fun completeRideCount(): Int
+
+    /**
      * Rides counted towards this rider's bests, and rides not.
      *
      * Asked of `power_bests_at` rather than of the samples, which is the point

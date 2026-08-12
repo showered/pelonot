@@ -13,7 +13,9 @@ import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.CalibrationState
+import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.StorageFacts
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.sensor.HeartRateDevice
@@ -25,6 +27,7 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.UnitSystem
+import com.pelonot.domain.retention.RetentionAge
 import kotlinx.coroutines.flow.SharingStarted
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.repository.WorkoutRepository
@@ -85,7 +88,18 @@ data class SettingsUiState(
      * starting point rather than written for them (21.1.3). Null until it is
      * looked up, and null for a rider who has never worn a strap.
      */
-    val highestRecordedHr: Int? = null
+    val highestRecordedHr: Int? = null,
+
+    /**
+     * What this tablet is actually holding (23.4.1), and how much of it the
+     * rider's retention choice would condense.
+     *
+     * Null until the screen asks. It is a file size and two counts rather than
+     * a model, which is the whole of 23.4.1: everything in the retention item
+     * was sized off an estimate of ~61 MB a year, and this is the tablet's own
+     * answer — on the bike, without adb.
+     */
+    val storage: StorageFacts? = null
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -133,6 +147,7 @@ class SettingsViewModel(
     private val calibrationRepository: CalibrationRepository,
     private val databaseBackup: DatabaseBackup,
     private val workoutRepository: WorkoutRepository,
+    private val retentionRepository: RetentionRepository,
     private val cloudAccess: CloudAccess,
     private val accountRepository: AccountRepository,
     /** Whether this build has an endpoint at all — see [SettingsUiState]. */
@@ -222,11 +237,23 @@ class SettingsViewModel(
      */
     private val _highestRecordedHr = MutableStateFlow<Int?>(null)
 
+    /** 23.4.1, read on demand for the same reason: nothing draws it live. */
+    private val _storage = MutableStateFlow<StorageFacts?>(null)
+
+    /** The four things this screen looks up rather than observes. */
+    private data class OnDemand(
+        val mediaVolume: Float,
+        val volumeError: String?,
+        val highestHr: Int?,
+        val storage: StorageFacts?
+    )
+
     private val volume = combine(
         volumeController.mediaVolume,
         volumeController.lastError,
-        _highestRecordedHr
-    ) { level, error, highestHr -> Triple(level, error, highestHr) }
+        _highestRecordedHr,
+        _storage
+    ) { level, error, highestHr, storage -> OnDemand(level, error, highestHr, storage) }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
@@ -234,7 +261,7 @@ class SettingsViewModel(
         sensors,
         volume,
         calibrationRepository.state
-    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr, storage), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -248,7 +275,8 @@ class SettingsViewModel(
             sessionMatchesProfile = cloudSync.sessionMatchesProfile,
             ridesWaiting = cloudSync.ridesWaiting,
             cloudConfigured = cloudConfigured,
-            highestRecordedHr = highestHr
+            highestRecordedHr = highestHr,
+            storage = storage
         )
     }.stateIn(
         scope = viewModelScope,
@@ -427,6 +455,52 @@ class SettingsViewModel(
 
     // ── Backup and restore (19.1.3 / 12.4.4) ────────────────────────
 
+    /**
+     * What the tablet is holding, and what the rider's choice would take
+     * (23.4.1).
+     *
+     * On demand rather than observed: it stats a file and counts every row in
+     * `workout_metrics`, which is not work to repeat on every settings emission
+     * — and nothing about it changes while the screen is open unless the rider
+     * themselves trims.
+     */
+    fun refreshStorage() {
+        viewModelScope.launch {
+            val age = settingsRepository.settings.first().retentionAge
+            _storage.value = retentionRepository.facts(age)
+        }
+    }
+
+    /**
+     * The rider chose how long the full record is kept, and it takes effect at
+     * once (23.4.2, 23.4.4).
+     *
+     * **Trims immediately rather than waiting for the next launch**, because a
+     * rider who has just read a dialog saying what will happen and tapped the
+     * button that says it is entitled to see it happen. The launch pass is what
+     * keeps it true afterwards.
+     *
+     * Reports what it did as a sentence, and says nothing at all when there was
+     * nothing old enough — *"0 rides trimmed"* is a message about the feature
+     * rather than about the rider's history.
+     */
+    fun setRetentionAge(age: RetentionAge, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            settingsRepository.setRetentionAge(age)
+            if (age.isOn) {
+                val result = retentionRepository.trim(age)
+                if (result.didAnything) {
+                    onResult(
+                        "Trimmed ${result.ridesTrimmed} " +
+                            (if (result.ridesTrimmed == 1) "ride" else "rides") +
+                            " older than ${age.label.removePrefix("After ")}."
+                    )
+                }
+            }
+            _storage.value = retentionRepository.facts(age)
+        }
+    }
+
     /** The name the file picker opens with. */
     fun backupFileName(): String = databaseBackup.suggestedFileName()
 
@@ -480,6 +554,7 @@ class SettingsViewModel(
                 calibrationRepository = ServiceLocator.calibrationRepository,
                 databaseBackup = ServiceLocator.databaseBackup,
                 workoutRepository = ServiceLocator.workoutRepository,
+                retentionRepository = ServiceLocator.retentionRepository,
                 cloudAccess = ServiceLocator.cloudAccess,
                 accountRepository = ServiceLocator.accountRepository,
                 cloudConfigured = ServiceLocator.authRepository.cloudConfigured

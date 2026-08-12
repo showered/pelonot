@@ -507,11 +507,32 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 19 → 20: a ride that has been trimmed says so, and keeps what its seconds
+     * counted (PLAN 23.4.2, 23.4.3).
+     *
+     * Two columns, both null for every ride that exists — which is the correct
+     * backfill and needs no pass at all, unlike 18 → 19's. Null on
+     * `metrics_detail_sec` means *one row per second, as recorded*, and no ride
+     * on any tablet today is anything else: trimming is off by default and has
+     * to be turned on by the rider before a single row is dropped (23.4.4).
+     *
+     * `distributions_json` is written by the trimmer at the same instant, and
+     * only by it. An untrimmed ride has none because its own samples are a
+     * better answer than a summary of them.
+     */
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `metrics_detail_sec` INTEGER")
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `distributions_json` TEXT")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
+        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
     )
 }

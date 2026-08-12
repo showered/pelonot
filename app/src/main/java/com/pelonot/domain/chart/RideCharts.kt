@@ -244,6 +244,28 @@ data class RideCharts(
     /** Where these watts came from — the board, the model, or both (16.1.6). */
     val powerProvenance: PowerProvenance = PowerProvenance.Unknown,
     /**
+     * How many seconds one stored sample stands for — 1 for a ride whose
+     * record is intact, 10 for one 23.4 has trimmed (23.4.3).
+     *
+     * **The whole discipline of trimming is this number being carried rather
+     * than assumed.** A ten-second outline drawn without it looks exactly like
+     * a ride: the line has the same shape, the same peak and the same axis, and
+     * nothing on the screen distinguishes the record from a sketch of it. It is
+     * the same family as [ftpIsTheRides] and [powerProvenance] — a chart saying
+     * what it is drawn from instead of presenting everything with one authority.
+     */
+    val detailSec: Int = 1,
+    /**
+     * The FTP the stored time-in-zone was counted against, or null when the
+     * counts came from this ride's own samples just now.
+     *
+     * Only ever differs from [ftpWatts] for a ride that never recorded its own
+     * FTP (7.8) and has since been trimmed: the counts were frozen against
+     * whatever the rider's FTP was that day, and the screen says so rather than
+     * letting them pass as today's zones.
+     */
+    val zoneFtpWatts: Int? = null,
+    /**
      * What the fence makes of the ride's own samples (2.7.5).
      *
      * Everything above is drawn from the samples it accepts. On every ride
@@ -253,6 +275,9 @@ data class RideCharts(
 ) {
     val hasAnything: Boolean
         get() = !power.isEmpty || !heartRate.isEmpty || cadence.totalSeconds > 0
+
+    /** True when this ride's seconds have been thinned out (23.4.2). */
+    val isTrimmed: Boolean get() = detailSec > 1
 }
 
 /**
@@ -278,6 +303,18 @@ object RideChartBuilder {
         maxHrBpm: Int? = null,
         /** See [RideCharts.maxHrIsTheRides]. */
         maxHrIsTheRides: Boolean = false,
+        /** See [RideCharts.detailSec] — 1 for a ride whose record is intact. */
+        detailSec: Int = 1,
+        /**
+         * What the ride's seconds said before they were trimmed (23.4.2), or
+         * null for a ride that still has them.
+         *
+         * Only ever read for the two charts that are counts of seconds. The
+         * traces are drawn from whatever samples are actually there, because a
+         * line through the surviving points is honest at its own resolution
+         * whereas a count of them is simply wrong.
+         */
+        stored: RideDistributions? = null,
         buckets: Int = DEFAULT_BUCKETS
     ): RideCharts {
         if (samples.isEmpty()) {
@@ -285,7 +322,11 @@ object RideChartBuilder {
                 ftpWatts = ftpWatts,
                 ftpIsTheRides = ftpIsTheRides,
                 maxHrBpm = maxHrBpm,
-                maxHrIsTheRides = maxHrIsTheRides
+                maxHrIsTheRides = maxHrIsTheRides,
+                detailSec = detailSec,
+                zoneFtpWatts = stored?.ftpWatts,
+                timeInZone = stored?.timeInZone() ?: TimeInZone(),
+                cadence = stored?.cadence() ?: CadenceDistribution()
             )
         }
 
@@ -303,6 +344,10 @@ object RideChartBuilder {
                 ftpIsTheRides = ftpIsTheRides,
                 maxHrBpm = maxHrBpm,
                 maxHrIsTheRides = maxHrIsTheRides,
+                detailSec = detailSec,
+                zoneFtpWatts = stored?.ftpWatts,
+                timeInZone = stored?.timeInZone() ?: TimeInZone(),
+                cadence = stored?.cadence() ?: CadenceDistribution(),
                 integrity = integrity
             )
         }
@@ -311,9 +356,21 @@ object RideChartBuilder {
             power = downsample(ordered, buckets) { it.powerWatts },
             heartRate = downsampleNullable(ordered, buckets) { it.heartRateBpm?.toDouble() },
             cadenceTrace = downsample(ordered, buckets) { it.cadenceRpm },
-            cadence = cadenceDistribution(ordered),
-            timeInZone = timeInZone(ordered, ftpWatts),
-            prescribed = prescribedPlan(ordered, intervals, ftpWatts, intentMultiplier),
+            cadence = stored?.cadence() ?: cadenceDistribution(ordered),
+            timeInZone = stored?.timeInZone() ?: timeInZone(ordered, ftpWatts),
+            prescribed = prescribedPlan(
+                samples = ordered,
+                intervals = intervals,
+                ftpWatts = ftpWatts,
+                intentMultiplier = intentMultiplier,
+                // A trimmed ride keeps the blocks and loses the compliance: the
+                // bands come from the class and are as true as they ever were,
+                // while "inside the target for 14 of 20 minutes" is a count of
+                // seconds that are no longer there (23.4.3).
+                countSeconds = detailSec <= 1
+            ),
+            detailSec = detailSec,
+            zoneFtpWatts = stored?.ftpWatts,
             ftpWatts = ftpWatts,
             ftpIsTheRides = ftpIsTheRides,
             maxHrBpm = maxHrBpm,
@@ -416,7 +473,9 @@ object RideChartBuilder {
         samples: List<ChartSample>,
         intervals: List<Interval>,
         ftpWatts: Int,
-        intentMultiplier: Double
+        intentMultiplier: Double,
+        /** False for a trimmed ride, whose seconds cannot be counted (23.4.3). */
+        countSeconds: Boolean = true
     ): PrescribedPlan {
         if (intervals.isEmpty() || ftpWatts <= 0 || samples.isEmpty()) return PrescribedPlan()
 
@@ -434,7 +493,11 @@ object RideChartBuilder {
                 val band = interval.powerZone.powerRange(ftpWatts.toDouble())
                 val low = band.start * intentMultiplier
                 val high = band.endInclusive * intentMultiplier
-                val ridden = samples.filter { it.timestampSec in interval.startSec until end }
+                val ridden = if (countSeconds) {
+                    samples.filter { it.timestampSec in interval.startSec until end }
+                } else {
+                    emptyList()
+                }
 
                 PrescribedSegment(
                     startSec = interval.startSec,
@@ -475,16 +538,27 @@ object RideChartBuilder {
  */
 object RideChartSummaries {
 
-    fun power(trace: RideTrace, provenance: PowerProvenance): String {
+    fun power(trace: RideTrace, provenance: PowerProvenance, detailSec: Int = 1): String {
         if (trace.isEmpty) return "No power was recorded for this ride."
         val source = when (provenance) {
             PowerProvenance.Measured -> "measured"
             PowerProvenance.Mixed -> "partly measured"
             else -> "estimated"
         }
-        return "Power over ${formatDuration(trace.durationSec)}, $source. " +
-            "Peak ${trace.maxValue.roundToInt()} watts, " +
-            "average ${trace.buckets.map { it.mean }.average().roundToInt()} watts."
+        val shape = "Power over ${formatDuration(trace.durationSec)}, $source. " +
+            "Peak ${trace.maxValue.roundToInt()} watts"
+
+        // The peak survives a trim exactly — `MetricTrim` keeps each bucket's
+        // highest second — and the average does not: what is left is the highs
+        // and the lows of every bucket and nothing in between, so a mean of them
+        // is not this ride's average power. The ride's own average is on the row
+        // above, computed live (`avg_power`), and it is the honest one to read.
+        if (detailSec > 1) {
+            return "$shape. Kept as a $detailSec-second outline, so the seconds " +
+                "between those points are gone."
+        }
+
+        return "$shape, average ${trace.buckets.map { it.mean }.average().roundToInt()} watts."
     }
 
     /**

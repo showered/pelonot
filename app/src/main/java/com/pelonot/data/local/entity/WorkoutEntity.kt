@@ -287,5 +287,47 @@ data class WorkoutEntity(
      * a board dying during the extra minutes turns `Measured` into `Mixed`.
      */
     @ColumnInfo(name = "power_provenance")
-    val powerProvenance: PowerProvenance? = null
+    val powerProvenance: PowerProvenance? = null,
+
+    /**
+     * How many seconds one of this ride's stored samples stands for (PLAN
+     * 23.4.3).
+     *
+     * **Null means the record is intact** — one row per second, as recorded.
+     * `10` means 23.4 has trimmed it: what is left is the lowest and highest
+     * watt of each ten seconds, and the seconds between them are gone for good
+     * unless the rider has a backup or a cloud copy (23.4.10).
+     *
+     * *"This column is the whole discipline of the feature; without it, do not
+     * ship it"* is 23.4.3's own sentence and it is right. A ten-second outline
+     * draws a line with the same shape, the same peak and the same axis as the
+     * record it replaced, and there is nothing else on the screen — or in an
+     * export — that could tell a rider which of the two they are looking at.
+     * Same family as [ftpWatts] and [powerProvenance]: the provenance of a
+     * number, kept beside it.
+     *
+     * Written **after** the ride ends, by the trimmer and by nothing else, so
+     * 8.3d.4's trap does not apply: `WorkoutSession` never carries it because no
+     * finalise ever writes it.
+     */
+    @ColumnInfo(name = "metrics_detail_sec")
+    val metricsDetailSec: Int? = null,
+
+    /**
+     * What this ride's seconds said, kept for after they are gone (23.4.2).
+     *
+     * [com.pelonot.domain.chart.RideDistributions] as JSON: time in zone and the
+     * cadence spread, which are the two charts that are *counts of seconds*
+     * rather than lines through them, plus the FTP the zones were counted
+     * against. Recomputing either from a trimmed ride would say a 45-minute ride
+     * spent nine minutes pedalling — wrong in a way that does not look wrong,
+     * which is the failure mode this whole item is written around.
+     *
+     * Null for every ride that has not been trimmed, and that is not a gap: its
+     * own samples are still there and are a better answer than any summary of
+     * them. One column of JSON rather than tables, because nothing queries into
+     * it — it is read whole by the one screen that draws the ride.
+     */
+    @ColumnInfo(name = "distributions_json")
+    val distributionsJson: String? = null
 )

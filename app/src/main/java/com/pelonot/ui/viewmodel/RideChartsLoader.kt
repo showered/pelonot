@@ -6,6 +6,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.chart.RideDistributions
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerProvenance
 
@@ -66,7 +67,14 @@ internal fun buildRideCharts(
     // saying which — so the screen can label a re-derivation rather than
     // presenting it as a record.
     maxHrBpm = workout.maxHrBpm ?: riderMaxHr,
-    maxHrIsTheRides = workout.maxHrBpm != null
+    maxHrIsTheRides = workout.maxHrBpm != null,
+    // 23.4.3. Null means the record is intact, and it is what every ride on
+    // every tablet says until a rider turns trimming on. Passed rather than
+    // inferred from the sample count: a 40-minute ride that recorded 240 rows
+    // could be a trimmed ride or a ride with a dead board, and those are
+    // different sentences.
+    detailSec = workout.metricsDetailSec ?: 1,
+    stored = RideDistributions.decode(workout.distributionsJson)
 )
 
 /**

@@ -16,6 +16,7 @@ import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.UnitSystem
+import com.pelonot.domain.retention.RetentionAge
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -118,7 +119,20 @@ data class AppSettings(
     val lastCloudSyncError: String? = null,
 
     /** When [lastCloudSyncError] happened. Null exactly when the error is. */
-    val lastCloudSyncErrorAtMs: Long? = null
+    val lastCloudSyncErrorAtMs: Long? = null,
+
+    /**
+     * How old a ride has to be before its seconds are condensed to an outline
+     * (23.4.4).
+     *
+     * **A device setting rather than a rider one**, like the telemetry source
+     * and unlike the FTP: it is about how much of this tablet the recording
+     * takes up, and a household bike has one database and several profiles. The
+     * consequence is that one rider's choice trims another rider's rides, which
+     * is 23.4.11's question in miniature and is why the screen says *every
+     * rider on this bike* out loud.
+     */
+    val retentionAge: RetentionAge = RetentionAge.DEFAULT
 ) {
     companion object {
         /**
@@ -167,7 +181,8 @@ class SettingsRepository(context: Context) {
                 hasEverBackedUp = prefs[Keys.HAS_EVER_BACKED_UP] ?: false,
                 lastCloudSyncAtMs = prefs[Keys.LAST_CLOUD_SYNC_AT],
                 lastCloudSyncError = prefs[Keys.LAST_CLOUD_SYNC_ERROR],
-                lastCloudSyncErrorAtMs = prefs[Keys.LAST_CLOUD_SYNC_ERROR_AT]
+                lastCloudSyncErrorAtMs = prefs[Keys.LAST_CLOUD_SYNC_ERROR_AT],
+                retentionAge = RetentionAge.fromName(prefs[Keys.RETENTION_AGE])
             )
         }
 
@@ -254,6 +269,16 @@ class SettingsRepository(context: Context) {
         it[Keys.LAST_CLOUD_SYNC_ERROR_AT] = atMs
     }
 
+    /**
+     * The rider chose how long the full record is kept (23.4.4).
+     *
+     * Storing the choice is all this does. Nothing is deleted on the strength
+     * of it until the rider taps the button that says what it will do, and the
+     * launch pass only ever acts on a choice already made — see
+     * `RetentionRepository`.
+     */
+    suspend fun setRetentionAge(age: RetentionAge) = edit { it[Keys.RETENTION_AGE] = age.name }
+
     /** The backlog is empty, so whatever went wrong before has stopped. */
     suspend fun clearCloudSyncError() = edit {
         it.remove(Keys.LAST_CLOUD_SYNC_ERROR)
@@ -282,6 +307,7 @@ class SettingsRepository(context: Context) {
         val LAST_CLOUD_SYNC_AT = longPreferencesKey("last_cloud_sync_at")
         val LAST_CLOUD_SYNC_ERROR = stringPreferencesKey("last_cloud_sync_error")
         val LAST_CLOUD_SYNC_ERROR_AT = longPreferencesKey("last_cloud_sync_error_at")
+        val RETENTION_AGE = stringPreferencesKey("retention_age")
     }
 
     private companion object {

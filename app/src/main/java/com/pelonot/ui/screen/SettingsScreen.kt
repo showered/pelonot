@@ -75,7 +75,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
+import com.pelonot.core.Formatters
 import com.pelonot.data.repository.CalibrationState
+import com.pelonot.data.repository.StorageFacts
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
@@ -90,6 +92,7 @@ import com.pelonot.domain.model.HudOpacity
 import com.pelonot.ui.components.VolumeSliders
 import com.pelonot.domain.model.RiderBounds
 import com.pelonot.domain.model.UnitSystem
+import com.pelonot.domain.retention.RetentionAge
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import com.pelonot.ui.theme.DarkSurfaceContainerLowest
 import com.pelonot.ui.theme.DarkTextPrimary
@@ -128,8 +131,12 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     // The media volume is a system value; anything on the device may have moved
-    // it since this screen was last looked at.
-    LaunchedEffect(Unit) { viewModel.refreshVolume() }
+    // it since this screen was last looked at. The storage figures are the same
+    // shape of question asked of the disk (23.4.1).
+    LaunchedEffect(Unit) {
+        viewModel.refreshVolume()
+        viewModel.refreshStorage()
+    }
 
     val scanForHeartRate = rememberHeartRateScan(viewModel)
 
@@ -303,6 +310,16 @@ fun SettingsScreen(
                 ridesAreLocalOnly = state.profile?.hasAccount != true,
                 onBackup = { backupLauncher.launch(viewModel.backupFileName()) },
                 onRestore = { restoreLauncher.launch(arrayOf("*/*")) }
+            )
+
+            // Under Backup deliberately (23.4.5): the offer to keep a copy is
+            // the sentence before the offer to throw one away.
+            StorageSection(
+                storage = state.storage,
+                age = state.settings.retentionAge,
+                hasAccount = state.profile?.hasAccount == true,
+                onAgeChange = { viewModel.setRetentionAge(it, say) },
+                onBackupFirst = { backupLauncher.launch(viewModel.backupFileName()) }
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
@@ -1439,7 +1456,169 @@ private fun BackupSection(
 }
 
 /**
- * The one dialog in this app that is genuinely about losing data.
+ * How much of the tablet the riding takes up, and what to do about it (PLAN
+ * 23.4).
+ *
+ * **The figures come first and the switch second**, which is 23.4.1 arriving on
+ * a screen: everything in the retention item was sized off a model of ~61 MB a
+ * year, and this is the tablet's own answer to the same question — on the bike,
+ * without adb, for the rider as well as for the plan.
+ *
+ * The choice defaults to `Never` and stays there until somebody reads a dialog
+ * (23.4.4). What the dialog says depends on whether the rider has an account,
+ * because 23.4.10 is right that one sentence cannot cover both: for an offline
+ * rider this is deletion and the tablet is the only copy, and even for a
+ * signed-in one Pelonot cannot pull the seconds back down yet — so it says that
+ * plainly rather than implying a safety net that has not been built.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StorageSection(
+    storage: StorageFacts?,
+    age: RetentionAge,
+    hasAccount: Boolean,
+    onAgeChange: (RetentionAge) -> Unit,
+    onBackupFirst: () -> Unit
+) {
+    var pending by remember { mutableStateOf<RetentionAge?>(null) }
+
+    pending?.let { chosen ->
+        TrimConfirmDialog(
+            age = chosen,
+            trimmable = storage?.trimmable ?: 0,
+            hasAccount = hasAccount,
+            onBackupFirst = {
+                pending = null
+                onBackupFirst()
+            },
+            onConfirm = {
+                pending = null
+                onAgeChange(chosen)
+            },
+            onDismiss = { pending = null }
+        )
+    }
+
+    SettingsSection("Storage") {
+        Text(
+            text = "Every ride is recorded second by second, and that is what " +
+                "fills a tablet up.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (storage != null) {
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            Text(
+                // Rides rather than samples: "1.4 million rows" is a fact about
+                // a database and this screen is about a rider's riding.
+                text = "${storage.rides} rides · ${Formatters.fileSize(storage.bytes)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        Text(
+            text = "Condense old rides",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+            RetentionAge.entries.forEach { option ->
+                FilterChip(
+                    selected = age == option,
+                    // Turning it *off* needs no warning and gets none: nothing
+                    // is destroyed by keeping things.
+                    onClick = {
+                        if (option.isOn) pending = option else onAgeChange(option)
+                    },
+                    label = { Text(option.label) }
+                )
+            }
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.small))
+        Text(
+            text = if (age.isOn) {
+                "Rides older than that keep their totals, their outline and " +
+                    "their time in zone. The second-by-second detail is removed, " +
+                    "for every rider on this bike."
+            } else {
+                "Nothing is ever removed. Every ride keeps every second it recorded."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * The second dialog in this app that is genuinely about losing data, and the
+ * only one that offers a way out of it first (23.4.5).
+ *
+ * *"Offer the export first — 12.4.3 and 12.4.4 both already exist, so this can
+ * be an honest offer rather than a warning"* is the item's own sentence, and
+ * **Back up first leaves the choice unmade**: it opens the file picker and the
+ * rider comes back to a section that still says Never. A dialog that took the
+ * action anyway would make the offer decorative.
+ */
+@Composable
+private fun TrimConfirmDialog(
+    age: RetentionAge,
+    trimmable: Int,
+    hasAccount: Boolean,
+    onBackupFirst: () -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Condense rides older than ${age.label.removePrefix("After ")}?") },
+        text = {
+            Column {
+                Text(
+                    text = if (trimmable > 0) {
+                        "$trimmable ${if (trimmable == 1) "ride" else "rides"} would be " +
+                            "condensed now, and older rides as they age. Each one keeps " +
+                            "its totals, its outline and its time in zone."
+                    } else {
+                        "Nothing is old enough yet. Rides will be condensed as they " +
+                            "age, keeping their totals, their outline and their time " +
+                            "in zone."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                Text(
+                    // 23.4.10, said rather than papered over. The signed-in
+                    // rider's copy is real and Pelonot still cannot bring it
+                    // back down, so both riders are told the same true thing in
+                    // the words that fit them.
+                    text = if (hasAccount) {
+                        "The second-by-second detail goes. Your account has a copy of " +
+                            "the rides it has taken, but Pelonot cannot yet bring one " +
+                            "back down to the bike."
+                    } else {
+                        "The second-by-second detail goes, and this tablet is the only " +
+                            "copy of it."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.size(MaterialTheme.spacing.small))
+                TextButton(onClick = onBackupFirst) { Text("Back up first") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Condense old rides") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+/**
+ * The oldest dialog in this app that is genuinely about losing data — 23.4's
+ * trim confirmation above is the other one.
  *
  * A restore is not a merge and cannot be undone, so the sentence says exactly
  * that rather than asking "are you sure?" — and the confirming button is
