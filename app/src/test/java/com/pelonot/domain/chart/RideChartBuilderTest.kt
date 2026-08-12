@@ -349,4 +349,56 @@ class RideChartBuilderTest {
         val total = PowerZone.entries.map { charts.timeInZone.fractionOf(it) }.sum()
         assertEquals(1.0f, total, 0.0001f)
     }
+
+    /**
+     * What a trimmed ride is allowed to claim (PLAN 23.4.3).
+     *
+     * The bands behind the trace come from the class and are as true as they
+     * ever were; *"inside the target for 14 of 20 minutes"* is a count of
+     * seconds that are no longer on disk, and a percentage derived from a fifth
+     * of a ride sitting under a chart that looks complete is the whole reason
+     * `metrics_detail_sec` exists.
+     */
+    @Test
+    fun `a trimmed ride keeps the prescription and withdraws the compliance`() {
+        val charts = RideChartBuilder.build(
+            ride(300),
+            ftpWatts = 200,
+            intervals = listOf(interval(0, 300, zone = 4)),
+            detailSec = 10
+        )
+
+        assertFalse(charts.prescribed.isEmpty)
+        assertEquals(0, charts.prescribed.secondsRidden)
+        assertEquals("", RideChartSummaries.prescribed(charts.prescribed))
+    }
+
+    @Test
+    fun `the same ride untrimmed does count its seconds`() {
+        val charts = RideChartBuilder.build(
+            ride(300),
+            ftpWatts = 200,
+            intervals = listOf(interval(0, 300, zone = 4))
+        )
+
+        // 299 rather than 300: the prescription is clipped to the ride's last
+        // recorded second, which is one less than its sample count.
+        assertEquals(299, charts.prescribed.secondsRidden)
+    }
+
+    /**
+     * The peak survives a trim exactly — `MetricTrim` keeps each bucket's
+     * highest second — and the average does not, because what is left is the
+     * extremes of every bucket and nothing in between. So the sentence says the
+     * peak and stops.
+     */
+    @Test
+    fun `the power sentence says it is an outline instead of averaging one`() {
+        val charts = RideChartBuilder.build(ride(300), ftpWatts = 200, detailSec = 10)
+
+        val said = RideChartSummaries.power(charts.power, charts.powerProvenance, charts.detailSec)
+
+        assertTrue(said, said.contains("10-second outline"))
+        assertFalse(said, said.contains("average"))
+    }
 }

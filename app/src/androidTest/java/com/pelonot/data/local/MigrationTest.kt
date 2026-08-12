@@ -10,6 +10,7 @@ import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -1242,6 +1243,72 @@ class MigrationTest {
             // And it is idempotent, which is what makes it safe to run on every
             // launch rather than once.
             assertEquals(0, runBlocking { dao.backfillPowerProvenance() })
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * 19 → 20: every existing ride's record is intact, and says so (23.4.3).
+     *
+     * The interesting assertion is the *absence* of a backfill. Both columns
+     * arrive null and null is the truth — nothing on any tablet has been
+     * trimmed, because trimming is off until a rider turns it on — so unlike
+     * 18 → 19 there is no pass to run afterwards and nothing here should ever
+     * grow one. A migration that guessed `metrics_detail_sec = 1` would be
+     * writing a claim where an honest absence belongs, and 23.4.3's whole job
+     * is that this column is never a guess.
+     */
+    @Test
+    fun migrate19To20_leavesEveryExistingRideAtFullResolution() {
+        helper.createDatabase(TEST_DB, 19).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj,
+                    total_distance_km, avg_cadence, avg_power, avg_hr,
+                    intent_modifier, rpe_rating, is_complete, was_recovered,
+                    timestamp, ftp_proposal_declined, resume_count,
+                    interrupted_sec, power_provenance
+                ) VALUES ('old', 1, NULL, 1800, 150.0, 10.0, 90.0, 200.0,
+                          150.0, 1.0, NULL, 1, 0, 2000, 0, 0, 0, 'Measured')
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO workout_metrics (workout_id, timestamp_sec, cadence, " +
+                    "resistance, power, heart_rate, power_is_measured) " +
+                    "VALUES ('old', 1, 90.0, 40.0, 200.0, 150, 1)"
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 20, true, AppMigrations.MIGRATION_19_20)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val row = runBlocking { migrated.workoutDao().getWorkoutById("old") }
+            assertNull("an existing ride's record is intact", row?.metricsDetailSec)
+            assertNull("and it has no summary because it does not need one", row?.distributionsJson)
+            // The ride it already was, unchanged by the upgrade.
+            assertEquals(PowerProvenance.Measured, row?.powerProvenance)
+            assertEquals(
+                1,
+                runBlocking { migrated.workoutMetricDao().getMetricCountForWorkout("old") }
+            )
         } finally {
             migrated.close()
         }
