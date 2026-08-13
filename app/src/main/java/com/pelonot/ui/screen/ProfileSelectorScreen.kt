@@ -91,6 +91,13 @@ private val AvatarColors = listOf(
  * two profiles occupied about a twelfth of the display and the rest was black.
  * Everything here is centred both ways and **sized off the screen** rather than
  * in fixed dp (20.1.2), because this app runs on a tablet bolted to a bike.
+ *
+ * **With nobody on the bike this is also the first run (19.1.6)**, and it says
+ * so rather than asking a question the rider cannot answer. The empty state is
+ * a *state of this screen* and deliberately not a screen in front of it: an
+ * empty `profiles` list is the only first run there is, so the database is the
+ * flag and no "has seen the welcome" preference exists to drift out of step
+ * with it.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -150,17 +157,43 @@ fun ProfileSelectorScreen(
         // The column still wraps its content, so a household of three is
         // centred exactly as before and nothing here costs them anything.
         val scroll = rememberScrollState()
+
+        // Nobody on the bike is the first run, and there is no other one
+        // (19.1.6).
+        val firstRun = profiles.isEmpty()
+
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Who's riding?",
+                // *Who's riding?* is unanswerable on an empty bike, and it was
+                // the whole of what the app said to a rider who had just
+                // side-loaded it. The name is the heading here because the
+                // question this screen has to answer first is *what is this*.
+                text = if (firstRun) "Pelonot" else "Who's riding?",
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.semantics { heading() }
             )
+
+            if (firstRun) {
+                Spacer(Modifier.size(MaterialTheme.spacing.medium))
+                Text(
+                    // One sentence, and it is the overlay (Phase 26: err
+                    // towards saying less). That is the thing this app *is*
+                    // and the one part of it a rider cannot discover — the
+                    // offline promise is already made at the moment it costs
+                    // something, on the account offer at the end of profile
+                    // creation: *"Everything keeps working without one."*
+                    text = "Your ride, on the bike's own tablet, over whatever " +
+                        "you're watching.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
@@ -203,6 +236,30 @@ fun ProfileSelectorScreen(
                     // (20.1.4) and deliberately not in weight (20.1.3): both
                     // are outlined rather than filled, so the eye lands on a
                     // real rider first without having to read anything.
+                    //
+                    // **On an empty bike that rule inverts, because it is the
+                    // same rule** (19.1.6): there is no real rider for the eye
+                    // to land on, so setting one up is filled and comes first,
+                    // and Guest keeps the outline it always had. "New rider"
+                    // is also new *compared to what* on a bike with nobody on
+                    // it, so the first run says what the tile does instead.
+                    val setUp = @Composable {
+                        SecondaryTile(
+                            icon = Icons.Default.Add,
+                            label = if (firstRun) "Set up" else "New rider",
+                            // What it costs and what it buys. 20.3 asks four
+                            // things — a name, a weight, a year of birth and
+                            // one sentence about your riding — so the count is
+                            // the truth rather than a reassurance.
+                            detail = if (firstRun) "Four questions, then ride" else "Add a profile",
+                            size = tileSize,
+                            onClick = onCreateProfile,
+                            contentDescription = "Create a new profile",
+                            filled = firstRun
+                        )
+                    }
+                    if (firstRun) setUp()
+
                     SecondaryTile(
                         icon = Icons.Default.PersonOutline,
                         label = "Guest",
@@ -211,14 +268,8 @@ fun ProfileSelectorScreen(
                         onClick = onGuestSelected,
                         contentDescription = "Ride as a guest, without saving to a profile"
                     )
-                    SecondaryTile(
-                        icon = Icons.Default.Add,
-                        label = "New rider",
-                        detail = "Add a profile",
-                        size = tileSize,
-                        onClick = onCreateProfile,
-                        contentDescription = "Create a new profile"
-                    )
+
+                    if (!firstRun) setUp()
                 }
 
                 // Each edge fades into the background while there is more past
@@ -364,7 +415,8 @@ private fun SecondaryTile(
     detail: String,
     size: Dp,
     onClick: () -> Unit,
-    contentDescription: String
+    contentDescription: String,
+    filled: Boolean = false
 ) {
     Card(
         modifier = Modifier
@@ -373,11 +425,19 @@ private fun SecondaryTile(
         onClick = onClick,
         shape = MaterialTheme.expressiveShapes.extraLarge,
         // Outlined rather than filled, so these read as the lesser options
-        // without needing to be read.
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = CardDefaults.outlinedCardBorder()
+        // without needing to be read — except on the first run, where one of
+        // them is the only thing to do (19.1.6).
+        colors = if (filled) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        } else {
+            CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        },
+        border = if (filled) null else CardDefaults.outlinedCardBorder()
     ) {
         Column(
             modifier = Modifier
@@ -389,19 +449,31 @@ private fun SecondaryTile(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (filled) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 modifier = Modifier.size(size * 0.3f)
             )
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (filled) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (filled) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
