@@ -743,10 +743,13 @@ Three consequences:
 - **The owner's position, recorded 1 August 2026:** he will never want another
   bike app running beside Pelonot, so *sharing* the board is explicitly not a
   goal. What matters is that Pelonot alone is correct, which 2.7c verifies.
-- **But a leaked port is still a ride lost**, and the app currently says
-  nothing useful about it — see 2.7.7.
+- **But a leaked port is still a ride lost**, and the app used to say nothing
+  useful about it — 2.7.7 and 2.7.8 are done, and what they leave is that the
+  ride is still lost. The app now stops pretending otherwise after 65 seconds
+  and names the remedy; it cannot recover the port, because nothing in
+  userspace can.
 
-- [ ] **2.7.7** **Say what has actually happened when the board cannot be
+- [x] **2.7.7** **Say what has actually happened when the board cannot be
       opened.** Right now a leaked serial port looks exactly like a bike that
       is switched off: the overlay shows `--`, the retry counter climbs
       forever, and nothing tells the rider that another app has the sensor or
@@ -755,12 +758,81 @@ Three consequences:
       distinction to be inferred — a bind that connects but never delivers,
       repeatedly, is a different condition from a board that is absent, and it
       has a different remedy. **Cap the retries and say so**, rather than
-      backing off to 30 s forever
-- [ ] **2.7.8** **Do not rebind more often than necessary.** Every rebind
+      backing off to 30 s forever. ***Done in the forty-sixth sitting***
+
+      **The distinction the item asked to infer is written on the wire.** A
+      service that cannot open the port still binds, still accepts the
+      registration, and then answers **every poll with `TIME_OUT`** — so a
+      steady stream of those means *the service is up and the board is not*,
+      which is a claim, not a guess. A service that has died sends no reply at
+      all, including no timeout. `SensorBoardNotAnswering` carries the first;
+      the second falls out as `NeverStarted`, and no service to bind at all is
+      `SensorServiceMissing`, which gives up on the **first** failure because
+      waiting cannot change it.
+
+      **What decides between the two schedules is not the exception, it is
+      whether this bind ever delivered a reading.** That is one `var` in
+      `SensorRepository.start()`, read by `ReconnectPolicy.onFailure` and
+      cleared after. A productive attempt clears the whole run: a board that
+      dropped out once and came back must not be met with a 30-second wait
+      next time because a counter never reset — which the old
+      `retryWhen`-attempt backoff did.
+
+      **Giving up is the honest answer and 2.7d is the evidence for it.**
+      Force-stopping every client did not release the port; `SerialService`
+      lives in `system_server` and the tablet had to be rebooted. So a *Try
+      again* control is deliberately **not** offered: it would invite the
+      rider to reopen a port that has already refused, and the measured remedy
+      is a reboot, which ends the process anyway.
+
+      The chip says the remedy and nothing else says it: **"The bike's sensor
+      isn't answering — not recording. Restarting the tablet usually frees
+      it."** *Usually*, not *will* — what the app knows is that five binds
+      produced nothing, not what is holding the port. **The overlay is
+      deliberately left saying `NO SIGNAL`**: a remedy sentence over somebody's
+      film is 24.1.5's family of rule, and the ride screen is one tap away.
+- [x] **2.7.8** **Do not rebind more often than necessary.** Every rebind
       reopens the UART, and every reopen is a chance to lose it (2.7d). The
       silence watchdog is right to exist and should be *reluctant*: consider a
       longer first timeout, and never rebind while the last bind is still
-      producing frames
+      producing frames. ***Done in the forty-sixth sitting***
+
+      **There were two silence detectors and the eager one always won.**
+      `MAX_CONSECUTIVE_TIMEOUTS = 5` in `PelotonSensorServiceSource` counted
+      *messages*, and with three repeating polls answering several times a
+      second that is **under a second** of quiet — so the source tore itself
+      down and rebound long before `SILENCE_TIMEOUT_MS` (6 s) could run, and
+      that constant's own comment describes a patience the code never had. It
+      is measured in time now, `BOARD_QUIET_TIMEOUT_MS = 4_000`, still shorter
+      than the repository's watchdog on purpose, because this failure is the
+      *informative* one and losing it would cost 2.7.7 its evidence.
+
+      The second half — a longer first timeout — is the barren schedule: 3 s
+      rather than 1 s before the first retry of a bind that produced nothing,
+      which is precisely the case where trying again is what makes a leaked
+      port permanent. **The cost is real and is written down rather than
+      hidden**: on a 20-second dropout the gap in `workout_metrics` measured
+      **17 seconds against the old schedule's ~7**, because the second attempt
+      is now correctly treated as barren and waits 6 s. Two rebinds where
+      there used to be four. That is the trade 2.7.8 asked for.
+
+- [x] **2.7.9** **Giving up crashed the app, and it was found by driving it
+      rather than by reading it.** ***Done in the forty-sixth sitting***, and
+      it is the reason this pair is not a code-only change.
+      `retryWhen` returning `false` **rethrows**, and an uncaught throw inside
+      `scope.launch` takes the process down — a `SupervisorJob` isolates
+      siblings, it does not handle. The old code returned `true` for ever, so
+      the path never existed to be wrong. Measured on the first run of the new
+      lever: `FATAL EXCEPTION: DefaultDispatcher-worker-4`, `Process
+      com.pelonot has died`, and the ride the rider was on left for the crash
+      recovery prompt to find — a *worse* outcome than the defect being fixed.
+      A `.catch` after `retryWhen` is the fix; the status the policy already
+      set is the report, and the exception has nowhere left to go.
+
+      **The general shape is worth keeping**: every retry policy in this
+      project was infinite, so no exception had ever reached the end of the
+      pipeline. The first item to make one terminal inherits an error path
+      nobody has walked.
 
 #### 2.7a The repro, and the run that closed 2.7.3 and 2.7.4
 
@@ -777,7 +849,27 @@ adb shell am broadcast -a com.pelonot.debug.CORRUPT \
 # The board goes quiet *without failing* — the part that survived a whole ride.
 adb shell am broadcast -a com.pelonot.debug.SILENCE \
   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
+
+# Every bind connects and delivers nothing — the leaked port of 2.7d, which is
+# what 2.7.7 gives up on. Needs ~65s of failing binds to reach the giving up,
+# so ask for longer than you think.
+adb shell am broadcast -a com.pelonot.debug.DEAD_BOARD \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 180
 ```
+
+**The run that closed 2.7.7 and 2.7.8, 13 August 2026, on the tablet AVD.**
+Two rides, each with the other as its control.
+
+| | Dead board | Dropout after real readings |
+|---|---|---|
+| Schedule | 3 s, 6 s, 12 s, 24 s, then stop | 1 s, then 6 s |
+| Rebinds | 4 | 2 |
+| Gave up | **yes, at 65 s** — `Giving up on simulated after 5 attempts (BoardNotAnswering)` | no |
+| The chip said | *The bike's sensor isn't answering — not recording. Restarting the tablet usually frees it.* | *Simulated telemetry — no bike connected*, once it recovered |
+| The record | 0 samples, and the summary says *"no second-by-second record"* rather than a row of zeros | 69 samples of 86 s, with a **17-second gap** exactly where the silence was |
+
+The app stayed up through both — 0 `FATAL EXCEPTION` in logcat, against 1 on
+the first attempt, which is 2.7.9.
 
 The corruption is modelled on the measurement: the three real values rotate,
 and **41 samples in 53 carry the ghost**, exactly as they did on the bike.

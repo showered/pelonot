@@ -389,7 +389,22 @@ Two consequences to know before you are surprised by them:
   `WorkoutDao.backfillPowerProvenance` is that column's self-heal and runs at
   launch; `completeRidesWithoutProvenance` is the fence.
 - **Sensor sources must not reconnect themselves.** `SensorRepository` owns the
-  single retry policy. Adding another creates competing schedules.
+  single retry policy. Adding another creates competing schedules — and this
+  was not hypothetical: the Peloton source tore itself down after **five
+  consecutive `TIME_OUT` messages**, which at three polls a second is under a
+  second, so it rebound long before the repository's own six-second watchdog
+  could run and the patient detector never once fired. Every rebind reopens the
+  leaking UART (2.7d), so the eager one winning was the worst possible outcome.
+  If a source must report silence, report it in **time**, and read
+  `ReconnectPolicy` first.
+- **A retry that can stop rethrows, and nothing above it was ever built to
+  catch.** `retryWhen` returning `false` throws the cause on, and an uncaught
+  throw inside `scope.launch` kills the process — `SupervisorJob` isolates
+  siblings, it does not handle. Every retry policy in this project was infinite
+  until 2.7.7, so the first terminal one inherited an error path nobody had
+  walked: the app died mid-ride the first time it gave up, which is worse than
+  the defect it was fixing. There is a `.catch` after `retryWhen` now and it is
+  load-bearing.
 - **`sensorReading` is a `StateFlow`, so it holds its last value when the board
   dies.** A frozen reading looks exactly like a rider holding a steady 88 rpm.
   Anything that *records* or *averages* a reading must check
@@ -483,6 +498,17 @@ adb shell am broadcast -a com.pelonot.debug.CORRUPT \
 ```bash
 adb shell am broadcast -a com.pelonot.debug.SILENCE \
   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
+```
+
+And `DEAD_BOARD` (2.7.7) — **every bind connects, registers and delivers
+nothing**, which is what Peloton's leaked serial port looks like from our side
+and is a different failure from `SILENCE`: that one *was* working and stopped.
+It takes about 65 seconds of failing binds before the app gives up, so ask for
+longer than the thing you want to watch:
+
+```bash
+adb shell am broadcast -a com.pelonot.debug.DEAD_BOARD \
+  -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 180
 ```
 
 The result to look for is **gaps in `workout_metrics`, not clamped numbers**,
