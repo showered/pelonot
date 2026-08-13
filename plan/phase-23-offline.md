@@ -587,6 +587,37 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       intact one and **10 with 120 samples** for the outline. **23.4.13 is who
       this is for**: a rehydration that cannot tell whether the copy up there is
       fuller than the one down here has nothing to offer
+- [x] **23.4.15** **An outline sets no personal bests.**
+      ***Done in the forty-third sitting***, found while designing 15.3.2 and
+      fixed before it.
+
+      `WorkoutRepository.backfillPowerFacts` has said since 16.3.3a that a
+      trimmed ride *"is **not** here and cannot be: it has no samples left to
+      walk"*. The first half was the intention and the second half is simply
+      **untrue** — a trim does not empty `workout_metrics`, it leaves the lowest
+      and highest watt of every ten seconds, and those are real rows. Nothing in
+      `WorkoutDao.measuredRidesAwaitingBests` excluded them, so a ride condensed
+      *before* it was ever scanned — `power_bests_at` null, `power_provenance`
+      `Measured`, which is every pre-16.3.3a ride on a tablet where trimming was
+      turned on before *Your FTP* was ever opened — came back through the
+      backfill and had a mean-maximal effort computed over a fifth of its
+      seconds. The outline keeps the **peaks** by construction, so the answer is
+      not merely coarse: a five-minute window drawn through a trace of ten-second
+      maxima reports an effort the rider never held, and files it permanently as
+      a record beside real ones.
+
+      It is 23.4.2's defect on the fourth reader rather than a new one — a count
+      of seconds recomputed from a fifth of them — and the fix is the same shape
+      as the other three: `AND w.metrics_detail_sec IS NULL`, one clause, so the
+      comment that already described the behaviour becomes a filter instead of a
+      claim. Null in `power_bests_at` keeps meaning all three things 16.3.3a says
+      it does, and *"trimmed without ever being scanned"* now stays **uncounted**
+      — which is what the rider is already shown for a modelled ride, and is the
+      honest answer.
+
+      Measured as an upgrade rather than asserted: `PersonalBestsTest
+      .aRideCondensedBeforeItWasScannedNeverAcquiresABest` is red on the build
+      before this change and green after it, on the tablet AVD
 
 ---
 

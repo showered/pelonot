@@ -183,6 +183,48 @@ class PersonalBestsTest {
         assertEquals(200.0, repository.personalBests(riderId).efforts.first().watts, 0.001)
     }
 
+    /**
+     * A ride condensed *before* it was ever scanned stays uncounted (23.4.3).
+     *
+     * The trap is that a trim does not empty `workout_metrics` — it leaves the
+     * lowest and highest watt of every ten seconds, which are real rows — so the
+     * backfill's list would happily walk them and file a mean-maximal effort
+     * computed over a fifth of the ride's seconds. Here the outline's peak is a
+     * 320 W second the rider held once; a five-minute window through it comes
+     * back far above what they actually averaged for five minutes, and it would
+     * sit on *Your FTP* as a personal best indistinguishable from a real one.
+     *
+     * The honest answer is the one the rider is already shown for a modelled
+     * ride: not counted, and said so.
+     */
+    @Test
+    fun aRideCondensedBeforeItWasScannedNeverAcquiresABest() = runBlocking {
+        ride("outline", seconds = 900, watts = 180.0)
+        // Trimmed without ever having been scanned — a ride recorded before
+        // `power_bests_at` existed, condensed by 23.4 before anybody opened
+        // *Your FTP*. The outline keeps a peak the ride only touched.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE workout_metrics SET power = 320.0 WHERE workout_id = 'outline' " +
+                "AND timestamp_sec % 10 = 0"
+        )
+        database.openHelper.writableDatabase.execSQL(
+            "DELETE FROM workout_metrics WHERE workout_id = 'outline' " +
+                "AND timestamp_sec % 10 != 0"
+        )
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE workouts SET power_bests_at = NULL, metrics_detail_sec = 10 " +
+                "WHERE id = 'outline'"
+        )
+        database.workoutPowerBestDao().clearFor("outline")
+
+        val bests = repository.personalBests(riderId)
+
+        assertTrue("an outline sets no records", bests.efforts.isEmpty())
+        assertEquals(0, bests.ridesCounted)
+        assertEquals(1, bests.ridesSkipped)
+        assertTrue(database.workoutDao().measuredRidesAwaitingBests(riderId).isEmpty())
+    }
+
     @Test
     fun theStrongestRideAtEachWindowWins() = runBlocking {
         ride("steady", seconds = 1_300, watts = 200.0, atMs = 1_000)

@@ -584,6 +584,19 @@ interface WorkoutDao {
      * and `power_bests_at` says only whether the scan has run. That is what the
      * older shape had wrong — the marker was carrying both facts, so "modelled"
      * and "not scanned yet" were the same value.
+     *
+     * **And a condensed ride is excluded, which is a third column answering a
+     * third question** (23.4.3). `WorkoutRepository.backfillPowerFacts` has
+     * always claimed a trimmed ride "is not here and cannot be", and until this
+     * clause that was a claim rather than a filter: a trim leaves the lowest and
+     * highest watt of every ten seconds — real rows, not an empty table — so a
+     * ride trimmed *before* it was ever scanned came back here and had a
+     * mean-maximal effort computed over a fifth of its seconds. That is the same
+     * defect as recomputing time in zone off an outline (23.4.2), except the
+     * result is filed permanently as a personal best. Null in `power_bests_at`
+     * therefore keeps meaning all three things 16.3.3a says it does, and
+     * *"trimmed without ever being scanned"* now stays uncounted instead of
+     * acquiring a record it never set.
      */
     @Query(
         """
@@ -596,6 +609,7 @@ interface WorkoutDao {
           AND w.is_complete = 1
           AND w.power_bests_at IS NULL
           AND w.power_provenance = 'Measured'
+          AND w.metrics_detail_sec IS NULL
         ORDER BY w.timestamp DESC
         """
     )

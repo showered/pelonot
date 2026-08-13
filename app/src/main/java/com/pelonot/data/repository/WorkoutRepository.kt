@@ -578,10 +578,14 @@ class WorkoutRepository(
      * express and an approximation would falsify. So it is the old code path,
      * run once per ride instead of once per visit.
      *
-     * A ride 23.4 has already trimmed is **not** here and cannot be: it has no
-     * samples left to walk, so it stays uncounted rather than acquiring a best
-     * derived from a downsampled trace. That is the honest answer and it is
-     * also the argument for landing this before any trimming exists.
+     * A ride 23.4 has already trimmed is **not** here, and that is a clause in
+     * the query rather than a property of the data — which is the correction.
+     * It read "cannot be: it has no samples left to walk", and a trimmed ride
+     * has plenty: the lowest and highest watt of every ten seconds are real
+     * rows. So a ride trimmed before it was ever scanned was walked at a fifth
+     * of its resolution and given a mean-maximal effort it never rode. It stays
+     * uncounted now, which is the honest answer, and it is still the argument
+     * for landing this before any trimming exists.
      *
      * **Provenance first, and the order is not incidental** (23.4.12): the list
      * this walks is now *"rides whose row says measured"*, so a ride with no
