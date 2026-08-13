@@ -402,10 +402,17 @@ DESCRIPTIONS = {
         "any rest. Half again as much work as the standard version, and the third "
         "set is where the session is actually decided."
     ),
+    # It promised "seated, out of the saddle, and wound up from a low speed"
+    # and the blocks carry one of the three: the first and last sets are both
+    # high-cadence and nothing anywhere is marked seated. The sentence is what
+    # changed rather than the class, because making the first set a seated
+    # torque effort is a different exercise under a live id (PLAN 25.4.3) —
+    # unlike CLB-04, whose description had always been right. PLAN 23.2.8.
     "SPR-05": (
-        "Three kinds of maximal effort in one ride — seated, out of the saddle, "
-        "and wound up from a low speed. Each recruits something slightly "
-        "different, and doing all three tells you which kind of fast you are."
+        "Three sets of very short maximal efforts with almost no rest inside "
+        "them, and the middle one ridden out of the saddle. The last set comes "
+        "after the longest recovery of the ride and asks for the same again on "
+        "legs that have nothing left."
     ),
     "SPR-06": (
         "Repeated flat-out efforts with incomplete recovery, so fatigue builds "

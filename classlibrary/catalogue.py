@@ -419,8 +419,14 @@ klass("CLB-03", "The Long Climb", CLIMBS,
 
 klass("CLB-04", "Rolling Climbs", CLIMBS,
       WU8,
+      # `position=SEATED` was missing, and this is `END-04` line for line
+      # otherwise — same helper, same lengths, same CLIMB cadence, one zone
+      # apart — with the same word in its description. 25.4.1's audit of
+      # positions across the library looked at the classes that *had* one, so a
+      # class whose description claimed a position it had never been given went
+      # straight past it. PLAN 23.2.8.
       sets(6, on=120, zone=4, cadence=CLIMB, off=60, off_zone=2, off_cadence=BRISK,
-           trailing=True),
+           trailing=True, position=SEATED),
       CD4)
 
 klass("CLB-05", "Torque Ladder", CLIMBS,
