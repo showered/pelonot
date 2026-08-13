@@ -6,6 +6,65 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 13 August 2026 (forty-fourth sitting): a promise nobody was holding the library to
+
+**The inbox was empty, item 0 of *What to do next* needs a throwaway account and
+the four above it need the owner or the bike — so the brief was triage, and the
+lead came from `STATUS.md`'s own item 7: *"a written rule that nothing checks
+describes the library nobody built."*** That sentence was written about R10,
+which said a title must not name its own length, said *not tested*, and was
+broken by **all 72 titles at once**. It ends by asking to be read *"as evidence
+about the other rules marked not tested"*. So the question this sitting asked was
+which rules those are — and the answer found **a live rule enforced on no
+surface, and two classes breaking it**. **735 JVM tests, 0 failures**, and both
+fixes watched on the tablet AVD with the previous build as the control.
+
+**The rule the owner's own rename produced was never checked.** 25.4.2 renamed
+four classes named after a position their blocks did not prescribe, and left
+behind a sentence in `classlibrary/README.md`: *a position word in a title is a
+promise that the blocks say it too* — "seated", "standing", "out of the saddle",
+and **"big gear"**, which in cycling usage means seated torque. **Titles were
+checked for it nowhere at all**; the four were found by the owner reading the
+list. And the description half, R13's one substantive clause, was written
+`out of the saddle|standing` — **the standing direction only**, and no "big
+gear", which is what three of the four renamed classes had actually said.
+
+**Two classes were breaking it, and both broke it in the direction nobody was
+looking.** `CLB-04` "Rolling Climbs" says *"repeated seated rises"* and **not one
+of its seventeen blocks carried a position** — it is `END-04` line for line
+otherwise, same helper, same lengths, same `CLIMB` cadence, one zone apart, and
+`END-04` has `position=SEATED`. And `SPR-05` "Sprints, Three Ways" promised
+*"seated, out of the saddle, and wound up from a low speed"* while its only
+positioned blocks ask the rider to **stand up**.
+
+**They needed different fixes and which one applies is the finding.** `CLB-04`
+gets the position: the prose held the authored intent and the blocks were the
+omission — 25.4.1's audit went past it because it was reading the classes that
+already *had* a position. `SPR-05` gets a new sentence: making its first set a
+seated torque effort is a *different exercise* under a live id, which is 25.4.3
+and the reason `SWT-13` was a new id rather than an edited `SWT-05`. **The test
+is which of the two holds the authored intent**, and it is worth having before
+the next one.
+
+**Watched as an upgrade, because a tablet that has already seeded is the case
+that matters.** The control build's database *is* the defect: `CLB-04` at **0**
+positioned blocks against `END-04`'s **6**. The fixed build installed over it —
+no wipe — reconciled from fingerprint `8ba8687dec0d3b91` to `d1e36f5563c30f28`,
+still **72 classes and 0 retired**, and the six Z4 rises now draw a **↓ SIT**
+chip in *See the blocks* where the control drew nothing. `SPR-05`'s new sentence
+was read on the screen and **changed once because of it**: "almost no rest inside
+them" was true of two of its three sets and not the middle one, which is 40 s on
+and 40 s off.
+
+**And 8.8b did not reproduce, which is a measurement rather than a shrug.**
+It was picked first, as the one item in *what is wrong today* needing neither the
+owner nor the bike. `WorkoutServiceTest` was run **four times alone and the whole
+instrumented suite four times — 112 tests, 0 failures, eight runs** — against a
+recorded base of 1 failure in 4. The item is not ticked, because a flake that
+does not reproduce today is not a flake that is fixed; what is written at 8.8b
+now is the measurement and the likeliest reason it went (2.4.6's preference race,
+whose fix is already described in the test's own comment).
+
 ---
 
 ### 13 August 2026 (forty-third sitting): the way back down, and the ride facts the wire never carried

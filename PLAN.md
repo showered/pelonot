@@ -205,7 +205,73 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 13 August 2026 (forty-fifth sitting): the blockers list was three-quarters fixed and nobody had looked
+### Latest session — 13 August 2026 (forty-sixth sitting): the app kept promising to reconnect to a port that was never coming back
+
+**The inbox was empty, the top of *What to do next* is owner-and-bike work for
+the twelfth sitting running, and the seam the previous sitting spent its morning
+on — written-down claims nobody re-reads — has now been mined three times.** So
+this sitting went at the one entry in `STATUS.md`'s *what is wrong today* that is
+**ours, not owner-blocked, and not deliberately deferred**: item 4, the sensor
+board's leaked serial port. Everything above it is the cloud or the owner's;
+below it, the power curve is fenced by design, 8.8b did not reproduce a fortnight
+ago, and 7 and 8 were both measured last sitting. **743 JVM tests, 0 failures**,
+and both halves watched on the tablet AVD with each other as controls.
+
+**What we owed 2.7d was 2.7.7 and 2.7.8, and both were written in July as
+instructions rather than designs.** A leaked `/dev/ttyO0` looked exactly like a
+bike that was switched off — `--` on every tile, *"Reconnecting to the bike…"*,
+and on the real hardware a retry counter that reached **141** while nothing said
+what had happened or that only a reboot would fix it.
+
+**The distinction 2.7.7 asked to *infer* turns out to be written on the wire.**
+A service that cannot open the port **still binds**, still accepts our
+registration, and then answers every poll with `TIME_OUT`. So a steady stream of
+timeouts is a claim — *the service is up and the board is not* — and silence with
+no timeout at all is a different one. That is `SensorBoardNotAnswering`, and it
+is the evidence the whole item needed.
+
+**But what actually picks between the two retry schedules is simpler than the
+exception: whether the failed bind ever delivered a reading.** A bind that
+delivered and then stopped is 2.7.4, which on the bike came back at 122 s, so it
+retries at 1 s for as long as the rider is pedalling. A bind that delivered
+**nothing** is the leaked port, where *every rebind reopens it* — so it waits 3,
+6, 12, 24 s and then **gives up**, with `SensorStatus.Unavailable` and one
+sentence the rider can act on: *"The bike's sensor isn't answering — not
+recording. Restarting the tablet usually frees it."* *Usually*, not *will*: what
+the app knows is that five binds produced nothing, not what is holding the port.
+A *Try again* button is deliberately refused — 2.7d measured that force-stopping
+every client did not release it.
+
+**2.7.8's target turned out to be a second silence detector nobody had noticed,
+and the eager one always won.** `MAX_CONSECUTIVE_TIMEOUTS = 5` counted *messages*,
+and at three polls answering several times a second that is **under a second** —
+so the source tore itself down and rebound long before the repository's own
+six-second watchdog could run, and that constant's comment described a patience
+the code never had. It is four seconds of measured quiet now. **The cost is
+written down rather than hidden**: on a 20-second dropout the gap in
+`workout_metrics` measured **17 seconds against the old schedule's ~7**, and two
+rebinds where there used to be four. That is the trade the item asked for.
+
+**And the interesting finding is a defect the change itself introduced, found by
+driving it rather than by reading it (2.7.9).** `retryWhen` returning `false`
+**rethrows**, and an uncaught throw inside `scope.launch` takes the process
+down — a `SupervisorJob` isolates siblings, it does not handle. The first time
+giving up actually happened: `FATAL EXCEPTION`, the app gone mid-ride, and the
+ride left for the crash-recovery prompt to find — **worse than the defect being
+fixed**. Every retry policy in this project had been infinite, so no exception
+had ever reached the end of the pipeline; the first item to make one terminal
+inherited an error path nobody had walked. It is in CLAUDE.md now.
+
+**The controls are the two rides against each other.** Dead board: 4 rebinds,
+gave up at 65 s, 0 samples, and the summary honestly says *"no second-by-second
+record"* rather than a row of zeros. Dropout: 2 rebinds, no give-up, 69 samples
+of 86 s with a 17-second gap exactly where the silence was, and the chip back to
+*"Simulated telemetry"* once it recovered. 0 `FATAL EXCEPTION` in both, against 1
+on the first attempt. `DEAD_BOARD` joins `COAST`, `CORRUPT` and `SILENCE` as a
+lever, because the bike is still a perishable resource and this one needs 65
+seconds of a board refusing to answer.
+
+### The sitting before — 13 August 2026 (forty-fifth sitting): the blockers list was three-quarters fixed and nobody had looked
 
 **The inbox was empty and the top of *What to do next* was, for the eleventh
 sitting, owner-and-bike work — so the brief was triage, and the previous sitting
@@ -281,85 +347,30 @@ tests — and it would not have caught any of this, because what went stale was
 prose about what a rider meets. It stays unbuilt for a better reason than "not
 yet".
 
-### The sitting before — 13 August 2026 (forty-fourth sitting): a promise nobody was holding the library to
-
-**The inbox was empty, item 0 of *What to do next* needs a throwaway account and
-the four above it need the owner or the bike — so the brief was triage, and the
-lead came from `STATUS.md`'s own item 7: *"a written rule that nothing checks
-describes the library nobody built."*** That sentence was written about R10,
-which said a title must not name its own length, said *not tested*, and was
-broken by **all 72 titles at once**. It ends by asking to be read *"as evidence
-about the other rules marked not tested"*. So the question this sitting asked was
-which rules those are — and the answer found **a live rule enforced on no
-surface, and two classes breaking it**. **735 JVM tests, 0 failures**, and both
-fixes watched on the tablet AVD with the previous build as the control.
-
-**The rule the owner's own rename produced was never checked.** 25.4.2 renamed
-four classes named after a position their blocks did not prescribe, and left
-behind a sentence in `classlibrary/README.md`: *a position word in a title is a
-promise that the blocks say it too* — "seated", "standing", "out of the saddle",
-and **"big gear"**, which in cycling usage means seated torque. **Titles were
-checked for it nowhere at all**; the four were found by the owner reading the
-list. And the description half, R13's one substantive clause, was written
-`out of the saddle|standing` — **the standing direction only**, and no "big
-gear", which is what three of the four renamed classes had actually said.
-
-**Two classes were breaking it, and both broke it in the direction nobody was
-looking.** `CLB-04` "Rolling Climbs" says *"repeated seated rises"* and **not one
-of its seventeen blocks carried a position** — it is `END-04` line for line
-otherwise, same helper, same lengths, same `CLIMB` cadence, one zone apart, and
-`END-04` has `position=SEATED`. And `SPR-05` "Sprints, Three Ways" promised
-*"seated, out of the saddle, and wound up from a low speed"* while its only
-positioned blocks ask the rider to **stand up**.
-
-**They needed different fixes and which one applies is the finding.** `CLB-04`
-gets the position: the prose held the authored intent and the blocks were the
-omission — 25.4.1's audit went past it because it was reading the classes that
-already *had* a position. `SPR-05` gets a new sentence: making its first set a
-seated torque effort is a *different exercise* under a live id, which is 25.4.3
-and the reason `SWT-13` was a new id rather than an edited `SWT-05`. **The test
-is which of the two holds the authored intent**, and it is worth having before
-the next one.
-
-**Watched as an upgrade, because a tablet that has already seeded is the case
-that matters.** The control build's database *is* the defect: `CLB-04` at **0**
-positioned blocks against `END-04`'s **6**. The fixed build installed over it —
-no wipe — reconciled from fingerprint `8ba8687dec0d3b91` to `d1e36f5563c30f28`,
-still **72 classes and 0 retired**, and the six Z4 rises now draw a **↓ SIT**
-chip in *See the blocks* where the control drew nothing. `SPR-05`'s new sentence
-was read on the screen and **changed once because of it**: "almost no rest inside
-them" was true of two of its three sets and not the middle one, which is 40 s on
-and 40 s off.
-
-**And 8.8b did not reproduce, which is a measurement rather than a shrug.**
-It was picked first, as the one item in *what is wrong today* needing neither the
-owner nor the bike. `WorkoutServiceTest` was run **four times alone and the whole
-instrumented suite four times — 112 tests, 0 failures, eight runs** — against a
-recorded base of 1 failure in 4. The item is not ticked, because a flake that
-does not reproduce today is not a flake that is fixed; what is written at 8.8b
-now is the measurement and the likeliest reason it went (2.4.6's preference race,
-whose fix is already described in the test's own comment).
-
 ### What to do next, in order
 
 **The owner's inbox is still empty. The top of this list is unchanged for the
-eleventh sitting running, because none of it is work: what stands between the QR
+twelfth sitting running, because none of it is work: what stands between the QR
 fix and the owner is one deploy, and what stands between the *journey* and
 anybody is the mailer.** 15.3.2 is built and unticked and item 0 is still its
-reason. What moved this sitting is again not on this list: **`STATUS.md`'s own
-list of what blocks a stranger was three-quarters out of date**, and the one
-clause of it that was still true — a first run that says nothing about what this
-app is — is built and watched (19.1.6).
+reason. What moved this sitting is again not on this list: **2.7.7 and 2.7.8**,
+the app's own half of the leaked serial port, which had been written down since
+July and was the only entry in `STATUS.md`'s *what is wrong today* that was ours,
+un-owner-blocked and not deliberately deferred.
 
-**The seam is now three for three, and the lesson has changed shape.** The
-previous two payouts were rules in `classlibrary/README.md`; this one was **the
-summary page a person reads instead of the plan**, which is worse, because that
-page is what decides what a sitting picks. Two rules follow, and both are cheap:
-**re-read a blockers list against the code before working from it**, and when an
-item fixes something another item also describes, cross it off there too. The
-design tokens were measured in the same pass and had *not* drifted (17.15.2),
-which is the other half of doing this honestly — the answer is sometimes that the
-claim is true, and the measurement is worth the same either way.
+**That is a third way of reading this list and it is worth keeping.** When the
+top of *What to do next* is all owner-and-bike, the previous two sittings mined
+*written-down claims nobody re-checks*. This one mined **the severity-ranked
+list of what is wrong**, top-down, discarding everything that needs somebody
+else — and there was exactly one item left, sitting fourth, with its design
+already written. It is the cheaper question of the two, because that list is
+already ordered by how much it matters.
+
+**And it produced the sitting's most useful finding by being *driven* rather
+than reviewed** (2.7.9): making the retry policy terminal for the first time
+inherited an error path nobody had walked, and the app died mid-ride the first
+time it gave up. `assembleDebug` and 743 green tests all passed on the version
+that crashed.
 
 0. **Watch 15.3.2 against the real endpoint, and it is a sitting's setup rather
    than an item.** Everything about the restore is measured against a real Room
@@ -484,6 +495,21 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**2.7.7, 2.7.8 — the app's half of the leaked serial port.**~~ **Done in the
+  forty-sixth sitting**, both halves watched on the tablet AVD with each other
+  as controls. **Do not make the two retry schedules one again**: which applies
+  is decided by whether the failed bind ever delivered a reading, and collapsing
+  them puts the app back to rebinding a dead port every second (2.7d) or to
+  giving up on a board that was about to come back at 122 s (2.7.4). **Do not
+  add a *Try again* control** — force-stopping every client was measured not to
+  release the port, so it would invite the rider to make it worse. **Do not
+  move the sentence onto the overlay**: that surface belongs to the next sixty
+  seconds of pedalling and the ride screen is one tap away. **Do not delete the
+  `.catch` after `retryWhen`** — that is 2.7.9, it is the difference between
+  giving up and the process dying, and it looks like decoration. And do not
+  count the source's `TIME_OUT` replies in *messages* again: three polls a
+  second made "five consecutive" under a second, which is how a six-second
+  watchdog came to never fire.
 - ~~**11.6.15 — `Don't use the overlay` is answered once and asked for ever.**~~
   **Done in the forty-fifth sitting**, watched as a round trip on the AVD. **Do
   not add a line to the ride screen saying the overlay is off**: that is this
@@ -710,6 +736,7 @@ landed in the tenth sitting and nothing impossible reaches the record now:**
 | ~~**2.7.5** What to do about the rides already recorded~~ | **Done and observed on the bike's own database.** Marked, not rewritten: three corrupted rides found, the fourth (post-fix) clean. Read 2.7.5 |
 | ~~**2.7.3** A plausibility fence~~ | Done and observed: 0 impossible values in 188 recorded samples across a ride carrying 30 s of the bike's own corruption signature |
 | ~~**2.7.4** Telemetry dies and never recovers~~ | Done and observed: silence is an `IOException` now, the one retry policy rebuilds the source, and the ride picked up again at 122 s with no app restart |
+| ~~**2.7.7** Say what has actually happened, **2.7.8** stop rebinding so eagerly~~ | **Done in the forty-sixth sitting.** A leaked port is told apart from a board that dropped out — the service still binds and answers `TIME_OUT` — and the app gives up after four rebinds with the remedy on screen instead of reaching attempt 141. What is left of 2.7d is Peloton's: nothing in userspace reopens that port |
 
 **Then the ride-screen snags, which are what the owner actually feels:**
 

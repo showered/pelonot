@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 13 August (forty-fifth sitting).**
-Measured, not estimated: `assembleDebug` passes, **735 JVM tests and 112
-instrumented tests, 0 failures**, and **572 of 800 plan boxes** are ticked
+**Written 4 August 2026, updated 13 August (forty-sixth sitting).**
+Measured, not estimated: `assembleDebug` passes, **743 JVM tests and 112
+instrumented tests, 0 failures**, and **575 of 801 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -57,7 +57,7 @@ was still being listed here** — see *What is wrong today*, item 7.
 
 | Tier | What it is | State |
 |------|-----------|-------|
-| **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours |
+| **1. The ride** | Telemetry, the service, classes, the overlay, the ride screen | ✅ **Done and ridden.** The one open defect family is the sensor board's serial port (2.7d), which is Peloton's leak and not ours — and the app's own half of it is now built (2.7.7, 2.7.8): it stops rebinding a port that has never answered, and says *"restarting the tablet usually frees it"* instead of promising to reconnect for ever |
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog. **Retention (23.4) is built**: a rider can ask for rides older than six months or a year to be condensed to an outline — the lowest and highest watt of each ten seconds, kept as real rows so nothing is an average the bike never measured. It is **off by default**, offers the backup first, and a condensed ride says so on its charts and in its exports (`metrics_detail_sec`). It is survivable because the three things that used to be re-derived from samples are now written down when the ride is recorded: its efforts (16.3.3a), where its watts came from (23.4.12) and what its seconds counted (`distributions_json`) — measured as an identical time-in-zone table before and after a trim. **And restore has been fixed after refusing every backup this build made** — a version number kept equal to another version number by a comment, which drifted (19.1.3a) |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. Seen on the real bike as well as the emulator; what is owed is watching it move under somebody actually pedalling |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. **Sign-out and deleting your cloud copy are built and watched now (15.4)** — the second one signs the rider out with it, so a delete cannot undo itself at the next ride. **And the cloud has stopped being write-only (15.3.2)**: a rider's history can come back down onto a new bike, under a restore that only ever *adds* rides and never overwrites one already here. Building it found that the wire had never carried the ride's own facts — the FTP it was ridden at, what its seconds counted before a trim — so a restored ride would have had its zones redrawn from today's numbers; they travel inside the versioned payload now, with no cloud migration. It is built and tested and **has not yet been watched against the real endpoint**, which is the one thing left on it. Account deletion is still not built |
@@ -307,8 +307,15 @@ race has to exclude.
 4. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
    ours. One `/dev/ttyO0`, one open, so two bike apps can never both work — and
    after the other app is gone the port can stay unopenable **until the tablet
-   is rebooted**. What we owe it is 2.7.7 and 2.7.8: say what actually happened,
-   and stop rebinding so eagerly.
+   is rebooted**. **What we owed it is now paid** (2.7.7, 2.7.8): the app stops
+   promising to reconnect to a port that is not coming back, and says the
+   remedy instead — *"The bike's sensor isn't answering — not recording.
+   Restarting the tablet usually frees it."* It tells that condition apart from
+   a board that merely dropped out, because a service that cannot open the port
+   still binds and then answers every poll with `TIME_OUT`, and it stops
+   rebinding after four tries rather than reaching attempt 141. **The ride is
+   still lost** — nothing in userspace can reopen that port — so this is
+   honesty about the failure rather than a fix for it.
 5. **The power curve is measurably wrong** — RMSE 137 W against the board's own
    watts, 66% median absolute error. It is fenced to two consumers (the
    simulator and `RideSnapshot.resistanceTarget`) and can never reach a
@@ -409,8 +416,8 @@ honest telemetry, migrations, an overlay that survives Netflix — are behind us
 had already been fixed elsewhere, and this page had been repeating them for
 weeks (item 7).
 
-**Done as the plan is written: 71%, and it will never be 100.** 572 of 800
-boxes, and the remaining 228 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 71%, and it will never be 100.** 575 of 801
+boxes, and the remaining 226 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
 things it had already decided against. **It has gone *down* in a sitting where
 three things were finished**, and moved by one box in a sitting whose whole

@@ -141,10 +141,28 @@ mid-ride would write fabricated numbers into the rider's permanent record.
 ### 1e. Merging and retries
 
 `SensorRepository` merges the bike source with heart rate into one
-`StateFlow<SensorReading>`, and owns **all** retry policy — one `retryWhen` with
-capped exponential backoff. Sources deliberately do not reconnect themselves;
+`StateFlow<SensorReading>`, and owns **all** retry policy — one `retryWhen`
+asking one `ReconnectPolicy`. Sources deliberately do not reconnect themselves;
 when they did, `close()` triggered a reconnect and `reconnect()` called
 `close()`, so ending a workout started an endless loop.
+
+**There are two schedules, and what picks between them is whether the failed
+bind ever delivered a reading** (PLAN.md 2.7.7, 2.7.8):
+
+| | Delivered, then stopped | Delivered nothing |
+|---|---|---|
+| What it is | the board dropped out — on the bike it came back at 122 s | the port is not open: another app has it, or it leaked (2.7d) |
+| Backoff | 1 s, doubling, capped at 30 s | 3 s, doubling, capped at 30 s |
+| Ends | never — the rider may still be pedalling | **after 5 attempts**, in `SensorStatus.Unavailable` |
+
+The asymmetry is the point: every rebind reopens the exclusive UART, so
+retrying a port that has never answered is the one action that makes a leaked
+port permanent. Giving up publishes a state the ride screen can put a *remedy*
+on rather than a promise, and a productive attempt clears the whole run.
+
+`ReconnectPolicy` is pure Kotlin and JVM-tested. And the `.catch` after
+`retryWhen` is load-bearing rather than decorative — returning `false` rethrows,
+and an uncaught throw in the launch takes the process down.
 
 ### 1a-ter. The frame is the identifier
 
@@ -172,7 +190,11 @@ possible power.
 
 `SensorService.onBind` also opens the exclusive `/dev/ttyO0`, so **only one app
 on the tablet can read the board at a time**, and a lost port can outlive the
-app that took it (PLAN.md 2.7d).
+app that took it (PLAN.md 2.7d). When that open fails the service **still
+binds**, still accepts the registration, and answers every poll with
+`TIME_OUT` — so a steady stream of timeouts is the app's evidence that the
+service is up and the board is not, which is what `SensorBoardNotAnswering`
+carries into the retry policy above.
 
 ### 1f. Three refusals between the board and the record
 
