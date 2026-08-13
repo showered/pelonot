@@ -2,12 +2,14 @@ package com.pelonot.data.local
 
 import com.pelonot.data.remote.dto.ClassTemplateDto
 import com.pelonot.domain.model.GovernedBy
+import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalParser
 import com.pelonot.domain.model.RidePosition
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.File
 
@@ -487,9 +489,13 @@ class ClassLibraryAssetsTest {
      * eventually do anyway — is caught here and nowhere else.
      *
      * What it deliberately does not check is whether a sentence is *true*.
-     * Nothing can. The `standing` clause is the one exception: a description
+     * Nothing can. The position clause is the one exception: a description
      * promising a position is making a claim the blocks have to keep, which is
-     * the only way an authored sentence here can be wrong arithmetically.
+     * the only way an authored sentence here can be wrong arithmetically. It
+     * used to read `standing` only, and **both classes that broke it broke it
+     * the other way** — `CLB-04` said "seated rises" with no position on any of
+     * its seventeen blocks, and `SPR-05` promised a seated set in a class whose
+     * only positioned blocks ask the rider to stand up (PLAN 23.2.8).
      */
     @Test
     fun `every class says what it is for, in the app's own voice`() {
@@ -523,15 +529,60 @@ class ClassLibraryAssetsTest {
                 )
             }
 
-            val stands = intervals.any { it.position == RidePosition.Standing }
-            if (!stands) {
-                assertFalse(
-                    "${dto.id} description promises standing and no block asks for it",
-                    Regex("out of the saddle|standing", RegexOption.IGNORE_CASE)
-                        .containsMatchIn(text)
-                )
+            for (broken in brokenPositionPromises(text, intervals)) {
+                fail("${dto.id} description promises $broken riding and no block asks for it")
             }
         }
+    }
+
+    /**
+     * R10 — the title names the shape and the demand (PLAN 23.2.6, 25.4.2).
+     *
+     * The whole of R10 lived in `build.py` and nowhere else, which is a poor
+     * place for it to live: it is the one rule in this library with a history
+     * of being written down and broken by **all 72 classes at once**, and the
+     * position half of it — the rule the owner's rename in 25.4.2 produced —
+     * was enforced on no surface at all. The four classes it renamed were found
+     * by reading the list.
+     */
+    @Test
+    fun `the title says what the ride is`() {
+        val plans = plans()
+        for ((_, dto, intervals) in plans) {
+            val minutes = dto.durationSec / 60
+            assertFalse(
+                "${dto.id} \"${dto.title}\" ends in its own length; the duration is " +
+                    "already on every surface that shows the title",
+                Regex("(^|\\s)$minutes$").containsMatchIn(dto.title)
+            )
+            for (broken in brokenPositionPromises(dto.title, intervals)) {
+                fail("${dto.id} \"${dto.title}\" promises $broken riding and no block asks for it")
+            }
+        }
+        // Titles have to be unique on their own: stripping the duration took
+        // away the thing that was quietly doing it.
+        val titles = plans.map { it.second.title }
+        for (title in titles.toSet()) {
+            assertEquals("\"$title\" is the name of more than one class", 1, titles.count { it == title })
+        }
+    }
+
+    /**
+     * The positions a piece of authored text claims that no interval prescribes.
+     *
+     * One helper for the title and the description, because they make the
+     * identical claim — and "big gear" is in it because in cycling usage it
+     * means seated torque and reads as that instruction, which is what three of
+     * the four classes renamed in 25.4.2 actually said.
+     */
+    private fun brokenPositionPromises(text: String, intervals: List<Interval>): List<String> {
+        val prescribed = intervals.mapNotNull { it.position }.toSet()
+        return POSITION_WORDS
+            .filter { (position, pattern) ->
+                Regex(pattern, RegexOption.IGNORE_CASE).containsMatchIn(text) &&
+                    position !in prescribed
+            }
+            .map { (position, _) -> position.name.lowercase() }
     }
 
     private companion object {
@@ -545,5 +596,14 @@ class ClassLibraryAssetsTest {
          * written, not the way riding is talked about.
          */
         val JARGON = listOf("FTP", "watts?", "kilojoules?", "kJ", "W/kg", "VO2", "rpm")
+
+        /**
+         * A position word is a promise the blocks have to keep, and it is the
+         * same promise whichever surface says it (PLAN 25.4.2, 23.2.8).
+         */
+        val POSITION_WORDS = mapOf(
+            RidePosition.Standing to "out of the saddle|standing|stand up",
+            RidePosition.Seated to "seated|big gear",
+        )
     }
 }

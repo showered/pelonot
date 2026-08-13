@@ -89,6 +89,39 @@ DESCRIPTION_MAX = 320
 # vocabulary of riding.
 JARGON = ["FTP", "watts?", "kilojoules?", "kJ", "W/kg", "VO2", "rpm"]
 
+# R10 and R13 — a position word is a promise the blocks have to keep (PLAN
+# 25.4.2), and it is the *same* promise whichever surface says it. The four
+# classes 25.4.2 renamed were found by hand and the rule it left behind was
+# written into the README and checked nowhere; R10 is the one rule in this file
+# with a history of being written down and broken by all 72 classes at once, so
+# it does not get to be enforced by memory a second time.
+#
+# "big gear" is here because in cycling usage it means seated torque and reads
+# as exactly that instruction — the README says so under R10, and three of the
+# four classes 25.4.2 renamed said "Big Gear" rather than "Seated".
+POSITION_WORDS = {
+    "standing": r"out of the saddle|standing|stand up",
+    "seated": r"seated|big gear",
+}
+
+
+def broken_position_promises(text, blocks):
+    """The positions `text` claims that no block in `blocks` prescribes.
+
+    One helper for both surfaces on purpose. The title and the description make
+    the identical claim and it was previously checked on neither: the title not
+    at all, and the description in the standing direction only — which is how
+    `CLB-04` came to say "seated rises" with no position on any of its seventeen
+    blocks, and `SPR-05` to promise a seated set in a class whose only
+    positioned blocks ask the rider to stand up.
+    """
+    prescribed = {b[3] for b in blocks if b[3]}
+    return [
+        position
+        for position, pattern in POSITION_WORDS.items()
+        if re.search(pattern, text, re.IGNORECASE) and position not in prescribed
+    ]
+
 
 def governs(cadence):
     """Which metric this block's cadence intent says is the instruction.
@@ -357,6 +390,19 @@ def library_problems(sessions):
                 "the duration is already on every surface that shows the title"
             )
 
+    # R10 — a position word in a title is a promise that the blocks say it too
+    # (PLAN 25.4.2). This is the rule the owner's rename produced and it has
+    # never been checked: `END-08`, `SWT-05`, `THR-06` and `END-12` were found
+    # by reading the list, and nothing stood between the library and a fifth.
+    # The failure it exists to prevent is the rider being told one thing by the
+    # name and another by every surface that speaks during the ride.
+    for session in sessions:
+        for position in broken_position_promises(session.title, session.blocks):
+            out.append(
+                f"[R10] {session.id} \"{session.title}\" promises {position} "
+                "riding and no block asks for it"
+            )
+
     # R10 — and two classes may not share a name, which is the thing the
     # duration was quietly doing. Without it the check has to be real.
     titles = [s.title for s in sessions]
@@ -403,12 +449,13 @@ def library_problems(sessions):
                     f"[R13] {session.id} description says \"{word}\"; a rider "
                     "choosing a class is not reading a measurement (Phase 26)"
                 )
-        # A position word is a promise the blocks have to keep.
-        stands = any(b[3] == "standing" for b in session.blocks)
-        if re.search(r"out of the saddle|standing", text, re.IGNORECASE) and not stands:
+        # A position word is a promise the blocks have to keep — in both
+        # directions. This clause used to read `standing` only, and the two
+        # classes that broke it both broke it the other way.
+        for position in broken_position_promises(text, session.blocks):
             out.append(
-                f"[R13] {session.id} description promises standing and no "
-                "block asks for it"
+                f"[R13] {session.id} description promises {position} riding "
+                "and no block asks for it"
             )
 
     ids = [s.id for s in sessions]
