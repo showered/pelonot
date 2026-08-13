@@ -738,7 +738,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       rather than allowed to land, and starts whole on the way back. Rounding
       the rider's way is the right rounding on a beat that exists to let
       somebody get onto a bike.*
-- [ ] **11.6.15** **`Don't use the overlay` is answered once and asked for
+- [x] **11.6.15** **`Don't use the overlay` is answered once and asked for
       ever.** Not the owner's note, found while reading for 11.6.14 and left as
       its own item because it is a different failure: *Not now* clears the flag
       for this ride only, so the prompt returns on the next one, which is right.
@@ -747,6 +747,40 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       Settings row that turned it on. A rider who taps the wrong button on their
       first ride loses the app's primary surface silently. Small; check what
       Settings already says before writing anything new
+
+      *Done, and the item's own last sentence was the right instruction:
+      **Settings already says it**. `RideHudSection` is headed **Ride overlay**
+      and its first row is a toggle reading "Show the ride overlay over other
+      apps", which is both the way back and the same name the dialog uses
+      (11.6.5). So nothing new was written. The whole gap was that a rider
+      standing in front of three buttons had no way of knowing one of them was
+      permanent and reversible somewhere else, and the fix is one sentence at the
+      moment of the decision — "Either way you can change it later in Settings,
+      under Ride overlay." It covers all three buttons rather than the one,
+      which is why it is in the body and not on a button.*
+
+      ***A nag afterwards was the obvious fix and is the mirror of this same
+      defect.** A line on the ride screen saying the overlay is off would follow
+      a rider who deliberately turned it off for ever, which is exactly the
+      complaint here in the other direction. Told once, at the moment they
+      choose, and then believed.*
+
+      *Watched on the tablet AVD, and the round trip is the point rather than
+      the dialog: the sentence was read on screen over a paused countdown, `Don't
+      use the overlay` tapped, and **Settings → Ride overlay** then found with
+      the toggle off — so the claim the dialog makes is true, which is the
+      standard this project holds a sentence to.*
+
+      *One thing found on the way and deliberately not built: **`hudEnabled` is
+      a device-wide DataStore preference, not a per-profile one**, so one rider
+      declining the overlay in that modal turns it off for the whole household.
+      Defensible — the units and the telemetry source are device-wide too, and
+      an overlay is arguably a property of the screen rather than of the rider —
+      but worth knowing that it is the only one of the three a rider can switch
+      off from inside a modal they did not go looking for. If it ever needs
+      changing it is 20.x work rather than 11.x: the question is which
+      preferences belong to a profile, and answering it for one is answering it
+      for none.*
 
 - [x] **11.6.16** **The countdown grows, and pushes the totals off the bottom
       of the screen.** The owner's note, 5 August 2026, verbatim: *"When the

@@ -323,7 +323,19 @@ private fun OverlayPermissionDialog(
             Text(
                 "Pelonot can dock your metrics, targets and interval countdown to " +
                     "the edge of the screen while you watch something else. Android " +
-                    "needs your permission to draw over other apps first."
+                    "needs your permission to draw over other apps first.\n\n" +
+                    // 11.6.15. Three buttons and only one of them was reversible
+                    // out loud: *Don't use the overlay* writes the preference off
+                    // for good, and a rider meeting this dialog on their first
+                    // ride had no way of knowing that the app's primary surface
+                    // was the thing they had just declined. Settings already
+                    // offers it back under the same name — the gap was that
+                    // nothing said so. One sentence, at the moment of the
+                    // decision, rather than a nag afterwards: a rider who
+                    // genuinely does not want the overlay must not be asked
+                    // about it again, which is the mirror of this same defect.
+                    "Either way you can change it later in Settings, under " +
+                    "Ride overlay."
             )
         },
         confirmButton = { TextButton(onClick = onGrant) { Text("Open settings") } },
