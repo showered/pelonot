@@ -368,6 +368,26 @@ keyboard should be possible on the web and optional on the bike.**
       if the checked-in file differs. **Do not build that until the drift has
       actually happened once**: a generator nobody runs is worse than a copy
       somebody reads
+
+      **Measured on 13 August 2026, and it has not drifted**, which is why this
+      box is still empty and no script exists. All 28 colour declarations, the
+      six spacings and the 760 dp cap match `Color.kt` and `Theme.kt` at
+      `09f5a86`. The forty-fifth sitting took the measurement precisely because
+      the *pattern* — a written claim nobody re-checks — had paid out twice
+      already (R10, then 23.2.8), and here the honest outcome is that the claim
+      is true and the decision above stands.
+
+      **Two things the grep turned up that it could not have.** Two light-theme
+      values named no Kotlin original, so the file's own promise — that checking
+      is a grep — was false for them; they are named now. And
+      **`--radius-control: 10px` was never a copy at all**: it sat under a
+      comment reading *"Shapes, matching the app's card and control radii"*, and
+      there is no 10 dp shape in `Shapes.kt`, nor has there been — the app's
+      buttons are pills and its text fields are 4 dp. The **comment** is
+      corrected rather than the number, because a pill on a full-width form on
+      a phone is a design change and this was a sentence rather than a decision.
+      Worth knowing before the generator above is ever written: it would have to
+      allow for a token that is deliberately the web's own
 - [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
 - [ ] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
 - [ ] **17.4** Profile customisation: display name, avatar, bio, FTP, units

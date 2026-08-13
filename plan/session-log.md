@@ -8,6 +8,72 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
+### 13 August 2026 (forty-third sitting): the way back down, and the ride facts the wire never carried
+
+**The inbox was empty and the top of *What to do next* was, for the ninth
+sitting, five things needing the owner or the bike — so the brief pointed at the
+gap the forty-second sitting left beside it: the cloud was still *write-only*.**
+Every ride went up and nothing ever came back, which made *backup* a word the app
+was not entitled to: 15.4.2 could delete a copy that had never been restorable.
+So this is **15.3.2, built** — and deliberately **not ticked**, for the reason at
+the end. **734 JVM tests and 12 new instrumented ones, 0 failures.**
+
+**A restore is a download, not a sync, and the four rules are all refusals.** It
+only ever *adds* rides — an id already here is skipped whoever owns it, because
+`insertWorkout` is an `@Upsert` and a restore that did not check would write over
+the tablet's own record, on a household bike possibly a housemate's. A restored
+ride is marked as **backed up rather than queued**, or the next drain re-uploads
+what it just downloaded and 23.4.6 reads the null `synced_at` as *this tablet is
+the only copy*. A ride is **skipped whole or restored whole** — 2.7's reject-don't
+-repair, and the count of refusals is shown, because a rider missing three rides
+should know that three were refused rather than absent. And the **profile is
+adopted only by a rider who has never ridden on this bike**, since the cloud copy
+carries no timestamp and last-write-wins cannot be asked of a row without one.
+
+**The wire needed one addition, and working out why is the finding.** `workouts`
+in the cloud has 14.4's twelve columns, and **everything this project has learnt
+since lives in a column the payload never carried** — the FTP a ride was ridden
+at (7.8), the maximum heart rate its zones were judged against (21.2.3), whether
+it was ridden straight through (8.3d.2), and what its seconds counted before a
+trim took them (23.4.2). Uploading was the only direction, so nobody noticed.
+Restoring without them is not a smaller ride: it is a ride whose zones are
+redrawn from today's FTP and whose time in zone, if it came down as an outline,
+is **recomputed from a fifth of its seconds** — the two defects this project has
+fixed most often, arriving together through a door neither of them had.
+`RideFacts` travels inside the versioned payload as `w`, the same door `d` used
+in 23.4.14, so **there is no cloud migration for the owner to apply**.
+
+**One live defect was found on the way, and it is 23.4.2's shape on a fourth
+reader.** `backfillPowerFacts` has claimed since 16.3.3a that a trimmed ride
+*"is not here and cannot be: it has no samples left to walk"*. A trim does not
+empty `workout_metrics` — it leaves the lowest and highest watt of every ten
+seconds, which are real rows — and nothing in the query excluded them. So a ride
+condensed **before** it was ever scanned had a mean-maximal effort computed over
+a fifth of its seconds, through a trace of ten-second *maxima*, and filed
+permanently as a personal best beside real ones. One clause fixes it
+(**23.4.15**), and the test is red on the build before it and green after.
+
+**What was watched on the tablet AVD is the restore's output rather than its
+round trip.** A database seeded with two rides in exactly the shape
+`RestoreRepository` writes — one intact, one a ten-second outline carrying its
+own counts — draws both in history, and the outline's detail says *"condensed to
+a 10-second outline"*, *"the seconds between those points are gone"*, and a
+**Time in zone** panel of *Z2 02:20, Z3 06:42, Z4 08:20, Z5 02:23, Z6 00:15*
+under *"counted before this ride was condensed"*: **1,200 seconds off 240 stored
+rows**. Without `RideFacts.distributions` that panel would have counted the rows
+and said the twenty-minute ride pedalled for four.
+
+**What is owed, and why the box is not ticked.** The sentences on the account
+screen — *"Your account holds 12 rides. 12 of them are not on this bike."*, the
+wait, the result — have not been read on a screen, because filling an account
+needs a throwaway sign-in and the admin API that mints one was not available this
+sitting. That is one sitting's setup and the recipe is written out at 15.3.2. The
+house rule is the house rule: built and tested is not observed.
+
+---
+
+---
+
 ### 13 August 2026 (forty-second sitting): the way out of the cloud, and why deleting the copy has to stop the backing up
 
 **The inbox was empty and *What to do next* was, by its own admission, entirely

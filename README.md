@@ -11,8 +11,11 @@ modified bootloader, or a hardware mod.
 > **Status: it works, and it is not finished.** A ride records, the HUD runs over
 > whatever you are watching, heart-rate straps pair, and the whole history is
 > yours to export. Accounts, cloud backup and a companion web app arrived in
-> August 2026 and are a week old rather than weathered; signing out, deleting a
-> cloud copy and restoring onto a new device are not built yet.
+> August 2026 and are a fortnight old rather than weathered. The exits are open
+> too — signing out and deleting your cloud copy are built and watched against
+> the real endpoint, and a restore back down onto a fresh device is built and
+> has not yet been watched end to end. Deleting the **account** itself is not
+> built.
 > **[STATUS.md](STATUS.md) is the one-page answer to "how close is this?"**, and
 > `PLAN.md` is the long one — what is done, what is not, and what was once
 > claimed to be done and was not.

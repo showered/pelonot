@@ -147,7 +147,7 @@ has simply never been written down.
       finished a ride), so a red run would mean "re-run it" often enough to
       train everyone to ignore the whole thing. 8.8b is the same complaint
       about the same suite
-- [ ] **19.1.6** **The first run explains nothing.** A new rider is dropped
+- [x] **19.1.6** **The first run explains nothing.** A new rider is dropped
       straight onto the profile picker; profile creation asks for an FTP with
       **200 prefilled** and no way to find a real one (19.2.3 is the guided test
       and is unbuilt); the overlay permission — the thing the entire product is
@@ -157,6 +157,74 @@ has simply never been written down.
       version: say what FTP is and that a guess is fine and the app will correct
       it (7.1 already does), offer the overlay permission before the first ride
       rather than during it, and mention the strap once
+
+      **Three of its four claims were already false, and it was the top row of
+      `STATUS.md`'s *Blocking a stranger being able to use this* table the whole
+      time.** That is the finding rather than the screen. This item was written
+      in the twenty-fourth sitting and read by every session since as a summary
+      of what a stranger meets; nothing re-checked it against the code, and
+      three separate items fixed three of its four clauses without anybody
+      coming back to cross them off. Checked line by line on 13 August 2026:
+
+      - **The FTP is not prefilled with 200 and has not been since 20.3.**
+        Profile creation *estimates* it from the weight, the year of birth and
+        one sentence about your riding, says so on its own screen — *"Our
+        estimate, from your weight, your age, and that you're riding now and
+        then. We'll work it out properly from your first few rides."* — and
+        offers *I know my FTP — set it myself* underneath. 20.3.6 had already
+        found and fixed the `200` itself, one sitting before the screen was
+        replaced. **Stale.**
+      - **The overlay permission is asked during the countdown, and that is
+        where the owner asked for it.** 11.6.14 is their own note: *"This should
+        happen DURING the countdown (and pause the countdown while you go away
+        and do it)"*. So this clause is not merely stale, it is **superseded by
+        a decision that went the other way** — building "before the first ride"
+        now would undo an item that was watched working, with the count sitting
+        at 10 for ninety seconds. **Superseded.**
+      - **A strap is discoverable from the ride screen**, and has been since
+        11.6.9/11.6.10: the heart-rate tile carries *"Tap to pair a heart-rate
+        strap"* whenever `heartRateBpm` is null, and tapping it opens pairing
+        without ending the ride. That is a better answer than "mention it once"
+        — it is offered at the only moment a rider is looking at an empty
+        heart-rate number. **Stale.**
+      - **The opening clause was still true**, and it is the one nobody had
+        built: a rider who has just side-loaded this onto their bike meets
+        **"Who's riding?" over a Guest tile and a New rider tile**, and that is
+        every word the app says about itself. Screenshotted on the tablet AVD
+        off a fresh install as the control.
+
+      *Done, and it is a **state of the profile picker** rather than a screen in
+      front of it. An empty `profiles` list is the only first run there is, so
+      the database is the flag: there is no "has seen the welcome" preference,
+      and therefore nothing that can drift out of step with whether a rider
+      actually has a profile. The heading becomes the app's name, because
+      "Who's riding?" is unanswerable on an empty bike and the question this
+      screen has to answer first is _what is this_; under it one sentence —
+      "Your ride, on the bike's own tablet, over whatever you're watching."*
+
+      *One sentence, and it is the overlay, under Phase 26's rule about erring
+      towards saying less. The overlay is what this app **is** and the one part
+      of it a rider cannot discover by pressing things. **The offline promise is
+      deliberately not repeated here**: the account offer at the end of profile
+      creation already makes it at the moment it costs something — "Your rides
+      get copied to your account. Everything keeps working without one." — which
+      was read on the screen rather than assumed.*
+
+      *20.1.3's rule inverts on an empty bike **because it is the same rule**.
+      Guest and "new" are outlined rather than filled so the eye lands on a real
+      rider without reading anything; with no real rider on the bike nothing
+      catches the eye at all, so setting one up is filled, comes first, and says
+      "Set up" rather than "New rider" — new compared to what. Its second line
+      is **counted rather than reassuring**: "Four questions, then ride", which
+      is a name plus the three that 20.3's own step 2 already calls "Three
+      things, and then you're riding".*
+
+      *Watched on the tablet AVD with the previous build as the control, both
+      branches: a fresh install draws the first run, and after one profile was
+      created through the whole four-question flow the picker is **"Who's
+      riding?" with the rider first, Guest, New rider outlined and the
+      press-and-hold hint** — unchanged, which is the half of this that could
+      have gone wrong silently.*
 - [x] **19.1.5** **README and CONTRIBUTING** covering the build, the fact that simulated telemetry makes the whole app usable with no bike, and — corrected — that **no jailbreak is needed**. Worth saying plainly that it installs on a stock bike, since that is the difference between a project people can try and one they assume they cannot.
       *Written. Note the item's own premise was wrong: there was no README at
       all to correct — the root prerequisite was being advertised by

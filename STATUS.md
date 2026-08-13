@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 13 August (forty-third sitting).**
-Measured, not estimated: `assembleDebug` passes, **734 JVM tests and 112
-instrumented tests, 0 failures**, and **565 of 794 plan boxes** are ticked
+**Written 4 August 2026, updated 13 August (forty-fifth sitting).**
+Measured, not estimated: `assembleDebug` passes, **735 JVM tests and 112
+instrumented tests, 0 failures**, and **571 of 800 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -48,6 +48,8 @@ tried on it was broken. **The gap between here and finished is not features. It
 is a handful of first-run and honesty problems that any new rider would meet in
 their first ten minutes**, plus one setting on the Supabase dashboard that is
 currently open and should not be, and one deploy that has not been run.
+**One of those first-run problems turned out to have been fixed weeks ago and
+was still being listed here** — see *What is wrong today*, item 7.
 
 ---
 
@@ -59,7 +61,7 @@ currently open and should not be, and one deploy that has not been run.
 | **2. The record** | History, charts, FTP, heart-rate zones, export, migrations | ✅ **Done**, bar the cosmetic backlog. **Retention (23.4) is built**: a rider can ask for rides older than six months or a year to be condensed to an outline — the lowest and highest watt of each ten seconds, kept as real rows so nothing is an average the bike never measured. It is **off by default**, offers the backup first, and a condensed ride says so on its charts and in its exports (`metrics_detail_sec`). It is survivable because the three things that used to be re-derived from samples are now written down when the ride is recorded: its efforts (16.3.3a), where its watts came from (23.4.12) and what its seconds counted (`distributions_json`) — measured as an identical time-in-zone table before and after a trim. **And restore has been fixed after refusing every backup this build made** — a version number kept equal to another version number by a comment, which drifted (19.1.3a) |
 | **3. The household** | Profiles, the household leaderboard, ghosts, streaks | ✅ **Done**, and it now has a **live leaderboard** — start a class anybody on the bike has ridden and you are racing all of them at once, ranked as you ride, against your own bests as well as theirs. Seen on the real bike as well as the emulator; what is owed is watching it move under somebody actually pedalling |
 | **4. The cloud** | Accounts, backup, the web app, the everyone-leaderboard | 🔶 **Working end to end, two days old, and already caught out once.** Round trip observed, RLS verified from a second account, web app hosted — and the first flow the owner tried on it was broken, because a fix had never been deployed (17.16.6). **That is deployed and verified now (17.16.8)**, and the shape of the lesson stayed: what caught it was a command that diffs the internet against the repo, not the fix itself. **Sign-out and deleting your cloud copy are built and watched now (15.4)** — the second one signs the rider out with it, so a delete cannot undo itself at the next ride. **And the cloud has stopped being write-only (15.3.2)**: a rider's history can come back down onto a new bike, under a restore that only ever *adds* rides and never overwrites one already here. Building it found that the wire had never carried the ride's own facts — the FTP it was ridden at, what its seconds counted before a trim — so a restored ride would have had its zones redrawn from today's numbers; they travel inside the versioned payload now, with no cloud migration. It is built and tested and **has not yet been watched against the real endpoint**, which is the one thing left on it. Account deletion is still not built |
-| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). **The thirty-fifth sitting then fixed the one the owner could not get past**: signing in by QR from a phone that was *already* signed in sat on three dots for ever, because the pairing page called Supabase from inside an auth callback and deadlocked the session lock it holds (15.6.14) — reproduced, measured with `navigator.locks.query()`, and fixed. The code is also shown by default rather than behind a button and replaces itself while the screen is up (15.6.15). What is left is **not the app**: the project's confirmation emails go through Supabase's built-in test sender, capped at **two an hour** and documented as refusing addresses outside the project team, so a real sign-up cannot be completed or repeated until custom SMTP exists (15.7.7 — the owner's). Beside that: the overlay permission still explained only at ride start (19.1.6), a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
+| **5. Ready for someone else** | First run, onboarding, CI, the polish backlog | 🔶 **The onboarding gap is closed.** The first thing a new rider meets is a designed screen rather than three text boxes: 20.3 asks a name, a weight, a birth year and one sentence about your riding, estimates an FTP rather than demanding one, and now offers to back it up by account (15.8) rather than leaving that for Settings to mention to nobody. **The whole path was then walked end to end in the thirty-fourth sitting** and four more faults on it were fixed: two controls that did not line up (20.4.5), Android back throwing away every answer (20.4.6), a pairing code that outlived the screen showing it (15.6.13), and the confirmation email pointing at `localhost` (15.7.6). **The thirty-fifth sitting then fixed the one the owner could not get past**: signing in by QR from a phone that was *already* signed in sat on three dots for ever, because the pairing page called Supabase from inside an auth callback and deadlocked the session lock it holds (15.6.14) — reproduced, measured with `navigator.locks.query()`, and fixed. The code is also shown by default rather than behind a button and replaces itself while the screen is up (15.6.15). What is left is **not the app**: the project's confirmation emails go through Supabase's built-in test sender, capped at **two an hour** and documented as refusing addresses outside the project team, so a real sign-up cannot be completed or repeated until custom SMTP exists (15.7.7 — the owner's). **And the app now says what it is (19.1.6).** A rider who had just side-loaded this onto their bike met *"Who's riding?"* over two grey tiles, and that was every word the app said about itself; an empty profile list is the only first run there is, so the picker's empty state is the first run — the app's name, one sentence about the overlay, and *Set up · Four questions, then ride* filled and first. **Three of that item's four claims turned out to have been false for weeks** and it was the top row of the blockers table the whole time: the FTP has not been prefilled with 200 since 20.3, the overlay permission is asked during the countdown because the owner asked for it there (11.6.14), and a strap is one tap off the ride screen (11.6.9). Beside that: a green CI run (19.1.4), and **a web deploy that has not happened** (17.16.2). See *How close to done*, below |
 
 ---
 
@@ -188,7 +190,6 @@ for.
 
 | # | What | Why it blocks |
 |---|------|--------------|
-| **19.1.6** | The first run explains nothing | A new rider is dropped on the profile picker; the overlay permission — the thing the product is built on — is first mentioned at ride start; a heart-rate strap is discoverable only in Settings |
 | **19.1.4** | CI is written and never green | The workflow exists. One green run on GitHub ticks it, and until then contributions have no build server but a maintainer |
 | **15.4.3** | Delete the account itself | Sign-out and *Delete my cloud copy* are built and watched against the real endpoint (15.4.1, 15.4.2, 15.4.4) — every ride stays on the bike either way. Deleting the **account** needs an Edge Function, because Supabase has no user-initiated self-delete, so it is one deploy away rather than one decision |
 | **17.16.2** | How the web app is deployed | The fix shipped and the check confirms it (17.16.8), but the command itself lives only in the owner's shell history. `./web/check-deployed.sh` is what catches the next drift, and only if somebody runs it |
@@ -342,6 +343,19 @@ race has to exclude.
    cost. The pattern is the item, not the classes: on this project, a claim
    written down and checked by nobody has twice turned out to describe something
    that was never built.
+
+   **It paid out a third time, and this page was the thing that was wrong
+   (19.1.6).** The top row of the blockers table above described four faults a
+   stranger meets on first run. **Three of them had been fixed by other items
+   and nobody came back to cross them off**: the FTP has not been prefilled with
+   `200` since 20.3 replaced the whole screen, the overlay permission is asked
+   during the countdown because the owner asked for it there (11.6.14), and a
+   heart-rate strap is one tap off the ride screen (11.6.9). The fourth was
+   true, was the only one nobody had built, and was the smallest — so a
+   fixed-weeks-ago list was standing in front of a twenty-minute change. The
+   escalation is what makes it worth reading: the first two instances were
+   rules in `classlibrary/README.md`, and this one is **the summary page a
+   person reads instead of the plan**. See item 8.
 8. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the
@@ -350,6 +364,20 @@ race has to exclude.
    hypothetical within a day of being written, so it got its cheap fix
    (`web/check-deployed.sh`) and is now item 2 above. Read that as evidence
    about the other two rather than as a reason they are different.
+
+   **Both were then measured on 13 August 2026, and they came out opposite
+   ways.** The design tokens have **not** drifted — all 28 colour declarations,
+   the six spacings and the 760 dp cap still match `Color.kt` and `Theme.kt` —
+   so 17.15.2 stays unbuilt on its own terms rather than on inertia. (The grep
+   found two values that named no Kotlin original, and one, `--radius-control`,
+   that was never a copy at all despite a comment saying it matched the app;
+   both are fixed in the file.) **This page had drifted**, which is item 7's
+   third instance above — and the thing to notice is that **19.1.7a's proposed
+   script would not have caught it**. That script counts boxes and tests; what
+   went stale here was four sentences of prose about what a rider meets. So
+   19.1.7a stays unbuilt for a better reason than "not yet": the drift this page
+   actually suffers is the kind only a person re-reading it against the code can
+   find, and doing that is what the forty-fifth sitting spent its morning on.
 9. **10.6 is still unanswered**: battery, thermals and memory over a full-length
    ride. The one 20-minute ride on real hardware was spent finding 2.7.
 
@@ -358,26 +386,31 @@ race has to exclude.
 ## How close to done
 
 **Done for this household: weeks, not months — and mostly not code.** The bike
-works, the record is honest, the backup runs. **Two of the four things on this
+works, the record is honest, the backup runs. **Three of the four things on this
 list a week ago are now closed** — the sign-up setting was decided (kept open,
-deliberately) and the web app was redeployed and verified. What is left is
-sign-out doing the right thing, and a full-length ride that measures battery and
-heat.
+deliberately), the web app was redeployed and verified, and the exits are built
+and watched (15.4: sign-out keeps every ride, deleting the cloud copy signs the
+rider out with it). What is left is one throwaway sign-in to watch the restore
+end to end (15.3.2), and a full-length ride that measures battery and heat.
 
-**Done for a stranger with a Peloton: the six rows in the table above.** In
+**Done for a stranger with a Peloton: the three rows in the table above.** In
 order of what a new rider meets first: a first-run flow that offers an account
 and gets to a usable FTP without a text box. **Both halves of that are now
 built** — 20.3 is a three-step screen that estimates an FTP from questions a
 person can answer, and 15.8 fills the slot it was left with, offering to back
 the profile up right there and again from the dashboard if it was skipped.
-What is left is a first run that explains the overlay permission before the
-ride needs it (19.1.6), and a green CI run so the project can take a patch
-(19.1.4). That is a genuinely short list, and it is short because the hard
-parts — a stock bike, honest telemetry, migrations, an overlay that survives
-Netflix — are behind us.
+**And the app now introduces itself (19.1.6)**: an empty bike is the only first
+run there is, so the profile picker's empty state says the app's name, one
+sentence about the overlay, and *Set up · Four questions, then ride*. What is
+left is a green CI run so the project can take a patch (19.1.4). That is a
+genuinely short list, and it is short because the hard parts — a stock bike,
+honest telemetry, migrations, an overlay that survives Netflix — are behind us.
+**It is also shorter than it looked**: three of the four faults 19.1.6 listed
+had already been fixed elsewhere, and this page had been repeating them for
+weeks (item 7).
 
-**Done as the plan is written: 71%, and it will never be 100.** 560 of 792
-boxes, and the remaining 232 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 71%, and it will never be 100.** 571 of 800
+boxes, and the remaining 229 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
 things it had already decided against. **It has gone *down* in a sitting where
 three things were finished**, and moved by one box in a sitting whose whole
