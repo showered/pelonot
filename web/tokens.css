@@ -13,6 +13,12 @@
  * every value below names its Kotlin original — so checking is a grep, not an
  * audit. 17.15.2 is the item for making it mechanical if it ever needs to be.
  *
+ * **Checked on 13 August 2026 and every copied value still matches** — all 28
+ * colour declarations, the six spacings and the 760 dp cap, against `Color.kt`
+ * and `Theme.kt` at commit `09f5a86`. Two did not name their original and now
+ * do. The one thing that was *not* a copy is the control radius, which claimed
+ * to match the app and never had anything to match; it says so now.
+ *
  * What is deliberately NOT copied: the seven power-zone colours and the five
  * heart-rate ones. The web app does not draw a zone today, and a palette copied
  * in advance of a use is a palette that will be wrong by the time it has one.
@@ -65,9 +71,17 @@
    */
   --readable-width: 760px;
 
-  /* Shapes, matching the app's card and control radii. */
-  --radius-card: 16px;
-  --radius-control: 10px;
+  /*
+   * Shapes. The card radius is the app's (`Shapes.kt`, `large = 16.dp`); the
+   * control radius is **the web app's own and always was**, which the line
+   * that used to be here claimed otherwise. There is no 10 dp shape in
+   * `Shapes.kt` and never has been: the app's buttons are pills and its text
+   * fields are 4 dp, and neither transfers to a full-width form on a phone.
+   * Named here rather than corrected, because copying a pill onto the web
+   * would be a design change made by a comment.
+   */
+  --radius-card: 16px;           /* ExpressiveShapes.large */
+  --radius-control: 10px;        /* web only — see above */
 }
 
 @media (prefers-color-scheme: light) {
@@ -82,8 +96,8 @@
 
     --accent: #00695c;           /* PrimaryTealLight */
     --accent-ink: #ffffff;       /* OnPrimaryLight */
-    --accent-container: #b2dfdb;
-    --on-accent-container: #00201c;
+    --accent-container: #b2dfdb; /* PrimaryTealContainerLight */
+    --on-accent-container: #00201c; /* OnPrimaryContainerLight */
 
     --danger: #b3261e;           /* ErrorLight */
 
