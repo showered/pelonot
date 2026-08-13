@@ -215,13 +215,29 @@ asks less about the person, which is a rare combination and worth taking.
       threshold test (21.1.5), and 21.1.4 is explicit that a field nothing reads
       must not be collected. Settings says so under the ladder: *"As a percentage
       of maximum heart rate"*.*
-- [ ] **21.2.3** **The boundaries used for a ride are stored with the ride, not
+- [x] **21.2.3** **The boundaries used for a ride are stored with the ride, not
       recomputed on read.** A rider who corrects their max HR in March must not
       silently rewrite what every ride in January said they did. This is the
       same shape as the `avg_*` trap in CLAUDE.md — and the same bug the power
       charts already have, now written up properly as **7.8**. Do the two in one
       migration: they are the same column added to the same table for the same
       reason
+
+      **This box was stale, and the audit is the interesting part.** Every word
+      of it was built by 21.4.2a and watched on the tablet AVD in the same
+      sitting — `workouts.max_hr_bpm`, migration 12 → 13, nullable and not
+      backfilled, carried on `WorkoutSession` so the finalise cannot revert it
+      (8.3d.4), read off the row on a resume, and travelling in `RideFacts` to
+      the cloud. Nobody came back to cross it off, and it stayed unticked while
+      **21.4.1 read it as a denominator** and found it already there. Note the
+      one thing the item asked for that did *not* happen and did not need to:
+      it is **not** one migration with 7.8. The FTP column landed at 11 → 12 and
+      this one at 12 → 13, months apart, and each was exercised against a real
+      database on its own — which is better than the item's own instruction, not
+      worse. Same family as 19.1.6's three false clauses and the two
+      `classlibrary` rules before it: **on this project a written claim nobody
+      re-reads goes stale in both directions**, and this is the first one found
+      stale in the direction of *already done*
 - [x] **21.2.4** Nothing anywhere displays a zone when the heart rate is null.
       Unknown is unknown; this project has already corrupted a rider's record
       twice by treating a missing heart rate as a number
@@ -303,9 +319,60 @@ asks less about the person, which is a rare combination and worth taking.
 
 ### 21.4 Recording and tracking it
 
-- [ ] **21.4.1** Time in each HR zone for a ride, computed from the samples
+- [x] **21.4.1** Time in each HR zone for a ride, computed from the samples
       exactly as 16.1.4 does for power. With 21.2.3 in place this needs no new
       table — the samples and the boundaries are both already there
+
+      ***Done in the forty-seventh sitting, and "exactly as 16.1.4 does" is the
+      one instruction in it that had to be disobeyed.*** *Power is recorded for
+      every second of a ride and a heart rate is not, so the copy of
+      `TimeInZone` with a different enum in it would have counted a strapless
+      second as **H1 Recovery** — a rider who wore nothing filed as having spent
+      forty minutes in Recovery, which is this project's oldest defect
+      (`heartRateBpm` nullable, 21.2.4) arriving as a percentage instead of a
+      number.* `TimeInHeartRateZone` *therefore carries* `secondsUnrecorded`
+      *beside the zones, divides by the time a heart rate was actually reported,
+      and the card says what that was out of whenever it is not the whole ride.
+      The two bars are one implementation (`ZoneBar`); only the palette, the*
+      `H` *prefix and that caption differ.*
+
+      ***Three things it inherits from elsewhere in the plan.*** *No maximum
+      means **no zones at all**, never a default (21.2.4) — so the card is drawn
+      only for a rider who wore a strap **and** has given the app a maximum, and
+      `Time in zone` keeps its `loneCard()` width (22.6) on every other ride.
+      The counts are a **count of seconds**, so a trimmed ride reads what it
+      wrote down rather than recounting the fifth of its rows that survived
+      (23.4.3): `RideDistributions` gained the zones, the unrecorded seconds and
+      **the maximum they were counted against** — `zoneMaxHrBpm`, `zoneFtpWatts`'
+      twin. And a ride trimmed by an **earlier** build has no stored heart-rate
+      counts, which is read as *never counted* rather than as zero.*
+
+      ***The trap the change contained is worth keeping.*** `RetentionRepository
+      .distributionsFor` *built its charts without a maximum heart rate, and was
+      right to until this item: the number drew bands and that method draws
+      nothing. The moment it became a denominator, a trim run without it would
+      have **frozen an empty heart-rate distribution onto the row** and lost the
+      answer permanently — the exact failure the whole file exists to prevent,
+      introduced by the file that depends on it. Same shape as 8.3d.4: a second
+      writer carrying a stale idea of what a row needs.*
+
+      ***Watched on the tablet AVD in three cases with each other as controls.***
+      *A fresh 8:12 simulated ride under a rider with no measured maximum
+      (Tanaka 179 from a 1985 birth year, stamped on the row as*
+      `max_hr_bpm = 179`*): both cards side by side, H1 2:01 · 25% through H5
+      1:21 · 16%, adding to the ride. **A strap that dropped out for three
+      minutes** (`heart_rate` nulled for seconds 120–299 by hand, since the
+      simulator never stops reporting): the caption reads* "%HRmax · a heart rate
+      for 05:13 of 08:13"*, the five counts match the SQL row for row
+      (69/87/59/49/49 seconds), and the percentages are of **313 seconds, not
+      493**. **And no strap at all**: no card, and `Time in zone` back at a
+      column's width. Power's time in zone was 8:13 in all three, which is what
+      makes them controls.*
+
+      *One thing worth reading off the first screenshot rather than the code:
+      power spent **37% in Z1** and the heart **25% in H1** on the same ride.
+      That gap is 21.4.4's lag made visible, and it is the argument for drawing
+      the two beside each other.*
 - [x] **21.4.2** Post-ride: an HR-zone distribution beside the power one, and
       the HR trace (16.1.2) banded by zone. Note 16.1.2 deliberately breaks the
       line across gaps; the banding must not paper over them
@@ -320,6 +387,14 @@ asks less about the person, which is a rare combination and worth taking.
       12.6.1 puts the charts there, and the web app's ride view (17), which
       draws its own charts from the same payload and will not inherit this for
       free
+
+      **Half of this box was true when it was ticked and half of it was not.**
+      The banded trace landed with 21.4.2a and was watched; *"an HR-zone
+      distribution beside the power one"* did not exist until **21.4.1**, three
+      sittings later, and nothing on any screen looked wrong in between — the
+      heart rate simply had a trace and no distribution while power had both.
+      Ticking a box with two clauses in it is how that happens, and it is the
+      third instance of the pattern in `STATUS.md`'s item 7
 - [x] **21.4.2a** **What the bands are drawn *from* is the decision, and it is
       21.2.3 wearing a different hat.** Zone boundaries come from the rider's
       maximum heart rate, `workouts` has no column for it, and the maximum
