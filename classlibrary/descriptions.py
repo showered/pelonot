@@ -409,10 +409,10 @@ DESCRIPTIONS = {
     # torque effort is a different exercise under a live id (PLAN 25.4.3) —
     # unlike CLB-04, whose description had always been right. PLAN 23.2.8.
     "SPR-05": (
-        "Three sets of very short maximal efforts with almost no rest inside "
-        "them, and the middle one ridden out of the saddle. The last set comes "
-        "after the longest recovery of the ride and asks for the same again on "
-        "legs that have nothing left."
+        "Three sets of maximal efforts, with the middle one ridden out of the "
+        "saddle. The first and last are almost continuous; the last comes after "
+        "the longest recovery of the ride and asks for the same again on legs "
+        "that have nothing left."
     ),
     "SPR-06": (
         "Repeated flat-out efforts with incomplete recovery, so fatigue builds "
