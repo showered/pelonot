@@ -294,6 +294,24 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     fun observeCompletedCount(userId: Int): Flow<Int>
 
+    /** The same count, asked once (PLAN 15.3.2 — has this profile ever ridden here?). */
+    @Query("SELECT COUNT(*) FROM workouts WHERE user_id = :userId AND is_complete = 1")
+    suspend fun completedCountFor(userId: Int): Int
+
+    /**
+     * Which of these ride ids this tablet already has, **whoever they belong
+     * to** (PLAN 15.3.2).
+     *
+     * Not scoped to a profile, and that is the point rather than an oversight: a
+     * ride's id is the primary key here as well as in the cloud, so restoring
+     * one this tablet already holds would not add a row, it would `@Upsert` over
+     * the existing one — and on a household bike the row it overwrote could be a
+     * housemate's. A restore only ever *adds* rides, so what it needs to know is
+     * whether the id is taken, not whose it is.
+     */
+    @Query("SELECT id FROM workouts WHERE id IN (:ids)")
+    suspend fun existingIds(ids: List<String>): List<String>
+
     /**
      * How much of each class this rider has ridden, and when they last did
      * (22.8.6) — the two facts the suggestion ranks on.

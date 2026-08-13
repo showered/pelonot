@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.DeviceLinkRepository
 import com.pelonot.data.repository.AccountRepository
+import com.pelonot.data.repository.RestoreRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -16,6 +17,8 @@ import com.pelonot.domain.cloud.AuthAttempt
 import com.pelonot.domain.cloud.CloudDeletion
 import com.pelonot.domain.cloud.CredentialCheck
 import com.pelonot.domain.cloud.PairingState
+import com.pelonot.domain.cloud.RestoreOutcome
+import com.pelonot.domain.cloud.RestoreSurvey
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -60,6 +63,36 @@ sealed interface DeletionState {
     data class Done(val removed: CloudDeletion) : DeletionState
 }
 
+/**
+ * Bringing the rider's history back down (PLAN 15.3.2).
+ *
+ * Five states because the screen has to be able to say five different things,
+ * and the two that are easy to leave out are the ones that matter most on a new
+ * bike: *we have not asked yet* and *we asked and could not reach your account*.
+ * Collapsing either into "nothing to restore" would tell a rider whose history
+ * is safe that it is not there.
+ */
+sealed interface RestoreState {
+
+    /** Not asked yet. The screen draws nothing rather than an empty count. */
+    data object Unknown : RestoreState
+
+    /** What the account holds, and how much of it is missing here. */
+    data class Known(val survey: RestoreSurvey, val problem: String? = null) : RestoreState
+
+    /** @param rides how many are on their way down, so the wait has a size. */
+    data class Working(val rides: Int) : RestoreState
+
+    data class Restored(val outcome: RestoreOutcome) : RestoreState
+
+    /**
+     * The account could not be reached. Drawn as a quiet line with a retry
+     * rather than as an error: nothing has gone wrong with the rider's backup,
+     * and the screen's own subject is that backup is working.
+     */
+    data object Unreachable : RestoreState
+}
+
 data class AccountUiState(
     /** The profile this action would attach to — always the selected rider. */
     val profile: UserEntity? = null,
@@ -82,7 +115,9 @@ data class AccountUiState(
     /** Redrawn once a second while a code is up, for the countdown alone. */
     val nowMs: Long = 0L,
     /** The confirm step in front of deleting the cloud copy (15.4.2). */
-    val deletion: DeletionState = DeletionState.Idle
+    val deletion: DeletionState = DeletionState.Idle,
+    /** What is in the account that is not on this bike (15.3.2). */
+    val restore: RestoreState = RestoreState.Unknown
 ) {
     val isGuest: Boolean get() = profile == null
 
@@ -129,7 +164,8 @@ class AccountViewModel(
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
     private val workoutRepository: WorkoutRepository,
-    private val deviceLinkRepository: DeviceLinkRepository
+    private val deviceLinkRepository: DeviceLinkRepository,
+    private val restoreRepository: RestoreRepository
 ) : ViewModel() {
 
     private val form = MutableStateFlow(FormState())
@@ -161,15 +197,29 @@ class AccountViewModel(
             if (id == null) flowOf(0) else workoutRepository.observeBacklog(id).map { it.pending }
         }
 
+    private val restore = MutableStateFlow<RestoreState>(RestoreState.Unknown)
+
     /**
-     * The pairing clock and the deletion step, folded together because
-     * `combine` takes five flows and this screen has six things on it. They are
-     * both moments rather than facts, which is the only thing they have in
-     * common — see the destructuring at the bottom of the block.
+     * The pairing clock, the deletion step and the restore, folded together
+     * because `combine` takes five flows and this screen has seven things on it.
+     * They are all moments rather than facts, which is the only thing they have
+     * in common.
      */
-    private val moments = combine(pairing, now, deletion) { pairing, tick, deletion ->
-        Triple(pairing, tick, deletion)
+    private val moments = combine(
+        pairing,
+        now,
+        deletion,
+        restore
+    ) { pairing, tick, deletion, restore ->
+        Moments(pairing, tick, deletion, restore)
     }
+
+    private data class Moments(
+        val pairing: PairingState,
+        val tick: Long,
+        val deletion: DeletionState,
+        val restore: RestoreState
+    )
 
     val uiState: StateFlow<AccountUiState> = combine(
         profile,
@@ -177,7 +227,7 @@ class AccountViewModel(
         form,
         backlog,
         moments
-    ) { profile, session, form, waiting, (pairing, tick, deletion) ->
+    ) { profile, session, form, waiting, moments ->
         AccountUiState(
             profile = profile,
             session = session,
@@ -190,10 +240,11 @@ class AccountViewModel(
             awaitingConfirmationFor = form.awaitingConfirmationFor,
             cloudConfigured = accountRepository.cloudConfigured,
             ridesWaiting = waiting,
-            pairing = pairing,
+            pairing = moments.pairing,
             pairingAvailable = deviceLinkRepository.pairingAvailable,
-            nowMs = tick,
-            deletion = deletion
+            nowMs = moments.tick,
+            deletion = moments.deletion,
+            restore = moments.restore
         )
     }.stateIn(
         scope = viewModelScope,
@@ -385,6 +436,70 @@ class AccountViewModel(
     }
 
     /**
+     * Asks the account what it holds (15.3.2).
+     *
+     * Called by the signed-in branch as it draws, and it is one request for one
+     * column — see `SupabaseSyncRepository.fetchWorkoutIds`. It runs itself only
+     * once per visit: the answer cannot change while the rider is looking at
+     * this screen, and re-asking on every recomposition is how a screen ends up
+     * making a network request per frame.
+     */
+    fun surveyAccount(force: Boolean = false) {
+        if (!force && restore.value != RestoreState.Unknown) return
+        val localUserId = uiState.value.profile?.localUserId ?: return
+        restore.value = RestoreState.Unknown
+        viewModelScope.launch {
+            restore.value = when (val outcome = restoreRepository.survey(localUserId)) {
+                is SyncOutcome.Success -> RestoreState.Known(outcome.value)
+                else -> RestoreState.Unreachable
+            }
+        }
+    }
+
+    /**
+     * Brings down everything the account holds that this bike does not (15.3.2).
+     *
+     * The count is taken from the survey rather than re-asked, so the sentence
+     * on screen while it runs is the one the rider agreed to.
+     */
+    fun restoreFromAccount() {
+        val localUserId = uiState.value.profile?.localUserId ?: return
+        val known = restore.value as? RestoreState.Known ?: return
+        restore.value = RestoreState.Working(known.survey.missingHere)
+
+        viewModelScope.launch {
+            when (val outcome = restoreRepository.restore(localUserId)) {
+                is SyncOutcome.Success -> restore.value = RestoreState.Restored(outcome.value)
+
+                is SyncOutcome.Rejected -> failRestore(localUserId, outcome.reason)
+                is SyncOutcome.Failed -> failRestore(
+                    localUserId,
+                    "Couldn't reach your account just now. Nothing was lost — try again."
+                )
+
+                SyncOutcome.Disabled -> failRestore(
+                    localUserId,
+                    "This profile isn't signed in on this bike."
+                )
+            }
+        }
+    }
+
+    /**
+     * A restore that stopped part way has still written the rides it fetched
+     * (`RestoreRepository.restore`), so the count on screen is now wrong by
+     * however many landed. The rider is put back in front of a **re-asked**
+     * offer with the explanation still on it, rather than in front of a stale
+     * number or a dead end.
+     */
+    private suspend fun failRestore(localUserId: Int, message: String) {
+        restore.value = when (val survey = restoreRepository.survey(localUserId)) {
+            is SyncOutcome.Success -> RestoreState.Known(survey.value, problem = message)
+            else -> RestoreState.Unreachable
+        }
+    }
+
+    /**
      * Opens the confirm step, having first asked what it would cost (15.4.2).
      *
      * The count is taken here rather than kept on the state all the time
@@ -517,7 +632,8 @@ class AccountViewModel(
                 userRepository = ServiceLocator.userRepository,
                 settingsRepository = ServiceLocator.settingsRepository,
                 workoutRepository = ServiceLocator.workoutRepository,
-                deviceLinkRepository = ServiceLocator.deviceLinkRepository
+                deviceLinkRepository = ServiceLocator.deviceLinkRepository,
+                restoreRepository = ServiceLocator.restoreRepository
             )
         }
     }

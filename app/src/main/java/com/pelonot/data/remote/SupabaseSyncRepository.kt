@@ -13,6 +13,8 @@ import com.pelonot.domain.cloud.SyncFailure
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -32,6 +34,10 @@ import kotlinx.serialization.json.put
  * the thing rule 1 of the connectivity model forbids, and until now
  * `fetchClassTemplates()` was one.
  */
+/** One id off `workouts`, for the cheap half of a restore — see [SupabaseSyncRepository.fetchWorkoutIds]. */
+@Serializable
+private data class WorkoutIdDto(val id: String)
+
 class SupabaseSyncRepository(
     private val cloudAccess: CloudAccess
 ) {
@@ -122,6 +128,72 @@ class SupabaseSyncRepository(
             }.decodeList<JsonObject>().size
 
             CloudDeletion(rides = rides, profileRemoved = profiles > 0)
+        }
+
+    /**
+     * The ids of every ride this rider's account holds (PLAN 15.3.2).
+     *
+     * **One column, on purpose.** A restore's first question is *what is up
+     * there that is not down here*, and answering it by fetching the rides
+     * themselves would pull tens of megabytes to work out that none of them is
+     * needed — a 45-minute ride's payload is 54 KB (14.4) and a year of riding
+     * is a hundred of them. Ids are 36 bytes each, so this is a request a screen
+     * can afford to make on the way in.
+     *
+     * The filter is the rider's own account and the policies say the same thing
+     * (`003`), for [deleteCloudCopy]'s reason: a scope that exists only on a
+     * server is not a thing to read this file and be sure about.
+     */
+    suspend fun fetchWorkoutIds(localUserId: Int): SyncOutcome<List<String>> =
+        executeReturning("fetchWorkoutIds", localUserId) { supabase, accountId ->
+            supabase.from(TABLE_WORKOUTS)
+                .select(Columns.list("id")) { filter { eq("user_id", accountId) } }
+                .decodeList<WorkoutIdDto>()
+                .map { it.id }
+        }
+
+    /**
+     * Whole rides, by id, for a restore (PLAN 15.3.2).
+     *
+     * **Called with a handful of ids at a time and that is the caller's job, not
+     * a detail of it.** Each row carries its full series, so a request for forty
+     * rides is a couple of megabytes in one response — on a bike's tablet, over
+     * a household wifi, with nothing on screen but a spinner. Restoring in
+     * batches also means an interrupted restore leaves the rides it did bring
+     * down, which is the same argument as draining a backlog oldest-first
+     * (14.2.5): partial progress that keeps is better than an all-or-nothing
+     * that does not.
+     */
+    suspend fun fetchWorkouts(
+        localUserId: Int,
+        ids: List<String>
+    ): SyncOutcome<List<WorkoutDto>> =
+        executeReturning("fetchWorkouts", localUserId) { supabase, accountId ->
+            if (ids.isEmpty()) return@executeReturning emptyList()
+            supabase.from(TABLE_WORKOUTS)
+                .select {
+                    filter {
+                        eq("user_id", accountId)
+                        isIn("id", ids)
+                    }
+                }
+                .decodeList<WorkoutDto>()
+        }
+
+    /**
+     * The rider's cloud profile, or null if the account has never written one.
+     *
+     * Null is a real answer rather than a failure: an account created on a phone
+     * and never ridden with has no profile row, and a restore has to be able to
+     * say *there was nothing to bring down* without that reading as a network
+     * problem.
+     */
+    suspend fun fetchProfile(localUserId: Int): SyncOutcome<ProfileDto?> =
+        executeReturning("fetchProfile", localUserId) { supabase, accountId ->
+            supabase.from(TABLE_PROFILES)
+                .select { filter { eq("id", accountId) } }
+                .decodeList<ProfileDto>()
+                .firstOrNull()
         }
 
     /**

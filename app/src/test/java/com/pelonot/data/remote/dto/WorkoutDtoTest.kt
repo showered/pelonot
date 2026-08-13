@@ -2,6 +2,7 @@ package com.pelonot.data.remote.dto
 
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.chart.RideDistributions
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
@@ -215,5 +216,107 @@ class WorkoutDtoTest {
             WorkoutDto.from(condensed, listOf(metric), ACCOUNT_ID).metrics.detailSec
         )
         assertNull(WorkoutDto.from(workout(), listOf(metric), ACCOUNT_ID).metrics.detailSec)
+    }
+
+    /**
+     * **A ride comes back the ride it was** (PLAN 15.3.2).
+     *
+     * The round trip is the assertion here, and the fields it is about are
+     * precisely the ones that have no cloud column: the FTP the ride was judged
+     * against (7.8), the maximum heart rate its zones were drawn from (21.2.3),
+     * whether it was ridden straight through (8.3d.2), and what its seconds
+     * counted before a trim took them (23.4.2). Without them a restored ride is
+     * not a smaller ride — it is a ride whose zones are silently redrawn from
+     * today's numbers.
+     */
+    @Test
+    fun `the row's own facts survive the round trip`() {
+        val ridden = workout().copy(
+            ftpWatts = 214,
+            maxHrBpm = 181,
+            resumeCount = 2,
+            interruptedSec = 340,
+            wasRecovered = true,
+            metricsDetailSec = 10,
+            distributionsJson = RideDistributions(
+                secondsByZone = mapOf("Z4" to 464),
+                secondsByCadenceBand = mapOf(80 to 300),
+                ftpWatts = 214
+            ).encode()
+        )
+
+        val encoded = json.encodeToString(
+            WorkoutDto.serializer(),
+            WorkoutDto.from(ridden, emptyList(), ACCOUNT_ID)
+        )
+        val back = Json { ignoreUnknownKeys = true }
+            .decodeFromString(WorkoutDto.serializer(), encoded)
+            .toEntity(
+                localUserId = 7,
+                classId = "TB-01",
+                syncedAt = 5_000L,
+                recordedAtMs = ridden.timestamp
+            )
+
+        assertEquals(214, back.ftpWatts)
+        assertEquals(181, back.maxHrBpm)
+        assertEquals(2, back.resumeCount)
+        assertEquals(340, back.interruptedSec)
+        assertTrue(back.wasRecovered)
+        assertEquals(10, back.metricsDetailSec)
+        assertEquals(464, RideDistributions.decode(back.distributionsJson)?.secondsByZone?.get("Z4"))
+
+        // And the three the tablet decides rather than the cloud.
+        assertEquals(7, back.userId)
+        assertEquals(5_000L, back.syncedAt)
+        assertTrue(back.isComplete)
+        // Derived, never carried: 16.3.3a rescans the restored samples itself.
+        assertNull(back.powerBestsAt)
+    }
+
+    /**
+     * A ride uploaded before 15.3.2 existed still restores — every one of those
+     * fields is absent, and absent means *nobody wrote it down* rather than a
+     * zero. The ride comes back with its zones falling back to the rider's
+     * current FTP, which is what 7.8.4 already draws a caption for.
+     */
+    @Test
+    fun `a payload with no ride facts restores rather than failing`() {
+        val old = """
+            {"id":"11111111-2222-3333-4444-555555555555",
+             "user_id":"$ACCOUNT_ID","duration_sec":600,"total_output_kj":90.0,
+             "total_distance_km":4.0,"intent_modifier":1.0,
+             "recorded_at":"2025-07-30T18:26:40Z",
+             "metrics_payload":{"v":1,"t":[0],"c":[80],"r":[30],"p":[110]}}
+        """.trimIndent()
+
+        val back = Json { ignoreUnknownKeys = true }
+            .decodeFromString(WorkoutDto.serializer(), old)
+            .toEntity(localUserId = 3, classId = null, syncedAt = 1L, recordedAtMs = 2L)
+
+        assertNull(back.ftpWatts)
+        assertNull(back.maxHrBpm)
+        assertNull(back.distributionsJson)
+        assertNull(back.metricsDetailSec)
+        assertEquals(0, back.resumeCount)
+    }
+
+    /**
+     * The three shapes Postgres actually answers with (15.3.2).
+     *
+     * `SimpleDateFormat` is not asked to do this: its `S` pattern reads all six
+     * of a `TIMESTAMPTZ`'s fractional digits as milliseconds and lands the ride
+     * eight minutes late, which is a wrong date that looks like a right one.
+     */
+    @Test
+    fun `recorded_at parses back to the millisecond it left as`() {
+        assertEquals(1_753_900_000_000L, "2025-07-30T18:26:40Z".fromIso8601())
+        assertEquals(1_753_900_000_481L, "2025-07-30T18:26:40.481293+00:00".fromIso8601())
+        // An endpoint whose session zone is not UTC: the offset is applied,
+        // not assumed away.
+        assertEquals(1_753_900_000_000L, "2025-07-30T20:26:40+02:00".fromIso8601())
+        // And a date that cannot be read is null, so the caller skips the ride
+        // rather than filing it in January 1970.
+        assertNull("not a date".fromIso8601())
     }
 }

@@ -54,6 +54,7 @@ import com.pelonot.R
 import com.pelonot.domain.cloud.AccountState
 import com.pelonot.domain.cloud.CloudDeletion
 import com.pelonot.domain.cloud.PairingState
+import com.pelonot.domain.cloud.RestoreOutcome
 import com.pelonot.ui.components.QrCode
 import com.pelonot.ui.theme.readableColumn
 import com.pelonot.ui.theme.spacing
@@ -61,6 +62,7 @@ import com.pelonot.ui.viewmodel.AccountMode
 import com.pelonot.ui.viewmodel.AccountUiState
 import com.pelonot.ui.viewmodel.AccountViewModel
 import com.pelonot.ui.viewmodel.DeletionState
+import com.pelonot.ui.viewmodel.RestoreState
 
 /**
  * Backing up a rider's rides (PLAN 15.1).
@@ -115,6 +117,12 @@ fun AccountScreen(
         onDispose { viewModel.abandonPairing() }
     }
 
+    // 15.3.2. One request for one column, asked as the signed-in branch appears
+    // and not before — a rider on the sign-in form has no account to survey.
+    LaunchedEffect(state.signedInAsThisProfile) {
+        if (state.signedInAsThisProfile) viewModel.surveyAccount()
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -162,7 +170,9 @@ fun AccountScreen(
                     SignedIn(
                         state = state,
                         onSignOut = viewModel::signOut,
-                        onDeleteCloudCopy = viewModel::askToDeleteCloudData
+                        onDeleteCloudCopy = viewModel::askToDeleteCloudData,
+                        onRestore = viewModel::restoreFromAccount,
+                        onRetrySurvey = { viewModel.surveyAccount(force = true) }
                     )
                 }
 
@@ -296,7 +306,9 @@ internal fun Loading() {
 private fun SignedIn(
     state: AccountUiState,
     onSignOut: () -> Unit,
-    onDeleteCloudCopy: () -> Unit
+    onDeleteCloudCopy: () -> Unit,
+    onRestore: () -> Unit,
+    onRetrySurvey: () -> Unit
 ) {
     val email = (state.session as? AccountState.SignedIn)?.email
     Text("Your rides are backed up", style = MaterialTheme.typography.titleLarge)
@@ -322,6 +334,12 @@ private fun SignedIn(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+
+    FromYourAccount(
+        restore = state.restore,
+        onRestore = onRestore,
+        onRetry = onRetrySurvey
+    )
 
     Spacer(Modifier.size(MaterialTheme.spacing.small))
 
@@ -352,6 +370,132 @@ private fun SignedIn(
         )
     ) { Text("Delete my cloud copy") }
 }
+
+/**
+ * What the account holds, and the way back down (PLAN 15.3.2).
+ *
+ * **This is the first time the app can say what is actually up there.** 14.2.3
+ * had to drop the sentence *"no rides have gone up yet"* because the tablet
+ * could not tell an empty account from a restored backup — it only ever knew
+ * what it had *sent*. One request for one column answers it, so the count here
+ * is the cloud's own and not this tablet's memory of what it posted.
+ *
+ * No heading and no card. It is two lines and sometimes a button on a screen
+ * whose subject is already backup, and a section header would make a second
+ * feature out of one sentence.
+ */
+@Composable
+private fun FromYourAccount(
+    restore: RestoreState,
+    onRestore: () -> Unit,
+    onRetry: () -> Unit
+) {
+    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    when (restore) {
+        // Still asking. Nothing is drawn rather than a spinner: the answer
+        // usually arrives before the rider has read the line above it, and a
+        // control appearing under their thumb is worse than one arriving late.
+        RestoreState.Unknown -> Unit
+
+        RestoreState.Unreachable -> {
+            Text(
+                text = "Couldn't check what your account holds just now.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = quiet
+            )
+            TextButton(onClick = onRetry) { Text("Try again") }
+        }
+
+        is RestoreState.Known -> {
+            Text(
+                text = when {
+                    restore.survey.inCloud == 0 -> "Nothing has reached your account yet."
+                    restore.survey.missingHere == 0 ->
+                        "Your account holds ${rides(restore.survey.inCloud)}, and " +
+                            "${if (restore.survey.inCloud == 1) "it is" else "they are"} " +
+                            "all on this bike."
+
+                    else -> "Your account holds ${rides(restore.survey.inCloud)}. " +
+                        "${restore.survey.missingHere} of them " +
+                        "${if (restore.survey.missingHere == 1) "is" else "are"} " +
+                        "not on this bike."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = quiet
+            )
+            if (restore.survey.hasSomethingToBringDown) {
+                OutlinedButton(onClick = onRestore) { Text("Bring them down") }
+            }
+            restore.problem?.let { ProblemLine(it) }
+        }
+
+        is RestoreState.Working -> Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(Modifier.size(20.dp))
+            Text(
+                text = "Bringing ${rides(restore.rides)} down…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = quiet
+            )
+        }
+
+        is RestoreState.Restored -> RestoreResult(restore.outcome)
+    }
+}
+
+/**
+ * What came down, said in as many sentences as there are true things to say.
+ *
+ * The first is the count. The other three are drawn only for a rider they
+ * happened to, and each is a loss rather than a detail: a ride refused, a ride
+ * whose class this build does not carry, a profile adopted. A restore that
+ * quietly left three rides behind would be indistinguishable from an account
+ * that never had them.
+ */
+@Composable
+private fun RestoreResult(outcome: RestoreOutcome) {
+    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    Text(
+        text = if (outcome.rides == 0) {
+            "Nothing new came down — your account's rides were already here."
+        } else {
+            "${rides(outcome.rides)} came back, second by second."
+        },
+        style = MaterialTheme.typography.bodyMedium
+    )
+    if (outcome.profileAdopted) {
+        Text(
+            text = "Your name, weight and FTP came down with them.",
+            style = MaterialTheme.typography.bodySmall,
+            color = quiet
+        )
+    }
+    if (outcome.classesNotHere > 0) {
+        Text(
+            text = "${outcome.classesNotHere} " +
+                "${if (outcome.classesNotHere == 1) "was" else "were"} ridden to a class " +
+                "this bike doesn't have, so " +
+                "${if (outcome.classesNotHere == 1) "it is" else "they are"} " +
+                "here without it.",
+            style = MaterialTheme.typography.bodySmall,
+            color = quiet
+        )
+    }
+    if (outcome.unreadable > 0) {
+        // Said out loud, in the error colour, because the alternative is a rider
+        // counting their rides and finding one short with no explanation.
+        Text(
+            text = "${rides(outcome.unreadable)} couldn't be read and " +
+                "${if (outcome.unreadable == 1) "was" else "were"} left in your account.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
+}
+
+private fun rides(count: Int) = if (count == 1) "1 ride" else "$count rides"
 
 /**
  * The confirm step in front of the one action here that destroys anything

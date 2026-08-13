@@ -114,7 +114,19 @@ data class MetricsPayload(
      * copy that cannot say what it is cannot be trusted to be fuller than what
      * is already on the tablet.
      */
-    @SerialName("d") val detailSec: Int? = null
+    @SerialName("d") val detailSec: Int? = null,
+    /**
+     * The ride's own facts that the cloud has no column for (PLAN 15.3.2).
+     *
+     * See [RideFacts] for why they travel in here rather than beside the
+     * samples. The short version is that new columns need a migration the owner
+     * must apply and this payload is versioned so that it does not.
+     *
+     * Absent for every ride uploaded before this existed, which decodes to null
+     * and means *nobody wrote them down* — the same rule as `hr`, `pm` and `d`
+     * above.
+     */
+    @SerialName("w") val ride: RideFacts? = null
 ) {
 
     val size: Int get() = timestampSec.size
@@ -253,10 +265,16 @@ data class MetricsPayload(
          *   the samples' spacing on purpose: a gap in a series is a rider who
          *   stopped (2.4.4), and inferring a resolution from one would file a
          *   bottle stop as housekeeping.
+         * @param ride the row's own facts that have no cloud column (15.3.2).
          */
-        fun from(metrics: List<WorkoutMetricEntity>, detailSec: Int? = null) = MetricsPayload(
+        fun from(
+            metrics: List<WorkoutMetricEntity>,
+            detailSec: Int? = null,
+            ride: RideFacts? = null
+        ) = MetricsPayload(
             version = VERSION,
             detailSec = detailSec,
+            ride = ride,
             timestampSec = metrics.map { it.timestampSec },
             cadence = metrics.map { it.cadence },
             resistance = metrics.map { it.resistance },

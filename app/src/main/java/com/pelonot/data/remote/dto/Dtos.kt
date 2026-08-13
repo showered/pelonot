@@ -30,6 +30,57 @@ internal fun Long.toIso8601Utc(): String =
         .format(Date(this))
 
 /**
+ * The other direction, for a ride coming back down (PLAN 15.3.2).
+ *
+ * **Null when it cannot be read, and the caller must skip the ride rather than
+ * substitute anything.** A date is not a nice-to-have on a workout: it is what
+ * history sorts by, what the week's totals count, and what the trimmer measures
+ * age against. A ride restored at the epoch would appear in January 1970,
+ * quietly, at the bottom of every list — a fabricated record of the kind the
+ * rest of this file exists to refuse.
+ *
+ * It is hand-parsed rather than given to `SimpleDateFormat` because what comes
+ * back is not one shape. Postgres renders a `TIMESTAMPTZ` in the session's time
+ * zone with a variable number of fractional digits and either a `Z` or a
+ * `+00:00` — `2026-08-13T09:14:22.481293+00:00` is a real answer from this
+ * endpoint, and `SimpleDateFormat`'s `X` pattern is API 24-safe but its `S`
+ * pattern reads *six* digits as milliseconds and lands the ride eight minutes
+ * late. The offset is applied rather than assumed, so a project whose session
+ * zone is not UTC does not move everybody's history.
+ */
+internal fun String.fromIso8601(): Long? {
+    val match = ISO_8601.matchEntire(trim()) ?: return null
+    val (year, month, day, hour, minute, second) = match.destructured
+    val fraction = match.groupValues[7]
+    val offset = match.groupValues[8]
+
+    val calendar = java.util.Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US).apply {
+        clear()
+        set(year.toInt(), month.toInt() - 1, day.toInt(), hour.toInt(), minute.toInt(), second.toInt())
+    }
+    // Only ever the first three digits: Postgres emits microseconds, and reading
+    // `481293` as milliseconds is where a ride arrives eight minutes late.
+    val millis = fraction.take(3).padEnd(3, '0').toIntOrNull() ?: 0
+
+    val offsetMs = when {
+        offset.isEmpty() || offset == "Z" || offset == "z" -> 0L
+        else -> {
+            val sign = if (offset.first() == '-') -1 else 1
+            val digits = offset.drop(1).replace(":", "")
+            val hours = digits.take(2).toLong()
+            val minutes = if (digits.length > 2) digits.drop(2).take(2).toLong() else 0L
+            sign * ((hours * 60 + minutes) * 60_000L)
+        }
+    }
+
+    return calendar.timeInMillis + millis - offsetMs
+}
+
+private val ISO_8601 = Regex(
+    """(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|z|[+-]\d{2}:?\d{2})?"""
+)
+
+/**
  * Wire types for the Supabase tables.
  *
  * The previous code passed `Map<String, Any?>` to Postgrest and decoded rows
@@ -169,9 +220,73 @@ data class WorkoutDto(
                 ).name,
             // 23.4.14. The payload says what resolution it is, because an
             // upload is an export and 23.4.3's rule covers exports.
-            metrics = MetricsPayload.from(metrics, workout.metricsDetailSec)
+            metrics = MetricsPayload.from(
+                metrics = metrics,
+                detailSec = workout.metricsDetailSec,
+                // 15.3.2. Everything on the row that the cloud has no column
+                // for, which is everything this project learnt after 14.4.
+                ride = RideFacts.of(workout)
+            )
         )
     }
+
+    /**
+     * Back to a row on **this** tablet (PLAN 15.3.2).
+     *
+     * Three of its arguments are things the cloud copy cannot know and the
+     * restoring tablet must decide, which is why they are parameters rather than
+     * fields:
+     *
+     * - [localUserId] — `workouts.user_id` is a per-device autoincrement here
+     *   and an account id up there. They are different kinds of thing and the
+     *   mapping is the restore's whole point.
+     * - [classId] — the caller passes the class **only if this tablet has it**.
+     *   `workouts.class_id` is a foreign key onto `class_templates`, so a ride
+     *   of a class this build's bundle does not carry would fail to insert
+     *   altogether; a free ride is a smaller loss than a missing one, and
+     *   `retired_at` means the commonest case is a class that was here once.
+     * - [syncedAt] — a restored ride is in the cloud **by definition**, so it is
+     *   marked as backed up rather than re-queued. Without this the first drain
+     *   after a restore would upload every ride it had just downloaded.
+     *
+     * `is_complete` is true and not carried: the cloud only ever receives
+     * finished rides (`WorkoutDao.unsyncedWorkouts` filters on it), and a row
+     * arriving as unfinished would be offered to the rider as a ride to resume.
+     *
+     * `power_bests_at` is deliberately **left null**. The efforts are not on the
+     * wire and must not be — they are derived, and 16.3.3a's backfill will walk
+     * the restored samples itself. For a ride that came down as an outline it
+     * will decline to, which is 23.4.15 and is the right answer.
+     */
+    fun toEntity(
+        localUserId: Int,
+        classId: String?,
+        syncedAt: Long,
+        recordedAtMs: Long
+    ): WorkoutEntity = WorkoutEntity(
+        id = id,
+        userId = localUserId,
+        classId = classId,
+        durationSec = durationSec,
+        totalOutputKj = totalOutputKj,
+        totalDistanceKm = totalDistanceKm,
+        avgCadence = avgCadence,
+        avgPower = avgPower,
+        avgHr = avgHr,
+        intentModifier = intentModifier,
+        ftpWatts = metrics.ride?.ftpWatts,
+        maxHrBpm = metrics.ride?.maxHrBpm,
+        rpeRating = rpeRating,
+        isComplete = true,
+        wasRecovered = metrics.ride?.wasRecovered ?: false,
+        timestamp = recordedAtMs,
+        syncedAt = syncedAt,
+        resumeCount = metrics.ride?.resumeCount ?: 0,
+        interruptedSec = metrics.ride?.interruptedSec ?: 0,
+        powerProvenance = PowerProvenance.entries.firstOrNull { it.name == powerProvenance },
+        metricsDetailSec = metrics.detailSec,
+        distributionsJson = metrics.ride?.distributions?.encode()
+    )
 }
 
 /**

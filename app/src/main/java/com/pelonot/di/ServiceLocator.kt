@@ -12,6 +12,7 @@ import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
+import com.pelonot.data.repository.RestoreRepository
 import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
@@ -143,6 +144,27 @@ object ServiceLocator {
             userDao = database.userDao(),
             workoutDao = database.workoutDao(),
             deleteCloudCopy = syncRepository::deleteCloudCopy
+        )
+    }
+
+    /**
+     * The other direction (15.3.2) — a rider's history coming back down.
+     *
+     * Its own object rather than more methods on [accountRepository], for
+     * [retentionRepository]'s reason: it is the only thing in the app that
+     * *writes* rides it did not record, and every caller of that should be one
+     * grep away.
+     */
+    val restoreRepository: RestoreRepository by lazy {
+        RestoreRepository(
+            database = database,
+            workoutDao = database.workoutDao(),
+            metricDao = database.workoutMetricDao(),
+            classTemplateDao = database.classTemplateDao(),
+            userRepository = userRepository,
+            fetchIds = syncRepository::fetchWorkoutIds,
+            fetchRides = syncRepository::fetchWorkouts,
+            fetchProfile = syncRepository::fetchProfile
         )
     }
 
