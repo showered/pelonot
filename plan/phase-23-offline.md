@@ -561,7 +561,20 @@ things do, and three of them are wrong afterwards in ways nobody would notice.
       ride re-runs 16.3.3a's scan, since its bests were computed from the seconds
       it has just got back. **Not a blocker on anything.** Condensing is honest
       without it: what it would change is the *sentence in the dialog*, from
-      "Pelonot cannot yet bring one back down" to an offer
+      "Pelonot cannot yet bring one back down" to an offer.
+
+      **15.3.2 built the machinery and left this item exactly where it was**,
+      which is worth knowing before starting it. The download exists, and
+      `RideFacts` plus 23.4.14's `d` mean a payload can now *say* whether the
+      copy up there is fuller than the one down here. But rule 1 of the restore
+      is **it only ever adds rides** — an id already on this tablet is skipped,
+      because `insertWorkout` is an `@Upsert` and overwriting the tablet's own
+      record is precisely what that rule exists to prevent. **This item is the
+      one deliberate exception to it**, and it has to be built as one: a ride the
+      rider has asked to rehydrate, whose cloud copy is `d`-null while the local
+      row says `d = 10`, replaced under a check that the cloud's really is the
+      fuller of the two. The same `RestoreRepository` with a named exception on
+      it, never a second path that quietly learns to overwrite
 - [x] **23.4.14** **The uploaded payload says what resolution it is.**
       ***Done and measured in the cloud, forty-second sitting.***
 

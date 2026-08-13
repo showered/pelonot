@@ -481,8 +481,25 @@ stop asking" from "the network is down, try again".
 which asks whether *this profile* has an account (`auth_user_id != null`) —
 per rider, checked at `SupabaseSyncRepository`'s single choke point before the
 client is resolved. No method can be called without naming the rider it acts
-for. Nothing sets `auth_user_id` until Phase 15, so today every call is
-`Disabled` and no build reaches the network at all.
+for. A profile with no account gets `Disabled` on every call, which is rule 1 of
+the connectivity model working rather than a failure.
+
+### Back from the cloud (PLAN 15.3.2)
+
+`RestoreRepository` is the other direction, and it is a **download** rather than
+a sync: it only ever *adds* rides, marks what it writes as already backed up,
+skips an unreadable record whole, and adopts the account's profile only for a
+rider who has never ridden on this tablet. A ride's id is the primary key in both
+places, so "already here" is the whole conflict rule.
+
+The wire carries more than the cloud has columns for. `workouts` in Postgres has
+the twelve columns of PLAN 14.4; the FTP a ride was ridden at, the maximum heart
+rate its zones were judged against, its resume count and **what its seconds
+counted before a trim took them** all travel inside `metrics_payload` as
+`RideFacts` — the payload is versioned inside itself precisely so it can grow
+without a migration. Restoring without them would redraw a ride's zones from
+today's numbers and recount a condensed ride's time in zone off a fifth of its
+seconds.
 
 Payloads are typed `@Serializable` DTOs. They were previously
 `Map<String, Any?>` — kotlinx.serialization has no serializer for `Any`, so

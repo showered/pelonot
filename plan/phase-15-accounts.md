@@ -113,8 +113,109 @@ something they could have had offline.**
 ### 15.3 Sync in both directions
 - [x] **15.3.1** On first sign-in, backfill the whole local history, batched and in the background
 - [ ] **15.3.2** Pull on a new device: restore rides and profile
+
+      **Built in the forty-third sitting, and deliberately not ticked**: every
+      claim below is measured against a real Room database on the tablet AVD
+      (`AccountRestoreTest`, twelve tests) and the *screen* has been seen with a
+      restored ride's exact shape on it — but the round trip against the real
+      endpoint has not, because making a throwaway account needs the admin API
+      and that was not available this sitting. **What is owed is one sign-in on
+      an account with rides in it**, and the recipe is at the end of this item.
+
+      **Until this the cloud was write-only**, which made *backup* a word the app
+      was not entitled to. 15.4.2 could delete a copy that had never been
+      restorable, and a rider whose tablet died had rows in Postgres and no way
+      to reach them. `RestoreRepository` is the other direction, and it is a
+      **download** rather than a sync — four rules, all of them about refusing to
+      be clever:
+
+      1. **It only ever adds rides.** An id this tablet already has is skipped,
+         *whoever* it belongs to, because `insertWorkout` is an `@Upsert`: a
+         restore that did not check would not add a row, it would write over the
+         tablet's own record, and on a household bike the row it overwrote could
+         be a housemate's. Nothing is merged, because the two copies cannot
+         disagree about anything that matters — a finished ride is immutable
+         except for its RPE, and taking the cloud's RPE over one typed here after
+         the upload would silently undo an edit. It is also what makes a restore
+         safe to run twice, which a rider on a slow connection will.
+      2. **A restored ride is marked as backed up, not queued.** It came *from*
+         the cloud. Without that the next drain re-uploads everything it just
+         downloaded — and worse, 23.4.6 reads a null `synced_at` as *this tablet
+         is the only copy*, so a restored history would look unprotected to the
+         trimmer.
+      3. **A ride is skipped whole or restored whole.** A payload whose columns
+         disagree, or a date that will not parse, is a corrupt record: 2.7's rule
+         is reject rather than repair, and a ride restored without a date appears
+         in January 1970 at the bottom of every list. The count of refusals is
+         **shown**, because a rider missing three rides is entitled to know that
+         three were refused rather than absent.
+      4. **The profile is adopted only by a rider who has never ridden here** —
+         precisely the new-device case, and the only one with nothing to lose. A
+         profile with rides on this bike has an FTP and a weight the rider may
+         have changed here since, and the cloud copy carries no timestamp to
+         judge that by; overwriting it would be 7.9's read-modify-write defect
+         wearing a feature's clothes. Where it does apply the change goes through
+         7.9.4's funnel as `FtpChangeSource.PulledFromCloud`, so it is on the
+         trend with a reason on it rather than an FTP that moved while nobody was
+         looking.
+
+      **The wire needed one addition, and finding out why is the interesting part
+      of this item.** `workouts` in the cloud has 14.4's twelve columns, and
+      **everything this project has learnt since lives in a column the payload
+      never carried**: the FTP a ride was ridden at (7.8), the maximum heart rate
+      its zones were judged against (21.2.3), whether it was ridden straight
+      through (8.3d.2), and what its seconds counted before a trim took them
+      (23.4.2). Uploading was the only direction, so nobody noticed. Restoring
+      without them is not a smaller ride — it is a ride whose zone bands are
+      silently redrawn from today's FTP, and whose time in zone, if it came down
+      as an outline, is **recomputed from a fifth of its seconds**. 7.8 and
+      23.4.2, the two defects this project has fixed most often, arriving
+      together through a door neither of them had.
+
+      `RideFacts` carries them **inside the versioned payload** as `w`, which is
+      the same door `d` used in 23.4.14 and for the same reason: new columns are
+      a cloud migration only the owner can apply, on an endpoint that already has
+      rides on it, and 17.16.2 is the standing complaint about exactly that
+      dependency. Every field defaults to what its absence honestly means, so a
+      ride uploaded before this existed restores with *nobody wrote these down*
+      rather than a zero — and its zones fall back to the rider's current FTP
+      with 7.8.4's caption saying so.
+
+      **What was watched on the tablet AVD**: a database seeded with two rides in
+      the exact shape a restore writes — one intact, one that came down as a
+      ten-second outline carrying its own counts. Both are in history. The
+      outline's detail draws *"Measured by the bike · condensed to a 10-second
+      outline"*, *"Kept as a 10-second outline, so the seconds between those
+      points are gone"*, and a **Time in zone** panel reading *Z2 02:20, Z3
+      06:42, Z4 08:20, Z5 02:23, Z6 00:15* under the caption *"counted before
+      this ride was condensed"* — 1,200 seconds, the ride's real duration, off
+      240 stored rows. Without `RideFacts.distributions` that panel would have
+      counted the rows and said the twenty-minute ride pedalled for four.
+
+      **What is owed, and it is one sitting's worth of setup**: an account with
+      rides in it, signed into on the AVD, so the three sentences on the account
+      screen can be read rather than reasoned about — *"Your account holds 12
+      rides. 12 of them are not on this bike."*, the wait, and the result. The
+      cheapest route is the one the forty-second sitting used for 15.4.2: a
+      throwaway account made through the admin API (nothing emailed, so 15.7.7's
+      mailer is not in the way), ride twice under it on the AVD to fill the
+      account, `pm clear com.pelonot`, make a profile, and sign in again
 - [x] **15.3.3** Idempotent by the local workout UUID, so a retry or a re-install cannot double a ride
 - [ ] **15.3.4** Conflict rule, written down and one line long: **local wins for a ride in progress, last-write-wins for RPE and profile fields, tombstones win over everything** (12.3.5)
+
+      **15.3.2 built the download and answered two thirds of this by refusing
+      it**, which is worth recording before the rest is designed. A restore only
+      *adds*: an id already here is skipped whole, so no ride is ever merged, and
+      the question of whose RPE wins never arises on the way down. The profile is
+      taken only by a rider who has never ridden on this bike, because
+      last-write-wins **cannot be asked of a row with no timestamp on it** — that
+      is the gap this item has to close if a real conflict rule is ever wanted,
+      and it is a cloud migration (`profiles.updated_at`) rather than a decision.
+      Tombstones still do not exist in either direction, so *"tombstones win"* is
+      an aspiration and not a rule anything obeys: **deleting a ride here does
+      not delete it up there**, and the next restore on a new device would bring
+      it back. Nothing today can produce that (a rider has one tablet), but it is
+      the sentence to be honest about before a second one exists
 - [ ] **15.3.5** Metric series are large — a 45-minute ride is ~2,700 samples. Decide deliberately whether the full series goes up or only the aggregates plus a downsampled trace, and record the reasoning
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
 

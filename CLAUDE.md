@@ -25,7 +25,7 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 711 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 734 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -150,10 +150,16 @@ SDK, and do not reach for `isConfigured`.
 
 Two consequences to know before you are surprised by them:
 
-- **Nothing sets `auth_user_id` yet**, because Phase 15 (accounts) does not
-  exist. So every profile is offline, every cloud call returns
-  `SyncOutcome.Disabled`, and no build can reach Supabase. That is rule 1
-  working. To exercise the cloud path, set the column by hand on the device.
+- **A profile with no account still reaches nothing**, which is rule 1 working
+  rather than a gap: every call returns `SyncOutcome.Disabled`. Signing in sets
+  `auth_user_id` (Phase 15 is built), and to exercise the cloud path without an
+  account you can set the column by hand on the device — but note that only gets
+  you past `CloudAccess`, not past the endpoint, which wants a real JWT.
+- **The cloud is no longer write-only** (15.3.2). `RestoreRepository` brings a
+  rider's history back down, and its four rules are load-bearing — read them
+  before touching it. The one to know from a distance: **a restore only ever
+  adds rides**, because `WorkoutDao.insertWorkout` is an `@Upsert` and a ride id
+  already on the tablet may be a housemate's.
 - **The class library is bundled** — all 72 in `assets/classes`, seeded from
   assets always. The cloud is an update channel and nothing reads it today.
 
