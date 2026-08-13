@@ -233,6 +233,13 @@ rule that comes out of it:
 > "Seated", "standing", "out of the saddle" — and **"big gear"**, which in
 > cycling usage means seated torque and reads as the same instruction.
 
+*Tested — since PLAN 23.2.8, and it was not before.* The rule sat in this
+paragraph for two months and was enforced on no surface: not on titles at all,
+and on descriptions in the **standing direction only**. It is R10's own lesson
+one rule along, so the second time it got a check rather than a sentence, and
+one shared with R13 so the two surfaces cannot drift. What it found the day it
+was written is at the end of R13.
+
 So `SWT-09` "Big Gear / Fast Legs 45" keeps its name: its two big-gear blocks
 *are* marked `SEATED`, and at 5 minutes each with 3 minutes between them they
 are under both the length cap and the nagging guide. The other four are named
@@ -386,8 +393,27 @@ What `build.py` and `ClassLibraryAssetsTest` hold:
   ask for it. That is R11 and PLAN 25.4.2 again, and it is the only way a
   sentence here can be wrong in a way arithmetic can catch.
 
+**That last clause read `standing` only, and both classes that broke it broke
+it the other way** (PLAN 23.2.8). `CLB-04` "Rolling Climbs" said *"repeated
+seated rises"* and **not one of its seventeen blocks carried a position** —
+it is `END-04` line for line otherwise, same helper, same lengths, same
+`CLIMB` cadence, one zone apart, and `END-04` has `position=SEATED`. And
+`SPR-05` "Sprints, Three Ways" promised *"seated, out of the saddle, and wound
+up from a low speed"* while its only positioned blocks ask the rider to stand
+up. Two fixes of different kinds, and which one applies is worth knowing before
+the next one:
+
+- **`CLB-04` got the position**, because the description had always been right
+  and the blocks were the omission. 25.4.1's audit of positions across the
+  library went past it because it was looking at the classes that already had
+  one.
+- **`SPR-05` got a new sentence**, because making its first set a seated torque
+  effort is a *different exercise* under a live id — PLAN 25.4.3, and the
+  reason `SWT-13` was a new id rather than an edited `SWT-05`.
+
 What no rule can check is whether the sentence is *true* of the ride. Read it
-against the blocks.
+against the blocks — and the two above are what that is worth, because both
+sat in a library every rule in this file passed.
 
 ---
 
