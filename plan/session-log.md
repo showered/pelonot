@@ -8,63 +8,57 @@ list and the three narratives that changed the shape of the project.
 
 ---
 
-### 12 August 2026 (forty-first sitting): old rides condensed to an outline, and the outline says so on every surface it reaches
+### 13 August 2026 (forty-second sitting): the way out of the cloud, and why deleting the copy has to stop the backing up
 
-**The inbox was empty and the top of *What to do next* was still the five things
-needing the owner or the bike, so the brief — continue, no owner, no bike —
-pointed at item 9: 23.4 retention, the thing the owner asked for on 3 August and
-the only substantial item with nothing in software in front of it.** Both
-prerequisites landed in the two sittings before (16.3.3a's efforts, 23.4.12's
-provenance), so this is the trimmer itself: **23.4.2, 23.4.3, 23.4.4, 23.4.5,
-23.4.6 and 23.4.10**, ticked. **728 JVM tests and 94 instrumented, 0 failures**,
-and everything below was watched on the 1280 × 720 dp AVD.
+**The inbox was empty and *What to do next* was, by its own admission, entirely
+owner-and-bike work — so the brief pointed at the unfinished half of a
+half-built phase: 15.4, *Leaving*.** A rider could sign in and sign out and had
+**no way to take anything back down**, which is a gap with a legal name on it
+as well as a plain one. **731 JVM tests and 99 instrumented, 0 failures**, and
+everything below was watched on the 1280 × 720 dp AVD **against the real
+endpoint** — a throwaway account made through the admin API, so nothing went
+near the mailer that 15.7.7 says is in the way.
 
-**Nothing is averaged, and that is the design rather than a detail.**
-`MetricTrim` keeps the **lowest and highest watt of every ten seconds as real
-rows**, so a 25-minute ride of 1,500 samples comes back as 300 — five-fold, not
-the item's estimated thirty, because thirty was the figure for a trace of means.
-A mean is the one thing a trimmer must not write: a chart redraws and a trim does
-not, so an average written back over the samples is a number the bike never
-measured, filed permanently where the measurements used to be. The 612 W second
-in the ride that was watched is still 612 W afterwards, and the first and last
-seconds are kept because they are the axis.
+**15.4.2 turned out to be a data-loss trap wearing a privacy feature's
+clothes.** Deleting the rows is one statement; what the tablet must do
+afterwards is the whole item. Leave the account attached and `synced_at` records
+a backup that no longer exists — and **the trimmer reads that column as
+permission to throw seconds away** (23.4.6), so *delete my cloud copy* would
+have licensed destroying the seconds whose only other copy it had just deleted.
+Clear `synced_at` instead and the backlog drains at the next ride, putting the
+copy straight back. So it is **delete *and* stop**: the rows go, the tablet
+forgets any cloud ever had them, the profile drops to the offline rung, and the
+dialog says so before the rider presses anything.
 
-**The half the item under-read is that two charts are *counts of seconds*, not
-lines through them.** Recomputing time in zone or the cadence spread from a fifth
-of the rows says a 25-minute ride pedalled for five — wrong in the way this
-project keeps meeting, which is that nothing about it looks wrong. So
-`workouts.distributions_json` holds what the seconds counted, written at the one
-moment they are still there: 7.8, 21.2.3, 16.3.3a and 23.4.12 for the fifth time.
-The measurement is the zone table read **before** the trim — *Z2 00:31, Z3 07:59,
-Z4 07:44, Z5 07:30, Z6 01:15, Z7 00:01* — and read again afterwards, identical,
-under a caption saying it was counted before the ride was condensed.
+**The measurement is four states of two tables, with signing back in as the
+control.** Cloud **2 workouts + 1 profile → 0 and 0**; tablet **2 rides and
+1,020 samples, identical before and after**; `synced_at` null on both rows and
+`auth_user_id` gone. Signing in again put every row back, which is the dialog's
+*"you can sign in again whenever you like"* being **true** rather than
+soothing. 15.4.1 was ticked in the same pass for the same reason it had not
+been: built ages ago, never watched. **15.4.3 is designed and deliberately
+unbuilt** — self-deletion needs an Edge Function and therefore a deploy, and an
+app button calling a function nobody has deployed looks exactly like a broken
+feature.
 
-**Three defects the AVD found that reading the diff would not have.** The dialog
-offering *After 6 months* said *"nothing is old enough yet"* about a
-fourteen-month-old ride, because the counts were computed for the rider's
-*current* setting — `Never`, which is what everybody has the first time they see
-it. **The figure went up after condensing**, 436 kB to 782 kB with 1,200 samples
-gone, because `VACUUM` in WAL mode writes the rewritten database through the log
-and the first measurement counts those pages twice; with a checkpoint it is
-432 kB down to 368 kB. And the snackbar said *"Trimmed"* on a screen that says
-*condense* on the chip, in the heading and on the button — 11.6.5's HUD/overlay
-mistake in miniature.
+**One thing was found on the way and fixed, and it is 23.4.3's rule broken on a
+surface nobody had counted as a drawing: an upload is an export.** The payload
+carried a condensed ride's samples without carrying the fact that there were
+fewer of them than seconds, so **the cloud copy of an outline was
+indistinguishable from a ride recorded second by second**. `"d"` goes inside the
+versioned payload — no cloud migration, nothing for the owner to apply — and it
+is read off the row rather than inferred from the samples' spacing, because a
+gap in a series is a rider who stopped. Measured where 14.4.3 says to measure a
+wire format: `metrics_payload->>'d'` is **null with 900 samples** for the intact
+ride and **10 with 120** for the outline (23.4.14).
 
-**23.4.10 is closed by choosing the first of its two options rather than by
-building both.** The offline-safe half is what exists, and the dialog says which
-rider it is talking to: *"this tablet is the only copy of it"* for an offline
-rider, *"your account has a copy of the rides it has taken, but Pelonot cannot
-yet bring one back down to the bike"* for a signed-in one. Nothing in
-`RetentionRepository` is called a cache. **23.4.13** is the rehydration item that
-falls out of saying so.
-
-**And 23.4.1 no longer needs adb.** Settings → Storage answers its three
-questions in one line — *2 rides · 432 kB* — because there is no honest way to
-offer condensing without first saying what there is to condense. The trip to the
-bike is now *looking at a screen*, and it is still owed: the one thing an AVD
-cannot contradict is the model, since its database is one this session seeded.
-
----
+**Two things the screen found that the diff could not.** The dialog's third
+sentence agreed with itself only in the plural — *"1 older ride is kept here as
+an outline… the seconds behind **them**"* — which is 26.x's sort of fault, small
+and only visible at the size a rider reads it. And **the emulator had silently
+lost DNS**: it had been up for eight days, its resolvers are fixed at launch
+from the host's, and every cloud call was failing with *"Unable to resolve
+host"* — indistinguishable from a broken feature, and now a line in CLAUDE.md.
 
 ### 12 August 2026 (forty-first sitting): old rides condensed to an outline, and the outline says so on every surface it reaches
 

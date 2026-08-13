@@ -328,6 +328,20 @@ race has to exclude.
    30" was drawn beside a chip already reading `30 min`, on four screens.
    Stripped, and `build.py` refuses to emit them now. Read it as evidence
    about the other rules marked *not tested* rather than as a closed item.
+
+   **It was read that way, and it paid out again (23.2.8).** The rule the
+   owner's own rename produced — *a position word in a title is a promise that
+   the blocks say it too* — sat in the README for two months and was enforced on
+   **neither** surface: not on titles at all, and on descriptions in the
+   standing direction only. Two classes were breaking it. `CLB-04` "Rolling
+   Climbs" said *"repeated seated rises"* with **no position on any of its
+   seventeen blocks**, and `SPR-05` "Sprints, Three Ways" promised a seated set
+   in a class whose only positioned blocks ask the rider to stand up. Both are
+   fixed and the rule is checked on both surfaces now. **One rule in that file
+   still says *not tested* — R8** — and 23.2.8f says what checking it would
+   cost. The pattern is the item, not the classes: on this project, a claim
+   written down and checked by nobody has twice turned out to describe something
+   that was never built.
 8. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the

@@ -210,7 +210,26 @@
       `serviceScope.launch`, and when that does not land within 15 s, nothing
       says why; `stopSelf()` never runs, which is what leaks the state into the
       next test. Worth an hour: a flaky test on the one thing that guards the
-      ride's own record is a test nobody will trust when it matters
+      ride's own record is a test nobody will trust when it matters.
+
+      **It did not reproduce in the forty-fourth sitting, and that is a
+      measurement rather than a shrug.** Eight runs on the tablet AVD — four of
+      `WorkoutServiceTest` alone and four of the whole instrumented suite,
+      **112 tests, 0 failures** — against the recorded base of 1 failure in 4.
+      The likeliest reason is already described in the test's own `setup()`
+      comment: **2.4.6's preference race**, where reaching past
+      `SettingsRepository` to call `setMode` directly raced `PelonotApp`'s
+      collector and let the device's stored *Hardware* setting win, leaving two
+      unrelated tests timing out with no telemetry. That fix landed after this
+      item was written and it is exactly the shape of what was measured.
+
+      **The box stays unticked**, because a flake that does not reproduce today
+      is not a flake that is fixed, and eight runs against "one in three" is
+      good evidence and not proof. What the item asks for is worth building if
+      it returns and is worth nothing until then: `stopWorkout`'s finalise
+      should **say why** when it does not land, and the state should not leak
+      into the next test when it does not. **Do not re-run this as a first
+      move** — it costs half an hour and has been answered once
 - [x] **8.9** Manual testing on Gen 1 Peloton hardware — profile selector → dashboard → settings → Hardware telemetry → Just Ride → live board data → post-ride summary → persisted ride and 246 metric rows, 31 July 2026. Imperial units picked up from the device locale with no prompting (13.2), on the actual tablet this time
 - [x] **8.12** Verified end-to-end on an emulator: profile creation → class library → intervals → simulated ride → post-ride summary → persisted metrics
 - [x] **8.13** Verified on a 1920×1080 landscape tablet emulator, which is the shape of the device this actually runs on

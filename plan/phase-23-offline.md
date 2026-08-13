@@ -691,3 +691,96 @@ police it either).
       probably no: that screen is three cards across and already carries a title
       and a shape sentence, so a third line is 26.3's failure mode. Decide it by
       looking, not here
+
+---
+
+### 23.2.8 A position word is a promise, and it was checked on neither surface
+
+**The forty-fourth sitting, 13 August 2026.** Found by asking a question the
+README's own text invites: *which rules in `classlibrary/README.md` still say
+"not tested"?* R10 already answered what that is worth — the rule said a title
+must not name its own length, it said *not tested*, and **all 72 titles broke
+it**. So the file's remaining untested claims are evidence rather than
+paperwork.
+
+**The rule 25.4.2 left behind was one of them, and it was worse than untested.**
+The owner's rename of four classes produced a working rule and it went into the
+README under R10:
+
+> A position word in a title is a promise that the blocks say it too. "Seated",
+> "standing", "out of the saddle" — and "big gear", which in cycling usage means
+> seated torque and reads as the same instruction.
+
+**It was enforced on no surface.** Not on titles at all — the four classes were
+found by the owner reading the list, and nothing stood between the library and a
+fifth. And on descriptions, R13's clause was written `out of the saddle|
+standing`: **the standing direction only**, and no "big gear" — which is what
+three of the four renamed classes actually said.
+
+- [x] **23.2.8a** **The check, one helper, both surfaces, both directions.**
+      `broken_position_promises(text, blocks)` in `build.py` and
+      `brokenPositionPromises` in `ClassLibraryAssetsTest`, each taking the text
+      and the blocks and returning the positions claimed that nothing
+      prescribes. **Shared rather than written twice on purpose**: the failure
+      being fixed is two surfaces making the identical claim and being held to
+      different standards, so a second copy of the pattern would rebuild it.
+
+      It is wired into R10 (titles) and R13 (descriptions). ***Done, and red on
+      the assets as they stood that morning***
+- [x] **23.2.8b** **The whole of R10 now ships-checked, not just generator-checked.**
+      R10's own-length ban and the uniqueness that replaced it lived in
+      `build.py` **and nowhere else**, which is the one place this library has
+      already agreed cannot vouch for what ships: *"a generator nobody runs
+      cannot vouch for them"*, and CLAUDE.md's rule against hand-editing
+      `assets/classes/` is a rule, not a mechanism. `ClassLibraryAssetsTest`
+      now re-checks all three claims against the emitted JSON. ***Done***
+- [x] **23.2.8c** **`CLB-04` — a class that said "seated" and prescribed
+      nothing.** *"Repeated seated rises with brief recoveries"*, and **not one
+      of its seventeen blocks carried a position**. It is `END-04` line for line
+      otherwise — same `sets()` call, same lengths, same `CLIMB` cadence, one
+      zone apart — and `END-04` has `position=SEATED`.
+
+      So this is an **omission and gets the position**, not a reworded sentence:
+      the class was authored as a seated one and its prose has said so all
+      along. 25.4.1's audit of positions across the library went straight past
+      it, because it was reading the classes that already *had* a position.
+      ***Done*** — six Z4 rises now carry `seated`
+- [x] **23.2.8d** **`SPR-05` — and here the sentence is what was wrong.**
+      *"Three kinds of maximal effort in one ride — seated, out of the saddle,
+      and wound up from a low speed"*, against blocks that carry **one** of the
+      three: the first and last sets are both high-cadence (`SURGE` 110–125 and
+      `SPIN` 105–115) and nothing anywhere is marked seated.
+
+      **The class does not change, because it is a live id.** Making the first
+      set a seated torque effort is a *different exercise*, and rewriting what
+      an id is while a ride points at it rewrites what that ride was — PLAN
+      25.4.3, and the reason `SWT-13` was a new id rather than an edited
+      `SWT-05`. **Which of 23.2.8c and 23.2.8d applies is the judgement**, and
+      the test is whether the prose or the blocks hold the authored intent.
+      ***Done***
+- [x] **23.2.8e** **Watched as an upgrade on the tablet AVD, with the previous
+      build as the control.** The control build seeded 72 classes at fingerprint
+      `8ba8687dec0d3b91` and its database is the defect: `CLB-04` **0**
+      positioned blocks against `END-04`'s **6**, and `SPR-05`'s description
+      promising seated with three standing blocks and no seated one. The fixed
+      build installed over it — no wipe — reconciled to `d1e36f5563c30f28`,
+      still **72 classes and 0 retired** (no id changed), `CLB-04` at **6**, and
+      the six Z4 rises drawing a **↓ SIT** chip in *See the blocks* where the
+      control drew nothing. ***Done***
+- [ ] **23.2.8f** **R8 is the last rule in the file still marked *not tested*,
+      and its excuse is now the weakest thing in this README.** *"The work has a
+      shape, and the shape has a name"* — Steady, Sets, Build, Descend, Pyramid,
+      Over/under, Shrinking rest, Mixed — with the note that *"did this build?"
+      is not a thing arithmetic can check.
+
+      **Half of it is.** The rule's second sentence is *"the structure is what
+      the title names"*, and that is the same shape as R10's position promise: a
+      claim in the title, checkable against the blocks. What it needs first is
+      the shape as **authored data** rather than as which `builder.py` helper
+      the author happened to call — a `shape=` on `klass`, 72 of them.
+
+      **Deliberately not built, and the reason is the cost.** Every other rule
+      here checks something already in the data; this one adds a field to 72
+      classes to check a word in a title, and R10's own lesson is that the
+      *cheap* untested rules are where the value was. Worth doing the day
+      somebody adds a class, not as a pass over the library
