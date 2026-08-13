@@ -125,15 +125,34 @@ fun RideChartsSection(
                     CadenceTraceCard(charts, Modifier.weight(1f))
                     CadenceCard(charts, Modifier.weight(1f))
                 }
-                // 22.6: no partner beside it, so it stops at a column's width
-                // rather than becoming a bar across the room.
-                ZoneCard(charts, Modifier.loneCard())
+                if (charts.timeInHeartRateZone.totalSeconds > 0) {
+                    // The two of them are the same question asked of the pedals
+                    // and of the heart, and they are worth reading against each
+                    // other — a ride that was Z2 on the power and H4 on the
+                    // heart is telling the rider something neither says alone.
+                    Row(
+                        horizontalArrangement =
+                            Arrangement.spacedBy(MaterialTheme.spacing.medium)
+                    ) {
+                        ZoneCard(charts, Modifier.weight(1f))
+                        HeartZoneCard(charts, Modifier.weight(1f))
+                    }
+                } else {
+                    // 22.6: no partner beside it, so it stops at a column's
+                    // width rather than becoming a bar across the room. Which is
+                    // most rides — the heart card is drawn only for a rider who
+                    // wore a strap *and* has given the app a maximum.
+                    ZoneCard(charts, Modifier.loneCard())
+                }
             } else {
                 PowerCard(charts, ghost, rivals, onPickRival, isGuestRide, Modifier.fillMaxWidth())
                 HeartCard(charts, Modifier.fillMaxWidth())
                 CadenceTraceCard(charts, Modifier.fillMaxWidth())
                 CadenceCard(charts, Modifier.fillMaxWidth())
                 ZoneCard(charts, Modifier.fillMaxWidth())
+                if (charts.timeInHeartRateZone.totalSeconds > 0) {
+                    HeartZoneCard(charts, Modifier.fillMaxWidth())
+                }
             }
         }
     }
@@ -337,6 +356,43 @@ private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     modifier = modifier
 ) {
     TimeInZoneBar(timeInZone = charts.timeInZone)
+}
+
+/**
+ * Time in heart-rate zone (21.4.1), drawn only when there is one to draw.
+ *
+ * Three captions, and each of them is the same kind of claim the power card
+ * already makes about its own denominator: what the counts were made against,
+ * whether they were made before a trim, and — the one this card has and the
+ * other does not — **how much of the ride the strap was actually reporting
+ * for**. A rider whose strap dropped out at minute twelve of forty otherwise
+ * reads five zones adding up to 100% and takes it for the shape of the ride.
+ */
+@Composable
+private fun HeartZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
+    title = "Time in heart-rate zone",
+    caption = listOfNotNull(
+        "%HRmax",
+        "counted before this ride was condensed".takeIf { charts.isTrimmed },
+        charts.zoneMaxHrBpm
+            ?.takeIf { it > 0 && it != charts.maxHrBpm }
+            ?.let { "at $it bpm, the maximum at the time" },
+        // Only when the strap missed some of it. Said as the time it *did*
+        // cover rather than the time it missed, because that is the number the
+        // percentages below are out of.
+        charts.timeInHeartRateZone
+            .takeIf { it.isPartial }
+            ?.let {
+                "a heart rate for ${Formatters.duration(it.totalSeconds)} of " +
+                    Formatters.duration(it.recordedSeconds)
+            },
+        "your maximum today — this ride did not record its own"
+            .takeIf { !charts.maxHrIsTheRides }
+    ).joinToString(" · "),
+    summary = RideChartSummaries.timeInHeartRateZone(charts.timeInHeartRateZone),
+    modifier = modifier
+) {
+    TimeInHeartRateZoneBar(timeInZone = charts.timeInHeartRateZone)
 }
 
 /**

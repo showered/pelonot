@@ -12,6 +12,7 @@ import com.pelonot.data.service.RideInProgress
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideDistributions
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.retention.MetricTrim
 import com.pelonot.domain.retention.RetentionAge
 import java.io.File
@@ -216,14 +217,21 @@ class RetentionRepository(
     }
 
     /**
-     * Time in zone and the cadence spread, counted at full resolution one last
-     * time (23.4.2).
+     * Time in zone, the cadence spread and the heart's time in zone, counted at
+     * full resolution one last time (23.4.2, 21.4.1).
      *
      * The FTP is the ride's own, exactly as every other reader resolves it
      * (7.8): the rider's current number only stands in for a ride recorded
      * before that column existed, and it is stored *inside* the blob so a
      * screen can say which one the counts were made against rather than
      * implying today's.
+     *
+     * **The maximum heart rate has to be resolved the same way and is easy to
+     * forget**, because until 21.4.1 it changed nothing here — it drew the
+     * bands on a chart and this method draws nothing. Now it is a denominator,
+     * and a trim run without it would freeze an empty heart-rate distribution
+     * onto the row and lose the answer for good, which is precisely what this
+     * whole file exists to prevent.
      *
      * Null for a ride with nothing to count, which is honest — a summary of no
      * samples is not a summary.
@@ -235,8 +243,10 @@ class RetentionRepository(
         if (samples.isEmpty()) return null
 
         val workout = workoutDao.getWorkoutById(workoutId) ?: return null
-        val riderFtp = workout.userId?.let { userDao.getUserById(it)?.ftpWatts }
-        val ftp = workout.ftpWatts ?: riderFtp ?: UserEntity.DEFAULT_FTP
+        val rider = workout.userId?.let { userDao.getUserById(it) }
+        val ftp = workout.ftpWatts ?: rider?.ftpWatts ?: UserEntity.DEFAULT_FTP
+        val maxHr = workout.maxHrBpm
+            ?: rider?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate)?.bpm }
 
         val charts = RideChartBuilder.build(
             samples = samples.map {
@@ -248,7 +258,8 @@ class RetentionRepository(
                     resistancePercent = it.resistance
                 )
             },
-            ftpWatts = ftp
+            ftpWatts = ftp,
+            maxHrBpm = maxHr
         )
         return RideDistributions.of(charts)
     }

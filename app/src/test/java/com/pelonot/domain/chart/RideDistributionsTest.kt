@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.PowerZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -93,6 +94,45 @@ class RideDistributionsTest {
 
         assertEquals(1, stored.timeInZone().secondsByZone.size)
         assertEquals(60, stored.timeInZone().totalSeconds)
+    }
+
+    /**
+     * 21.4.1 riding along with the other two counts, and the *unrecorded*
+     * seconds have to travel with them: without that number the coverage
+     * caption is gone and five zones adding to 100% are all the screen has,
+     * for a strap that heard half the ride.
+     */
+    @Test
+    fun `a trimmed ride still says how long its heart spent in each zone`() {
+        val full = (0 until 600).map {
+            ChartSample(
+                timestampSec = it,
+                powerWatts = 200.0,
+                cadenceRpm = 85.0,
+                // 190 max: 120 is H2, and the strap is silent for the first
+                // hundred seconds.
+                heartRateBpm = if (it < 100) null else 120
+            )
+        }
+        val stored = RideDistributions.decode(
+            RideDistributions.of(
+                RideChartBuilder.build(full, ftpWatts = 200, maxHrBpm = 190)
+            ).encode()
+        )
+
+        val zones = stored!!.heartRateTimeInZone()
+        assertEquals(500, zones.secondsByZone[HeartRateZone.H2])
+        assertEquals(100, zones.secondsUnrecorded)
+        assertEquals(600, zones.recordedSeconds)
+        assertEquals(190, stored.maxHrBpm)
+    }
+
+    @Test
+    fun `a heart-rate zone name this build does not know is dropped rather than thrown`() {
+        val stored = RideDistributions(secondsByHrZone = mapOf("H2" to 60, "H9" to 30))
+
+        assertEquals(1, stored.heartRateTimeInZone().secondsByZone.size)
+        assertEquals(60, stored.heartRateTimeInZone().totalSeconds)
     }
 
     @Test

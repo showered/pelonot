@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.PowerZone
@@ -400,5 +401,124 @@ class RideChartBuilderTest {
 
         assertTrue(said, said.contains("10-second outline"))
         assertFalse(said, said.contains("average"))
+    }
+
+    // 21.4.1 — the same question asked of the heart.
+
+    @Test
+    fun `time in heart-rate zone counts seconds against the rider's maximum`() {
+        // 190 max: H2 is 114-132, H4 is 152-170.
+        val samples = ride(300, heartRate = { if (it < 100) 120 else 160 })
+
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200, maxHrBpm = 190)
+
+        assertEquals(100, charts.timeInHeartRateZone.secondsByZone[HeartRateZone.H2])
+        assertEquals(200, charts.timeInHeartRateZone.secondsByZone[HeartRateZone.H4])
+        assertEquals(300, charts.timeInHeartRateZone.totalSeconds)
+        assertFalse(charts.timeInHeartRateZone.isPartial)
+    }
+
+    /**
+     * 21.2.4, and the reason this is not [TimeInZone] with a different enum in
+     * it. Power is recorded every second and a heart rate is not, so a maximum
+     * the app does not have has to mean *no zones* rather than five zones drawn
+     * off a default — the same rule `HeartRateZone.forHeartRate` follows.
+     */
+    @Test
+    fun `no maximum heart rate means no heart-rate zones at all`() {
+        val samples = ride(300, heartRate = { 150 })
+
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200, maxHrBpm = null)
+
+        assertEquals(0, charts.timeInHeartRateZone.totalSeconds)
+        assertTrue(charts.timeInHeartRateZone.occupied.isEmpty())
+    }
+
+    /**
+     * The defect this project has had to refuse three times: a missing heart
+     * rate is not a zero. Counted as H1 it would put a strapless rider in
+     * Recovery for the whole ride, and the percentages under it would be the
+     * shape of the ride rather than the shape of the coverage.
+     */
+    @Test
+    fun `seconds with no heart rate are unknown rather than Recovery`() {
+        // The strap pairs at 5:00 of a 10:00 ride and reads 160 (H4) after it.
+        val samples = ride(600, heartRate = { sec -> if (sec >= 300) 160 else null })
+
+        val zones = RideChartBuilder.build(samples, ftpWatts = 200, maxHrBpm = 190)
+            .timeInHeartRateZone
+
+        assertEquals(null, zones.secondsByZone[HeartRateZone.H1])
+        assertEquals(300, zones.secondsByZone[HeartRateZone.H4])
+        assertEquals(300, zones.totalSeconds)
+        assertEquals(300, zones.secondsUnrecorded)
+        assertEquals(600, zones.recordedSeconds)
+        assertTrue(zones.isPartial)
+
+        // The zones are 100% of the time a heart was heard, and the sentence
+        // says what that was out of rather than leaving it to be assumed.
+        assertEquals(1.0f, zones.fractionOf(HeartRateZone.H4), 0.0001f)
+        val said = RideChartSummaries.timeInHeartRateZone(zones)
+        assertTrue(said, said.contains("recorded for 5 minutes of 10 minutes"))
+    }
+
+    @Test
+    fun `a ride with no strap has nothing to say about heart-rate zones`() {
+        val zones = RideChartBuilder.build(ride(300), ftpWatts = 200, maxHrBpm = 190)
+            .timeInHeartRateZone
+
+        assertEquals(0, zones.totalSeconds)
+        assertFalse(zones.isPartial)
+        assertTrue(RideChartSummaries.timeInHeartRateZone(zones).contains("neither"))
+    }
+
+    /**
+     * 23.4.3, for the third count of seconds. A trimmed ride has a fifth of its
+     * rows left, so recounting them would draw a 45-minute ride that spent nine
+     * minutes with a heart rate — and nothing about the result would look
+     * coarse.
+     */
+    @Test
+    fun `a trimmed ride reads its stored heart-rate zones rather than recounting`() {
+        val stored = RideDistributions(
+            secondsByHrZone = mapOf("H2" to 1_200, "H3" to 600),
+            secondsWithoutHr = 60,
+            maxHrBpm = 185
+        )
+
+        val charts = RideChartBuilder.build(
+            // What a trim left behind: six seconds, all of them H5 at this max.
+            ride(6, heartRate = { 180 }),
+            ftpWatts = 200,
+            maxHrBpm = 190,
+            detailSec = 10,
+            stored = stored
+        )
+
+        assertEquals(1_200, charts.timeInHeartRateZone.secondsByZone[HeartRateZone.H2])
+        assertEquals(600, charts.timeInHeartRateZone.secondsByZone[HeartRateZone.H3])
+        assertEquals(null, charts.timeInHeartRateZone.secondsByZone[HeartRateZone.H5])
+        assertEquals(60, charts.timeInHeartRateZone.secondsUnrecorded)
+        // And the denominator those counts were made against, which is not the
+        // one the bands are drawn from today.
+        assertEquals(185, charts.zoneMaxHrBpm)
+    }
+
+    /**
+     * A ride trimmed by a build that did not count heart-rate zones has none,
+     * and that is read as *never counted* rather than as zero — the same answer
+     * a strapless ride gets, and better than recounting six surviving seconds.
+     */
+    @Test
+    fun `a ride trimmed before this existed draws no heart-rate zones`() {
+        val charts = RideChartBuilder.build(
+            ride(6, heartRate = { 180 }),
+            ftpWatts = 200,
+            maxHrBpm = 190,
+            detailSec = 10,
+            stored = RideDistributions(secondsByZone = mapOf("Z2" to 1_800), ftpWatts = 200)
+        )
+
+        assertEquals(0, charts.timeInHeartRateZone.totalSeconds)
     }
 }

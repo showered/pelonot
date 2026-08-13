@@ -40,6 +40,7 @@ import com.pelonot.domain.chart.CadenceDistribution
 import com.pelonot.domain.chart.ChartScale
 import com.pelonot.domain.chart.PrescribedPlan
 import com.pelonot.domain.chart.RideTrace
+import com.pelonot.domain.chart.TimeInHeartRateZone
 import com.pelonot.domain.chart.TimeInZone
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.PowerZone
@@ -694,10 +695,62 @@ fun CadenceDistributionChart(
 fun TimeInZoneBar(
     timeInZone: TimeInZone,
     modifier: Modifier = Modifier
+) = ZoneBar(
+    slices = timeInZone.occupied.map { (zone, seconds) ->
+        ZoneSlice(
+            label = "Z${zone.number} ${zone.displayName}",
+            color = zone.color,
+            seconds = seconds,
+            fraction = timeInZone.fractionOf(zone)
+        )
+    },
+    empty = "Time in zone needs an FTP, and this ride has none.",
+    modifier = modifier
+)
+
+/**
+ * The same bar for the heart (21.4.1).
+ *
+ * One implementation with the power one rather than two that look alike, and the
+ * difference between them is deliberately *not* in here: the zones are `H`
+ * rather than `Z`, they carry their own palette, and how much of the ride the
+ * strap actually covered is a caption on the card rather than a slice in the
+ * bar. A grey "unknown" wedge would put the absence on the same footing as the
+ * zones, and it is not the same kind of thing.
+ */
+@Composable
+fun TimeInHeartRateZoneBar(
+    timeInZone: TimeInHeartRateZone,
+    modifier: Modifier = Modifier
+) = ZoneBar(
+    slices = timeInZone.occupied.map { (zone, seconds) ->
+        ZoneSlice(
+            label = "H${zone.number} ${zone.displayName}",
+            color = zone.color,
+            seconds = seconds,
+            fraction = timeInZone.fractionOf(zone)
+        )
+    },
+    empty = "No heart rate was recorded for this ride.",
+    modifier = modifier
+)
+
+/** One band of a stacked zone bar, already resolved to what is drawn. */
+private data class ZoneSlice(
+    val label: String,
+    val color: Color,
+    val seconds: Int,
+    val fraction: Float
+)
+
+@Composable
+private fun ZoneBar(
+    slices: List<ZoneSlice>,
+    empty: String,
+    modifier: Modifier = Modifier
 ) {
-    val occupied = timeInZone.occupied
-    if (occupied.isEmpty()) {
-        EmptyChart("Time in zone needs an FTP, and this ride has none.", modifier, 24.dp)
+    if (slices.isEmpty()) {
+        EmptyChart(empty, modifier, 24.dp)
         return
     }
 
@@ -708,12 +761,12 @@ fun TimeInZoneBar(
                 .height(28.dp)
                 .clip(MaterialTheme.expressiveShapes.pill)
         ) {
-            occupied.forEach { (zone, seconds) ->
+            slices.forEach { slice ->
                 Box(
                     modifier = Modifier
-                        .weight(seconds.toFloat())
+                        .weight(slice.seconds.toFloat())
                         .fillMaxHeight()
-                        .background(zone.color)
+                        .background(slice.color)
                 )
             }
         }
@@ -722,24 +775,24 @@ fun TimeInZoneBar(
 
         // A legend, because seven colours in a bar is a code nobody has been
         // given the key to.
-        occupied.forEach { (zone, seconds) ->
+        slices.forEach { slice ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
                         .size(10.dp)
                         .clip(MaterialTheme.expressiveShapes.pill)
-                        .background(zone.color)
+                        .background(slice.color)
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.small))
                 Text(
-                    text = "Z${zone.number} ${zone.displayName}",
+                    text = slice.label,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "${Formatters.duration(seconds)} · " +
-                        "${(timeInZone.fractionOf(zone) * 100).roundToInt()}%",
+                    text = "${Formatters.duration(slice.seconds)} · " +
+                        "${(slice.fraction * 100).roundToInt()}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

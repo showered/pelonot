@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.PowerZone
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -45,12 +46,42 @@ data class RideDistributions(
      * meaning depends on a row somewhere else.
      */
     @SerialName("ftp_watts")
-    val ftpWatts: Int = 0
+    val ftpWatts: Int = 0,
+    /**
+     * The heart's time in zone (21.4.1), counted while the seconds were there.
+     *
+     * Absent from a blob written before this existed, and that is read as *this
+     * ride's heart-rate zones were never counted* rather than as zero — a ride
+     * trimmed by an earlier build draws no heart-rate zone chart, which is
+     * honest, and is the same answer a ride with no strap gets.
+     */
+    @SerialName("seconds_by_hr_zone")
+    val secondsByHrZone: Map<String, Int> = emptyMap(),
+    /** Recorded seconds with no heart rate in them. See [TimeInHeartRateZone]. */
+    @SerialName("seconds_without_hr")
+    val secondsWithoutHr: Int = 0,
+    /**
+     * The maximum heart rate the zones above were counted against.
+     *
+     * [ftpWatts]' twin, for [ftpWatts]' reason: `workouts.max_hr_bpm` is the
+     * same number today and a ride recorded before that column existed (21.2.3)
+     * has none, so it falls back to the rider's current maximum — which moves.
+     * Kept here so the counts carry their own denominator.
+     */
+    @SerialName("max_hr_bpm")
+    val maxHrBpm: Int = 0
 ) {
     fun timeInZone(): TimeInZone = TimeInZone(
         secondsByZone = secondsByZone.mapNotNull { (name, seconds) ->
             PowerZone.entries.firstOrNull { it.name == name }?.let { it to seconds }
         }.toMap()
+    )
+
+    fun heartRateTimeInZone(): TimeInHeartRateZone = TimeInHeartRateZone(
+        secondsByZone = secondsByHrZone.mapNotNull { (name, seconds) ->
+            HeartRateZone.entries.firstOrNull { it.name == name }?.let { it to seconds }
+        }.toMap(),
+        secondsUnrecorded = secondsWithoutHr
     )
 
     fun cadence(): CadenceDistribution =
@@ -65,7 +96,15 @@ data class RideDistributions(
                 .map { (zone, seconds) -> zone.name to seconds }
                 .toMap(),
             secondsByCadenceBand = charts.cadence.secondsByBand,
-            ftpWatts = charts.ftpWatts
+            ftpWatts = charts.ftpWatts,
+            secondsByHrZone = charts.timeInHeartRateZone.secondsByZone
+                .map { (zone, seconds) -> zone.name to seconds }
+                .toMap(),
+            secondsWithoutHr = charts.timeInHeartRateZone.secondsUnrecorded,
+            // Zero when the ride had no maximum to count against, in which case
+            // the map above is empty too and there is nothing to be a
+            // denominator for.
+            maxHrBpm = charts.maxHrBpm ?: 0
         )
 
         /**

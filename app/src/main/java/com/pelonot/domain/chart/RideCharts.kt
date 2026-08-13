@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.PowerZone
@@ -72,6 +73,47 @@ data class TimeInZone(
     /** Zones in order, skipping any the rider never entered. */
     val occupied: List<Pair<PowerZone, Int>>
         get() = PowerZone.entries
+            .mapNotNull { zone -> secondsByZone[zone]?.takeIf { it > 0 }?.let { zone to it } }
+}
+
+/**
+ * How long the ride spent in each heart-rate zone, in seconds (21.4.1).
+ *
+ * **Not [TimeInZone] with a different enum in it**, for one reason that matters:
+ * power is recorded for every second of a ride and a heart rate is not. A strap
+ * that was never paired, or that dropped out at minute twelve, leaves seconds
+ * that are *unknown* rather than seconds spent in H1 — so the zones are counted
+ * against [totalSeconds], the time a heart rate was actually being reported, and
+ * [secondsUnrecorded] is kept beside them so the screen can say how much of the
+ * ride that was. A percentage of the whole ride would read as effort and be
+ * coverage.
+ *
+ * Empty for a rider whose maximum heart rate the app does not know. That is
+ * 21.2.4 and the same rule the bands follow: a denominator nobody supplied is a
+ * guess about a body.
+ */
+data class TimeInHeartRateZone(
+    val secondsByZone: Map<HeartRateZone, Int> = emptyMap(),
+    /** Recorded seconds with no heart rate in them — no strap, or a dropout. */
+    val secondsUnrecorded: Int = 0
+) {
+    /** Seconds a heart rate was reported for, which is what the zones divide. */
+    val totalSeconds: Int get() = secondsByZone.values.sum()
+
+    /** Every second the ride recorded, whether a heart was heard in it or not. */
+    val recordedSeconds: Int get() = totalSeconds + secondsUnrecorded
+
+    /** True when the strap was reporting for some of the ride but not all of it. */
+    val isPartial: Boolean get() = totalSeconds > 0 && secondsUnrecorded > 0
+
+    fun fractionOf(zone: HeartRateZone): Float {
+        val total = totalSeconds
+        return if (total == 0) 0f else (secondsByZone[zone] ?: 0).toFloat() / total
+    }
+
+    /** Zones in order, skipping any the rider never entered. */
+    val occupied: List<Pair<HeartRateZone, Int>>
+        get() = HeartRateZone.entries
             .mapNotNull { zone -> secondsByZone[zone]?.takeIf { it > 0 }?.let { zone to it } }
 }
 
@@ -210,6 +252,13 @@ data class RideCharts(
     val cadenceTrace: RideTrace = RideTrace(),
     val cadence: CadenceDistribution = CadenceDistribution(),
     val timeInZone: TimeInZone = TimeInZone(),
+    /**
+     * The same question asked of the heart instead of the pedals (21.4.1).
+     *
+     * Empty whenever [maxHrBpm] is null, so a rider the app has no maximum for
+     * gets no heart-rate zones at all rather than five drawn off a default.
+     */
+    val timeInHeartRateZone: TimeInHeartRateZone = TimeInHeartRateZone(),
     val prescribed: PrescribedPlan = PrescribedPlan(),
     val ftpWatts: Int = 0,
     /**
@@ -265,6 +314,18 @@ data class RideCharts(
      * letting them pass as today's zones.
      */
     val zoneFtpWatts: Int? = null,
+    /**
+     * The maximum heart rate the stored heart-rate zone counts were made
+     * against, or null when the counts came from this ride's own samples just
+     * now.
+     *
+     * [zoneFtpWatts] for the other denominator, and it exists for the same
+     * narrow case: a ride that never recorded its own maximum (21.2.3) and has
+     * since been trimmed. The counts were frozen against whatever the rider's
+     * maximum was that day, and the screen says so rather than letting them pass
+     * as today's zones.
+     */
+    val zoneMaxHrBpm: Int? = null,
     /**
      * What the fence makes of the ride's own samples (2.7.5).
      *
@@ -325,7 +386,10 @@ object RideChartBuilder {
                 maxHrIsTheRides = maxHrIsTheRides,
                 detailSec = detailSec,
                 zoneFtpWatts = stored?.ftpWatts,
+                zoneMaxHrBpm = stored?.maxHrBpm,
                 timeInZone = stored?.timeInZone() ?: TimeInZone(),
+                timeInHeartRateZone =
+                    stored?.heartRateTimeInZone() ?: TimeInHeartRateZone(),
                 cadence = stored?.cadence() ?: CadenceDistribution()
             )
         }
@@ -346,7 +410,10 @@ object RideChartBuilder {
                 maxHrIsTheRides = maxHrIsTheRides,
                 detailSec = detailSec,
                 zoneFtpWatts = stored?.ftpWatts,
+                zoneMaxHrBpm = stored?.maxHrBpm,
                 timeInZone = stored?.timeInZone() ?: TimeInZone(),
+                timeInHeartRateZone =
+                    stored?.heartRateTimeInZone() ?: TimeInHeartRateZone(),
                 cadence = stored?.cadence() ?: CadenceDistribution(),
                 integrity = integrity
             )
@@ -358,6 +425,12 @@ object RideChartBuilder {
             cadenceTrace = downsample(ordered, buckets) { it.cadenceRpm },
             cadence = stored?.cadence() ?: cadenceDistribution(ordered),
             timeInZone = stored?.timeInZone() ?: timeInZone(ordered, ftpWatts),
+            // A count of seconds, so a trimmed ride reads what it wrote down
+            // rather than recounting the fifth of its rows that survived — the
+            // same rule as the two above, and the reason `RideDistributions`
+            // carries the maximum it counted against.
+            timeInHeartRateZone = stored?.heartRateTimeInZone()
+                ?: heartRateTimeInZone(ordered, maxHrBpm),
             prescribed = prescribedPlan(
                 samples = ordered,
                 intervals = intervals,
@@ -371,6 +444,7 @@ object RideChartBuilder {
             ),
             detailSec = detailSec,
             zoneFtpWatts = stored?.ftpWatts,
+            zoneMaxHrBpm = stored?.maxHrBpm,
             ftpWatts = ftpWatts,
             ftpIsTheRides = ftpIsTheRides,
             maxHrBpm = maxHrBpm,
@@ -455,6 +529,36 @@ object RideChartBuilder {
             .eachCount()
 
         return TimeInZone(secondsByZone = byZone)
+    }
+
+    /**
+     * The same count for the heart (21.4.1), with the one difference that makes
+     * it a separate function rather than a generic one.
+     *
+     * A sample with no heart rate in it is **not** a second in H1 — it is a
+     * second the app knows nothing about, and it is counted as such. This is the
+     * third time this project has had to say that a missing heart rate is not a
+     * zero (`heartRateBpm` nullable, 21.2.4), and it is the first time it would
+     * have been a *percentage* that was wrong rather than a number.
+     *
+     * No maximum means no zones at all, never a default.
+     */
+    private fun heartRateTimeInZone(
+        samples: List<ChartSample>,
+        maxHrBpm: Int?
+    ): TimeInHeartRateZone {
+        if (maxHrBpm == null || maxHrBpm <= 0) return TimeInHeartRateZone()
+
+        val byZone = samples
+            .groupingBy { HeartRateZone.forHeartRate(it.heartRateBpm, maxHrBpm) }
+            .eachCount()
+
+        return TimeInHeartRateZone(
+            secondsByZone = byZone.mapNotNull { (zone, seconds) ->
+                zone?.let { it to seconds }
+            }.toMap(),
+            secondsUnrecorded = byZone[null] ?: 0
+        )
     }
 
     /**
@@ -626,6 +730,30 @@ object RideChartSummaries {
         return timeInZone.occupied.joinToString(prefix = "Time in zone: ") { (zone, seconds) ->
             "${zone.displayName} ${formatDuration(seconds)}"
         }
+    }
+
+    /**
+     * The heart's version, and it says the coverage rather than implying it
+     * (21.4.1).
+     *
+     * "H2 Aerobic 18 minutes" out of a 40-minute ride the strap only heard half
+     * of is a true sentence that reads as a false one, so the time a heart rate
+     * was actually reported is stated whenever it is not the whole ride.
+     */
+    fun timeInHeartRateZone(timeInZone: TimeInHeartRateZone): String {
+        if (timeInZone.totalSeconds == 0) {
+            return "Time in heart-rate zone needs a maximum heart rate and a " +
+                "strap, and this ride has neither."
+        }
+        val zones = timeInZone.occupied.joinToString(
+            prefix = "Time in heart-rate zone: "
+        ) { (zone, seconds) ->
+            "${zone.displayName} ${formatDuration(seconds)}"
+        }
+        if (!timeInZone.isPartial) return zones
+        return "$zones. A heart rate was recorded for " +
+            "${formatDuration(timeInZone.totalSeconds)} of " +
+            "${formatDuration(timeInZone.recordedSeconds)}."
     }
 
     private fun formatDuration(totalSeconds: Int): String {
