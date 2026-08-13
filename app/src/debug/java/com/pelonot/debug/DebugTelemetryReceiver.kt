@@ -28,6 +28,11 @@ import com.pelonot.data.sensor.SimulatedSensorSource
  * adb shell am broadcast -a com.pelonot.debug.SILENCE \
  *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 20
  *
+ * # Every bind connects and delivers nothing: the leaked serial port of
+ * # 2.7d, and what 2.7.7 gives up on. Needs ~65s to reach the giving up.
+ * adb shell am broadcast -a com.pelonot.debug.DEAD_BOARD \
+ *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 120
+ *
  * # The live leaderboard draws on a simulated ride (24.3.13a). This one is
  * # not a lie about the telemetry — see RaceDebug for why.
  * adb shell am broadcast -a com.pelonot.debug.RACE \
@@ -50,6 +55,14 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
             ACTION_SILENCE -> {
                 SimulatedSensorSource.silenceFor(seconds)
                 Log.i(TAG, "Simulated board goes silent — without failing — for ${seconds}s")
+            }
+
+            // 2.7.7. Long enough to outlast the whole retry schedule is the
+            // point: giving up is what is being watched, and that takes about
+            // 65 seconds of failing binds.
+            ACTION_DEAD_BOARD -> {
+                SimulatedSensorSource.deadBoardFor(seconds)
+                Log.w(TAG, "Every bind for ${seconds}s will connect and deliver nothing")
             }
 
             // 24.3.13a. Not a lie about the telemetry — see [RaceDebug]. What
@@ -102,6 +115,7 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
         const val DEFAULT_SECONDS = 30
         const val ACTION_CORRUPT = "com.pelonot.debug.CORRUPT"
         const val ACTION_SILENCE = "com.pelonot.debug.SILENCE"
+        const val ACTION_DEAD_BOARD = "com.pelonot.debug.DEAD_BOARD"
         const val ACTION_TRACE = "com.pelonot.debug.TRACE"
         const val ACTION_RACE = "com.pelonot.debug.RACE"
         const val EXTRA_ON = "on"

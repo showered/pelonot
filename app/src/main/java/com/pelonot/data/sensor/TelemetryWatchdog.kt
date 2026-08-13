@@ -24,9 +24,12 @@ class TelemetrySilence(silentForMs: Long) :
  * came back. **Pedalling did not revive it; only restarting the app did.** The
  * reason is that nothing failed: the flow did not throw, it simply stopped
  * emitting, so `retryWhen` never fired and nothing ever rebound. The source's
- * own `MAX_CONSECUTIVE_TIMEOUTS` counts explicit `TIME_OUT` replies from the
- * board, and silence is not one of those — a service that has stopped
- * answering sends no reply at all, including no timeout.
+ * own quiet timeout counts explicit `TIME_OUT` replies from the board, and
+ * silence is not one of those — a service that has stopped answering sends no
+ * reply at all, including no timeout. That distinction is load-bearing rather
+ * than pedantic: timeouts mean the service is up and the board is not
+ * ([SensorBoardNotAnswering]), and nothing at all means the service itself has
+ * gone. They have different remedies and 2.7.7 shows the rider which.
  *
  * So the absence of data has to be turned into something the retry policy can
  * see. Failing the flow tears the source down — which for the Peloton service

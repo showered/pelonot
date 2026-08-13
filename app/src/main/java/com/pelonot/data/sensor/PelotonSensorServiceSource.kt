@@ -50,7 +50,7 @@ class PelotonSensorServiceSource(
 
     override fun readings(): Flow<SensorReading> = callbackFlow {
         if (!isAvailable()) {
-            throw IOException("Peloton sensor service is not installed on this device")
+            throw SensorServiceMissing("Peloton sensor service is not installed on this device")
         }
 
         // Replies arrive on this thread rather than the main looper: telemetry
@@ -63,7 +63,9 @@ class PelotonSensorServiceSource(
         // holds each field with the instant it arrived and refuses to hand
         // back a triple that mixes moments or is missing a leg.
         val assembler = TelemetryAssembler()
-        var consecutiveTimeouts = 0
+
+        /** When the current unbroken run of `TIME_OUT` replies began (2.7.8). */
+        var quietSince = 0L
 
         /** How often the service's own label disagreed with the frame (2.7.1b). */
         var mislabelled = 0
@@ -89,13 +91,29 @@ class PelotonSensorServiceSource(
                 // a measurement, and recording it would write a fake sample
                 // into the rider's permanent record — the same mistake the
                 // nullable heartRateBpm exists to prevent.
+                //
+                // 2.7.8. Measured in *time*, not in messages. It used to be
+                // five consecutive timeouts, which at three polls answering
+                // several times a second is under a second of quiet — so the
+                // source tore itself down and rebound long before the
+                // repository's own six-second watchdog could run, and every one
+                // of those rebinds reopened the serial port that 2.7d says
+                // leaks. Two silence detectors, and the eager one always won.
                 if (data.getString(KEY_RESPONSE_HEX) == RESPONSE_TIMEOUT) {
-                    if (++consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-                        close(IOException("Sensor board stopped responding"))
+                    val now = SystemClock.elapsedRealtime()
+                    if (quietSince == 0L) {
+                        quietSince = now
+                    } else if (now - quietSince >= BOARD_QUIET_TIMEOUT_MS) {
+                        // The distinguishing failure (2.7.7): the service is
+                        // alive and answering every poll, and what it is
+                        // answering is "nothing". That is the board unreachable
+                        // behind a service that bound fine, which is what a
+                        // leaked `/dev/ttyO0` looks like from this side.
+                        close(SensorBoardNotAnswering(now - quietSince))
                     }
                     return
                 }
-                consecutiveTimeouts = 0
+                quietSince = 0L
 
                 // 2.7.1b, and the whole of the fix: **the frame is the truth,
                 // `msg.what` is only a claim about it.** The service labels
@@ -354,8 +372,18 @@ class PelotonSensorServiceSource(
         private const val KEY_RESPONSE_HEX = "responseHexString"
         private const val RESPONSE_TIMEOUT = "TIME_OUT"
 
-        /** Roughly a second of silence before we let the repository back off. */
-        private const val MAX_CONSECUTIVE_TIMEOUTS = 5
+        /**
+         * How long the board may answer nothing but `TIME_OUT` before the
+         * source is torn down (2.7.8).
+         *
+         * Deliberately shorter than [SensorRepository]'s own silence watchdog,
+         * because this failure is the *informative* one — a stream of timeouts
+         * says the service is up and the board is not, and that is the only
+         * evidence this app gets for the leaked-port condition. Four seconds
+         * rather than the old sub-second count: a rebind is the one action that
+         * can make a leaked port permanent, so it is worth being sure first.
+         */
+        private const val BOARD_QUIET_TIMEOUT_MS = 4_000L
 
         /** How many of each unhandled event type get their payload logged. */
         private const val UNKNOWN_EVENT_LOG_LIMIT = 3

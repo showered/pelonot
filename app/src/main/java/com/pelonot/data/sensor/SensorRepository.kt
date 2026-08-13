@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +33,21 @@ sealed interface SensorStatus {
     data object Stopped : SensorStatus
     data class Streaming(val sourceId: String, val simulated: Boolean) : SensorStatus
     data class Reconnecting(val sourceId: String, val attempt: Int, val cause: String) : SensorStatus
+
+    /**
+     * The pipeline has stopped trying (2.7.7).
+     *
+     * Distinct from [Stopped], which is nobody asking for telemetry, and from
+     * [Reconnecting], which is a promise. This one is the app admitting that
+     * rebinding is not going to help — and it exists because the alternative
+     * was a retry counter climbing past 141 behind a screen saying
+     * "reconnecting to the bike".
+     */
+    data class Unavailable(
+        val sourceId: String,
+        val reason: SensorUnavailableReason,
+        val attempts: Int
+    ) : SensorStatus
 }
 
 /**
@@ -82,6 +98,15 @@ class SensorRepository(
     private var heartRateJob: Job? = null
 
     /**
+     * The one retry schedule, and the decision to stop using it (2.7.7, 2.7.8).
+     *
+     * Held here rather than per-collection because the policy is the
+     * repository's promise — a second one anywhere is the defect this class's
+     * own header describes.
+     */
+    private val reconnects = ReconnectPolicy()
+
+    /**
      * How many readings the plausibility fence has turned away since the last
      * [start] (2.7.3).
      *
@@ -124,6 +149,15 @@ class SensorRepository(
         val source = activeSource()
         val simulated = source === simulatedSource
         rejectedReadings = 0
+        reconnects.reset()
+
+        // 2.7.7. Whether *this* bind ever delivered anything is the one thing
+        // that separates a board which dropped out from a port that was never
+        // opened, and the two want opposite responses. A plain local: the
+        // collector and the retry policy are the same coroutine, and its
+        // suspensions are what publish the write.
+        var producedReadings = false
+
         Log.i(TAG, "Starting telemetry from ${source.id} (mode=$mode)")
 
         telemetryJob = scope.launch {
@@ -133,23 +167,63 @@ class SensorRepository(
                 // bike that meant the board went quiet 86 seconds in and
                 // nothing rebound it for the rest of the ride.
                 .failOnSilence(SILENCE_TIMEOUT_MS)
-                .retryWhen { cause, attempt ->
+                .retryWhen { cause, _ ->
                     // Deliberately does not fall back to simulated data on a
                     // hardware failure: silently substituting fake telemetry
                     // mid-ride would write fabricated numbers into the rider's
                     // permanent workout record.
-                    val attemptNumber = (attempt + 1).toInt()
-                    val delayMs = backoffDelayMs(attempt)
-                    _status.value = SensorStatus.Reconnecting(
-                        sourceId = source.id,
-                        attempt = attemptNumber,
-                        cause = cause.message ?: cause::class.java.simpleName
-                    )
-                    Log.w(TAG, "Telemetry failed (attempt $attemptNumber), retrying in ${delayMs}ms", cause)
-                    delay(delayMs)
-                    true // retry indefinitely; the rider may reconnect the board
+                    val decision = reconnects.onFailure(cause, producedReadings)
+                    producedReadings = false
+
+                    when (decision) {
+                        is Reconnect.GiveUp -> {
+                            _status.value = SensorStatus.Unavailable(
+                                sourceId = source.id,
+                                reason = decision.reason,
+                                attempts = decision.attempts
+                            )
+                            // Warn, not info: on this tablet `log.tag` is `W`
+                            // device-wide and anything below it is discarded,
+                            // and this is the line that explains a ride with no
+                            // numbers in it.
+                            Log.w(
+                                TAG,
+                                "Giving up on ${source.id} after ${decision.attempts} " +
+                                    "attempts (${decision.reason}) — every rebind reopens " +
+                                    "the board's serial port and none of them delivered",
+                                cause
+                            )
+                            false
+                        }
+
+                        is Reconnect.After -> {
+                            _status.value = SensorStatus.Reconnecting(
+                                sourceId = source.id,
+                                attempt = decision.attempt,
+                                cause = cause.message ?: cause::class.java.simpleName
+                            )
+                            Log.w(
+                                TAG,
+                                "Telemetry failed (attempt ${decision.attempt}), " +
+                                    "retrying in ${decision.delayMs}ms",
+                                cause
+                            )
+                            delay(decision.delayMs)
+                            true
+                        }
+                    }
                 }
+                // Not decoration. `retryWhen` returning false **rethrows**, and
+                // an uncaught throw inside `scope.launch` takes the process
+                // down — a `SupervisorJob` isolates siblings, it does not
+                // handle. Measured the first time giving up actually happened:
+                // `FATAL EXCEPTION: DefaultDispatcher-worker-4`, the whole app
+                // gone, and the ride the rider was on left for the crash
+                // recovery prompt to find. The status the retry policy set is
+                // the report; the exception has nowhere left to go.
+                .catch { cause -> Log.w(TAG, "Telemetry pipeline ended", cause) }
                 .collect { reading ->
+                    producedReadings = true
                     _status.value = SensorStatus.Streaming(source.id, simulated)
 
                     // 2.7.3. A value that cannot be true is not published at
@@ -210,17 +284,8 @@ class SensorRepository(
         bleHeartRateManager.destroy()
     }
 
-    /** Exponential backoff, capped, so a missing board does not spin the CPU. */
-    private fun backoffDelayMs(attempt: Long): Long {
-        val exponent = attempt.coerceAtMost(MAX_BACKOFF_SHIFT).toInt()
-        return (BASE_RETRY_DELAY_MS shl exponent).coerceAtMost(MAX_RETRY_DELAY_MS)
-    }
-
     private companion object {
         const val TAG = "SensorRepository"
-        const val BASE_RETRY_DELAY_MS = 1_000L
-        const val MAX_RETRY_DELAY_MS = 30_000L
-        const val MAX_BACKOFF_SHIFT = 5L
 
         /**
          * How long a source may deliver nothing before it is torn down and

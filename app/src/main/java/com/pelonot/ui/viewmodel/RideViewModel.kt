@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorStatus
+import com.pelonot.data.sensor.SensorUnavailableReason
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.data.service.WorkoutService
 import com.pelonot.data.service.WorkoutSession
@@ -134,6 +135,17 @@ data class RideUiState(
      * the numbers on screen are not live, and the rider is told either way.
      */
     val isReconnecting: Boolean get() = sensorStatus is SensorStatus.Reconnecting
+
+    /**
+     * Why the pipeline stopped trying, or null while it is still trying
+     * (2.7.7).
+     *
+     * The one state the rider can actually *do* something about, and the one
+     * that used to be indistinguishable from [isReconnecting] — which is a
+     * promise, and was being kept past attempt 141.
+     */
+    val unavailableReason: SensorUnavailableReason?
+        get() = (sensorStatus as? SensorStatus.Unavailable)?.reason
 }
 
 /**

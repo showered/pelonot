@@ -29,6 +29,15 @@ class SimulatedSensorSource(
     override fun isAvailable(): Boolean = true
 
     override fun readings(): Flow<SensorReading> = flow {
+        // 2.7.7's failure, on demand: a bind that connects, registers and then
+        // delivers nothing, over and over. Before the loop rather than inside
+        // it, because *never having emitted* is the whole signature — a source
+        // that emits once and then dies is the other failure entirely.
+        if (System.currentTimeMillis() < deadBoardUntilMs) {
+            delay(DEAD_BOARD_QUIET_MS)
+            throw SensorBoardNotAnswering(DEAD_BOARD_QUIET_MS)
+        }
+
         val random = Random(seed)
         val startMs = System.currentTimeMillis()
         // Heart rate is integrated towards a power-derived target so it ramps
@@ -185,6 +194,26 @@ class SimulatedSensorSource(
         fun silenceFor(seconds: Int) {
             silentUntilMs = System.currentTimeMillis() + seconds * 1000L
         }
+
+        /** Wall-clock instant the board starts answering a bind again (2.7.7). */
+        @Volatile
+        private var deadBoardUntilMs: Long = 0L
+
+        /**
+         * Every bind for [seconds] succeeds and then delivers nothing at all,
+         * which is what a leaked `/dev/ttyO0` looks like from this side (2.7d).
+         *
+         * The third lever, and the one that needed the other two to exist
+         * first: [silenceFor] models a source that *was* working and stopped,
+         * and this models one that never started. They land in different halves
+         * of [ReconnectPolicy] on purpose. Debug builds only.
+         */
+        fun deadBoardFor(seconds: Int) {
+            deadBoardUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
+
+        /** How long a dead bind waits before failing, matching the real source. */
+        private const val DEAD_BOARD_QUIET_MS = 4_000L
 
         /** The value near 602 the bike produced that is none of the three metrics. */
         private const val GHOST_VALUE = 602.0

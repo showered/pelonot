@@ -81,6 +81,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
+import com.pelonot.data.sensor.SensorUnavailableReason
 import com.pelonot.data.service.RideSnapshot
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
@@ -612,14 +613,36 @@ private fun RideHeader(
  * It says what is happening to the *record* as well as to the screen — "not
  * recording" is the part a rider will want to know afterwards, and it is the
  * truth as of 2.4.4.
+ *
+ * **A fourth state was added by 2.7.7, and it is the only one with a remedy in
+ * it.** When the pipeline gives up, "no signal" and "reconnecting" are both
+ * still true and both are useless: the first sounds like a bike that is
+ * switched off and the second is a promise the app has stopped keeping. The
+ * cause is almost always Peloton's own leaked serial port, and the measured
+ * remedy is a reboot — force-stopping every client did not release it. So this
+ * one sentence says the thing the rider cannot work out from the screen, and
+ * it is checked *first*, because it is the more specific claim.
  */
 @Composable
 private fun TelemetryChip(state: RideUiState) {
-    val message = when {
-        !state.snapshot.telemetryLive -> "No signal from the bike — not recording"
-        state.isReconnecting -> "Reconnecting to the bike…"
-        state.isSimulated -> "Simulated telemetry — no bike connected"
-        else -> null
+    val message = when (state.unavailableReason) {
+        // "Usually", not "will": what the app knows is that four binds
+        // produced nothing, not what is holding the port.
+        SensorUnavailableReason.BoardNotAnswering,
+        SensorUnavailableReason.NeverStarted ->
+            "The bike's sensor isn't answering — not recording. " +
+                "Restarting the tablet usually frees it."
+
+        SensorUnavailableReason.ServiceMissing ->
+            "This tablet has no bike sensor — not recording. " +
+                "Simulated telemetry is in Settings."
+
+        null -> when {
+            !state.snapshot.telemetryLive -> "No signal from the bike — not recording"
+            state.isReconnecting -> "Reconnecting to the bike…"
+            state.isSimulated -> "Simulated telemetry — no bike connected"
+            else -> null
+        }
     } ?: return
 
     // Amber, never red: 8.11.82's argument applies here too — this is "look at
