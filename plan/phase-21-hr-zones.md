@@ -460,6 +460,25 @@ asks less about the person, which is a rare combination and worth taking.
       fixed. Not urgent and not free: it is a payload change (14.4) and a column
       on the cloud table, and the honest interim is that the web app draws no
       zone bands at all rather than wrong ones
+- [ ] **21.4.2c** **The ride records the maximum and not where it came from.**
+      Found while building 21.6.3, which wanted to say *"and your maximum is an
+      estimate"* and could not. `MaxHeartRate` carries a `source` precisely
+      because a zone drawn off Tanaka is a different claim from one drawn off a
+      measurement (21.5.5) — and `workouts.max_hr_bpm` stores the **number
+      alone**, so once the ride is over the claim is unrecoverable. Every past
+      ride's heart-rate zones are therefore presented with one authority, which
+      is the thing 7.8, 21.2.3, 23.4.12 and `power_is_measured` each exist to
+      refuse.
+
+      It is a column and a migration, and it is **deliberately not done here**:
+      one nullable `max_hr_source`, written at the same moment `max_hr_bpm` is
+      (so 8.3d.4 applies — it has to live on `WorkoutSession` too), and read by
+      the two cards that already say what they are drawn from. The reason for
+      leaving it is that the wrong fix is available and tempting: resolving the
+      source from the rider's *current* profile would answer for the fallback
+      case and silently guess for every ride that carries its own number, which
+      is a claim about provenance derived from a row that has since moved —
+      exactly 7.8's shape
 - [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
       actually drives a training decision — "how much easy riding did I do this
       month" — and it is the honest answer to what the dashboard's progress
@@ -555,13 +574,66 @@ Three things this could feed, in increasing order of how much they can hurt:
       rate must be **measured** rather than the Tanaka estimate (21.1), because
       an inferred effort built on an estimated maximum is two guesses wearing
       one number
-- [ ] **21.6.3** **Say it on the ride detail screen, which is free and safe.**
+- [x] **21.6.3** **Say it on the ride detail screen, which is free and safe.**
       "You spent 18 minutes in HR zone 4 on an endurance ride" is an
       observation about a ride, not a claim about the rider, and it needs
       neither 21.6.1's prefill nor 21.6.2's gates. **Read 21.2.3 first** — the
       thing that blocks it is that nothing yet draws an HR zone for a *past*
       ride, and 7.8's trap is why: the zone bands would be drawn from whatever
       maximum the rider has *today*, not the one the ride was ridden at
+
+      ***Done in the forty-eighth sitting, and what made it buildable was that
+      its own blocker had been cleared two sittings earlier without anybody
+      noticing.*** The sentence above says plainly what stands in the way —
+      nothing draws an HR zone for a past ride — and 21.2.3 (the maximum
+      recorded onto the row) and 21.4.1 (the seconds counted into
+      `distributions_json`) between them made that false. This is the same seam
+      as the two items before it, read from the other end: the last three
+      sittings looked for *claims that had gone stale*, and a **blocker** that
+      has gone stale is one of those, in the direction of *now possible*.
+
+      **`EffortAgainstPlan`, one sentence, and null on most rides.** The class
+      writes down what it prescribed and the strap writes down what was made, so
+      the join is a comparison of two counts of seconds. Every reason it says
+      nothing is a rule from somewhere else in this plan: a free ride was asked
+      for nothing, a rider with no maximum has no zones (21.2.4), a ride with no
+      strap has nothing to compare, and — the one that is this item's own —
+      **a strap that heard eleven minutes of forty describes eleven minutes**,
+      not the ride. That last is 21.4.1's coverage caption arriving as a verdict
+      instead of a percentage, which is worse, because a percentage can be
+      checked against the caption beside it and a verdict cannot.
+
+      **The two scales are never equated, and the wording carries that.**
+      `HeartRateZone` says outright that it is not `PowerZone` with five
+      entries: different conventions, different boundaries, and H4 is not Z4. So
+      each side is asked the *same coarse question in its own terms* — how much
+      of this was hard, where hard is each convention's own threshold — and the
+      sentence names the heart's side as *"your top two heart-rate zones"* and
+      the class's as what it prescribed. Neither is described in the other's
+      language, and the test asserts the word *Threshold* appears in neither.
+
+      **The tolerance is twenty percentage points and is deliberately blunt**,
+      which is 21.6.4 built rather than quoted. Heart rate lags 30–60 seconds,
+      drifts up across a long ride and moves with heat, sleep and caffeine, so
+      the failure that costs something is telling a rider they overcooked an
+      easy ride when they did not. A gap that size is a different ride, not a
+      different day. Ten minutes of reported heart rate is the floor, and it has
+      to cover at least half of what the ride recorded.
+
+      **It survives a trim, and that is a design choice rather than luck.** It
+      reads the *prescription* — the blocks the class asked for, which are as
+      true as they ever were — and never the compliance, which 23.4.3 withdraws
+      from a condensed ride. The heart's own counts come from
+      `distributions_json`, written before the seconds went.
+
+      **And it reaches the post-ride summary too, out of the same component
+      (12.6), which is safe for a reason worth stating rather than assuming.**
+      The effort question sits *above* the charts on that screen, deliberately
+      (12.6.1), so the rider has already answered it by the time the observation
+      is on screen. Beside the question it would have been 21.6.1's prefill
+      without 21.6.1's rule that the rider's own answer stays theirs — the same
+      change, in the wrong order, would have broken a rule the item below it
+      exists to protect
 - [ ] **21.6.4** **The honest limit, stated once so it is not rediscovered.**
       Heart rate lags effort by a minute or two, drifts upward across a long
       ride at constant power, and moves with heat, caffeine, sleep and
