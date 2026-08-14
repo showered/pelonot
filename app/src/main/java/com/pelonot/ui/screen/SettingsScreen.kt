@@ -730,12 +730,22 @@ private fun HeartRateSection(
 /**
  * What heart-rate zones are computed from (21.1, 21.2.2, 21.3.3).
  *
- * **The order of the two fields is the design.** The app does not want
- * anybody's date of birth; it wants a maximum heart rate, and age is only a
- * proxy for one — a poor proxy, with a 10–12 bpm spread between individuals at
- * the same age, which is wider than a zone. So the rider's own number is asked
- * for first and the date is the fallback, which is both more accurate and asks
- * less about the person.
+ * **The order of the two fields is the design, and 21.1.6 reversed it.** It
+ * used to lead with the measured number, on the accuracy argument: age is a
+ * poor proxy, with a 10–12 bpm spread between individuals at the same age,
+ * which is wider than a zone. That argument is still true and is still why the
+ * measured number wins when both exist. What it got wrong is that **a field is
+ * worthless at any accuracy if the rider cannot fill it in** — no normal person
+ * knows their maximum heart rate, and a text box asking for one does not
+ * produce a careful answer, it produces a guess the app then treats as measured
+ * fact. An unanswerable question is not more accurate than an estimate.
+ *
+ * So: ask what everyone can answer, offer what the few can. The year of birth
+ * leads, the estimate moves as it is filled in, and the measured number sits
+ * behind an explicit *I know my maximum heart rate* where the riders who have
+ * done a ramp test will look for it. That reveal is **one-way on purpose** —
+ * a field that could be folded away again is a field that can hold a number
+ * governing the save while nothing on screen shows it.
  *
  * Three states, and the third is the one worth getting right: a rider who
  * gives neither gets **no heart-rate zones**, said plainly, rather than zones
@@ -755,6 +765,10 @@ private fun HeartRateZonesSection(
     var maxText by remember(maxHrBpm) { mutableStateOf(maxHrBpm?.toString().orEmpty()) }
     var date by remember(birthDate) { mutableStateOf(birthDate) }
     var picking by remember { mutableStateOf(false) }
+    // 21.1.6. Shown from the start for a rider who already gave a number —
+    // their own figure must not be behind a disclosure — and thereafter only
+    // ever revealed, never folded away again. See the note above the function.
+    var askingForMeasured by remember(maxHrBpm) { mutableStateOf(maxHrBpm != null) }
 
     // Asked for once, while the section is on screen, so the offer below is
     // ready before the rider starts typing.
@@ -785,49 +799,12 @@ private fun HeartRateZonesSection(
     }
 
     SettingsSection("Heart-rate zones") {
-        OutlinedTextField(
-            value = maxText,
-            onValueChange = { maxText = it.filter(Char::isDigit) },
-            label = { Text("Maximum heart rate (bpm)") },
-            supportingText = {
-                Text(
-                    if (maxError) {
-                        "Enter a value between ${MaxHeartRate.MIN_BPM} and ${MaxHeartRate.MAX_BPM}"
-                    } else {
-                        "If you know your own number, this is the one to use — " +
-                            "an estimate can be a whole zone out."
-                    }
-                )
-            },
-            isError = maxError,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // 21.1.3. The app already holds every sample the rider has ever
-        // recorded, so it can make a far better opening guess than a formula.
-        // Offered, never written for them: the hardest thirty seconds they have
-        // ridden so far is a floor, not a maximum, and only they can say which.
-        if (highestRecorded != null) {
-            TextButton(onClick = { maxText = highestRecorded.toString() }) {
-                Text("Use $highestRecorded — the highest you've recorded")
-            }
-        }
-
-        Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-        Text(
-            text = "Don't know it?",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         Text(
             // 26.1.4: the formula was named on screen. It is the right formula
             // (21.1.4) and naming it is the author talking; what a rider needs
             // is that the number is a guess and how wrong it can be.
-            text = "Pelonot can estimate one from your age. It is only an estimate: " +
-                "two riders the same age can be 12 bpm apart.",
+            text = "Pelonot can estimate your maximum from your age. It is only " +
+                "an estimate: two riders the same age can be 12 bpm apart.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -846,6 +823,47 @@ private fun HeartRateZonesSection(
             }
             if (date != null) {
                 TextButton(onClick = { date = null }) { Text("Clear") }
+            }
+        }
+
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+        if (askingForMeasured) {
+            OutlinedTextField(
+                value = maxText,
+                onValueChange = { maxText = it.filter(Char::isDigit) },
+                label = { Text("Maximum heart rate (bpm)") },
+                supportingText = {
+                    Text(
+                        if (maxError) {
+                            "Enter a value between ${MaxHeartRate.MIN_BPM} and ${MaxHeartRate.MAX_BPM}"
+                        } else {
+                            "Your own number is used instead of the estimate."
+                        }
+                    )
+                },
+                isError = maxError,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // 21.1.3. The app already holds every sample the rider has ever
+            // recorded, so it can make a far better opening guess than a
+            // formula. Offered, never written for them: the hardest thirty
+            // seconds they have ridden so far is a floor, not a maximum, and
+            // only they can say which. It stays *here*, beside the number it
+            // fills in, rather than being promoted alongside the year — a floor
+            // offered as the first answer would give every rider with a strap
+            // zones that are systematically too low.
+            if (highestRecorded != null) {
+                TextButton(onClick = { maxText = highestRecorded.toString() }) {
+                    Text("Use $highestRecorded — the highest you've recorded")
+                }
+            }
+        } else {
+            TextButton(onClick = { askingForMeasured = true }) {
+                Text("I know my maximum heart rate")
             }
         }
 
@@ -875,7 +893,7 @@ private fun HeartRateZoneLadder(max: MaxHeartRate?) {
     if (max == null) {
         Text(
             text = "No heart-rate zones yet. Pelonot won't guess a maximum — " +
-                "give it your own number or a year of birth and the zones appear here.",
+                "give it your year of birth and the zones appear here.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
