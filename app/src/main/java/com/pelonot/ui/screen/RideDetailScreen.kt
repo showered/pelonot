@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
 import com.pelonot.core.Formatters
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
@@ -287,6 +288,19 @@ fun RideDetailScreen(
                 )
             }
 
+            // 12.4.1, and it sits here on purpose: under the figures, because
+            // *whose ride was this?* is answered by looking at the ride, and
+            // above everything else, because on an unclaimed ride it is the
+            // only thing on this screen anybody can act on.
+            if (state.isUnclaimed) {
+                Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+                ClaimRideSection(
+                    profiles = state.profiles,
+                    onClaim = { userId -> viewModel.claimFor(context, userId) },
+                    modifier = Modifier.loneCard()
+                )
+            }
+
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
             // 16.1. Every ride since the foreign-key fix has written a full
@@ -457,6 +471,76 @@ private fun ExportSection(
         Spacer(Modifier.size(MaterialTheme.spacing.small))
     }
   }
+}
+
+/**
+ * Whose ride was this? — asked again, long after the summary closed (12.4.1).
+ *
+ * The post-ride screen asks it once, and a rider who walked away without
+ * answering could not get back to it: a guest ride records a null `user_id`,
+ * every query on `workouts` is filtered to a profile, and the ride therefore
+ * appeared on no screen in the app. This is the second chance, reached from the
+ * *Not filed against anyone* section at the top of history.
+ *
+ * **It does not offer to create a profile, and the summary screen does.** That
+ * is deliberate rather than an omission: on the summary screen a guest is
+ * deciding whether to become a rider, which is the moment for it; here the ride
+ * is already safe, and every rider who could claim it already has a profile. So
+ * there is one copy of *create a profile and file this ride to it* rather than
+ * two, and a bike with no profiles at all is told to make one rather than shown
+ * an empty row.
+ *
+ * There is no *Keep it as a guest ride* either. Doing nothing already is that,
+ * and a button whose effect is to leave the screen exactly as it was is a
+ * decision the rider is being asked to make twice.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ClaimRideSection(
+    profiles: List<UserEntity>,
+    onClaim: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier) {
+        Text(
+            text = "Whose ride was this?",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() }
+        )
+        Text(
+            text = if (profiles.isEmpty()) {
+                "It was ridden as a guest, so it belongs to nobody. Create a " +
+                    "profile and you can file it against one."
+            } else {
+                "It was ridden as a guest. Filing it against a profile keeps it " +
+                    "in that rider's history and counts towards their FTP."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.readableText()
+        )
+
+        if (profiles.isNotEmpty()) {
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                profiles.forEach { profile ->
+                    FilledTonalButton(
+                        onClick = { onClaim(profile.localUserId) },
+                        modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                        shape = MaterialTheme.expressiveShapes.pill
+                    ) {
+                        Text(profile.name)
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**

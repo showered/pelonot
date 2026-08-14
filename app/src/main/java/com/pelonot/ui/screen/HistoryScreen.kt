@@ -140,9 +140,13 @@ fun HistoryScreen(
             state.isGuest -> EmptyHistory(
                 modifier = Modifier.padding(padding),
                 title = "Guest rides aren't kept in a history",
+                // The last clause is 12.4.1's: this screen has been telling
+                // riders the summary screen was the only chance, and it was
+                // right until the unclaimed section existed.
                 body = "A guest ride belongs to nobody by design. Pick a profile " +
-                    "before you start, or file the ride against one from the " +
-                    "summary screen afterwards."
+                    "before you start, or file the ride against one afterwards — " +
+                    "from the summary screen, or from the top of that profile's " +
+                    "history."
             )
 
             state.isEmpty -> EmptyHistory(
@@ -202,6 +206,24 @@ fun HistoryScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
+                    // 12.4.1, above the rider's own rides and never inside
+                    // them. These belong to nobody: a guest ride records a null
+                    // `user_id`, so it appears in no profile's history at all
+                    // and — until this section existed — could not be reached
+                    // again once the post-ride summary closed. Filing it in
+                    // with this rider's days would answer the question the
+                    // section is here to ask.
+                    if (state.unclaimed.isNotEmpty()) {
+                        item(key = "unclaimed-header") { UnclaimedHeader() }
+                        items(state.unclaimed, key = { ride -> "unclaimed-${ride.id}" }) { ride ->
+                            RideRow(
+                                ride = ride,
+                                onClick = { onRideSelected(ride.id) },
+                                onDelete = { confirming = ride }
+                            )
+                        }
+                    }
+
                     state.days.forEach { day ->
                         item(key = "header-${day.startOfDayMs}") {
                             DayHeader(day)
@@ -237,6 +259,37 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * The heading over rides nobody has claimed (12.4.1).
+ *
+ * It carries a line of explanation where [DayHeader] carries none, because a
+ * date needs none and this does: a rider looking at their own history has no
+ * reason to expect somebody else's ride at the top of it, and the sentence has
+ * to say both what these are and that opening one is how they are dealt with.
+ */
+@Composable
+private fun UnclaimedHeader(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(
+            top = MaterialTheme.spacing.large,
+            bottom = MaterialTheme.spacing.extraSmall
+        )
+    ) {
+        Text(
+            text = "Not filed against anyone",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.semantics { heading() }
+        )
+        Text(
+            text = "Ridden as a guest. Open one to say whose it was.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

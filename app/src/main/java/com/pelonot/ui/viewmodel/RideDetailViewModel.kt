@@ -1,7 +1,9 @@
 package com.pelonot.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.ClassRepository
@@ -47,9 +49,20 @@ data class RideDetailUiState(
      */
     val rivals: List<RideRival> = emptyList(),
     /** The one currently drawn, or null. Only ever one: two ghosts is a graph. */
-    val ghost: RideGhost? = null
+    val ghost: RideGhost? = null,
+    /**
+     * The bike's profiles, for a ride nobody has claimed (12.4.1).
+     *
+     * Loaded whatever the ride is and read only by the claim card, which draws
+     * on [isUnclaimed]. Empty on a bike with no profiles at all, where the card
+     * says so rather than offering a row of nothing.
+     */
+    val profiles: List<UserEntity> = emptyList()
 ) {
     val displayTitle: String get() = classTitle ?: "Just Ride"
+
+    /** A guest ride, which is the one kind with an open question on it. */
+    val isUnclaimed: Boolean get() = workout != null && workout.userId == null
 }
 
 /**
@@ -97,6 +110,17 @@ class RideDetailViewModel(
             // rider opened this screen for; making them wait on the charts
             // would be the wrong way round.
             if (workout != null) buildCharts(workout, plan?.intervals.orEmpty())
+        }
+
+        // Who could claim this ride, if nobody has (12.4.1). Collected in its
+        // own coroutine rather than read inside the one above, because the two
+        // must not be ordered: this flow emits once and then only when a
+        // profile is written, so a version that asked "is the ride unclaimed?"
+        // before the ride had loaded would answer no and never be asked again.
+        viewModelScope.launch {
+            userRepository.allUsers.collect { users ->
+                _uiState.update { it.copy(profiles = users) }
+            }
         }
     }
 
@@ -260,6 +284,38 @@ class RideDetailViewModel(
                 ExportFormat.Tcx -> RideExport.tcx(ride, samples)
             }
             RideExport.filename(ride, format) to content
+        }
+    }
+
+    /**
+     * Files a ride nobody claimed against a profile (12.4.1).
+     *
+     * The same one-column `UPDATE` the post-ride summary makes, for the same
+     * reason: rewriting the owner is safer than re-recording the ride under a
+     * new id, which would orphan every `workout_metrics` row pointing at the
+     * old one. And the same sync enqueue afterwards — a ride that now belongs
+     * to a rider with an account belongs in their backup, and nothing else
+     * would ever come back for it, since the drain only ever looks at rides
+     * that already have an owner.
+     *
+     * **The charts are rebuilt, and that is the part worth stating.** A guest
+     * ride carries no rider, so 7.8's and 21.4.2a's fallbacks had nothing to
+     * fall back to and the zone bands were drawn from the ride's own columns or
+     * not at all. It has a rider now, and the screen would otherwise keep
+     * showing the answer it computed when it did not.
+     */
+    fun claimFor(context: Context, userId: Int) {
+        val workout = _uiState.value.workout ?: return
+        if (workout.userId != null) return
+
+        viewModelScope.launch {
+            workoutRepository.assignToUser(workout.id, userId)
+            WorkoutSyncWorker.enqueueIfAllowed(context.applicationContext, workout.id, userId)
+            val claimed = workout.copy(userId = userId)
+            _uiState.update { it.copy(workout = claimed) }
+
+            val plan = claimed.classId?.let { classRepository.getPlan(it) }
+            buildCharts(claimed, plan?.intervals.orEmpty())
         }
     }
 

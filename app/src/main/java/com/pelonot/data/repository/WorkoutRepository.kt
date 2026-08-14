@@ -105,6 +105,17 @@ class WorkoutRepository(
         workoutDao.observeCompletedCount(userId)
 
     /**
+     * Rides nobody has claimed, newest first (12.4.1).
+     *
+     * Deliberately not filtered by profile — see [WorkoutDao
+     * .observeUnclaimedRides]. The window is small because it is a loose end
+     * rather than a list: a household with fifty unclaimed rides has a habit
+     * to change, not a page to scroll.
+     */
+    fun observeUnclaimedRides(limit: Int = UNCLAIMED_WINDOW): Flow<List<WorkoutListItem>> =
+        workoutDao.observeUnclaimedRides(limit)
+
+    /**
      * What the dashboard's progress section draws (22.1.5, 22.1.8).
      *
      * The standing is resolved off the row rather than in a second flow, and
@@ -933,6 +944,9 @@ class WorkoutRepository(
          * itself while anything is left rather than doing a year in one job.
          */
         const val SYNC_BATCH = 20
+
+        /** How many unclaimed rides history offers to file at once (12.4.1). */
+        private const val UNCLAIMED_WINDOW = 20
 
         /**
          * How many recent rides the suggestion reads to decide how long this

@@ -289,6 +289,37 @@ class WorkoutDaoTest {
     }
 
     /**
+     * 12.4.1. The defect this closes is not that re-filing was awkward — it is
+     * that a guest ride appeared in **no** list at all, because every other
+     * query on this table is filtered to a profile. So the assertion worth
+     * making is the pair: absent from both riders' history, present in the one
+     * owner-less query, and moving from the second to the first when it is
+     * claimed.
+     */
+    @Test
+    fun anUnclaimedRideIsInNobodysHistoryUntilSomebodyClaimsIt() = runBlocking {
+        workoutDao.insertWorkout(workout("mine"))
+        workoutDao.insertWorkout(workout("guest", userId = null))
+        // An unfinished guest ride is the one being pedalled right now, or a
+        // crashed one — never an open question to put in front of a rider.
+        workoutDao.insertWorkout(workout("guestInProgress", userId = null, isComplete = false))
+
+        assertEquals(listOf("mine"), workoutDao.observeHistory(USER_ID, 50).first().map { it.id })
+        assertEquals(emptyList<String>(), workoutDao.observeHistory(OTHER_USER_ID, 50).first().map { it.id })
+        assertEquals(listOf("guest"), workoutDao.observeUnclaimedRides(50).first().map { it.id })
+
+        workoutDao.assignWorkoutToUser("guest", OTHER_USER_ID)
+
+        assertEquals(emptyList<String>(), workoutDao.observeUnclaimedRides(50).first().map { it.id })
+        assertEquals(
+            listOf("guest"),
+            workoutDao.observeHistory(OTHER_USER_ID, 50).first().map { it.id }
+        )
+        // And it did not land on anybody else on the way past.
+        assertEquals(listOf("mine"), workoutDao.observeHistory(USER_ID, 50).first().map { it.id })
+    }
+
+    /**
      * 12.3.4. The cascade is declared on the entity, but a declaration only
      * takes effect if SQLite has foreign keys switched on for the connection —
      * and an orphaned metric series is invisible from every screen and grows

@@ -259,6 +259,41 @@ interface WorkoutDao {
     fun observeHistory(userId: Int, limit: Int): Flow<List<WorkoutListItem>>
 
     /**
+     * Rides nobody has claimed — `user_id IS NULL` (PLAN 12.4.1).
+     *
+     * Every other query on this table is filtered to one profile, which is
+     * right for a household bike and has one consequence nobody had looked at:
+     * **a guest ride is invisible the moment the post-ride screen closes**. It
+     * is not merely hard to re-file, as 12.4.1 says — there is no surface in
+     * the app that draws it at all, and the rider who walked away without
+     * answering *whose ride was this?* cannot get back to the question.
+     *
+     * So this is the one deliberately owner-less query, and what it returns is
+     * shown to *every* profile rather than folded into any one rider's list: an
+     * unclaimed ride is a question, and putting it in somebody's history would
+     * be answering it for them.
+     */
+    @Query(
+        """
+        SELECT w.id AS id,
+               c.title AS class_title,
+               w.duration_sec AS duration_sec,
+               w.total_output_kj AS total_output_kj,
+               w.total_distance_km AS total_distance_km,
+               w.avg_power AS avg_power,
+               w.rpe_rating AS rpe_rating,
+               w.was_recovered AS was_recovered,
+               w.timestamp AS timestamp
+        FROM workouts w
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE w.user_id IS NULL AND w.is_complete = 1
+        ORDER BY w.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun observeUnclaimedRides(limit: Int): Flow<List<WorkoutListItem>>
+
+    /**
      * The most recent finished ride, with the class it was (22.1.5).
      *
      * A projection of its own rather than `observeHistory(limit = 1)`, because

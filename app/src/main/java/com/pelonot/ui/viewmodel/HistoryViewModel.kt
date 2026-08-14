@@ -24,10 +24,18 @@ data class HistoryUiState(
     val totalRides: Int = 0,
     val isLoading: Boolean = true,
     val isGuest: Boolean = false,
+    /**
+     * Rides nobody has claimed (12.4.1), newest first.
+     *
+     * Kept apart from [days] rather than merged into them, because these are
+     * not this rider's rides — they are rides with an open question on them,
+     * and the same list is shown to every profile on the bike.
+     */
+    val unclaimed: List<WorkoutListItem> = emptyList(),
     /** The ride the undo snackbar is currently offering to bring back. */
     val pendingDeletion: WorkoutListItem? = null
 ) {
-    val isEmpty: Boolean get() = !isLoading && days.isEmpty()
+    val isEmpty: Boolean get() = !isLoading && days.isEmpty() && unclaimed.isEmpty()
 
     /** True while there are older rides beyond the loaded window. */
     val hasMore: Boolean get() = days.sumOf { it.rides.size } < totalRides
@@ -52,6 +60,14 @@ data class HistoryUiState(
  *
  * If the process dies while a delete is pending, the ride survives. That is the
  * safe direction to fail in.
+ *
+ * ### Why one list here is not this rider's
+ *
+ * 12.4.1. Every query on `workouts` is filtered to a profile, and a guest ride
+ * has none — so until now a ride nobody claimed was not merely hard to re-file,
+ * it was **invisible from every screen in the app** the moment the post-ride
+ * summary closed. [HistoryUiState.unclaimed] is the one owner-less list, drawn
+ * above the rider's own and never mixed into it.
  */
 @Suppress("OPT_IN_USAGE") // flatMapLatest
 class HistoryViewModel(
@@ -80,15 +96,22 @@ class HistoryViewModel(
                         workoutRepository.observeHistory(id, limit)
                     },
                     workoutRepository.observeCompletedCount(id),
+                    workoutRepository.observeUnclaimedRides(),
                     heldBack
-                ) { rides, total, pending ->
+                ) { rides, total, unclaimed, pending ->
                     val visible = rides.filterNot { it.id == pending?.id }
                     HistoryUiState(
                         days = RideDayGrouping.group(visible) { it.timestamp },
                         // The count is what the database holds, so a ride held
                         // back for undo must not make the list look truncated.
-                        totalRides = total - if (pending != null) 1 else 0,
+                        // Only the rider's own rides are in it — an unclaimed
+                        // one held back would otherwise shorten a window it was
+                        // never part of, and hide the *Show older rides*
+                        // button on a rider whose list really does go on.
+                        totalRides = total -
+                            if (rides.any { it.id == pending?.id }) 1 else 0,
                         isLoading = false,
+                        unclaimed = unclaimed.filterNot { it.id == pending?.id },
                         pendingDeletion = pending
                     )
                 }
