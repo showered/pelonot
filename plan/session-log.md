@@ -6,6 +6,76 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 14 August 2026 (forty-eighth sitting): an item that said what was blocking it, in a plan where the blocker had quietly been built
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the fourteenth sitting running, so the brief was triage again — and the
+previous sitting's lead still had life in it.** Phase 21 was 18 unticked of 31
+after last time, which is still the outlier among phases that are actually
+built, so this sitting read the boxes rather than the count. **21.6.3 was the
+one, and the interesting part is how it was found: it names its own blocker in
+its own text** — *"nothing yet draws an HR zone for a past ride"* — and 21.2.3
+and 21.4.1, built in the two sittings before this one, had made that false.
+The last three sittings mined *written-down claims nobody re-reads*. **A
+written-down blocker is one of those**, in the direction of *now possible*, and
+it is the cheapest of the lot to check.
+
+**What it builds is the join the owner asked for.** *"If an endurance ride the
+rider spent most of the time in the top 1 or 2 zones, then they clearly found
+that ride more difficult than it should have been, you don't even need to
+ask!"* The class writes down the effort it prescribed and the strap writes down
+the effort that was made, so `EffortAgainstPlan` compares two counts of
+seconds and the heart-rate zone card carries one more sentence: *"Harder than
+the class asked — 12 minutes 48 seconds in your top two heart-rate zones,
+against the 4 minutes it prescribed."* **767 JVM tests, 0 failures**, up from
+751.
+
+**Almost all of the design is in the reasons it says nothing.** A free ride was
+asked for nothing; a rider with no maximum has no zones (21.2.4); and — the one
+this item had to invent — **a strap that heard three minutes of thirteen
+describes three minutes**, which is 21.4.1's coverage caption arriving as a
+verdict instead of a percentage. That is strictly worse, because a percentage
+can be checked against the caption beside it and a verdict cannot.
+
+**The two scales are never equated, and the wording carries it.**
+`HeartRateZone` says outright that it is not `PowerZone` with five entries, so
+each side is asked the same *coarse* question in its own terms — how much of
+this was hard — and the sentence says *"your top two heart-rate zones"* on one
+side and what the class prescribed on the other. The tolerance is twenty
+percentage points and is deliberately blunt, which is 21.6.4 built rather than
+quoted: the failure that costs something is telling a rider they overcooked an
+easy ride when they did not.
+
+**Watched on the tablet AVD in four cases, on one real 12:48 ride of
+`Threshold 2×4`, with the power's own time in zone identical in all four.** As
+ridden the simulator produced a genuine middle case — 30% of the heart's time
+up high against a prescription of 31%, *"About what the class asked"*. Then
+every second at 160 bpm (*Harder*), every second at 110 (*Easier*), and the
+case worth having watched: **a strap that heard only the last 3:13, all of it
+H4, where the card draws, the caption says so, and there is no verdict at all.**
+Without the gate it would have declared *harder than the class asked* off 100%
+of a quarter of the ride.
+
+**And two defects came out of looking at the card rather than at the diff, both
+four sittings old.** The zone list did not end in a full stop, so the new
+sentence ran straight on from it as one sentence; and `formatDuration` had the
+plural hard-coded, so the card had been saying **"1 minutes 42 seconds"** since
+16.2.4 — in a string a screen reader reads aloud. Neither would have been found
+by anything except putting the thing on a screen and reading it.
+
+**One thing is written down rather than built (21.4.2c).** The sentence wanted
+to say *"and your maximum is an estimate"* and could not: `MaxHeartRate` carries
+a `source` precisely because Tanaka and a measurement are different claims, and
+`workouts.max_hr_bpm` stores the number alone. The tempting wrong fix — asking
+the rider's *current* profile — would answer for the fallback case and silently
+guess for every ride carrying its own number, which is 7.8's shape exactly.
+
+**Also fixed, and it is plan hygiene rather than code: two sections were both
+numbered 21.5**, with items 21.5.1–21.5.4 appearing twice. Item numbers are how
+this plan refers to itself, so "21.5.3" naming two different things is a fault.
+The classes section keeps 21.5 because `MaxHeartRate.kt` cites 21.5.5 from the
+source; the owner's infer-the-effort note is **21.6** now.
+
 ## 13 August 2026 (forty-seventh sitting): the app has drawn heart-rate zones for three sittings and never once said how long a ride spent in them
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work

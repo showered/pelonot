@@ -206,7 +206,67 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 14 August 2026 (forty-ninth sitting): the ride wrote down the number and never once said where it came from
+### Latest session — 14 August 2026 (fiftieth sitting): the ride was not hard to re-file, it was invisible
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the sixteenth sitting running, so the brief was triage again — and this time
+the seam was neither the previous sitting's lead nor a stale claim. It was a
+one-line item nobody had opened.** **12.4.1** has read *"re-file a household
+guest ride against a profile from history"* since Phase 12 was written, with a
+parenthesis saying the post-ride flow is the only chance today. Reading the code
+underneath it took ten minutes and the line turned out to understate its own
+problem by a long way.
+
+**Every query on `workouts` is filtered to a profile, and a guest ride has
+none.** `observeHistory`, the dashboard, the household leaderboards, the
+personal bests — all of them take a `userId`, and there was no query anywhere
+that did not. So from the moment the post-ride summary closed, a guest ride
+appeared on **no screen in the app**: not awkward to re-file, unreachable.
+Nothing was lost — the row and its 379 metric rows sit on disk exactly as
+recorded — and there was no way to ask for either. That is the shape this plan
+keeps finding: **a written-down item describing a smaller version of the thing
+that is actually true.**
+
+**One deliberately owner-less query, and where it is drawn is the design.**
+`observeUnclaimedRides` is `user_id IS NULL AND is_complete = 1`, and what it
+returns is drawn **above** the rider's own days under *Not filed against
+anyone* — shown to **every** profile and never folded into any one of them. An
+unclaimed ride is a *question*, and putting it inside somebody's history would
+be answering it for them. Opening one gives the ride detail screen a *Whose ride
+was this?* section under the figures, because that question is answered by
+looking at the ride. **771 JVM tests, 0 failures; 41 instrumented `WorkoutDao`
+tests, 0 failures**, including the new pair-wise assertion — absent from both
+riders' history, present in the owner-less query, moving between the two on the
+claim.
+
+**Claiming rebuilds the charts, and that is load-bearing rather than tidy.** A
+guest ride has no rider, so 7.8's and 21.4.2a's fallbacks had nothing to fall
+back to; without the rebuild the screen goes on saying *"no rider on this ride —
+zones from the app's default FTP"* about a ride that now has one. It was watched
+happening: the caption loses that clause and the heart-rate card starts drawing
+zone bands off the new owner's estimated maximum.
+
+**Watched as a full round trip on the tablet AVD, both directions, with each
+other as controls and the row read at every step.** Two profiles through the
+real flow, a 6:19 guest ride of `Zone 2 Steady`, and **the summary walked away
+from without answering** — which is the defect, and the guest's dashboard says
+*"No rides recorded yet"* the second afterwards. Then the section at the top of
+**Simon's** history, the ride opened, and **`Alex`** tapped — deliberately not
+the profile signed in, because claiming for whoever happens to be looking is the
+obvious wrong implementation. `user_id = 2`, 379 metric rows untouched, the
+section gone, Simon's history back to *"No rides yet"* and the ride under *Today*
+in Alex's. Then the column set back to null by hand and the same ride claimed for
+**Simon**: `user_id = 1`.
+
+**And one defect came out of looking at the screen rather than the diff.** The
+claim card had a branch of copy for a bike with no profiles at all — which cannot
+happen, since the card is reached from a profile's own history, but which *does*
+describe the first composition before `allUsers` emits. **A sentence no rider can
+be shown on purpose and every rider is shown for a frame.** The section draws
+only once the list is non-empty now, and the sentence is gone rather than left to
+flash.
+
+### The sitting before — 14 August 2026 (forty-ninth sitting): the ride wrote down the number and never once said where it came from
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work
 for the fifteenth sitting running, so the brief was triage again — and this time
@@ -261,110 +321,41 @@ measured**: `dumpsys power` shows no wake lock on the dashboard, one
 ride ended** — the release being half the item, because a lock the app forgets
 to drop is a tablet that never sleeps and looks like nothing at all.
 
-### The sitting before — 14 August 2026 (forty-eighth sitting): an item that said what was blocking it, in a plan where the blocker had quietly been built
-
-**The inbox was empty and the top of *What to do next* is owner-and-bike work
-for the fourteenth sitting running, so the brief was triage again — and the
-previous sitting's lead still had life in it.** Phase 21 was 18 unticked of 31
-after last time, which is still the outlier among phases that are actually
-built, so this sitting read the boxes rather than the count. **21.6.3 was the
-one, and the interesting part is how it was found: it names its own blocker in
-its own text** — *"nothing yet draws an HR zone for a past ride"* — and 21.2.3
-and 21.4.1, built in the two sittings before this one, had made that false.
-The last three sittings mined *written-down claims nobody re-reads*. **A
-written-down blocker is one of those**, in the direction of *now possible*, and
-it is the cheapest of the lot to check.
-
-**What it builds is the join the owner asked for.** *"If an endurance ride the
-rider spent most of the time in the top 1 or 2 zones, then they clearly found
-that ride more difficult than it should have been, you don't even need to
-ask!"* The class writes down the effort it prescribed and the strap writes down
-the effort that was made, so `EffortAgainstPlan` compares two counts of
-seconds and the heart-rate zone card carries one more sentence: *"Harder than
-the class asked — 12 minutes 48 seconds in your top two heart-rate zones,
-against the 4 minutes it prescribed."* **767 JVM tests, 0 failures**, up from
-751.
-
-**Almost all of the design is in the reasons it says nothing.** A free ride was
-asked for nothing; a rider with no maximum has no zones (21.2.4); and — the one
-this item had to invent — **a strap that heard three minutes of thirteen
-describes three minutes**, which is 21.4.1's coverage caption arriving as a
-verdict instead of a percentage. That is strictly worse, because a percentage
-can be checked against the caption beside it and a verdict cannot.
-
-**The two scales are never equated, and the wording carries it.**
-`HeartRateZone` says outright that it is not `PowerZone` with five entries, so
-each side is asked the same *coarse* question in its own terms — how much of
-this was hard — and the sentence says *"your top two heart-rate zones"* on one
-side and what the class prescribed on the other. The tolerance is twenty
-percentage points and is deliberately blunt, which is 21.6.4 built rather than
-quoted: the failure that costs something is telling a rider they overcooked an
-easy ride when they did not.
-
-**Watched on the tablet AVD in four cases, on one real 12:48 ride of
-`Threshold 2×4`, with the power's own time in zone identical in all four.** As
-ridden the simulator produced a genuine middle case — 30% of the heart's time
-up high against a prescription of 31%, *"About what the class asked"*. Then
-every second at 160 bpm (*Harder*), every second at 110 (*Easier*), and the
-case worth having watched: **a strap that heard only the last 3:13, all of it
-H4, where the card draws, the caption says so, and there is no verdict at all.**
-Without the gate it would have declared *harder than the class asked* off 100%
-of a quarter of the ride.
-
-**And two defects came out of looking at the card rather than at the diff, both
-four sittings old.** The zone list did not end in a full stop, so the new
-sentence ran straight on from it as one sentence; and `formatDuration` had the
-plural hard-coded, so the card had been saying **"1 minutes 42 seconds"** since
-16.2.4 — in a string a screen reader reads aloud. Neither would have been found
-by anything except putting the thing on a screen and reading it.
-
-**One thing is written down rather than built (21.4.2c).** The sentence wanted
-to say *"and your maximum is an estimate"* and could not: `MaxHeartRate` carries
-a `source` precisely because Tanaka and a measurement are different claims, and
-`workouts.max_hr_bpm` stores the number alone. The tempting wrong fix — asking
-the rider's *current* profile — would answer for the fallback case and silently
-guess for every ride carrying its own number, which is 7.8's shape exactly.
-
-**Also fixed, and it is plan hygiene rather than code: two sections were both
-numbered 21.5**, with items 21.5.1–21.5.4 appearing twice. Item numbers are how
-this plan refers to itself, so "21.5.3" naming two different things is a fault.
-The classes section keeps 21.5 because `MaxHeartRate.kt` cites 21.5.5 from the
-source; the owner's infer-the-effort note is **21.6** now.
-
 ### What to do next, in order
 
 **The owner's inbox is still empty. The top of this list is unchanged for the
-fifteenth sitting running, because none of it is work: what stands between the
+sixteenth sitting running, because none of it is work: what stands between the
 QR fix and the owner is one deploy, and what stands between the *journey* and
 anybody is the mailer.** 15.3.2 is built and unticked and item 0 is still its
-reason. What moved this sitting is again not on this list: **21.4.2c**, a ride's
-maximum heart rate saying where it came from.
+reason. What moved this sitting is again not on this list: **12.4.1**, a ride
+nobody claimed being reachable at all.
 
-**The lead was left rather than found, and that is the technique worth
-repeating.** The previous sitting could not say *"and your maximum is an
-estimate"*, and instead of quietly leaving the sentence weaker it wrote the
-reason down as a numbered item **with the wrong fix already named in it**. This
-sitting picked that up and had nothing to rediscover. An item opened by the
-sitting before is the cheapest work in the plan — cheaper than the
-written-down-claims seam, because the claim is fresh and nobody has to check
-whether it went stale. **Closing an item honestly usually opens one; the
-discipline is opening it as an item rather than as a shrug.**
+**The seam this sitting mined is a one-line item nobody had opened, and it is
+worth naming because it is different from the last four.** Those looked for
+*claims that had gone stale* and for *blockers that had quietly been cleared*.
+This one is the third member of the family: **an item that describes a smaller
+version of the problem than the code actually has.** 12.4.1 said re-filing a
+guest ride was awkward; ten minutes underneath it said the ride was
+**invisible**, because every query on `workouts` takes a `userId` and a guest
+ride has none. **The technique is to read the code under a one-line item before
+believing the line**, and the tell is an item whose text is a summary rather
+than a measurement.
 
-**The box-counting lead is still live and has moved.** Phase 21 is **17 unticked
-of 32** and Phase 11 **15 of 70** after this sitting's three. **Phase 17/18 (26
-of 44) is the outlier now**, but almost all of it is the web app and the cloud,
-which is owner-and-deploy work rather than a session's; **Phase 15 (20 of 62)
-and Phase 8 (16 of 53)** are still the two worth reading box by box, and the
-previous sitting's rule holds — the ratio is a signal and the boxes are the
-answer.
+**The box-counting lead is still live, and Phase 12 is now the *least* useful
+place to look.** It is **7 unticked of 36** after this sitting, and the seam
+above is the reason to distrust that: the item that mattered most in this whole
+phase was one line long and looked like nothing. **Phase 17/18 (26 of 44) is
+still the outlier**, but almost all of it is the web app and the cloud, which is
+owner-and-deploy work rather than a session's; **Phase 15 (20 of 62), Phase 8
+(16 of 53) and Phase 21 (17 of 32)** are the three worth reading box by box, and
+the rule holds — the ratio is a signal and the boxes are the answer.
 
-**And three boxes were true before this sitting started.** 11.3.2, 11.3.3 and
-11.3.5 were all built — two of them by 12.6.1, one of them twice over on two
-surfaces — and none of them had been looked at. **11.3.5 is the one to copy the
-method from**: it was ticked on `dumpsys power` before, during and after a ride
-rather than on the two lines of code that set the flag, and the *after* is what
-the reading was really for. A wake lock the app forgets to release is a worse
-defect than the one being fixed and is invisible on every screen.
+**One thing this sitting deliberately left rather than built**, in the shape the
+forty-ninth sitting's lead recommends: a guest ride trimmed by 23.4 **before**
+anybody claims it can never contribute a personal best, because 23.4.15 keeps a
+condensed ride out of `measuredRidesAwaitingBests`. That is 23.4.15 working
+rather than a gap, and it is written under 12.4.1 with the reason attached
+instead of quietly fixed.
 
 0. **Watch 15.3.2 against the real endpoint, and it is a sitting's setup rather
    than an item.** Everything about the restore is measured against a real Room
@@ -489,6 +480,21 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**12.4.1 — a ride nobody claimed is no longer invisible.**~~ **Done in the
+  fiftieth sitting**, watched as a full round trip on the tablet AVD in both
+  directions with the row read at each step. **Do not fold the unclaimed rides
+  into the rider's own days** — they belong to nobody, the same list is shown to
+  every profile, and putting a question inside somebody's history answers it for
+  them. **Do not claim for whoever is signed in**: the rider taps a name, and the
+  sitting deliberately claimed for the profile that was *not* selected to prove
+  it. **Do not drop the chart rebuild after a claim** — a guest ride has no
+  rider, so 7.8's and 21.4.2a's fallbacks had nothing to fall back to, and
+  without it the screen goes on saying *"no rider on this ride"* about a ride
+  that has one. **Do not add a *New profile…* button** to the claim card or a
+  *Keep it as a guest ride* one: the first exists on the summary screen because
+  that is the moment a guest becomes a rider, and the second is what doing
+  nothing already does. And **do not "fix" a trimmed guest ride setting no
+  personal best** — that is 23.4.15 working, and it is written under the item.
 - ~~**21.4.2c — a ride's maximum heart rate says where it came from.**~~
   **Done in the forty-ninth sitting**, watched on the tablet AVD across the
   upgrade and two fresh rides, with the finalised row read each time rather than
@@ -875,7 +881,7 @@ Two notes worth carrying into the next bike session:
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
 | 11 | **HUD-first experience — the current priority** | 🔶 **The overlay prompt now says which of its buttons is permanent (11.6.15)** — three buttons, one writing `hudEnabled = false` for good, and nothing telling the rider that or where it comes back, which on a first ride is the app's primary surface declined by somebody answering a different question. Settings already offered it back under the same name, so the fix is one sentence at the moment of the decision and no new screen; the obvious alternative, a line on the ride screen, is the same defect mirrored at a rider who meant it. **The ride screen's bottom row is a fixed point now (11.6.16–11.6.19).** The owner's three notes of 5 August, and two of them turned out to be one change: the rest of the class **scrolls** and holds every remaining block instead of three, and it is the weighted child of the effort column — so the countdown growing above it is paid for by the list getting shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in silence, which a `Column` does without complaining. `NextUpBlock` reserves the taller of its two states as well, measured rather than typed in. The totals **shrink rather than clip** (`ShrinkToFitText`, a `TextMeasurer` deciding the size once so a number changing twice a second does not pulse) — seen at four digits, `OUTPUT 1083 kJ` and `AVG POWER 1195 W`, on the same tile 11.6.12 caught rendering `63.`. And tapping the distance reads it the other way for one ride only, writing nothing, so Settings stays the single writer of the preference. **The line across the film is gone (11.1b.10)** — the owner reported the same hairline twice, once grey and once orange, which is the answer rather than two reports: a rule drawn edge to edge across somebody's film is a rule whatever colour it is. It still thickens and pulses before an interval change, which is the only part of it that was earning its place. **And the first ride nobody had watched is fixed (11.6.14)**: the overlay permission was raised by `startRide` on the far side of the countdown, so a rider's ten seconds of clipping in bought them a modal, a trip to Android's settings and a class already running. It is asked inside the countdown now and the count stops while the question is outstanding — including while the rider is away answering it, which the obvious implementation got wrong. 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |
-| 12 | Ride history & the rider's own record | 🔶 **The summary and the record are one ride now (12.6)** — the owner asked whether they should be, and the answer was nearly yes with the difference unprincipled: charts were private to ride detail because 16.1 landed there first, so a rider who had just stopped pedalling got six figures and half a screen of black. One `RideChartsSection` and one `buildRideCharts` serve both, and that second extraction is the one that mattered — the rule deciding which FTP draws the zone bands (7.8) was inside a ViewModel, and a second copy is a second answer to the question this app has already got wrong once. **A ride ended by accident can be carried on (12.6.2)**: 8.3d's machinery had never met a *finished* ride, so the reopen now clears `is_complete` and `synced_at`, and it was checked in `sqlite3` rather than on screen because a resumed series comes back contiguous and cannot show any of it. **History's panels are centred where they do not fill the row (22.7.1)**, which is 22.5's assumption arriving on a second screen: at one ride a week most days hold exactly one ride. History, detail, delete and migrations done; export and housekeeping remain. **Both screens were rebuilt for the panel in the twenty-third sitting**: history is a two-across grid with the day headings still spanning it, and ride detail is one row of six figures with the charts two-up behind them (22.4.2, 22.4.3). The owner found the regression on the way — the charts had not disappeared, they had been pushed below the fold by a figures grid inside a 760 dp cap |
+| 12 | Ride history & the rider's own record | 🔶 **The summary and the record are one ride now (12.6)** — the owner asked whether they should be, and the answer was nearly yes with the difference unprincipled: charts were private to ride detail because 16.1 landed there first, so a rider who had just stopped pedalling got six figures and half a screen of black. One `RideChartsSection` and one `buildRideCharts` serve both, and that second extraction is the one that mattered — the rule deciding which FTP draws the zone bands (7.8) was inside a ViewModel, and a second copy is a second answer to the question this app has already got wrong once. **A ride ended by accident can be carried on (12.6.2)**: 8.3d's machinery had never met a *finished* ride, so the reopen now clears `is_complete` and `synced_at`, and it was checked in `sqlite3` rather than on screen because a resumed series comes back contiguous and cannot show any of it. **History's panels are centred where they do not fill the row (22.7.1)**, which is 22.5's assumption arriving on a second screen: at one ride a week most days hold exactly one ride. **And a ride nobody claimed is reachable at all (12.4.1)** — the item said re-filing a guest ride was awkward, and every query on `workouts` takes a `userId` a guest ride does not have, so it appeared on no screen in the app once the summary closed. One owner-less query draws them above the rider's own days under *Not filed against anyone*, and opening one asks whose it was. History, detail, delete, export and migrations done; the rest of housekeeping (12.3.5's tombstone, 12.4.2's filters) remains. **Both screens were rebuilt for the panel in the twenty-third sitting**: history is a two-across grid with the day headings still spanning it, and ride detail is one row of six figures with the charts two-up behind them (22.4.2, 22.4.3). The owner found the regression on the way — the charts had not disappeared, they had been pushed below the fold by a figures grid inside a 760 dp cap |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. **14.2.1a is applied and 14.1.6 is finally closed** — after nineteen sittings open, a signed-in tablet drained its backlog and three rides arrived attributed (332, 50 and 1185 samples, `v=1`, 47,890 bytes for the twenty-minute one), read back in the web app rather than in a query. **Four defects were found on the way and not one was catchable by a test**: the cloud's class library and the bundled one were different libraries, so no ride against any bundled class could ever have been backed up (14.2.9); one unacceptable row blocked every ride behind it for ever (14.2.7); nothing drained the backlog on launch (14.2.10); and the payload's `v` never travelled, because `encodeDefaults` is off in production and was on in the tests (14.4.3a). What is left is the other direction — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: **gated, not shut** — every call still goes through `CloudAccess`, and a profile with no account still makes no request at all, which is rule 1 doing its job now that there is something on the other end of it. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |
 | 15 | Accounts, login and multi-device sync | 🔶 **The pairing page's three dots were a deadlock, and it is fixed (15.6.14).** The owner could not finish a QR sign-in; the page sat on `…` for ever, and their own follow-up — *"because i was already signed in"* — is what made it reproducible. auth-js runs `onAuthStateChange` callbacks while holding an exclusive Web Lock on the session storage key, and `link.js` awaited `getSession()` inside one, so a phone that already had a session queued behind the very thing waiting for it: **one holder and two waiters** on `lock:sb-<ref>-auth-token`, measured on the live page against a stored-session fixture, with no request leaving the browser at all. The callback takes the session it is handed now and `route()` is synchronous. Two more on the same page: **a confirmed sign-up's fragment was read as a pairing code**, so a rider returning from their inbox was told a code they never had had expired; and `describe()` can no longer wait for ever — including through the *first* version of that timeout, which hung identically because `client.rpc()` is a thenable with no `.catch`. **And the code is on screen rather than behind a button (15.6.15)** — the owner's second note — on both screens that offer an account, replacing itself five times over so a rider who went to their inbox comes back to a live code; the account screen's two routes went side by side to fit it (20.4.4 on a second screen). **What is now in the way is the mailer, not the app (15.7.7)**: no custom SMTP and `rate_limit_email_sent = 2`, so two confirmation emails an hour leave through a sender Supabase documents as being for testing — which is both what *"I tried signing up and nothing happened"* looks like from the rider's side and why the owner has run out of addresses to test with. `+` addressing is the free answer; 15.7.3 and 15.7.8 are the real ones and both are the owner's. Previously: **The confirmation email no longer points at `localhost` (15.7.6), and the bike now says the link landed (15.6.11).** `site_url` was still Supabase's scaffold value and `uri_allow_list` was empty, so a first-time rider who signed up on their phone tapped a link to a page that does not exist on the device they were holding — the one defect on this path with no recovery inside the flow. Both fields are set and the change was measured against the link `generate_link` mints rather than against a 200 from the API; `supabase/auth_config.py` is what made it safe to touch a live auth config, backing the whole thing up first and reporting two changed fields out of 242. **What is left of it is an inbox**: the mail that actually arrives has not been read. Beside it, the pairing hand-off had two faults nobody had reported (15.6.13): **Android back left the journey entirely**, because a `Dialog` dismisses itself and no step ever saw the press, and underneath that **the pairing loop outlived the screen showing it** — a second new profile was offered the *first* rider's live QR, under the first rider's id, so a phone scanning it would have signed in the wrong rider. And the moment a link succeeds is now drawn rather than skipped past, naming the account, since on a household bike the interesting failure is signing in as somebody else. **Open and largely built.** auth-kt is installed, which is also what makes every request carry the rider's own JWT instead of the anon key — after `003` the anon role can read the class library and nothing else. *Back up my rides* is its own destination off Settings (15.1.4–15.1.6), with four states including the one that gets forgotten: **signed up, not confirmed, no session**. **15.6 is the owner's QR flow and it works up to the hand-off**: the bike invents a secret, sends only its SHA-256, shows a code and a countdown, and the live project describes that code back under the device's own name. **15.2.8 is the design decision to carry forward** — the SDK holds one session and a household holds several riders, so *having an account* and *this tablet carrying that rider's credentials* are different questions and only the second may send. It was also the defect: Settings said "Backed up to your account" on a tablet holding no session at all. **Signing in is now seen working** — a tablet signed itself in by QR against the live project and its rides went up under its own JWT. **And 15.5.4 is closed, the way it asked to be**: from a *second real account*, 21 probes, 0 failures — A cannot create, read, rename or delete B's profile, cannot record, see, edit or delete B's ride, and cannot hand their own ride to B, which is the `WITH CHECK`-without-`USING` hole 15.5.1 existed to close. It is `supabase/verify_rls.py`, scripted off the admin API rather than a password, so it is repeatable instead of something a person once sat and did. **And the account is offered rather than gone looking for (15.8)** — the two moments a rider is already thinking about identity, creating a profile and selecting one that has ridden offline, both observed on the tablet AVD with the dismissal checked in `sqlite3` across a relaunch. 15.8.2 was free, already done as 17.16.6; 15.8.5 is the one open corner, waiting on 23.3.1a to give the two backup reminders a count they can actually share. **The exits are open now (15.4)**: signing out keeps every ride and drops the profile a rung, and *Delete my cloud copy* removes the rider's rows under their own JWT and **signs them out with them** — not for tidiness but because `synced_at` would otherwise record a backup that no longer exists, and the trimmer reads that column as permission to throw seconds away (23.4.6). Watched against the real endpoint with signing back in as the control: cloud 2 workouts and 1 profile to 0 and 0, tablet 2 rides and 1,020 samples unchanged either side. **And the way back down is built (15.3.2)** — a restore that only ever adds rides, marks them as backed up rather than queued, skips an unreadable one whole, and adopts the account's name, weight and FTP only for a profile that has never ridden on this bike. It also found that the wire had never carried the ride's own facts — the FTP it was ridden at, the maximum heart rate its zones were judged against, what its seconds counted before a trim — so a restored ride would have had its zones redrawn from today's numbers and, if it came down as an outline, its time in zone recomputed from a fifth of its seconds; `RideFacts` carries them inside the versioned payload, with no cloud migration. **It is unticked and wants one throwaway sign-in.** **What is left is account deletion (15.4.3), which is designed and needs one Edge Function deploy** |

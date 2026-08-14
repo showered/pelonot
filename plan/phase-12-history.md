@@ -136,7 +136,80 @@ layer is done and nothing renders it.
 - [ ] **12.3.6** Bulk delete / select mode — after 12.3.5, not before
 
 ### 12.4 Housekeeping the record
-- [ ] **12.4.1** Re-file a household guest ride against a profile from history (the post-ride flow in 8.4 is the only chance to do it today, and the rider is usually still breathing hard)
+- [x] **12.4.1** ~~Re-file a household guest ride against a profile from history~~ (the post-ride flow in 8.4 is the only chance to do it today, and the rider is usually still breathing hard)
+
+      ***Done in the fiftieth sitting, and the item understated its own
+      problem.*** *This line says re-filing is awkward. What the code says is
+      worse: **every query on `workouts` is filtered to a profile and a guest
+      ride has none**, so from the moment the post-ride summary closed the ride
+      appeared on **no screen in the app**. Not hard to re-file — unreachable.
+      `observeHistory`, the dashboard, the leaderboards and the personal bests
+      all take a `userId`, and there was no fourteenth query that did not.
+      Nothing was lost: 379 metric rows sat on disk with a row pointing at them
+      and no way to ask for either.*
+
+      ***The fix is one deliberately owner-less query.*** `observeUnclaimedRides`
+      *is `user_id IS NULL AND is_complete = 1`, and what it returns is drawn
+      **above** the rider's own days under* **Not filed against anyone** *—
+      shown to every profile on the bike, and never folded into any one of
+      them. That is the whole design decision: an unclaimed ride is a
+      **question**, and putting it inside somebody's history would be answering
+      it for them. The `is_complete` clause is not decoration either — an
+      unfinished guest ride is the one being pedalled right now, or a crashed
+      one, and neither is a question to put in front of a rider.*
+
+      ***Opening one asks it.*** *The ride detail screen grows a* "Whose ride
+      was this?" *section under the figures — because that question is answered
+      by **looking at the ride**, which is also why the claim is not offered on
+      the row — and a pill per profile. Claiming makes the same one-column
+      `UPDATE` the summary screen makes (rewriting the owner rather than
+      re-recording the ride, which would orphan every `workout_metrics` row),
+      enqueues the sync for the rider it now belongs to, and **rebuilds the
+      charts**. That last is load-bearing rather than tidy: a guest ride has no
+      rider, so 7.8's and 21.4.2a's fallbacks had nothing to fall back to, and
+      without the rebuild the screen goes on saying* "no rider on this ride —
+      zones from the app's default FTP" *about a ride that now has one.*
+
+      ***Two things it deliberately does not offer.*** *There is no* New
+      profile… *— the summary screen has one because that is the moment a guest
+      decides to become a rider; here the ride is already safe and every rider
+      who could claim it already exists, so there is one copy of* create a
+      profile and file this ride to it *rather than two. And there is no* Keep
+      it as a guest ride*: doing nothing already is that, and a button whose
+      effect is to leave the screen as it was asks the rider to decide twice.*
+
+      ***Watched on the tablet AVD as a full round trip, both directions, with
+      each other as controls, and the row read at every step.*** *Two profiles
+      created through the real flow, a 6:19 guest ride of `Zone 2 Steady`, and
+      the summary **walked away from without answering** — which is the defect,
+      and the guest's own dashboard says* "No rides recorded yet" *immediately
+      afterwards. Then: the section drawn at the top of **Simon's** history;
+      the ride opened; **`Alex`** tapped — deliberately not the profile that was
+      signed in, since claiming for whoever happens to be looking is the obvious
+      wrong implementation — and `user_id = 2` on the row with 379 metric rows
+      untouched, the section gone, the power caption's* "no rider on this ride"
+      *gone and the heart-rate card drawing zone bands off Alex's estimated
+      maximum. Simon's history fell back to* "No rides yet" *and Alex's showed
+      the ride under* Today*. Then the column was set back to null by hand and
+      the same ride claimed for **Simon**: `user_id = 1`.*
+
+      ***One defect came out of looking at the screen rather than the diff***,
+      *and it is the small kind this project keeps finding: the card had a
+      branch of copy for a bike with **no profiles at all**, which cannot
+      happen — the section is reached from a profile's own history — but which
+      **does** describe the first composition, before `allUsers` has emitted. A
+      sentence no rider can be shown on purpose and every rider is shown for a
+      frame. The section now draws only once the list is non-empty and the
+      sentence is gone.*
+
+      ***One honest loss, written down rather than fixed.*** *A guest ride older
+      than the retention window is trimmable like any other (`trimmableRides`
+      left-joins the profile precisely so an owner-less ride is eligible), and
+      23.4.15 keeps a condensed ride out of `measuredRidesAwaitingBests`. So a
+      guest ride that was trimmed **before** anybody claimed it will never
+      contribute a personal best. That is 23.4.15 working — a mean-maximal
+      window drawn through ten-second maxima is an effort nobody rode — and not
+      a gap this item should close.*
 - [ ] **12.4.2** Filter by class category and by date range
 - [x] **12.4.3** Export a ride — CSV of the metric series, and `.tcx` for Strava and everything else. This is an open-source app: not being able to get your own data out is the thing the subscription product does.
       *Both written from the **samples**, never the aggregates: an export that
