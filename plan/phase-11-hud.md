@@ -296,10 +296,43 @@ less of the screen and less of the attention.
 
 ### 11.3 Beyond the strip
 - [x] **11.3.1** ~~**Landscape layout for the dashboard.**~~ **Stale — there is nothing wrong with it.** Re-checked twice on the real tablet and again on the matching AVD (1920×1080 @ 240 dpi): the FTP card, the Just Ride button and the three action cards fill the width, and the empty right-hand side this item describes does not exist. The original screenshot was almost certainly taken on a wrongly-configured AVD, which is exactly the trap `HARDWARE.md` was written to close. The profile selector *did* have the problem and is fixed in 20.1
-- [ ] **11.3.2** Post-ride charts: power with zone bands, heart rate, cadence distribution (8.11.53–8.11.57)
-- [ ] **11.3.3** Time-in-zone summary on the post-ride screen
+- [x] **11.3.2** ~~Post-ride charts: power with zone bands, heart rate, cadence
+      distribution (8.11.53–8.11.57)~~ **Built by 12.6.1 and unticked for
+      several sittings.** `RideChartsSection` was extracted out of ride detail
+      into `ui/components` precisely so the summary would get every chart the
+      history screen has, and it did: Power with its zone bands, Heart rate,
+      Cadence over time and Cadence spread, all under the effort question.
+      *Observed on the tablet AVD in the forty-ninth sitting, on the summary of
+      a ride that had just been ended* — which is the point of the item rather
+      than of the code: nothing was missing, and nobody had looked
+
+- [x] **11.3.3** ~~Time-in-zone summary on the post-ride screen~~ **Same
+      extraction, same sitting, and now two cards rather than one**: `Time in
+      zone` and `Time in heart-rate zone` side by side (21.4.1), each with its
+      seconds and its percentage per zone. Observed on the AVD at the foot of
+      the same summary. **The pair is worth keeping in that order** — power's
+      count is the ride and the heart's is what the strap heard, and 21.4.1's
+      caption is the only thing that says so
+
 - [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
-- [ ] **11.3.5** Screen-on lock during a ride, so the tablet does not sleep mid-class
+
+- [x] **11.3.5** ~~Screen-on lock during a ride, so the tablet does not sleep
+      mid-class~~ **Built on both surfaces and unticked**: `RideScreen` sets
+      `view.keepScreenOn` for as long as the ride is unfinished and clears it in
+      `onDispose`, and `HudOverlayManager` puts `FLAG_KEEP_SCREEN_ON` on the
+      overlay window — which is the case the ride screen cannot cover, because
+      the whole point of the overlay is that something else is on top.
+
+      ***Measured rather than reasoned about, in the forty-ninth sitting, with
+      the state before and after as its own controls.*** `dumpsys power` on the
+      dashboard: `Wake Locks: size=0`. During a free ride: one
+      `SCREEN_BRIGHT_WAKE_LOCK` held by `WindowManager/displayId:0` with
+      `ws=WorkSource{… com.pelonot}`, and `dumpsys window` naming
+      `mHoldScreenWindow=Window{… com.pelonot/com.pelonot.MainActivity}`. The
+      moment the ride ended: `size=0` and `mHoldScreenWindow=null`. **The
+      release is half the item** — a lock the app forgets to drop is a tablet
+      that never sleeps again, which is a worse defect than the one being
+      fixed and would look like nothing at all
 
 ### 11.4 Re-home the leaderboard
 - [x] **11.4.1** Done as **24.1.2**: the household board is on the post-ride summary and on class detail

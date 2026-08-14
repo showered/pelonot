@@ -460,7 +460,8 @@ asks less about the person, which is a rare combination and worth taking.
       fixed. Not urgent and not free: it is a payload change (14.4) and a column
       on the cloud table, and the honest interim is that the web app draws no
       zone bands at all rather than wrong ones
-- [ ] **21.4.2c** **The ride records the maximum and not where it came from.**
+- [x] **21.4.2c** ~~**The ride records the maximum and not where it came
+      from.**~~
       Found while building 21.6.3, which wanted to say *"and your maximum is an
       estimate"* and could not. `MaxHeartRate` carries a `source` precisely
       because a zone drawn off Tanaka is a different claim from one drawn off a
@@ -470,15 +471,56 @@ asks less about the person, which is a rare combination and worth taking.
       is the thing 7.8, 21.2.3, 23.4.12 and `power_is_measured` each exist to
       refuse.
 
-      It is a column and a migration, and it is **deliberately not done here**:
-      one nullable `max_hr_source`, written at the same moment `max_hr_bpm` is
-      (so 8.3d.4 applies — it has to live on `WorkoutSession` too), and read by
-      the two cards that already say what they are drawn from. The reason for
-      leaving it is that the wrong fix is available and tempting: resolving the
-      source from the rider's *current* profile would answer for the fallback
-      case and silently guess for every ride that carries its own number, which
-      is a claim about provenance derived from a row that has since moved —
-      exactly 7.8's shape
+      It is a column and a migration, and it was **deliberately not done in the
+      sitting that found it**: one nullable `max_hr_source`, written at the same
+      moment `max_hr_bpm` is (so 8.3d.4 applies — it has to live on
+      `WorkoutSession` too), and read by the two cards that already say what
+      they are drawn from. The reason for leaving it was that the wrong fix is
+      available and tempting: resolving the source from the rider's *current*
+      profile would answer for the fallback case and silently guess for every
+      ride that carries its own number, which is a claim about provenance
+      derived from a row that has since moved — exactly 7.8's shape.
+
+      ***Done in the forty-ninth sitting, and built as the item specified.***
+      *One nullable `workouts.max_hr_source` (migration 20 → 21), carried on
+      `WorkoutSession` so 8.3d.4 cannot write its default back over it at the
+      finalise, read off the row on a resume so a maximum typed in between a
+      crash and the pick-up cannot relabel the first half of a ride, and on the
+      wire in `RideFacts` as the enum's own name — the same shape
+      `power_provenance` travels in, so a word a build does not know reads back
+      as null instead of dropping a whole ride over its provenance. The read
+      side is one rule and `RideChartsLoaderTest` is four cases of it:* **the
+      source follows the number.** *The ride's own source for the ride's own
+      maximum, null included; the rider's current source only where the number
+      beside it is today's too, which is not a guess because the card already
+      says whose number it is.*
+
+      ***Both directions are said and the third is silent, which is a decision
+      rather than a default.*** *21.5.5 asks only for the estimate to be
+      labelled. Saying* "your own number" *on the other branch is what buys the
+      silence its meaning: with one branch labelled, a card that says nothing
+      could be either — and for a ride recorded before this column it genuinely
+      is unrecoverable. Two claims and one honest gap. The words are Settings'
+      own, because it is the same sentence about the same number and two
+      vocabularies for one fact is how a rider comes to think they are two.*
+
+      ***Watched on the tablet AVD in three cases with each other as
+      controls***, *and the row read at each step rather than the screenshots
+      alone. The upgrade first: `user_version` 20 → 21 on launch with 2 rides
+      and 1,261 metric rows intact and `max_hr_source` null on both — the honest
+      gap, and their Heart rate card still reads* "zones from %HRmax" *and
+      nothing more. Then a ride under a profile carrying only a year of birth:
+      the finalised row says `179 · Estimated`, not merely the row at insert,
+      which is the 8.3d.4 assertion; and both cards read* "· estimated from your
+      year of birth". *Then a measured maximum of 185 set by hand and another
+      ride: `185 · Measured`, and* "· your own number" *on both.*
+
+      *One thing deliberately not built: 21.6.3's verdict sentence — whose
+      wanting to say* "and your maximum is an estimate" *opened this item — is
+      **left alone**. The caption now says exactly that, one line above it on
+      the same card, and a screen reader announces both. Repeating it inside the
+      sentence is Phase 26's* less is more *broken for a claim already on the
+      screen.*
 - [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
       actually drives a training decision — "how much easy riding did I do this
       month" — and it is the honest answer to what the dashboard's progress
