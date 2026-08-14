@@ -72,7 +72,8 @@ is more* (**Phase 26**, and a line in CLAUDE.md — it is a standing rule about
 every screen rather than a job on one), ten answers where three will do
 (**26.3**), no single card at full width (**22.6**, and the rule is in
 CLAUDE.md), and inferring the effort from the heart rate instead of asking
-(**21.5**), branded email instead of Supabase's own (**15.7**), a score shown
+(**21.6**, renumbered from 21.5 in the forty-eighth sitting — two sections
+carried that number), branded email instead of Supabase's own (**15.7**), a score shown
 consistently like a game's level (**26.4**), two answers to questions this plan
 asked the owner (**22.6.3**, closed as *not* to be enforced, and **26.3.3**,
 settled as written), the overlay prompt landing after the countdown instead of

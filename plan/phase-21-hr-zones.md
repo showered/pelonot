@@ -511,7 +511,15 @@ drop out mid-class.
 
 ---
 
-### 21.5 Do not ask what the heart rate already knows — the owner's note, 4 August 2026
+### 21.6 Do not ask what the heart rate already knows — the owner's note, 4 August 2026
+
+***Renumbered from 21.5 in the forty-eighth sitting, and it had to be.** This
+section and the one above it were both numbered 21.5, with items 21.5.1–21.5.4
+appearing twice — so "21.5.3" named two different things, one of them a class
+that requires a strap and the other a sentence on the ride detail screen. Item
+numbers are how this plan refers to itself, which makes a collision a real
+fault rather than untidiness. The **classes** section keeps 21.5, because
+`MaxHeartRate.kt` cites 21.5.5 from the source; this one moved.*
 
 **Verbatim:** *"Also with regards to FTP auto calculation, and maybe this 'how
 did that ride feel' data ... surely there's something we can infer from heart
@@ -529,7 +537,7 @@ those two is information nobody has to be asked for.
 
 Three things this could feed, in increasing order of how much they can hurt:
 
-- [ ] **21.5.1** **Prefill the effort answer rather than replace it** (26.3).
+- [ ] **21.6.1** **Prefill the effort answer rather than replace it** (26.3).
       An endurance class ridden mostly in HR zones 4–5 was hard; a threshold
       class ridden in zone 2 was easy. Prefilling costs nothing if it is wrong
       and saves a tap when it is right. **It must stay a prefill**: the rider's
@@ -538,7 +546,7 @@ Three things this could feed, in increasing order of how much they can hurt:
       the rider's record behind them*. A prefilled answer must also be
       distinguishable from one the rider gave, or the column stops meaning what
       it says
-- [ ] **21.5.2** **Feed the FTP proposal** (7.x). This is the one with teeth,
+- [ ] **21.6.2** **Feed the FTP proposal** (7.x). This is the one with teeth,
       because an FTP is written into the rider's permanent record and every
       zone in the app is derived from it. Two hard prerequisites before any of
       it: the ride's power must be **measured** rather than modelled
@@ -547,14 +555,14 @@ Three things this could feed, in increasing order of how much they can hurt:
       rate must be **measured** rather than the Tanaka estimate (21.1), because
       an inferred effort built on an estimated maximum is two guesses wearing
       one number
-- [ ] **21.5.3** **Say it on the ride detail screen, which is free and safe.**
+- [ ] **21.6.3** **Say it on the ride detail screen, which is free and safe.**
       "You spent 18 minutes in HR zone 4 on an endurance ride" is an
       observation about a ride, not a claim about the rider, and it needs
-      neither 21.5.1's prefill nor 21.5.2's gates. **Read 21.2.3 first** — the
+      neither 21.6.1's prefill nor 21.6.2's gates. **Read 21.2.3 first** — the
       thing that blocks it is that nothing yet draws an HR zone for a *past*
       ride, and 7.8's trap is why: the zone bands would be drawn from whatever
       maximum the rider has *today*, not the one the ride was ridden at
-- [ ] **21.5.4** **The honest limit, stated once so it is not rediscovered.**
+- [ ] **21.6.4** **The honest limit, stated once so it is not rediscovered.**
       Heart rate lags effort by a minute or two, drifts upward across a long
       ride at constant power, and moves with heat, caffeine, sleep and
       illness. It is a good signal about *a ride* and a poor one about *a
