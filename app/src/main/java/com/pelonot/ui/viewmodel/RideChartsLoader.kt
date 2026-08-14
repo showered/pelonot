@@ -8,6 +8,7 @@ import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideDistributions
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 
 /**
@@ -43,8 +44,12 @@ internal fun buildRideCharts(
      * The rider's maximum heart rate *today* (21.4.2a), used only when the ride
      * did not record its own — and null when the app has none, which draws no
      * heart-rate zones rather than inventing a denominator.
+     *
+     * The whole [MaxHeartRate] rather than its number, because the fallback has
+     * to carry its own provenance too (21.4.2c): a ride drawn from today's
+     * estimate is drawn from an estimate, and the card says so.
      */
-    riderMaxHr: Int? = null
+    riderMaxHr: MaxHeartRate? = null
 ): RideCharts = RideChartBuilder.build(
     samples = metrics.map { metric ->
         ChartSample(
@@ -66,8 +71,13 @@ internal fun buildRideCharts(
     // ride's own maximum, the rider's current one as a fallback, and a flag
     // saying which — so the screen can label a re-derivation rather than
     // presenting it as a record.
-    maxHrBpm = workout.maxHrBpm ?: riderMaxHr,
+    maxHrBpm = workout.maxHrBpm ?: riderMaxHr?.bpm,
     maxHrIsTheRides = workout.maxHrBpm != null,
+    // 21.4.2c, and which of the two is read follows the number above rather
+    // than being asked separately: the ride's own source for the ride's own
+    // maximum — null for a ride recorded before the column, which says nothing
+    // — and the rider's current source only where the number is today's too.
+    maxHrSource = if (workout.maxHrBpm != null) workout.maxHrSource else riderMaxHr?.source,
     // 23.4.3. Null means the record is intact, and it is what every ride on
     // every tablet says until a rider turns trimming on. Passed rather than
     // inferred from the sample count: a 40-minute ride that recorded 240 rows

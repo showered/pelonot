@@ -4,6 +4,7 @@ import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -276,6 +277,11 @@ data class WorkoutDto(
         intentModifier = intentModifier,
         ftpWatts = metrics.ride?.ftpWatts,
         maxHrBpm = metrics.ride?.maxHrBpm,
+        // 21.4.2c, resolved the same way `power_provenance` is two lines down:
+        // a word this build does not know becomes null, which is the one value
+        // every reader already handles.
+        maxHrSource = MaxHeartRate.Source.entries
+            .firstOrNull { it.name == metrics.ride?.maxHrSource },
         rpeRating = rpeRating,
         isComplete = true,
         wasRecovered = metrics.ride?.wasRecovered ?: false,

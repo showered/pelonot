@@ -42,6 +42,17 @@ data class RideFacts(
     @SerialName("ftp") val ftpWatts: Int? = null,
     /** `workouts.max_hr_bpm` (21.2.3). Null is the same claim as above. */
     @SerialName("mhr") val maxHrBpm: Int? = null,
+    /**
+     * `workouts.max_hr_source` (21.4.2c) — the enum's own name, as
+     * `power_provenance` puts it on the wire, and null when nobody wrote it
+     * down.
+     *
+     * A `String` rather than the enum for the reason `Converters` gives about
+     * the column: a word this build does not know reads back as null instead of
+     * throwing, and a restore that fails on one unrecognised field would drop a
+     * whole ride over its provenance.
+     */
+    @SerialName("mhrs") val maxHrSource: String? = null,
     /** `workouts.resume_count` (8.3d.2). Zero is a fact: it was not interrupted. */
     @SerialName("res") val resumeCount: Int = 0,
     /** `workouts.interrupted_sec` (8.3d.2). */
@@ -67,6 +78,7 @@ data class RideFacts(
         fun of(workout: WorkoutEntity): RideFacts? = RideFacts(
             ftpWatts = workout.ftpWatts,
             maxHrBpm = workout.maxHrBpm,
+            maxHrSource = workout.maxHrSource?.name,
             resumeCount = workout.resumeCount,
             interruptedSec = workout.interruptedSec,
             wasRecovered = workout.wasRecovered,

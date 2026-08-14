@@ -2,6 +2,7 @@ package com.pelonot.domain.chart
 
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.Interval
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.PowerZone
 import kotlin.math.roundToInt
@@ -296,6 +297,21 @@ data class RideCharts(
      * record, and the screen says so instead of presenting both alike.
      */
     val maxHrIsTheRides: Boolean = false,
+    /**
+     * Where [maxHrBpm] came from — the rider's own measurement or Tanaka's
+     * estimate from their date of birth (21.4.2c).
+     *
+     * Null means **nobody wrote it down**, which is what every ride recorded
+     * before `workouts.max_hr_source` existed says, and a card that does not
+     * know says nothing rather than guessing. An estimate has a 10–12 bpm
+     * spread — wider than a zone — so drawing bands from one is fine and
+     * drawing them silently is not (21.5.5).
+     *
+     * When [maxHrIsTheRides] is false this is the *rider's current* source,
+     * which is not a guess: the number beside it is today's too, and the card
+     * already says so.
+     */
+    val maxHrSource: MaxHeartRate.Source? = null,
     /** Where these watts came from — the board, the model, or both (16.1.6). */
     val powerProvenance: PowerProvenance = PowerProvenance.Unknown,
     /**
@@ -370,6 +386,8 @@ object RideChartBuilder {
         maxHrBpm: Int? = null,
         /** See [RideCharts.maxHrIsTheRides]. */
         maxHrIsTheRides: Boolean = false,
+        /** See [RideCharts.maxHrSource] — null says nothing rather than guessing. */
+        maxHrSource: MaxHeartRate.Source? = null,
         /** See [RideCharts.detailSec] — 1 for a ride whose record is intact. */
         detailSec: Int = 1,
         /**
@@ -390,6 +408,7 @@ object RideChartBuilder {
                 ftpIsTheRides = ftpIsTheRides,
                 maxHrBpm = maxHrBpm,
                 maxHrIsTheRides = maxHrIsTheRides,
+                maxHrSource = maxHrSource,
                 detailSec = detailSec,
                 zoneFtpWatts = stored?.ftpWatts,
                 zoneMaxHrBpm = stored?.maxHrBpm,
@@ -414,6 +433,7 @@ object RideChartBuilder {
                 ftpIsTheRides = ftpIsTheRides,
                 maxHrBpm = maxHrBpm,
                 maxHrIsTheRides = maxHrIsTheRides,
+                maxHrSource = maxHrSource,
                 detailSec = detailSec,
                 zoneFtpWatts = stored?.ftpWatts,
                 zoneMaxHrBpm = stored?.maxHrBpm,
@@ -463,6 +483,7 @@ object RideChartBuilder {
             ftpIsTheRides = ftpIsTheRides,
             maxHrBpm = maxHrBpm,
             maxHrIsTheRides = maxHrIsTheRides,
+            maxHrSource = maxHrSource,
             powerProvenance = powerProvenance,
             integrity = integrity
         )

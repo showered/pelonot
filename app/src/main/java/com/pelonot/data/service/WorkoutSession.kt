@@ -1,5 +1,6 @@
 package com.pelonot.data.service
 
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlin.math.roundToInt
@@ -34,6 +35,16 @@ data class WorkoutSession(
      * its default written back over the fact twenty minutes later.
      */
     val maxHrBpm: Int? = null,
+    /**
+     * Where [maxHrBpm] came from (21.4.2c) — the rider's own number or Tanaka's
+     * estimate from their date of birth.
+     *
+     * Here for [maxHrBpm]'s reason exactly, one field along: the finalise builds
+     * a fresh entity out of this object, so a source the session did not carry
+     * would be written back as null over a fact the app knew perfectly well at
+     * the start of the ride.
+     */
+    val maxHrSource: MaxHeartRate.Source? = null,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
     val avgPower: Double = 0.0,

@@ -345,7 +345,10 @@ class WorkoutService : Service() {
             val max = userId?.let { id ->
                 userRepository.getUser(id)?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate) }
             }
-            _currentSession.update { it?.copy(maxHrBpm = max?.bpm) }
+            // 21.4.2c: the source travels with the number, because a zone drawn
+            // off Tanaka is a different claim from one drawn off the rider's own
+            // measurement and the ride is the only place that stays true.
+            _currentSession.update { it?.copy(maxHrBpm = max?.bpm, maxHrSource = max?.source) }
 
             // The workout row must exist before any metric references it.
             workoutRepository.beginWorkout(
@@ -489,6 +492,10 @@ class WorkoutService : Service() {
             // maximum the rider changed between the crash and the resume does
             // not rescore the ride they are picking back up.
             maxHrBpm = workout.maxHrBpm,
+            // 21.4.2c, and off the row for the same reason as the number itself:
+            // a rider who typed their measured maximum in between the crash and
+            // the resume must not have the first half of this ride relabelled.
+            maxHrSource = workout.maxHrSource,
             // From the row the repository has just stamped, so the finalise at
             // the end of this ride writes the interruption back rather than
             // over (8.3d.2).
@@ -1250,6 +1257,10 @@ class WorkoutService : Service() {
         // it is the number the rider actually had rather than one recovered
         // later from a profile that has moved.
         maxHrBpm = maxHrBpm,
+        // 21.4.2c. Carried through the session for 8.3d.4's reason, exactly as
+        // resumeCount below is: a fresh entity is built here at the end of the
+        // ride, and a field this object does not hold arrives as its default.
+        maxHrSource = maxHrSource,
         timestamp = startedAtEpochMs,
         // 8.3d.2. Carried through the session or the finalise silently writes
         // 0 over a resumed ride's own history of being resumed.

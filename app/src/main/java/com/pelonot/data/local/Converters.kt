@@ -1,10 +1,12 @@
 package com.pelonot.data.local
 
 import androidx.room.TypeConverter
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 
 /**
- * The one type this database stores as something other than itself (23.4.12).
+ * The two types this database stores as something other than themselves
+ * (23.4.12, 21.4.2c).
  *
  * `workouts.power_provenance` is TEXT holding the enum's own name, which is not
  * an implementation detail: the cloud's copy of this column has been TEXT
@@ -28,4 +30,21 @@ object Converters {
     @TypeConverter
     fun toPowerProvenance(name: String?): PowerProvenance? =
         name?.let { stored -> PowerProvenance.entries.firstOrNull { it.name == stored } }
+
+    /**
+     * `workouts.max_hr_source` (21.4.2c), stored the same way and for the same
+     * reasons: the word rather than an ordinal, and an unknown word read back as
+     * null.
+     *
+     * Null carries its own meaning here too — *nobody wrote it down* — and a
+     * screen that cannot say where a maximum came from says nothing about it,
+     * which is precisely the state this column exists to shrink rather than to
+     * pretend away.
+     */
+    @TypeConverter
+    fun fromMaxHrSource(source: MaxHeartRate.Source?): String? = source?.name
+
+    @TypeConverter
+    fun toMaxHrSource(name: String?): MaxHeartRate.Source? =
+        name?.let { stored -> MaxHeartRate.Source.entries.firstOrNull { it.name == stored } }
 }

@@ -1314,6 +1314,66 @@ class MigrationTest {
         }
     }
 
+    /**
+     * 20 → 21: a ride's maximum heart rate keeps its number and gains nowhere to
+     * say where it came from (21.4.2c).
+     *
+     * The assertion that matters is again an absence, and a different one from
+     * 19 → 20's. There the null was the truth about every existing row; here it
+     * is an **honest gap**: this ride really was judged against 180 bpm and
+     * whether that was the rider's own number or Tanaka's estimate is no longer
+     * recoverable. The tempting backfill — read the profile, decide from
+     * `max_hr_bpm` versus `birth_date` — is available and wrong, because the
+     * profile may have moved since, and it would answer with a guess in the
+     * exact place the app is meant to admit it does not know. So the column
+     * stays null for old rides for ever and this test is what stops somebody
+     * kindly filling it in.
+     */
+    @Test
+    fun migrate20To21_leavesAnOldRidesMaximumWithoutAProvenance() {
+        helper.createDatabase(TEST_DB, 20).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed, max_hr_bpm)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0, 190)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (
+                    id, user_id, class_id, duration_sec, total_output_kj,
+                    total_distance_km, avg_cadence, avg_power, avg_hr,
+                    intent_modifier, rpe_rating, is_complete, was_recovered,
+                    timestamp, ftp_proposal_declined, resume_count,
+                    interrupted_sec, power_provenance, max_hr_bpm
+                ) VALUES ('old', 1, NULL, 1800, 150.0, 10.0, 90.0, 200.0,
+                          150.0, 1.0, NULL, 1, 0, 2000, 0, 0, 0, 'Measured', 180)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 21, true, AppMigrations.MIGRATION_20_21)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val row = runBlocking { migrated.workoutDao().getWorkoutById("old") }
+            // The number the ride was judged against, untouched.
+            assertEquals(180, row?.maxHrBpm)
+            assertNull("and nobody wrote down where it came from", row?.maxHrSource)
+        } finally {
+            migrated.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

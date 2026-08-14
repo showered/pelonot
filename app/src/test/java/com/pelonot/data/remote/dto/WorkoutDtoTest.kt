@@ -3,6 +3,7 @@ package com.pelonot.data.remote.dto
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.domain.chart.RideDistributions
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
@@ -234,6 +235,7 @@ class WorkoutDtoTest {
         val ridden = workout().copy(
             ftpWatts = 214,
             maxHrBpm = 181,
+            maxHrSource = MaxHeartRate.Source.Measured,
             resumeCount = 2,
             interruptedSec = 340,
             wasRecovered = true,
@@ -260,6 +262,10 @@ class WorkoutDtoTest {
 
         assertEquals(214, back.ftpWatts)
         assertEquals(181, back.maxHrBpm)
+        // 21.4.2c, and it travels for the same reason the number does: a zone
+        // drawn off Tanaka is a different claim from one drawn off a
+        // measurement, and a restored ride must not lose which it was.
+        assertEquals(MaxHeartRate.Source.Measured, back.maxHrSource)
         assertEquals(2, back.resumeCount)
         assertEquals(340, back.interruptedSec)
         assertTrue(back.wasRecovered)
@@ -296,6 +302,7 @@ class WorkoutDtoTest {
 
         assertNull(back.ftpWatts)
         assertNull(back.maxHrBpm)
+        assertNull(back.maxHrSource)
         assertNull(back.distributionsJson)
         assertNull(back.metricsDetailSec)
         assertEquals(0, back.resumeCount)

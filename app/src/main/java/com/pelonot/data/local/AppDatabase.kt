@@ -30,7 +30,7 @@ import com.pelonot.data.local.entity.WorkoutPowerBestEntity
         ActiveRideRivalEntity::class,
         WorkoutPowerBestEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

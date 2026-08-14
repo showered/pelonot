@@ -528,11 +528,35 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 20 → 21: where a ride's maximum heart rate came from (PLAN 21.4.2c).
+     *
+     * `max_hr_bpm` arrived in 12 → 13 and stored the **number alone**, so a zone
+     * drawn off Tanaka and a zone drawn off the rider's own measurement have
+     * been presented with one authority ever since — the thing 7.8, 21.2.3 and
+     * 23.4.12 each exist to refuse. `MaxHeartRate` has carried a `source` since
+     * the day it was written; only the row did not.
+     *
+     * Nullable and **not backfilled**, for 12 → 13's reason exactly: the wrong
+     * fix is available and tempting. Resolving the source from the rider's
+     * *current* profile would be right for the rides that have no maximum of
+     * their own — they are already drawn from today's number and say so — and a
+     * silent guess for every ride that carries one, since the profile may have
+     * moved between then and now. So an old ride's provenance stays
+     * unrecoverable and the screens say nothing about it, which is honest.
+     */
+    val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `workouts` ADD COLUMN `max_hr_source` TEXT")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20
+        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+        MIGRATION_20_21
     )
 }

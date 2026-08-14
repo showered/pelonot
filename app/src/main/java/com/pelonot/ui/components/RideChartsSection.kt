@@ -21,6 +21,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.domain.chart.RideChartSummaries
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideTrace
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.ui.theme.MetricPowerCoral
 import com.pelonot.ui.theme.loneCard
@@ -305,12 +306,36 @@ private fun HeartCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     caption = listOfNotNull(
         "zones from %HRmax".takeIf { charts.maxHrBpm != null },
         "your maximum today — this ride did not record its own"
-            .takeIf { charts.maxHrBpm != null && !charts.maxHrIsTheRides }
+            .takeIf { charts.maxHrBpm != null && !charts.maxHrIsTheRides },
+        maxHrSourceCaption(charts)
     ).joinToString(" · ").takeIf { it.isNotEmpty() },
     summary = RideChartSummaries.heartRate(charts.heartRate),
     modifier = modifier
 ) {
     HeartRateTraceChart(trace = charts.heartRate, maxHrBpm = charts.maxHrBpm)
+}
+
+/**
+ * Where the maximum these zones divide came from (21.4.2c, 21.5.5).
+ *
+ * **Said in both directions, and silent in the third.** An estimate has a
+ * 10–12 bpm spread — wider than a zone — so a rider reading H4 off Tanaka is
+ * reading something with a real chance of being H3, and 21.5.5's rule is that
+ * prescribing off a formula is fine and doing it silently is not. Saying *"your
+ * own number"* on the other branch is what buys the silence its meaning: with
+ * only the estimate labelled, a card that says nothing could be either, and
+ * a ride recorded before `workouts.max_hr_source` existed genuinely cannot say
+ * which it was. Two claims and one honest gap, rather than one claim and an
+ * ambiguity.
+ *
+ * The words are Settings' own (`HeartRateZoneLegend`), because it is the same
+ * sentence about the same number and two vocabularies for one fact is how a
+ * rider comes to think they are two facts.
+ */
+private fun maxHrSourceCaption(charts: RideCharts): String? = when (charts.maxHrSource) {
+    MaxHeartRate.Source.Estimated -> "estimated from your year of birth"
+    MaxHeartRate.Source.Measured -> "your own number"
+    null -> null
 }
 
 @Composable
@@ -387,7 +412,8 @@ private fun HeartZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
                     Formatters.duration(it.recordedSeconds)
             },
         "your maximum today — this ride did not record its own"
-            .takeIf { !charts.maxHrIsTheRides }
+            .takeIf { !charts.maxHrIsTheRides },
+        maxHrSourceCaption(charts)
     ).joinToString(" · "),
     // 21.6.3, and it lives here rather than in a card of its own because it is
     // a sentence about the zones drawn immediately above it — the class asked

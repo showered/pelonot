@@ -168,7 +168,7 @@ class PostRideViewModel(
                         intervals = plan?.intervals.orEmpty(),
                         riderFtp = currentFtp.takeIf { ftp -> ftp > 0 },
                         riderMaxHr = rider?.let { r ->
-                            MaxHeartRate.resolve(r.maxHrBpm, r.birthDate)?.bpm
+                            MaxHeartRate.resolve(r.maxHrBpm, r.birthDate)
                         }
                     )
                 }

@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
 
 @Entity(
@@ -98,12 +99,38 @@ data class WorkoutEntity(
      *
      * Resolved rather than copied: it is whatever `MaxHeartRate.resolve` gave
      * at the start of the ride, so a Tanaka estimate is stored the same way a
-     * measured number is. The provenance of the *estimate* is not kept here —
-     * `profiles` still has both columns, and the estimate is recomputed from
-     * the same birth date it always was.
+     * measured number is — and [maxHrSource] is what keeps those two apart.
      */
     @ColumnInfo(name = "max_hr_bpm")
     val maxHrBpm: Int? = null,
+
+    /**
+     * Whether [maxHrBpm] was the rider's own measured number or Tanaka's
+     * estimate from their date of birth (PLAN 21.4.2c).
+     *
+     * **A zone drawn off a formula is a different claim from one drawn off a
+     * measurement** — that is why `MaxHeartRate` has carried a `source` since
+     * the day it was written (21.5.5), and why storing the number alone made
+     * the claim unrecoverable the moment the ride ended. The estimate has a
+     * 10–12 bpm spread, which is wider than a zone; prescribing effort from it
+     * is fine and doing it silently is not.
+     *
+     * **Null means nobody wrote it down**, exactly as [powerProvenance] and
+     * `workout_metrics.power_is_measured` do, and it is what every ride
+     * recorded between 12 → 13 and 20 → 21 says. The tempting wrong fix is to
+     * answer it from the rider's *current* profile: that would be right for a
+     * ride with no maximum of its own — those are drawn from today's number and
+     * say so — and a silent guess for every ride carrying one, which is 7.8's
+     * shape. So a screen that cannot say where the maximum came from says
+     * nothing about it.
+     *
+     * Written at the same instant as [maxHrBpm], at the *start* of the ride, so
+     * `WorkoutSession` carries it: 8.3d.4's rule is that a column the session
+     * does not carry is written back as its default when the ride is finalised
+     * twenty minutes later.
+     */
+    @ColumnInfo(name = "max_hr_source")
+    val maxHrSource: MaxHeartRate.Source? = null,
 
     @ColumnInfo(name = "rpe_rating")
     val rpeRating: Int? = null,

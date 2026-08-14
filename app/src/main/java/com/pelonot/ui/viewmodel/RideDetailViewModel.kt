@@ -117,7 +117,7 @@ class RideDetailViewModel(
                 metrics = workoutRepository.getMetrics(workout.id),
                 intervals = intervals,
                 riderFtp = rider?.ftpWatts,
-                riderMaxHr = rider?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate)?.bpm }
+                riderMaxHr = rider?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate) }
             )
         }
         _uiState.update { it.copy(charts = charts) }
