@@ -260,6 +260,12 @@ data class RideCharts(
      */
     val timeInHeartRateZone: TimeInHeartRateZone = TimeInHeartRateZone(),
     val prescribed: PrescribedPlan = PrescribedPlan(),
+    /**
+     * What the class asked for against what the heart says was done (21.6.3),
+     * or null whenever there is nothing honest to compare — which is most
+     * rides. See [EffortAgainstPlan] for every reason it is null.
+     */
+    val effortAgainstPlan: EffortAgainstPlan? = null,
     val ftpWatts: Int = 0,
     /**
      * True when [ftpWatts] is the FTP **this ride was judged against**, false
@@ -419,29 +425,37 @@ object RideChartBuilder {
             )
         }
 
+        // A count of seconds, so a trimmed ride reads what it wrote down rather
+        // than recounting the fifth of its rows that survived — the same rule as
+        // the cadence spread and time in zone, and the reason
+        // `RideDistributions` carries the maximum it counted against.
+        val heartZones = stored?.heartRateTimeInZone()
+            ?: heartRateTimeInZone(ordered, maxHrBpm)
+
+        val prescribed = prescribedPlan(
+            samples = ordered,
+            intervals = intervals,
+            ftpWatts = ftpWatts,
+            intentMultiplier = intentMultiplier,
+            // A trimmed ride keeps the blocks and loses the compliance: the
+            // bands come from the class and are as true as they ever were,
+            // while "inside the target for 14 of 20 minutes" is a count of
+            // seconds that are no longer there (23.4.3).
+            countSeconds = detailSec <= 1
+        )
+
         return RideCharts(
             power = downsample(ordered, buckets) { it.powerWatts },
             heartRate = downsampleNullable(ordered, buckets) { it.heartRateBpm?.toDouble() },
             cadenceTrace = downsample(ordered, buckets) { it.cadenceRpm },
             cadence = stored?.cadence() ?: cadenceDistribution(ordered),
             timeInZone = stored?.timeInZone() ?: timeInZone(ordered, ftpWatts),
-            // A count of seconds, so a trimmed ride reads what it wrote down
-            // rather than recounting the fifth of its rows that survived — the
-            // same rule as the two above, and the reason `RideDistributions`
-            // carries the maximum it counted against.
-            timeInHeartRateZone = stored?.heartRateTimeInZone()
-                ?: heartRateTimeInZone(ordered, maxHrBpm),
-            prescribed = prescribedPlan(
-                samples = ordered,
-                intervals = intervals,
-                ftpWatts = ftpWatts,
-                intentMultiplier = intentMultiplier,
-                // A trimmed ride keeps the blocks and loses the compliance: the
-                // bands come from the class and are as true as they ever were,
-                // while "inside the target for 14 of 20 minutes" is a count of
-                // seconds that are no longer there (23.4.3).
-                countSeconds = detailSec <= 1
-            ),
+            timeInHeartRateZone = heartZones,
+            prescribed = prescribed,
+            // 21.6.3. Survives a trim on purpose: it reads the blocks the class
+            // prescribed, which are still true, and the heart's own stored
+            // counts — never the compliance the trim withdrew above.
+            effortAgainstPlan = EffortAgainstPlan.of(prescribed, heartZones),
             detailSec = detailSec,
             zoneFtpWatts = stored?.ftpWatts,
             zoneMaxHrBpm = stored?.maxHrBpm,
@@ -754,6 +768,43 @@ object RideChartSummaries {
         return "$zones. A heart rate was recorded for " +
             "${formatDuration(timeInZone.totalSeconds)} of " +
             "${formatDuration(timeInZone.recordedSeconds)}."
+    }
+
+    /**
+     * What the class asked for against what the heart did (21.6.3).
+     *
+     * Empty whenever [EffortAgainstPlan] found nothing honest to compare, which
+     * is most rides — and the empty string rather than a hedge, because a
+     * sentence saying the app cannot tell is a sentence about the app.
+     *
+     * The wording keeps the two scales apart deliberately. The heart's side
+     * says *"your top two heart-rate zones"*, which is that scale's own
+     * language, and the class's side says what it prescribed; nothing here
+     * claims H4 and Z4 are the same zone, because they are not. And the verdict
+     * is about the **ride**: *"harder than the class asked"* is an observation
+     * about a session, where "you found this hard" would be a claim about a
+     * body that only the rider can make (21.6.1).
+     */
+    fun effortAgainstPlan(effort: EffortAgainstPlan?): String {
+        if (effort == null) return ""
+
+        val opening = when (effort.verdict) {
+            EffortAgainstPlan.Verdict.Harder -> "Harder than the class asked"
+            EffortAgainstPlan.Verdict.Easier -> "Easier than the class asked"
+            EffortAgainstPlan.Verdict.AsAsked -> "About what the class asked"
+        }
+        val heart = if (effort.heartHardSeconds == 0) {
+            "no time in your top two heart-rate zones"
+        } else {
+            "${formatDuration(effort.heartHardSeconds)} in your top two heart-rate zones"
+        }
+        val prescribed = if (effort.prescribedHardSeconds == 0) {
+            "on a class that prescribed no hard riding at all"
+        } else {
+            "against the ${formatDuration(effort.prescribedHardSeconds)} it prescribed"
+        }
+
+        return "$opening — $heart, $prescribed."
     }
 
     private fun formatDuration(totalSeconds: Int): String {

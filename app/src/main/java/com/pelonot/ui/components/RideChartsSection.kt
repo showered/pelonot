@@ -389,7 +389,22 @@ private fun HeartZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
         "your maximum today — this ride did not record its own"
             .takeIf { !charts.maxHrIsTheRides }
     ).joinToString(" · "),
-    summary = RideChartSummaries.timeInHeartRateZone(charts.timeInHeartRateZone),
+    // 21.6.3, and it lives here rather than in a card of its own because it is
+    // a sentence about the zones drawn immediately above it — the class asked
+    // for so much hard riding and the heart reports this much. Empty on most
+    // rides, which is the whole design: a free ride was asked for nothing, and
+    // a strap that heard a quarter of the class describes a quarter of it.
+    //
+    // It reaches the post-ride summary too, out of the same component (12.6),
+    // and that is safe for a reason worth stating rather than assuming: the
+    // effort question sits *above* the charts on that screen (12.6.1), so the
+    // rider has already answered it by the time this is on screen. Putting the
+    // observation beside the question would be 21.6.1's prefill without
+    // 21.6.1's rule that the rider's own answer stays theirs.
+    summary = listOf(
+        RideChartSummaries.timeInHeartRateZone(charts.timeInHeartRateZone),
+        RideChartSummaries.effortAgainstPlan(charts.effortAgainstPlan)
+    ).filter { it.isNotEmpty() }.joinToString(" "),
     modifier = modifier
 ) {
     TimeInHeartRateZoneBar(timeInZone = charts.timeInHeartRateZone)
