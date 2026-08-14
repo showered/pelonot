@@ -92,7 +92,9 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun `power and cadence averages match a plain mean`() {
+    fun `power and cadence averages match a plain mean of the pedalling seconds`() {
+        // The first sample is a standing start: cadence 0, and 19.1.2b says it
+        // is not part of "what did I average". Every other second is.
         val powers = listOf(50.0, 120.0, 300.0, 0.0, 175.5)
         val cadences = listOf(0.0, 60.0, 95.0, 110.0, 82.5)
 
@@ -100,9 +102,56 @@ class WorkoutSessionTest {
             acc.withSample(powers[i], cadences[i], heartRateBpm = null)
         }
 
-        assertEquals(powers.average(), result.avgPower, 1e-9)
-        assertEquals(cadences.average(), result.avgCadence, 1e-9)
+        assertEquals(powers.drop(1).average(), result.avgPower, 1e-9)
+        assertEquals(cadences.drop(1).average(), result.avgCadence, 1e-9)
+        // Every second is still counted; only the denominator differs.
         assertEquals(powers.size, result.sampleCount)
+        assertEquals(powers.size - 1, result.pedallingSampleCount)
+    }
+
+    @Test
+    fun `a bottle stop does not drag the averages down`() {
+        // 19.1.2b, in the shape it was measured: 66 seconds of riding and then
+        // 20 seconds of stillness — the window an auto-pause has to watch
+        // before it can know a stop is a stop. Those 20 rows are recorded and
+        // drawn; they are not averaged in.
+        val riding = List(66) { 90.0 }
+        val stopped = List(20) { 0.0 }
+
+        val result = (riding + stopped).fold(session()) { acc, cadence ->
+            acc.withSample(
+                powerWatts = if (cadence > 0) 180.0 else 0.0,
+                cadenceRpm = cadence,
+                heartRateBpm = null
+            )
+        }
+
+        assertEquals(90.0, result.avgCadence, 1e-9)
+        assertEquals(180.0, result.avgPower, 1e-9)
+        assertEquals(86, result.sampleCount)
+        assertEquals(66, result.pedallingSampleCount)
+    }
+
+    @Test
+    fun `a heart rate recorded while stopped still counts`() {
+        // The asymmetry is deliberate and is the whole of the rule: cadence and
+        // power measure the riding, and there is none while the cranks are
+        // still; a heart rate measures the rider, who is still there.
+        val result = (1..4).fold(session()) { acc, i ->
+            acc.withSample(
+                powerWatts = 0.0,
+                cadenceRpm = 0.0,
+                heartRateBpm = 100 + i
+            )
+        }
+
+        assertEquals(102.5, result.avgHeartRateBpm!!, 1e-9)
+        assertEquals(4, result.heartRateSampleCount)
+        assertEquals(0, result.pedallingSampleCount)
+        // And with nothing to average, the averages stay at their honest zero
+        // rather than becoming NaN.
+        assertEquals(0.0, result.avgPower, 1e-9)
+        assertEquals(0.0, result.avgCadence, 1e-9)
     }
 
     @Test

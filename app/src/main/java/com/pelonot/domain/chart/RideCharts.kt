@@ -697,7 +697,13 @@ object RideChartSummaries {
                 "between those points are gone."
         }
 
-        return "$shape, average ${trace.buckets.map { it.mean }.average().roundToInt()} watts."
+        // 19.1.2b: this sentence used to end with a second average, taken over
+        // every bucket in the trace. `avg_power` is now the mean of the seconds
+        // the rider was *pedalling*, so on any ride with a stop in it the two
+        // disagreed — one screen, two numbers, both called "average". The
+        // figures row above already carries the ride's own, so the caption says
+        // nothing rather than a rival version of it.
+        return "$shape."
     }
 
     /**

@@ -156,8 +156,8 @@ asks less about the person, which is a rare combination and worth taking.
       strap data across their real rides.*
 - [ ] **21.1.4** Resting heart rate, if and only if the model chosen in 21.2
       needs it. Do not collect a field nothing reads
-- [ ] **21.1.6** **Ask the answerable question first — the owner's note, 3
-      August 2026.** Verbatim: *"It's better UX to ask people their age and
+- [x] **21.1.6** ~~**Ask the answerable question first — the owner's note, 3
+      August 2026.**~~ Verbatim: *"It's better UX to ask people their age and
       weight than to ask max bpm. No normal person knows their max bpm! Let's
       infer it. This whole app needs to be great UX for normal people who just
       want to crack on and ride."*
@@ -195,6 +195,52 @@ asks less about the person, which is a rare combination and worth taking.
       See **20.3.7** — the same question, asked once, answers both this and the
       FTP estimate, and that is an argument for Route B in 20.3.2 rather than a
       coincidence
+
+      ***Done in the fifty-first sitting, and it was one screen rather than
+      two.*** *Profile creation had already come out on the right side of this
+      by another route — 21.1.1b made the year of birth the only thing either
+      screen asks, and onboarding has never had a maximum-heart-rate box at all,
+      so a new rider already gets zones without ever meeting the question.
+      **Settings was the whole of the defect**, and it was the exact inversion
+      the note describes: the first control in the section was an empty box
+      labelled* `Maximum heart rate (bpm)`*, and* "Born in 1986" *was the fourth
+      thing down, under a small* "Don't know it?"*. The KDoc above the composable
+      called that ordering "the design" and gave the accuracy argument for it,
+      which is why it is rewritten rather than deleted: the accuracy argument is
+      still true and still decides which number wins.*
+
+      ***The reveal is one-way on purpose, and that is the one design decision
+      not in the item's own text.*** *A disclosure that folds away again is a
+      field that can hold a number governing the save with nothing on screen
+      showing it — the same family as the read-modify-write defect (7.9): state
+      that acts and cannot be seen. So it is shown from the start for a rider
+      who already gave a number, and thereafter only ever revealed.*
+
+      ***And 21.1.3's offer stays where it was, which is a decision rather than
+      inertia.*** "Use 190 — the highest you've recorded" *moved behind the
+      disclosure with the field it fills in, and the cost is real: a rider with
+      strap data who does not know their maximum will not see the app's better
+      answer. Promoting it beside the year was considered and refused, because
+      **the highest a rider has recorded is a floor, not a maximum** — 21.1.3's
+      own words — and a floor offered as the first answer would give every rider
+      with a strap zones that are systematically too low. That is the accuracy
+      half of 21.1 broken in the other direction, and it would be invisible.*
+
+      ***Watched on the tablet AVD in three states with each other as
+      controls, and the profile row read after the save rather than the
+      screenshot alone.** A profile with a year and no number: the estimate
+      leads, the ladder reads* "Zones from 180 bpm — estimated from your year of
+      birth"*, and the whole section now fits above the fold where the ladder
+      used to be pushed off it. Then the reveal tapped — the field appears with
+      the offer under it and the link is gone —* `Use 190` *tapped, and the
+      ladder switches live to* "Zones from 190 bpm — your own number" *with all
+      five bands recomputed. Saved: `max_hr_bpm = 190` with `birth_date`,
+      `ftp_watts` and `weight_kg` untouched and the other profile untouched
+      (7.10.3's one-tap-one-write rule holding). Relaunched: the number is on
+      screen from the first frame and the reveal link is absent. Then a second
+      profile with neither, by hand: one* Set year of birth *button, one link,
+      and* "No heart-rate zones yet. Pelonot won't guess a maximum" *— which is
+      21.3.3 unchanged, with its sentence reordered to name the year first.*
 - [ ] **21.1.5** Threshold heart rate (LTHR) as the best-quality basis, optional
       and much later. The guided FTP test in 19.2.3 is the same twenty minutes
       of riding, so if that is built, this comes almost free from it

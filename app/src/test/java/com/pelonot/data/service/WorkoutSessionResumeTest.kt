@@ -121,4 +121,46 @@ class WorkoutSessionResumeTest {
         assertEquals(100.5, aggregates.avgHeartRateExact!!, 0.001)
         assertEquals(100.5, session().restoredWith(aggregates).avgHeartRateBpm!!, 0.001)
     }
+
+    @Test
+    fun `a resume weights new samples against the pedalling count, not the tick count`() {
+        // 19.1.2b's half of 8.3d. The first half of the ride was 40 s of riding
+        // and 20 s of standing still; the mean it carries forward was built on
+        // 40 samples, so one 400 W second afterwards must move it by 200/41,
+        // not by 200/61. Dividing by the tick count would silently under-weight
+        // every second ridden after the pick-up.
+        val interrupted = samples(40, power = 200.0, cadence = 80.0, hr = null) +
+            (41..60).map { MetricSample(it, 0.0, 0.0, null) }
+
+        val aggregates = WorkoutAggregates.from(interrupted)
+        assertEquals(60, aggregates.sampleCount)
+        assertEquals(40, aggregates.pedallingSampleCount)
+
+        val resumed = session()
+            .restoredWith(aggregates)
+            .withSample(powerWatts = 400.0, cadenceRpm = 80.0, heartRateBpm = null)
+
+        assertEquals(41, resumed.pedallingSampleCount)
+        assertEquals(200.0 + 200.0 / 41.0, resumed.avgPower, 0.001)
+    }
+
+    @Test
+    fun `the live path and the cold path agree across a stop`() {
+        // The two are separate implementations of one definition, and 8.3d's
+        // whole premise is that a recovered ride is comparable with one that
+        // finished normally. A stop is where they would most easily diverge.
+        val series = samples(30, power = 210.0, cadence = 95.0, hr = 150) +
+            (31..50).map { MetricSample(it, 0.0, 0.0, 130) } +
+            (51..80).map { MetricSample(it, 190.0, 85.0, 155) }
+
+        val cold = WorkoutAggregates.from(series)
+        val live = series.fold(session()) { acc, sample ->
+            acc.withSample(sample.power, sample.cadence, sample.heartRate)
+        }
+
+        assertEquals(cold.avgPower, live.avgPower, 1e-9)
+        assertEquals(cold.avgCadence, live.avgCadence, 1e-9)
+        assertEquals(cold.avgHeartRateExact!!, live.avgHeartRateBpm!!, 1e-9)
+        assertEquals(cold.pedallingSampleCount, live.pedallingSampleCount)
+    }
 }

@@ -90,6 +90,13 @@ class AutoPausePolicy(
          * Below this the wheel is coasting to a halt rather than being driven.
          * The board reports a true 0 when the cranks stop, so this only has to
          * survive the last fraction of a revolution.
+         *
+         * **This is the app's single definition of *pedalling*, and 19.1.2b is
+         * why it is `const` rather than private.** `WorkoutSession` and
+         * `WorkoutAggregates` divide `avg_power` and `avg_cadence` by the
+         * seconds that clear it, so the averages and the pause agree about the
+         * same word. Two thresholds would mean a ride whose average was taken
+         * over seconds the app had already decided were a stop.
          */
         const val PEDALLING_RPM = 1.0
     }

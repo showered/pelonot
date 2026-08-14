@@ -1,5 +1,6 @@
 package com.pelonot.data.service
 
+import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.WorkoutAggregates
@@ -47,7 +48,28 @@ data class WorkoutSession(
     val maxHrSource: MaxHeartRate.Source? = null,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
+    /**
+     * Mean power **over the seconds the rider was pedalling** (19.1.2b).
+     *
+     * Not over the whole recording. A second with no cadence is a second the
+     * rider was not riding — a bottle stop, a coast to a halt, or the twenty
+     * seconds an auto-pause has to watch before it can know a stop is a stop —
+     * and averaging those in charges the rider for standing still. On a
+     * measured 85-second test ride, 20 of 86 rows were the auto-pause's own
+     * detection window and they pulled `avg_cadence` to 61.
+     *
+     * The rows themselves are kept and drawn: they are true, and a summary
+     * derived by throwing samples away is the shape of trouble this project
+     * keeps cataloguing. What changes is the denominator, and it is
+     * [pedallingSampleCount].
+     *
+     * [avgHeartRateBpm] is deliberately **not** treated this way. Cadence and
+     * power are measurements of *the riding*, and there is none while the
+     * cranks are still; a heart rate recorded during a bottle stop is a
+     * measurement of *the rider*, and it is as real as any other.
+     */
     val avgPower: Double = 0.0,
+    /** Mean cadence over the pedalling seconds. See [avgPower]. */
     val avgCadence: Double = 0.0,
     /**
      * Kept as a `Double` and rounded only for display.
@@ -67,6 +89,16 @@ data class WorkoutSession(
      */
     val heartRateSampleCount: Int = 0,
     val sampleCount: Int = 0,
+    /**
+     * How many of [sampleCount] were recorded with the cranks turning, and the
+     * denominator behind [avgPower] and [avgCadence] (19.1.2b).
+     *
+     * Counted separately for exactly [heartRateSampleCount]'s reason: a mean
+     * restored on a resume has to be re-weighted with the count it was actually
+     * built at, and dividing by the tick count instead would under-weight every
+     * sample that follows.
+     */
+    val pedallingSampleCount: Int = 0,
     /**
      * How many times this ride has been interrupted and picked up again, and
      * for how long in total (8.3d.2).
@@ -110,15 +142,30 @@ data class WorkoutSession(
     ): WorkoutSession {
         val samples = sampleCount + 1
         val hrSamples = heartRateSampleCount + if (heartRateBpm == null) 0 else 1
+        // 19.1.2b, and the threshold is `AutoPausePolicy`'s own rather than a
+        // second opinion about the same word: what counts as pedalling has to
+        // be one definition, or the average disagrees with the pause that was
+        // taken on the strength of it.
+        val pedalling = cadenceRpm >= AutoPausePolicy.PEDALLING_RPM
+        val pedallingSamples = pedallingSampleCount + if (pedalling) 1 else 0
 
         return copy(
-            avgPower = runningMean(avgPower, powerWatts, samples),
-            avgCadence = runningMean(avgCadence, cadenceRpm, samples),
+            avgPower = if (pedalling) {
+                runningMean(avgPower, powerWatts, pedallingSamples)
+            } else {
+                avgPower
+            },
+            avgCadence = if (pedalling) {
+                runningMean(avgCadence, cadenceRpm, pedallingSamples)
+            } else {
+                avgCadence
+            },
             avgHeartRateBpm = heartRateBpm?.let { bpm ->
                 runningMean(avgHeartRateBpm ?: bpm.toDouble(), bpm.toDouble(), hrSamples)
             } ?: avgHeartRateBpm,
             heartRateSampleCount = hrSamples,
-            sampleCount = samples
+            sampleCount = samples,
+            pedallingSampleCount = pedallingSamples
         )
     }
 
@@ -145,7 +192,8 @@ data class WorkoutSession(
         avgCadence = aggregates.avgCadence,
         avgHeartRateBpm = aggregates.avgHeartRateExact,
         heartRateSampleCount = aggregates.heartRateSampleCount,
-        sampleCount = aggregates.sampleCount
+        sampleCount = aggregates.sampleCount,
+        pedallingSampleCount = aggregates.pedallingSampleCount
     )
 
     companion object {

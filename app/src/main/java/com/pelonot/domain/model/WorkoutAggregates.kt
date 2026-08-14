@@ -18,10 +18,24 @@ data class WorkoutAggregates(
     val durationSec: Int = 0,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
+    /**
+     * Mean power over the **pedalling** seconds, not over the whole series
+     * (19.1.2b). The rule and the reason are on
+     * [com.pelonot.data.service.WorkoutSession.avgPower]; what matters here is
+     * that the two agree, because a ride recovered from its samples has to be
+     * the same number as the ride that finished normally.
+     */
     val avgPower: Double = 0.0,
+    /** Mean cadence over the pedalling seconds. See [avgPower]. */
     val avgCadence: Double = 0.0,
     val avgHeartRate: Int? = null,
     val sampleCount: Int = 0,
+    /**
+     * How many of [sampleCount] were recorded with the cranks turning — the
+     * denominator behind [avgPower] and [avgCadence], and what a resumed ride
+     * restores its running means at (8.3d).
+     */
+    val pedallingSampleCount: Int = 0,
     /**
      * How many of [sampleCount] carried a heart rate.
      *
@@ -80,14 +94,20 @@ data class WorkoutAggregates(
             val heartRates = ordered.mapNotNull { it.heartRate }
             val meanHeartRate = if (heartRates.isEmpty()) null else heartRates.average()
 
+            // 19.1.2b. `AutoPausePolicy`'s threshold, not a second opinion about
+            // the same word — and the empty case returns 0.0 rather than NaN,
+            // for a ride the board reported nothing but stillness through.
+            val pedalling = ordered.filter { it.cadence >= AutoPausePolicy.PEDALLING_RPM }
+
             return WorkoutAggregates(
                 durationSec = ordered.last().second,
                 totalOutputKj = energyJoules / 1000.0,
                 distanceKm = distanceKm,
-                avgPower = ordered.sumOf { it.power } / ordered.size,
-                avgCadence = ordered.sumOf { it.cadence } / ordered.size,
+                avgPower = if (pedalling.isEmpty()) 0.0 else pedalling.sumOf { it.power } / pedalling.size,
+                avgCadence = if (pedalling.isEmpty()) 0.0 else pedalling.sumOf { it.cadence } / pedalling.size,
                 avgHeartRate = meanHeartRate?.toInt(),
                 sampleCount = ordered.size,
+                pedallingSampleCount = pedalling.size,
                 heartRateSampleCount = heartRates.size,
                 avgHeartRateExact = meanHeartRate
             )

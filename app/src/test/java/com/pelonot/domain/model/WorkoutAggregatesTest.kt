@@ -51,6 +51,38 @@ class WorkoutAggregatesTest {
         assertEquals(200.0, aggregates.avgPower, 0.001)
         assertEquals(90.0, aggregates.avgCadence, 0.001)
         assertEquals(140, aggregates.avgHeartRate)
+        assertEquals(3, aggregates.pedallingSampleCount)
+    }
+
+    @Test
+    fun `the seconds the rider was stopped are not averaged in`() {
+        // 19.1.2b, on the cold path. The stopped rows are kept — `sampleCount`
+        // and `durationSec` still see them, and every chart draws them — but
+        // they are not part of what the rider averaged.
+        val withStop = (0..65).map { MetricSample(it, 180.0, 90.0, 150) } +
+            (66..85).map { MetricSample(it, 0.0, 0.0, 120) }
+
+        val aggregates = WorkoutAggregates.from(withStop)
+
+        assertEquals(180.0, aggregates.avgPower, 0.001)
+        assertEquals(90.0, aggregates.avgCadence, 0.001)
+        assertEquals(86, aggregates.sampleCount)
+        assertEquals(66, aggregates.pedallingSampleCount)
+        assertEquals(85, aggregates.durationSec)
+        // The heart rate during the stop is a real heart rate and is kept, so
+        // its mean sits below the riding figure rather than equalling it.
+        assertEquals(143, aggregates.avgHeartRate)
+    }
+
+    @Test
+    fun `a series of nothing but stillness averages to zero rather than to NaN`() {
+        val stillness = (0..30).map { MetricSample(it, 0.0, 0.0, 70) }
+
+        val aggregates = WorkoutAggregates.from(stillness)
+
+        assertEquals(0.0, aggregates.avgPower, 0.001)
+        assertEquals(0.0, aggregates.avgCadence, 0.001)
+        assertEquals(0, aggregates.pedallingSampleCount)
     }
 
     @Test
