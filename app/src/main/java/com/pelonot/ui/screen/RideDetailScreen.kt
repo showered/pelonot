@@ -292,7 +292,7 @@ fun RideDetailScreen(
             // *whose ride was this?* is answered by looking at the ride, and
             // above everything else, because on an unclaimed ride it is the
             // only thing on this screen anybody can act on.
-            if (state.isUnclaimed) {
+            if (state.isUnclaimed && state.profiles.isNotEmpty()) {
                 Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
                 ClaimRideSection(
                     profiles = state.profiles,
@@ -487,12 +487,18 @@ private fun ExportSection(
  * deciding whether to become a rider, which is the moment for it; here the ride
  * is already safe, and every rider who could claim it already has a profile. So
  * there is one copy of *create a profile and file this ride to it* rather than
- * two, and a bike with no profiles at all is told to make one rather than shown
- * an empty row.
+ * two.
  *
  * There is no *Keep it as a guest ride* either. Doing nothing already is that,
  * and a button whose effect is to leave the screen exactly as it was is a
  * decision the rider is being asked to make twice.
+ *
+ * **An empty [profiles] draws nothing, and it is a loading frame rather than a
+ * bike.** This screen is reached from the top of a *profile's* history, so at
+ * least one always exists by the time anybody is looking; the empty list is the
+ * first composition, before `allUsers` has emitted. A branch of copy for it
+ * would be a sentence no rider can ever be shown on purpose and every rider is
+ * shown for a frame.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -510,33 +516,26 @@ private fun ClaimRideSection(
             modifier = Modifier.semantics { heading() }
         )
         Text(
-            text = if (profiles.isEmpty()) {
-                "It was ridden as a guest, so it belongs to nobody. Create a " +
-                    "profile and you can file it against one."
-            } else {
-                "It was ridden as a guest. Filing it against a profile keeps it " +
-                    "in that rider's history and counts towards their FTP."
-            },
+            text = "It was ridden as a guest. Filing it against a profile keeps it " +
+                "in that rider's history and counts towards their FTP.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.readableText()
         )
 
-        if (profiles.isNotEmpty()) {
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+        Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-            ) {
-                profiles.forEach { profile ->
-                    FilledTonalButton(
-                        onClick = { onClaim(profile.localUserId) },
-                        modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
-                        shape = MaterialTheme.expressiveShapes.pill
-                    ) {
-                        Text(profile.name)
-                    }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        ) {
+            profiles.forEach { profile ->
+                FilledTonalButton(
+                    onClick = { onClaim(profile.localUserId) },
+                    modifier = Modifier.sizeIn(minHeight = MIN_TOUCH_TARGET),
+                    shape = MaterialTheme.expressiveShapes.pill
+                ) {
+                    Text(profile.name)
                 }
             }
         }

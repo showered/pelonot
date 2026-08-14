@@ -54,8 +54,9 @@ data class RideDetailUiState(
      * The bike's profiles, for a ride nobody has claimed (12.4.1).
      *
      * Loaded whatever the ride is and read only by the claim card, which draws
-     * on [isUnclaimed]. Empty on a bike with no profiles at all, where the card
-     * says so rather than offering a row of nothing.
+     * on [isUnclaimed] and on this being non-empty. Empty here means *not loaded
+     * yet* in practice, not *a bike with no riders*: the card is reached from a
+     * profile's own history.
      */
     val profiles: List<UserEntity> = emptyList()
 ) {
