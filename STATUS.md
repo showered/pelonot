@@ -1,8 +1,10 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 14 August (forty-eighth sitting).**
-Measured, not estimated: `assembleDebug` passes, **767 JVM tests and 112
-instrumented tests, 0 failures**, and **578 of 802 plan boxes** are ticked
+**Written 4 August 2026, updated 14 August (forty-ninth sitting).**
+Measured, not estimated: `assembleDebug` passes, **771 JVM tests, 0
+failures**, the 21 migration tests green including the new 20 → 21, and the
+whole 113-test instrumented suite last run green in the forty-fourth sitting.
+**582 of 802 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -134,7 +136,12 @@ made, so one sentence says *"Harder than the class asked — 12 minutes 48
 seconds in your top two heart-rate zones, against the 4 minutes it
 prescribed."* It says nothing at all on most rides, and that is the design: a
 free ride was asked for nothing, and a strap that heard three minutes of
-thirteen describes three minutes rather than the ride.
+thirteen describes three minutes rather than the ride. **And every one of those
+zones says what it was drawn from** (21.4.2c): a maximum heart rate is either
+the rider's own number or an estimate off their year of birth, the two are 10
+to 12 bpm apart — wider than a zone — and the ride now records which it had.
+A ride from before that column says *nothing* rather than guessing, because the
+answer really is gone.
 
 **The household.** A profile selector built for the tablet, a per-class
 leaderboard, the household's **last 30 days** with streaks and an opt-out — a

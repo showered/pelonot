@@ -6,6 +6,65 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 13 August 2026 (forty-seventh sitting): the app has drawn heart-rate zones for three sittings and never once said how long a ride spent in them
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the thirteenth sitting running, so the brief was triage again — and the two
+seams the last three sittings mined are both worked out.** `STATUS.md`'s
+*what is wrong today* has nothing left that is ours and unblocked; the written-
+down-claims seam has paid out three times. So this sitting counted the boxes:
+**Phase 21 is 20 unticked of 31**, in a phase `STATUS.md` calls done. That
+number was the whole lead, and it was right twice over.
+
+**One of those boxes had been built for three sittings and nobody crossed it
+off (21.2.3).** The maximum heart rate a ride was ridden at is on the row, in
+its own migration, carried on the session so the finalise cannot revert it, read
+off the row on a resume and travelling to the cloud in `RideFacts` — all of it
+watched by 21.4.2a. This is 19.1.6's failure **in the opposite direction**: a
+claim nobody re-reads goes stale both ways, and this is the first one found
+stale in the direction of *already done*.
+
+**And one of them was genuinely missing, in a place nothing looked wrong.**
+21.4.2 was ticked with two clauses in it — the banded heart-rate trace, and *"an
+HR-zone distribution beside the power one"*. The first was built and the second
+was not, so for three sittings the heart rate had a trace and no distribution
+while power had both, and no screen was wrong: it simply had nothing on it.
+**751 JVM tests, 0 failures**, up from 743.
+
+**The instruction 21.4.1 gave was *"exactly as 16.1.4 does for power"*, and it
+is the one thing that had to be disobeyed.** Power is recorded for every second
+of a ride and a heart rate is not, so `TimeInZone` with a different enum in it
+would count a strapless second as **H1 Recovery** — a rider who wore nothing
+filed as having spent forty minutes in Recovery. That is this project's oldest
+defect (`heartRateBpm` is nullable and null means *unknown*) arriving as a
+percentage rather than as a number, and it is the third time the project has had
+to refuse it. So the unrecorded seconds are counted and kept, the zones divide
+**the time a heart rate was actually reported**, and the card says what that was
+out of whenever it is not the whole ride.
+
+**The trap the change contained is the part worth keeping.**
+`RetentionRepository.distributionsFor` built its charts without a maximum heart
+rate and was *right to* until this item — the number drew bands, and that method
+draws nothing. The moment it became a denominator, a trim run without it would
+have **frozen an empty heart-rate distribution onto the row and lost the answer
+permanently**: the exact failure the trimmer exists to prevent, introduced by the
+feature that depends on it. Same shape as 8.3d.4.
+
+**Watched on the tablet AVD in three cases with each other as controls.** A
+fresh 8:12 simulated ride under a Tanaka maximum of 179 stamped on the row: both
+cards side by side, H1 2:01 · 25% through H5 1:21 · 16%. **A strap that dropped
+out for three minutes**, nulled by hand because the simulator never stops
+reporting: *"%HRmax · a heart rate for 05:13 of 08:13"*, five counts matching the
+SQL row for row, and the percentages of **313 seconds rather than 493**. **And no
+strap at all**: no card, and `Time in zone` back at a column's width (22.6).
+Power's own time in zone read 8:13 in all three, which is what makes them
+controls.
+
+**One thing is worth reading off the first screenshot rather than off the code.**
+The same ride spent **37% of its power in Z1 and 25% of its heart in H1**. That
+gap is 21.4.4's lag made visible, and it is the argument for drawing the two
+beside each other rather than one under the other.
+
 ## 13 August 2026 (forty-sixth sitting): the app kept promising to reconnect to a port that was never coming back
 
 **The inbox was empty, the top of *What to do next* is owner-and-bike work for
