@@ -741,7 +741,10 @@ object RideChartSummaries {
         if (timeInZone.totalSeconds == 0) {
             return "Time in zone needs an FTP, and this ride has none."
         }
-        return timeInZone.occupied.joinToString(prefix = "Time in zone: ") { (zone, seconds) ->
+        return timeInZone.occupied.joinToString(
+            prefix = "Time in zone: ",
+            postfix = "."
+        ) { (zone, seconds) ->
             "${zone.displayName} ${formatDuration(seconds)}"
         }
     }
@@ -759,13 +762,17 @@ object RideChartSummaries {
             return "Time in heart-rate zone needs a maximum heart rate and a " +
                 "strap, and this ride has neither."
         }
+        // The full stop is load-bearing: 21.6.3's sentence is appended to this
+        // one on the card, and without it the zone list runs straight into
+        // *"About what the class asked"* as a single sentence.
         val zones = timeInZone.occupied.joinToString(
-            prefix = "Time in heart-rate zone: "
+            prefix = "Time in heart-rate zone: ",
+            postfix = "."
         ) { (zone, seconds) ->
             "${zone.displayName} ${formatDuration(seconds)}"
         }
         if (!timeInZone.isPartial) return zones
-        return "$zones. A heart rate was recorded for " +
+        return "$zones A heart rate was recorded for " +
             "${formatDuration(timeInZone.totalSeconds)} of " +
             "${formatDuration(timeInZone.recordedSeconds)}."
     }
@@ -807,15 +814,25 @@ object RideChartSummaries {
         return "$opening — $heart, $prescribed."
     }
 
+    /**
+     * Spoken out, because every one of these strings is read aloud by a screen
+     * reader as well as printed (16.2.4) — and *"1 minutes 42 seconds"* is
+     * wrong in both. The plural was hard-coded until the forty-eighth sitting,
+     * where it turned up in the middle of a new sentence and was visible on a
+     * card that had been drawing it for four.
+     */
     private fun formatDuration(totalSeconds: Int): String {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return when {
-            minutes == 0 -> "$seconds seconds"
-            seconds == 0 -> "$minutes minutes"
-            else -> "$minutes minutes $seconds seconds"
+            minutes == 0 -> plural(seconds, "second")
+            seconds == 0 -> plural(minutes, "minute")
+            else -> "${plural(minutes, "minute")} ${plural(seconds, "second")}"
         }
     }
+
+    private fun plural(count: Int, unit: String): String =
+        if (count == 1) "$count $unit" else "$count ${unit}s"
 }
 
 internal const val CADENCE_BAND_RPM = 10

@@ -521,4 +521,43 @@ class RideChartBuilderTest {
 
         assertEquals(0, charts.timeInHeartRateZone.totalSeconds)
     }
+
+    /**
+     * Every one of these sentences is read aloud as well as printed, and the
+     * plural was hard-coded until a card was seen saying *"1 minutes 42
+     * seconds"* on the tablet.
+     */
+    @Test
+    fun `one minute is not one minutes`() {
+        // 190 max: 160 is H4. 61 seconds of it and 60 of H2 (120 bpm).
+        val zones = RideChartBuilder.build(
+            ride(121, heartRate = { sec -> if (sec < 61) 160 else 120 }),
+            ftpWatts = 200,
+            maxHrBpm = 190
+        ).timeInHeartRateZone
+
+        val said = RideChartSummaries.timeInHeartRateZone(zones)
+        assertTrue(said, said.contains("Threshold 1 minute 1 second"))
+        assertTrue(said, said.contains("Aerobic 1 minute,"))
+        assertFalse(said, said.contains("1 minutes"))
+        assertFalse(said, said.contains("1 seconds"))
+    }
+
+    /**
+     * 21.6.3 appends its sentence to this one on the card, so the zone list has
+     * to end like a sentence.
+     */
+    @Test
+    fun `the zone lists end in a full stop so the next sentence can start`() {
+        val charts = RideChartBuilder.build(
+            ride(300, heartRate = { 160 }),
+            ftpWatts = 200,
+            maxHrBpm = 190
+        )
+
+        assertTrue(RideChartSummaries.timeInZone(charts.timeInZone).endsWith("."))
+        assertTrue(
+            RideChartSummaries.timeInHeartRateZone(charts.timeInHeartRateZone).endsWith(".")
+        )
+    }
 }
