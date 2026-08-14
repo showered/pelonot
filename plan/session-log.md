@@ -6,6 +6,61 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 14 August 2026 (forty-ninth sitting): the ride wrote down the number and never once said where it came from
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the fifteenth sitting running, so the brief was triage again — and this time
+the lead was left by the previous sitting rather than dug for.** 21.6.3 wanted
+its sentence to say *"and your maximum is an estimate"*, found it could not, and
+wrote the reason down as **21.4.2c**. An item opened *by* the last sitting, with
+the wrong fix already named in its own text, is the cheapest thing in the plan
+to pick up: nothing had to be rediscovered.
+
+**What it fixes is a claim, not a feature.** `workouts.max_hr_bpm` has stored
+the **number alone** since migration 12 → 13, so a zone drawn off Tanaka and a
+zone drawn off the rider's own measurement have been presented with one
+authority ever since — the thing 7.8, 21.2.3, 23.4.12 and `power_is_measured`
+each exist to refuse. `MaxHeartRate` has carried a `source` since the day it was
+written; only the row did not. One nullable `max_hr_source` (migration 20 → 21),
+carried on `WorkoutSession` so the finalise cannot write its default back over
+it (8.3d.4), read off the row on a resume, and on the wire in `RideFacts` so a
+restored ride does not lose it. **771 JVM tests, 0 failures**, up from 767.
+
+**The read rule is one sentence and it is the whole item: the source follows the
+number.** The ride's own source for the ride's own maximum — *null included* —
+and the rider's current source only where the number beside it is today's too,
+which is honest because the card already says whose number that is. The tempting
+alternative resolves the source from the profile in both cases, which is right
+for the fallback and a silent guess for every ride carrying its own maximum.
+`RideChartsLoaderTest` is four cases of exactly that pairing.
+
+**Both directions are said out loud and the third is deliberately silent.**
+21.5.5 asks only for the estimate to be labelled; saying *"your own number"* on
+the other branch is what buys the silence its meaning, because with one branch
+labelled a card that says nothing could be either — and for a ride recorded
+before this column it genuinely is unrecoverable. Two claims and one honest gap.
+The words are Settings' own, since it is the same sentence about the same number.
+
+**Watched on the tablet AVD in three cases with each other as controls, and the
+row read at every step rather than the screenshot alone.** The upgrade first:
+`user_version` 20 → 21 on launch, 2 rides and 1,261 metric rows intact, and both
+old rides' Heart rate card still reading *"zones from %HRmax"* and nothing more.
+Then a ride under a profile carrying only a year of birth — the **finalised** row
+says `179 · Estimated`, which is the 8.3d.4 assertion rather than the insert —
+and both cards read *"· estimated from your year of birth"*. Then a measured
+maximum of 185 set by hand and another ride: `185 · Measured`, *"· your own
+number"*.
+
+**And the second half of the sitting was three boxes that had been true for
+sittings.** 11.3.2 and 11.3.3 — the post-ride charts and the time-in-zone
+summary — have existed since 12.6.1 extracted `RideChartsSection`, which is the
+same seam the last five sittings have mined. **11.3.5 is the one worth having
+measured**: `dumpsys power` shows no wake lock on the dashboard, one
+`SCREEN_BRIGHT_WAKE_LOCK` attributed to `com.pelonot` during a ride with
+`mHoldScreenWindow` naming the app's window, and **none again the instant the
+ride ended** — the release being half the item, because a lock the app forgets
+to drop is a tablet that never sleeps and looks like nothing at all.
+
 ## 14 August 2026 (forty-eighth sitting): an item that said what was blocking it, in a plan where the blocker had quietly been built
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work

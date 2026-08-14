@@ -46,7 +46,7 @@ asks less about the person, which is a rare combination and worth taking.
       as well as the AVD's**: `PRAGMA user_version` is 12, the profile and all
       six rides are intact, and `max_hr_bpm` and `birth_date` are both null —
       the migration invented nothing.*
-- [ ] **21.1.1a** **Sync the year, not the date** (14, 15). On the tablet a date
+- [x] **21.1.1a** ~~**Sync the year, not the date**~~ (14, 15). On the tablet a date
       of birth is a fitness input; in a cloud row beside a display name it is an
       identity field, and that boundary — not the collecting of it — is where
       this datum changes character. Only the year has any effect on the maths
@@ -61,6 +61,23 @@ asks less about the person, which is a rare combination and worth taking.
       rather than delicate: `birth_date` holds 1 January of a year, and either
       the column becomes a year (21.1.1b) or the sync edge takes
       `millisToBirthYear`. Do not close it until the DTO is written
+
+      ***Closed in the fifty-first sitting, by reading the DTO the item was
+      waiting for.*** `ProfileDto` *is written — id, name, `ftp_watts`,
+      `weight_kg` — and it carries **neither the date nor the year**. Nor does
+      the cloud table: `supabase/migration.sql`'s `profiles` has `name`,
+      `weight_kg`, `ftp_watts`, `theme_preference` and nothing else. So the
+      answer to* "the year, not the date" *turned out to be* neither*, by
+      default rather than by decision, and this item's own warning —* "we sync
+      every column in the row" is a default, not a decision *— has landed the
+      other way up: **nothing was decided and nothing travels.** That is the
+      right outcome for this datum and it is now written down rather than
+      merely true.*
+
+      *What the reading did turn up is the cost on the way back, and it is not
+      this item's: a rider restoring onto a new tablet gets their name, FTP and
+      weight and **silently loses their heart-rate zones**, because the basis
+      those zones are drawn from was never up there. That is **15.3.7**
 - [ ] **21.1.1b** **Should the column be a year? — the owner's question,
       4 August 2026.** Verbatim: *"Ask for year of birth. Why not? Does it
       really matter about the exact month/day? It can be resolved to 1st

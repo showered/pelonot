@@ -236,6 +236,39 @@ less of the screen and less of the attention.
       least *looked* like something. A window cannot have holes punched in it,
       so this is either a row of narrow windows or nothing; 11.1b.7 shows the
       shape of the fix for anything non-interactive
+
+      ***Read in the fifty-first sitting and the fix has a better shape than
+      this text names — but the size of the problem is smaller than it names
+      too, and both corrections matter before anybody starts.***
+
+      *The measurement first. The chips are laid out `fillMaxWidth()` with
+      `weight(1f)`, so they genuinely fill the strip: the dead area is the
+      `spacedBy(small)` gutters between them and `HUD_MARGIN` at each end, not
+      the wide empty band the sentence conjures. A rider does lose those
+      slivers, and they lose them invisibly, but "tapping their film in the
+      space between two chips" is a few dp wide rather than a region.*
+
+      ***The whole vertical extent of the strip is the real cost***, *and that
+      is what a row of narrow windows would not fix either. Which points at the
+      better shape: **the strip is already two things in one window** — metric
+      chips, which nobody can press, and the controls (stop, volume, the drag
+      that re-docks it), which they can. Splitting those into two windows and
+      giving the metrics half `FLAG_NOT_TOUCHABLE` is **the pattern already in
+      this file**: the class timeline is a separate window for exactly this
+      reason, and its comment says so —* "a bar the rider can never press should
+      never eat a press." *Most of the strip becomes tap-through, and no new
+      mechanism is invented.*
+
+      *Two things to know before starting. **A window genuinely cannot have
+      holes**: the region APIs that would punch them (`OnComputeInternalInsets
+      Listener`, `TOUCHABLE_INSETS_REGION`) are hidden, and a touchable window
+      that declines the event drops it rather than passing it down — so the item
+      is right that this is windows or nothing. And **it wants the owner's eye
+      rather than a session's judgement**, because the split is a layout
+      decision on the surface 11.1b.9 already says is not yet beautiful, and it
+      cannot be judged on an AVD: `FLAG_SECURE` means a screenshot over playing
+      video comes back black, so what a rider loses is only measurable on the
+      bike with a film on
 - [ ] **11.1b.9** **Revisit the chips as a piece of visual design.** They are
       correct and they are not yet beautiful. Open questions: whether the metric
       accents should hold their colour at low opacity or take a treatment that
@@ -290,6 +323,19 @@ less of the screen and less of the attention.
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
 - [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind **2.2a** (see 2.2a.10) — until this bike is on its own curve it is as likely to be a modelling artefact as a real contradiction, and 2.2.4 has now answered that the shipped curve is 66% out at the median, which makes the artefact reading the likelier of the two.
+
+      ***The symptom this item describes cannot be seen today, and the item
+      should not be read as a live report.*** *Checked in the fifty-first
+      sitting: **11.7.3 stopped drawing the resistance band anywhere**, so "the
+      band disappears on some Zone 1 intervals" is a statement about a thing no
+      rider can look at. `RideSnapshot.resistanceTarget` still computes it and
+      nothing consumes it — which is exactly the CLAUDE.md note about
+      `PowerModel` having two consumers, one of them drawn nowhere. What is left
+      of the item is real but is a **modelling** observation rather than a UI
+      one: the unloaded curve at 85 rpm already exceeds the whole of Zone 1 for
+      a low-FTP rider, and if 2.2a brings the band back that contradiction is
+      worth saying out loud rather than swallowing. Left open on those terms,
+      still blocked behind 2.2a, and **not** to be picked up as a visible defect.*
 - [ ] **11.2.2** Time in zone: a thin stacked bar of how the ride has been spent, for the collapsed strip where the timeline does not fit
 - [ ] **11.2.3** A "you are ahead of / behind your usual" line against `leaderboardFor`, which is the one comparison a rider actually acts on mid-ride
 - [ ] **11.2.4** Handle a HUD raised while a call or another overlay is on top

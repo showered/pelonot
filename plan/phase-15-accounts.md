@@ -218,6 +218,41 @@ something they could have had offline.**
       the sentence to be honest about before a second one exists
 - [ ] **15.3.5** Metric series are large — a 45-minute ride is ~2,700 samples. Decide deliberately whether the full series goes up or only the aggregates plus a downsampled trace, and record the reasoning
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
+- [ ] **15.3.7** **A restored profile comes back without its heart-rate zones,
+      and nothing says so.** Read out of the code in the fifty-first sitting
+      while closing 21.1.1a, not reported by anybody. `ProfileDto` carries
+      `name`, `ftp_watts` and `weight_kg`; the cloud `profiles` table has those
+      three and `theme_preference`. So `RestoreRepository.adoptProfile` puts
+      back everything it was given, and a rider who restores onto a new tablet
+      finds **`birth_date`, `max_hr_bpm`, `max_hr_source` and `fitness_level`
+      all null**: no maximum, therefore no zones (21.2.4), therefore no
+      heart-rate zone bands on any chart and no time-in-heart-rate-zone card on
+      any ride — including the rides that have just come back down carrying
+      their own `max_hr_bpm`.
+
+      **The shape of the loss is worse than the loss.** 21.2.4's rule is that no
+      maximum means no zones, said plainly, and that is right for a rider who
+      has never given one. This rider *did* give one; it simply did not travel.
+      The screen they meet is the honest empty state answering a question nobody
+      asked, and 21.1.6 has just made that screen ask for a year of birth — so
+      the app's own recovery path lands them back at the first question they
+      ever answered.
+
+      **It is deliberately not built here**, on 15.4.3's precedent: it needs a
+      column on the cloud `profiles` table, which is a migration only the owner
+      can apply, and writing the app half against a schema nobody has deployed
+      fails in the way that reads exactly like a broken feature. Two things to
+      settle when it is:
+
+      - **`fitness_level` and `theme_preference` are not the same question.**
+        A theme is a preference about this tablet; a maximum heart rate is a
+        fact about the rider. Only the second has any business travelling, and
+        21.1.1a's argument applies unchanged — the *year*, never the date.
+      - **`max_hr_source` has to travel with `max_hr_bpm` or not at all.**
+        21.4.2c's rule is that the source follows the number, and a restored
+        maximum arriving without its provenance would be presented with an
+        authority it has not earned — the exact defect 21.4.2c closed, rebuilt
+        on the way down instead of at the finalise
 
 ### 15.4 Leaving
 - [x] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history. **They drop from Account to Local profile** — a rung down the ladder, not out of the app: the household leaderboard (24.1) still has them on it, with all the same rides.

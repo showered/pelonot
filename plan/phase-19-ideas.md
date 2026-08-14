@@ -53,8 +53,8 @@ has simply never been written down.
       adb shell am broadcast -a com.pelonot.debug.COAST \
         -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
       ```
-- [ ] **19.1.2b** **The twenty seconds before an auto-pause are still averaged
-      in.** They are recorded honestly — the rider really was at zero — but
+- [x] **19.1.2b** ~~**The twenty seconds before an auto-pause are still averaged
+      in.**~~ They are recorded honestly — the rider really was at zero — but
       `avg_power` and `avg_cadence` are computed live over every row, so a stop
       still costs 20 s of zeros. On a 30-minute ride that is 1%; on the 85 s
       test ride above it was 20 of 86 rows and pulled `avg_cadence` to 61. The
@@ -65,6 +65,90 @@ has simply never been written down.
       which in one place, and apply it in `WorkoutMetricsCalculator`. Worth
       settling alongside 7.8, which is the same question about a different
       column
+
+      ***Done in the fifty-first sitting. The answer is over the pedalling, and
+      the reason it is not merely a preference is that the app had already made
+      the decision somewhere else.*** *`AutoPausePolicy` exists to say that a
+      rider who is not turning the cranks is not riding, and it stops the clock,
+      the class and the recording on the strength of it. An average taken over
+      seconds the app itself had already ruled a stop is the two halves
+      disagreeing. So `PEDALLING_RPM` is now `const` with a paragraph on it
+      saying it is **the app's single definition of the word**, and both means
+      divide by the seconds that clear it.*
+
+      ***The rows are untouched, which the item was right to insist on.*** *The
+      trench is in `workout_metrics`, on the power trace, on the cadence trace
+      and in the duration. What changed is one denominator, carried as
+      `pedallingSampleCount` on `WorkoutSession` and on `WorkoutAggregates` for
+      the same reason `heartRateSampleCount` already was: a resumed ride (8.3d)
+      has to re-weight its running mean at the count it was really built at, and
+      dividing by the tick count would silently under-weight every second ridden
+      after the pick-up. `WorkoutSessionResumeTest` asserts both that and the
+      thing 8.3d's whole premise rests on — **the live path and the cold path
+      agreeing across a stop**, which is where two implementations of one
+      definition would most easily part company.*
+
+      ***`avg_hr` is deliberately not treated this way, and the asymmetry is the
+      rule rather than an omission.*** *Cadence and power are measurements of
+      the **riding**, and there is none while the cranks are still; a heart rate
+      recorded during a bottle stop is a measurement of the **rider**, who is
+      still there and whose heart is still the thing being asked about. On the
+      verification ride the two figures visibly part — 123 W over the pedalling
+      against 111 bpm over everything — and that is correct.*
+
+      ***One consequence found by looking at the screen rather than the diff, and
+      fixed in the same change.*** `RideChartSummaries.power` *ended its sentence
+      with an average of its own, taken over every bucket in the trace. With
+      `avg_power` redefined the two disagreed on any ride with a stop in it —
+      one screen, two numbers, both called* "average" *— which is the trap
+      `WorkoutAggregates`' own comment names as* one quantity, two derivations.
+      *The caption says nothing rather than a rival version of a figure the card
+      above already carries.*
+
+      ***Measured on a fresh ride rather than reasoned about.*** *3:09 of Just
+      Ride on the tablet AVD with `com.pelonot.debug.COAST --ei seconds 40` in
+      the middle of it, auto-pause observed firing and lifting. **189 recorded
+      rows, 168 of them pedalling.** The whole-recording means are 109.497 W and
+      68.758 rpm; the pedalling means are 123.185 W and 77.353 rpm; and the
+      finalised row says **123.185 and 77.353**, to three decimals — the live
+      path and a `SELECT AVG(...) WHERE cadence >= 1.0` agreeing exactly. The
+      stop cost 12.5% of the cadence average on a three-minute ride.*
+
+      ***No backfill, and it is a decision rather than an oversight.*** *Every
+      ride recorded before this change carries the old definition and there is
+      no marker on the row saying which it used. A launch-time pass like
+      `backfillPowerProvenance` was considered and refused: it cannot be made
+      idempotent without a column, it **cannot be done at all for a ride 23.4
+      has condensed** (the seconds are gone, and `distributions_json` does not
+      hold a mean), and a partial recomputation that looked complete would be
+      worse than a dated one. The column is display-only — nothing gates on it,
+      not the FTP proposal and not any leaderboard — which is what makes living
+      with two definitions cheaper than half-fixing it.*
+- [ ] **19.1.2c** **A stop is filed as Active Recovery.** Found on the same
+      screen in the same sitting, and it is 19.1.2b's decision reaching one card
+      further than 19.1.2b touched. The verification ride's *Time in zone* card
+      reads **Z1 Active Recovery 01:19 · 42%** on a 3:09 ride, and 21 of those
+      79 seconds are the rider standing at the tap. *Active Recovery* is a claim
+      about riding easily, and the bar makes it the largest thing on the card.
+
+      It is **not** simply 19.1.2b applied again, which is why it is its own
+      item rather than a line under one. Three things have to be decided
+      together and one of them is a data question:
+
+      - Time in zone is a **count of seconds**, and 23.4 has already established
+        that a count cannot be recomputed once a ride is trimmed — it lives in
+        `workouts.distributions_json`, written while the seconds were still
+        there. So the fix is at the moment of counting, not at the moment of
+        drawing, and an old ride keeps whatever it counted.
+      - The honest shape is probably 21.4.1's, which solved exactly this for
+        heart rate: the unrecorded seconds are **counted and named**, the zones
+        divide the time the rider was *riding*, and the caption says what that
+        was out of. What 21.4.1 refused is the tempting version — a grey wedge
+        in the bar — because an absence on the same footing as a zone is the
+        same mistake wearing a colour.
+      - And the cadence spread (16.x) is the same count with the same question,
+        one card along. Whatever is decided has to answer for both, or the two
+        cards on one screen divide the same ride by different totals
 - [x] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
       *Done, and 12.4.4 with it — they were always one piece of work. Settings
       → **Backup** writes the database through the system's own file picker as

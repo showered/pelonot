@@ -1,10 +1,10 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 14 August (forty-ninth sitting).**
-Measured, not estimated: `assembleDebug` passes, **771 JVM tests, 0
-failures**, the 21 migration tests green including the new 20 → 21, and the
+**Written 4 August 2026, updated 14 August (fifty-first sitting).**
+Measured, not estimated: `assembleDebug` passes, **777 JVM tests, 0
+failures**, the 21 migration tests green including 20 → 21, and the
 whole 113-test instrumented suite last run green in the forty-fourth sitting.
-**582 of 802 plan boxes** are ticked
+**586 of 804 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
