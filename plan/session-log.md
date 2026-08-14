@@ -6,6 +6,74 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 13 August 2026 (forty-sixth sitting): the app kept promising to reconnect to a port that was never coming back
+
+**The inbox was empty, the top of *What to do next* is owner-and-bike work for
+the twelfth sitting running, and the seam the previous sitting spent its morning
+on — written-down claims nobody re-reads — has now been mined three times.** So
+this sitting went at the one entry in `STATUS.md`'s *what is wrong today* that is
+**ours, not owner-blocked, and not deliberately deferred**: item 4, the sensor
+board's leaked serial port. Everything above it is the cloud or the owner's;
+below it, the power curve is fenced by design, 8.8b did not reproduce a fortnight
+ago, and 7 and 8 were both measured last sitting. **743 JVM tests, 0 failures**,
+and both halves watched on the tablet AVD with each other as controls.
+
+**What we owed 2.7d was 2.7.7 and 2.7.8, and both were written in July as
+instructions rather than designs.** A leaked `/dev/ttyO0` looked exactly like a
+bike that was switched off — `--` on every tile, *"Reconnecting to the bike…"*,
+and on the real hardware a retry counter that reached **141** while nothing said
+what had happened or that only a reboot would fix it.
+
+**The distinction 2.7.7 asked to *infer* turns out to be written on the wire.**
+A service that cannot open the port **still binds**, still accepts our
+registration, and then answers every poll with `TIME_OUT`. So a steady stream of
+timeouts is a claim — *the service is up and the board is not* — and silence with
+no timeout at all is a different one. That is `SensorBoardNotAnswering`, and it
+is the evidence the whole item needed.
+
+**But what actually picks between the two retry schedules is simpler than the
+exception: whether the failed bind ever delivered a reading.** A bind that
+delivered and then stopped is 2.7.4, which on the bike came back at 122 s, so it
+retries at 1 s for as long as the rider is pedalling. A bind that delivered
+**nothing** is the leaked port, where *every rebind reopens it* — so it waits 3,
+6, 12, 24 s and then **gives up**, with `SensorStatus.Unavailable` and one
+sentence the rider can act on: *"The bike's sensor isn't answering — not
+recording. Restarting the tablet usually frees it."* *Usually*, not *will*: what
+the app knows is that five binds produced nothing, not what is holding the port.
+A *Try again* button is deliberately refused — 2.7d measured that force-stopping
+every client did not release it.
+
+**2.7.8's target turned out to be a second silence detector nobody had noticed,
+and the eager one always won.** `MAX_CONSECUTIVE_TIMEOUTS = 5` counted *messages*,
+and at three polls answering several times a second that is **under a second** —
+so the source tore itself down and rebound long before the repository's own
+six-second watchdog could run, and that constant's comment described a patience
+the code never had. It is four seconds of measured quiet now. **The cost is
+written down rather than hidden**: on a 20-second dropout the gap in
+`workout_metrics` measured **17 seconds against the old schedule's ~7**, and two
+rebinds where there used to be four. That is the trade the item asked for.
+
+**And the interesting finding is a defect the change itself introduced, found by
+driving it rather than by reading it (2.7.9).** `retryWhen` returning `false`
+**rethrows**, and an uncaught throw inside `scope.launch` takes the process
+down — a `SupervisorJob` isolates siblings, it does not handle. The first time
+giving up actually happened: `FATAL EXCEPTION`, the app gone mid-ride, and the
+ride left for the crash-recovery prompt to find — **worse than the defect being
+fixed**. Every retry policy in this project had been infinite, so no exception
+had ever reached the end of the pipeline; the first item to make one terminal
+inherited an error path nobody had walked. It is in CLAUDE.md now.
+
+**The controls are the two rides against each other.** Dead board: 4 rebinds,
+gave up at 65 s, 0 samples, and the summary honestly says *"no second-by-second
+record"* rather than a row of zeros. Dropout: 2 rebinds, no give-up, 69 samples
+of 86 s with a 17-second gap exactly where the silence was, and the chip back to
+*"Simulated telemetry"* once it recovered. 0 `FATAL EXCEPTION` in both, against 1
+on the first attempt. `DEAD_BOARD` joins `COAST`, `CORRUPT` and `SILENCE` as a
+lever, because the bike is still a perishable resource and this one needs 65
+seconds of a board refusing to answer.
+
+---
+
 ## 13 August 2026 (forty-fifth sitting): the blockers list was three-quarters fixed and nobody had looked
 
 **The inbox was empty and the top of *What to do next* was, for the eleventh

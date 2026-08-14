@@ -633,7 +633,38 @@ Three things this could feed, in increasing order of how much they can hurt:
       is on screen. Beside the question it would have been 21.6.1's prefill
       without 21.6.1's rule that the rider's own answer stays theirs — the same
       change, in the wrong order, would have broken a rule the item below it
-      exists to protect
+      exists to protect.
+
+      ***Watched on the tablet AVD in four cases, on one real 12:48 ride of
+      `THR-01 Threshold 2×4` with the power's own time in zone as the control.***
+      The class prescribes 4:00 of Z4 in the 12:48 that was ridden — 31% — and
+      every case below is the same 768 seconds with only the heart changed, so
+      `Z1 4:27 · Z2 3:14 · Z3 1:58 · Z4 1:03 · Z5 0:51 · Z6 1:15` is identical
+      in all four screenshots.
+
+      - **As ridden, straight off the simulator:** H4 1:42 + H5 2:07 = 3:49,
+        which is 30% against the prescription's 31%. *"About what the class
+        asked — 3 minutes 49 seconds in your top two heart-rate zones, against
+        the 4 minutes it prescribed."* A real case out of the box, and a
+        one-point gap is exactly what the middle verdict is for.
+      - **Every second at 160 bpm** (H4 for a Tanaka maximum of 179): *"Harder
+        than the class asked — 12 minutes 48 seconds …, against the 4 minutes it
+        prescribed."*
+      - **Every second at 110** (H2): *"Easier than the class asked — no time in
+        your top two heart-rate zones, against the 4 minutes it prescribed."*
+      - **A strap that heard the last 3:13 of the 12:48, all of it H4** — and
+        this is the case worth having watched, because the card draws, the
+        coverage caption says *"a heart rate for 03:13 of 12:48"*, and **there
+        is no verdict at all**. Without the gate it would have said *harder than
+        the class asked* off 100% of a quarter of the ride.
+
+      **Two defects came out of looking at the card rather than the diff**, and
+      both had been on screen for four sittings. The zone list did not end in a
+      full stop, so the new sentence ran straight on from it as one sentence —
+      the postfix is load-bearing now and is tested. And `formatDuration` had
+      the plural hard-coded, so the card had been saying **"1 minutes 42
+      seconds"** since 16.2.4, in a string that is read aloud by a screen reader
+      as well as printed. **767 JVM tests, 0 failures**, up from 751
 - [ ] **21.6.4** **The honest limit, stated once so it is not rediscovered.**
       Heart rate lags effort by a minute or two, drifts upward across a long
       ride at constant power, and moves with heat, caffeine, sleep and

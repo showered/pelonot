@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 14 August (forty-seventh sitting).**
-Measured, not estimated: `assembleDebug` passes, **751 JVM tests and 112
-instrumented tests, 0 failures**, and **577 of 801 plan boxes** are ticked
+**Written 4 August 2026, updated 14 August (forty-eighth sitting).**
+Measured, not estimated: `assembleDebug` passes, **767 JVM tests and 112
+instrumented tests, 0 failures**, and **578 of 802 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -128,6 +128,13 @@ always had — with the one rule that stops it being the power chart in a
 different colour: a second with no strap on it is *unknown*, not Recovery, so
 the zones divide the time a heart rate was actually reported and the card says
 *"a heart rate for 5:13 of 8:13"* when the strap missed some of the ride.
+**And a ride is held against the class it was ridden to** (21.6.3): the class
+recorded the effort it prescribed and the strap recorded the effort that was
+made, so one sentence says *"Harder than the class asked — 12 minutes 48
+seconds in your top two heart-rate zones, against the 4 minutes it
+prescribed."* It says nothing at all on most rides, and that is the design: a
+free ride was asked for nothing, and a strap that heard three minutes of
+thirteen describes three minutes rather than the ride.
 
 **The household.** A profile selector built for the tablet, a per-class
 leaderboard, the household's **last 30 days** with streaks and an opt-out — a
