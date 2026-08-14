@@ -1,8 +1,8 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 13 August (forty-sixth sitting).**
-Measured, not estimated: `assembleDebug` passes, **743 JVM tests and 112
-instrumented tests, 0 failures**, and **575 of 801 plan boxes** are ticked
+**Written 4 August 2026, updated 14 August (forty-seventh sitting).**
+Measured, not estimated: `assembleDebug` passes, **751 JVM tests and 112
+instrumented tests, 0 failures**, and **577 of 801 plan boxes** are ticked
 across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
@@ -122,7 +122,12 @@ onto the ride so a later change cannot silently redraw history.
 estimate and every column nullable, because a default maximum is a guess about
 somebody's body. **The maximum a ride was ridden at is recorded onto the ride**,
 for the same reason its FTP is: a rider who measures a real 186 in September
-must not silently redraw every ride they did in August (21.2.3).
+must not silently redraw every ride they did in August (21.2.3). And **a ride
+says how long it spent in each of them** (21.4.1), beside the power one it has
+always had — with the one rule that stops it being the power chart in a
+different colour: a second with no strap on it is *unknown*, not Recovery, so
+the zones divide the time a heart rate was actually reported and the card says
+*"a heart rate for 5:13 of 8:13"* when the strap missed some of the ride.
 
 **The household.** A profile selector built for the tablet, a per-class
 leaderboard, the household's **last 30 days** with streaks and an opt-out — a
@@ -363,6 +368,21 @@ race has to exclude.
    escalation is what makes it worth reading: the first two instances were
    rules in `classlibrary/README.md`, and this one is **the summary page a
    person reads instead of the plan**. See item 8.
+
+   **It paid out a fourth time, and this one went the other way (21.4.1).** Two
+   boxes in Phase 21 were wrong in opposite directions and neither made any
+   screen look broken. **21.2.3 — the maximum heart rate a ride was ridden at,
+   stored on the ride — had been built, migrated and watched three sittings
+   earlier and never crossed off**, so the plan carried it as outstanding while
+   the column was on the row and two readers were using it. And **21.4.2 was
+   ticked with two clauses in it**: the banded heart-rate trace, which was
+   built, and *"an HR-zone distribution beside the power one"*, which was not —
+   so for three sittings the heart rate had a trace and no distribution while
+   power had both, and nothing was wrong on the screen, there was simply
+   nothing on it. The lesson is narrower than the three above and worth keeping
+   separately: **a box with two clauses in it gets ticked for whichever one was
+   done**, and a stale claim goes stale in the direction of *already finished*
+   as readily as the other way.
 8. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the
@@ -416,8 +436,8 @@ honest telemetry, migrations, an overlay that survives Netflix — are behind us
 had already been fixed elsewhere, and this page had been repeating them for
 weeks (item 7).
 
-**Done as the plan is written: 71%, and it will never be 100.** 575 of 801
-boxes, and the remaining 226 are not a queue. They are a place ideas are kept
+**Done as the plan is written: 72%, and it will never be 100.** 577 of 801
+boxes, and the remaining 224 are not a queue. They are a place ideas are kept
 with their reasoning attached, which is what has stopped this project rebuilding
 things it had already decided against. **It has gone *down* in a sitting where
 three things were finished**, and moved by one box in a sitting whose whole

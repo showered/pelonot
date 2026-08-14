@@ -6,6 +6,82 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 13 August 2026 (forty-fifth sitting): the blockers list was three-quarters fixed and nobody had looked
+
+**The inbox was empty and the top of *What to do next* was, for the eleventh
+sitting, owner-and-bike work — so the brief was triage, and the previous sitting
+had already said where to look: *"when this list is all owner-and-bike, the
+written-down-but-unchecked claims are the seam, and this project has now paid
+out on it twice."*** So this sitting went at the biggest written-down claim there
+is: `STATUS.md`'s **Blocking a stranger being able to use this** table, the four
+rows that are the project's own answer to *what is between here and someone else
+using this*. **735 JVM tests, 0 failures**, and the one change was watched on the
+tablet AVD with the previous build as the control.
+
+**The top row was three-quarters false, and had been for weeks.** 19.1.6 — *the
+first run explains nothing* — listed four faults a new rider meets. Checked line
+by line against the code:
+
+- the FTP **is not prefilled with 200** and has not been since 20.3 replaced the
+  whole screen with an estimate the rider is shown and can overrule;
+- the overlay permission **is** asked during the countdown, and that is where the
+  owner asked for it (11.6.14) — so that clause is not stale but **superseded by
+  a decision that went the other way**, and building it would undo watched work;
+- a heart-rate strap **is one tap off the ride screen** (11.6.9), on the tile
+  showing the empty number, which is better than the item's own "mention it
+  once".
+
+**Three separate items had fixed three clauses and nobody came back to cross
+them off.** The escalation is what makes it worth writing down rather than
+quietly fixing: the first two instances of this pattern were rules in
+`classlibrary/README.md` (R10, then 23.2.8), and this one is **the summary page
+a person reads instead of the plan**.
+
+**The fourth clause was true, was the only one nobody had built, and was the
+smallest.** A rider who has just side-loaded this onto their bike meets **"Who's
+riding?" over a Guest tile and a New rider tile** — every word the app says about
+itself — and that was screenshotted off a fresh install as the control. It is
+fixed as a **state of the profile picker rather than a screen in front of it**:
+an empty `profiles` list is the only first run there is, so the database is the
+flag and there is no *has seen the welcome* preference to drift out of step with
+it. The app's name, one sentence — *"Your ride, on the bike's own tablet, over
+whatever you're watching"* — and *Set up · Four questions, then ride* filled and
+first, with Guest keeping the outline it always had. That inverts 20.1.3 **by
+applying it**: the outline exists so the eye lands on a real rider, and on an
+empty bike there is none to land on.
+
+**Two smaller things came out of the same discipline.** The design tokens were
+measured against `Color.kt` for the first time since they were transcribed —
+**no drift**, all 28 colour declarations, six spacings and the 760 dp cap — so
+17.15.2 stays unbuilt on its own terms rather than on inertia. The grep did turn
+up that **`--radius-control` was never a copy at all**, under a comment claiming
+it matched the app: there is no 10 dp shape in `Shapes.kt`, the buttons are pills
+and the fields are 4 dp. The *comment* is corrected, because copying a pill onto
+a full-width form on a phone would be a design change made by a sentence. And
+the README's status paragraph still said signing out, deleting a cloud copy and
+restoring were **not built**; all three have been for two sittings.
+
+**And one live defect went with it, from the same journey (11.6.15).** The
+overlay prompt offers three buttons and one of them — *Don't use the overlay* —
+writes the preference off **for good**, with nothing in front of the rider
+saying so or where it comes back. On a first ride that is the app's primary
+surface declined by somebody who thought they were answering about this ride.
+The item's own last line was the right instruction — *check what Settings
+already says* — and Settings says it: the section is headed **Ride overlay** and
+its first row is the toggle, under the same name the dialog uses. So nothing new
+was written, only one sentence at the moment of the decision. **The obvious
+alternative is this same defect mirrored**: a line on the ride screen saying the
+overlay is off would follow a rider who turned it off on purpose, for ever.
+Watched as a round trip rather than a screenshot — the sentence read over a
+paused countdown, the button tapped, and Settings then found with the toggle
+off, so the claim the dialog makes is true.
+
+**What this leaves for the next sitting is a question rather than a task.**
+19.1.7a proposes a script that keeps `STATUS.md` honest by counting boxes and
+tests — and it would not have caught any of this, because what went stale was
+prose about what a rider meets. It stays unbuilt for a better reason than "not
+yet".
+
 ## 13 August 2026 (forty-fourth sitting): a promise nobody was holding the library to
 
 **The inbox was empty, item 0 of *What to do next* needs a throwaway account and
