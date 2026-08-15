@@ -1,0 +1,15 @@
+# Files in this directory that are not the app (PLAN 17.16.2).
+#
+# `wrangler.jsonc` uploads everything under `web/` as a static asset, so
+# without this the host would serve the README, the deploy config and the
+# drift-checking script alongside the pages. None of them is a secret — this
+# repository is public and `config.js` is *meant* to be served — but a deploy
+# should publish the app and not its scaffolding.
+#
+# If Wrangler ever stops honouring this file the failure is visible rather than
+# silent: `curl <host>/README.md` answers with the file instead of a 404.
+README.md
+check-deployed.sh
+config.example.js
+wrangler.jsonc
+.assetsignore
