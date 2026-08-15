@@ -59,7 +59,6 @@ import com.pelonot.domain.model.RideDayGrouping
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.columnsFor
 import com.pelonot.ui.theme.spacing
-import com.pelonot.ui.theme.units
 import com.pelonot.ui.viewmodel.HistoryViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -361,17 +360,16 @@ private fun RideRow(
                 )
                 Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
                 Text(
-                    text = buildString {
-                        append(time)
-                        append("  ·  ")
-                        append(Formatters.duration(ride.durationSec))
-                        append("  ·  ")
-                        append(Formatters.kilojoules(ride.totalOutputKj))
-                        append("  ·  ")
-                        append(Formatters.watts(ride.avgPower ?: 0.0))
-                        append("  ·  ")
-                        append(Formatters.distance(ride.totalDistanceKm, MaterialTheme.units))
-                    },
+                    // 26.1.3. This row used to carry five facts — the time, the
+                    // duration, the kilojoules, the average watts and the
+                    // distance. **The screen's only question is which ride was
+                    // that**, and the class name above answers most of it; when
+                    // and how long answer the rest. The other three are
+                    // measurements on a row where a *choice* is being made,
+                    // which is the failure case CLAUDE.md names for a profile
+                    // tile reading `150 W FTP` under a name. All three are one
+                    // tap away on the ride itself, where they are being read.
+                    text = "$time  ·  ${Formatters.duration(ride.durationSec)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
