@@ -150,7 +150,9 @@ screen is **993 dp of content in a 664 dp viewport**), and **achievements**
 28's opening section is the reconciliation between *"gamify it all even
 further"* and 26.4, which the owner and this plan agreed to leave).
 
-*Empty.*
+### Post-ride question
+
+Where it asks how your workout went shouldn't be lost below the fold. Work out a slightly better design please.
 
 ---
 

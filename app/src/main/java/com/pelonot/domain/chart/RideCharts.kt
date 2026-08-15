@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.MaxHeartRate
@@ -60,11 +61,36 @@ data class RideTrace(
     val isEmpty: Boolean get() = buckets.isEmpty()
 }
 
-/** How long the ride spent in each zone, in seconds. */
+/**
+ * How long the ride spent in each zone, in seconds.
+ *
+ * **The zones divide the seconds the rider was pedalling, not the seconds the
+ * ride recorded (19.1.2c).** A second at zero cadence is a second nobody rode —
+ * a bottle stop, or the twenty an auto-pause has to watch before it can know a
+ * stop is a stop — and filing it under *Z1 Active Recovery* puts a claim about
+ * riding easily on time spent standing still. It was measured doing exactly
+ * that: 21 of 79 Z1 seconds on a 3:09 ride, and Z1 was the largest thing on the
+ * card.
+ *
+ * So [secondsStopped] is kept beside the zones for [TimeInHeartRateZone]'s
+ * reason, one metric along — the card can say what its percentages are out of.
+ * The seconds are **not** drawn as a wedge in the bar: 21.4.1 refused that for
+ * the heart and the argument is the same, an absence on the same footing as a
+ * zone is the same mistake wearing a colour.
+ */
 data class TimeInZone(
-    val secondsByZone: Map<PowerZone, Int> = emptyMap()
+    val secondsByZone: Map<PowerZone, Int> = emptyMap(),
+    /** Recorded seconds with the cranks still. See the note above. */
+    val secondsStopped: Int = 0
 ) {
+    /** Seconds the rider was pedalling, which is what the zones divide. */
     val totalSeconds: Int get() = secondsByZone.values.sum()
+
+    /** Every second the ride recorded, whether it was ridden or not. */
+    val recordedSeconds: Int get() = totalSeconds + secondsStopped
+
+    /** True when some of the recorded ride was spent standing still. */
+    val isPartial: Boolean get() = totalSeconds > 0 && secondsStopped > 0
 
     fun fractionOf(zone: PowerZone): Float {
         val total = totalSeconds
@@ -549,21 +575,42 @@ object RideChartBuilder {
         val bands = samples
             // Coasting is not a cadence. Without this every ride has a large
             // spike in the 0-9 band that says nothing about how it was ridden.
-            .filter { it.cadenceRpm >= MIN_CHARTED_CADENCE }
+            //
+            // 19.1.2c: the threshold used to be a private 20 rpm of this
+            // function's own, which made three answers in this app to the
+            // question *was the rider pedalling* — the pause's, the averages'
+            // and this one. It is `AutoPausePolicy`'s now. The measurement that
+            // says the change costs nothing is that a stop produces **no
+            // samples at all between 1 and 19 rpm**: 21 zeros and 168 seconds
+            // above 20 on the ride this was checked against, which is the
+            // board reporting a true 0 the moment the cranks stop rather than a
+            // flywheel coasting down through the low bands.
+            .filter { it.cadenceRpm >= AutoPausePolicy.PEDALLING_RPM }
             .groupingBy { (it.cadenceRpm / CADENCE_BAND_RPM).toInt() }
             .eachCount()
 
         return CadenceDistribution(secondsByBand = bands)
     }
 
+    /**
+     * The zones divide the seconds that were *ridden* (19.1.2c).
+     *
+     * The stopped seconds are counted rather than dropped, so the card can say
+     * what its percentages are out of — the same shape [heartRateTimeInZone]
+     * already uses for a strap that missed part of the ride, and the same
+     * threshold `AutoPausePolicy` stops the clock on.
+     */
     private fun timeInZone(samples: List<ChartSample>, ftpWatts: Int): TimeInZone {
         if (ftpWatts <= 0) return TimeInZone()
 
-        val byZone = samples
+        val (ridden, stopped) = samples.partition {
+            it.cadenceRpm >= AutoPausePolicy.PEDALLING_RPM
+        }
+        val byZone = ridden
             .groupingBy { PowerZone.forPower(it.powerWatts, ftpWatts.toDouble()) }
             .eachCount()
 
-        return TimeInZone(secondsByZone = byZone)
+        return TimeInZone(secondsByZone = byZone, secondsStopped = stopped.size)
     }
 
     /**
@@ -665,7 +712,6 @@ object RideChartBuilder {
     }
 
     private const val DEFAULT_BUCKETS = 300
-    private const val MIN_CHARTED_CADENCE = 20.0
 }
 
 /**
@@ -766,14 +812,29 @@ object RideChartSummaries {
 
     fun timeInZone(timeInZone: TimeInZone): String {
         if (timeInZone.totalSeconds == 0) {
+            // 19.1.2c: a ride can now reach zero pedalling seconds while still
+            // having recorded some, which is a different fact from having no
+            // FTP to divide by and is said as one.
+            if (timeInZone.secondsStopped > 0) {
+                return "Nothing was pedalled in this ride's " +
+                    "${formatDuration(timeInZone.secondsStopped)} of recording."
+            }
             return "Time in zone needs an FTP, and this ride has none."
         }
-        return timeInZone.occupied.joinToString(
+        val zones = timeInZone.occupied.joinToString(
             prefix = "Time in zone: ",
             postfix = "."
         ) { (zone, seconds) ->
             "${zone.displayName} ${formatDuration(seconds)}"
         }
+        // The heart's sentence's twin (21.4.1), for the same reason: five zones
+        // adding to 100% read as the shape of the ride, so when some of the
+        // recording was not ridden the card says what the percentages are out
+        // of rather than leaving it to be assumed.
+        if (!timeInZone.isPartial) return zones
+        return "$zones You were pedalling for " +
+            "${formatDuration(timeInZone.totalSeconds)} of " +
+            "${formatDuration(timeInZone.recordedSeconds)}."
     }
 
     /**

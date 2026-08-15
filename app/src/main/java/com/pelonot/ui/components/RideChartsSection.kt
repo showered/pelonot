@@ -365,6 +365,15 @@ private fun CadenceCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     CadenceDistributionChart(distribution = charts.cadence)
 }
 
+/**
+ * Time in zone, whose percentages are out of the seconds that were *ridden*
+ * (19.1.2c) rather than the seconds that were recorded.
+ *
+ * The fourth caption is the one this card did not used to have, and it is the
+ * heart card's coverage line one metric along: a stop counted under *Z1 Active
+ * Recovery* is a claim about riding easily made about time spent standing
+ * still, and on a short ride it can be the largest thing on the card.
+ */
 @Composable
 private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
     title = "Time in zone",
@@ -375,7 +384,16 @@ private fun ZoneCard(charts: RideCharts, modifier: Modifier) = ChartCard(
         // the rider had that day, and they are not today's zones.
         charts.zoneFtpWatts
             ?.takeIf { it != charts.ftpWatts }
-            ?.let { "at $it W, the FTP at the time" }
+            ?.let { "at $it W, the FTP at the time" },
+        // 19.1.2c, and the heart card's coverage caption's twin one metric
+        // along: said as the time that *was* ridden rather than the time that
+        // was not, because that is the number the percentages below are out of.
+        charts.timeInZone
+            .takeIf { it.isPartial }
+            ?.let {
+                "pedalling for ${Formatters.duration(it.totalSeconds)} of " +
+                    Formatters.duration(it.recordedSeconds)
+            }
     ).joinToString(" · ").takeIf { it.isNotEmpty() },
     summary = RideChartSummaries.timeInZone(charts.timeInZone),
     modifier = modifier

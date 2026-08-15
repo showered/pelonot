@@ -95,6 +95,66 @@ class RideChartBuilderTest {
         assertTrue(RideChartSummaries.timeInZone(noFtp.timeInZone).contains("needs an FTP"))
     }
 
+    /**
+     * 19.1.2c, and it is the measured case: a bottle stop used to arrive as
+     * *Z1 Active Recovery*, which is a claim about riding easily made about a
+     * rider standing still. On the 3:09 ride this was found on, 21 of the 79
+     * Z1 seconds were the stop and Z1 was the largest thing on the card.
+     */
+    @Test
+    fun `the seconds the rider was stopped are not filed under Active Recovery`() {
+        // 240 s ridden at 200 W, then 60 s at a standstill.
+        val samples = ride(
+            300,
+            power = { if (it < 240) 200.0 else 0.0 },
+            cadence = { if (it < 240) 85.0 else 0.0 }
+        )
+
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200)
+
+        assertEquals(240, charts.timeInZone.secondsByZone[PowerZone.Z4])
+        assertEquals(null, charts.timeInZone.secondsByZone[PowerZone.Z1])
+        assertEquals(240, charts.timeInZone.totalSeconds)
+        assertEquals(60, charts.timeInZone.secondsStopped)
+        // Every recorded second is still accounted for; only the divisor moved.
+        assertEquals(300, charts.timeInZone.recordedSeconds)
+        assertEquals(1f, charts.timeInZone.fractionOf(PowerZone.Z4), 0.0001f)
+    }
+
+    @Test
+    fun `a ride with a stop in it says what its percentages are out of`() {
+        val samples = ride(
+            300,
+            power = { if (it < 240) 200.0 else 0.0 },
+            cadence = { if (it < 240) 85.0 else 0.0 }
+        )
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200)
+
+        val said = RideChartSummaries.timeInZone(charts.timeInZone)
+        assertTrue(said, said.contains("pedalling for 4 minutes of 5 minutes"))
+
+        // And it stays silent about coverage on a ride that never stopped —
+        // 21.4.1's rule, that a caption which is always there stops being read.
+        val straightThrough = RideChartBuilder.build(ride(300), ftpWatts = 200)
+        assertFalse(straightThrough.timeInZone.isPartial)
+        assertFalse(RideChartSummaries.timeInZone(straightThrough.timeInZone).contains("pedalling"))
+    }
+
+    @Test
+    fun `a recording in which nothing was pedalled says so rather than blaming the FTP`() {
+        val samples = ride(90, power = { 0.0 }, cadence = { 0.0 })
+
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200)
+
+        assertEquals(0, charts.timeInZone.totalSeconds)
+        assertEquals(90, charts.timeInZone.secondsStopped)
+        // `isPartial` is false: there is no proportion to qualify, and the
+        // caption is a different sentence rather than a coverage clause.
+        assertFalse(charts.timeInZone.isPartial)
+        val said = RideChartSummaries.timeInZone(charts.timeInZone)
+        assertTrue(said, said.contains("Nothing was pedalled"))
+    }
+
     @Test
     fun `coasting is not a cadence`() {
         // Half the ride freewheeling. Without the filter, the 0-9 band would be
@@ -196,6 +256,33 @@ class RideChartBuilderTest {
         // 540 pedalling seconds, and not one of them in a band below 20 rpm.
         assertEquals(540, charts.cadence.totalSeconds)
         assertTrue(charts.cadence.secondsByBand.keys.none { it * 10 < 20 })
+    }
+
+    /**
+     * 19.1.2c's other half. The spread's filter used to be a private 20 rpm of
+     * its own, which made three answers in this app to *was the rider
+     * pedalling*. It is `AutoPausePolicy`'s now, and the reason that costs
+     * nothing is measured rather than argued: a stop produces no samples
+     * between 1 and 19 rpm at all, because the board reports a true zero the
+     * moment the cranks stop.
+     *
+     * What the change does buy is that a genuine grind at 14 rpm is now on the
+     * chart, where the old threshold silently deleted it.
+     */
+    @Test
+    fun `the cadence spread and the zones agree about what pedalling means`() {
+        val samples = ride(
+            120,
+            cadence = { if (it < 60) 85.0 else if (it < 90) 14.0 else 0.0 }
+        )
+
+        val charts = RideChartBuilder.build(samples, ftpWatts = 200)
+
+        // 60 s at 85 and 30 s at 14 are both riding; the 30 s of stillness is not.
+        assertEquals(90, charts.cadence.totalSeconds)
+        assertEquals(30, charts.cadence.secondsByBand[1])
+        assertEquals(90, charts.timeInZone.totalSeconds)
+        assertEquals(30, charts.timeInZone.secondsStopped)
     }
 
     @Test

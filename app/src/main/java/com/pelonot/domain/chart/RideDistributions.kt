@@ -61,6 +61,20 @@ data class RideDistributions(
     @SerialName("seconds_without_hr")
     val secondsWithoutHr: Int = 0,
     /**
+     * Recorded seconds with the cranks still (19.1.2c).
+     *
+     * Absent from a blob written before this existed, where it reads as zero —
+     * and unlike [secondsByHrZone] there is no empty map beside it to tell the
+     * two apart, so an old trimmed ride with a bottle stop in it will show its
+     * stopped seconds still counted under Z1 and say nothing about it. That is
+     * the one case this change cannot reach and it is deliberately not guessed
+     * at: **an untrimmed ride recomputes from its own samples every time**, so
+     * every ride on a tablet today corrects itself the moment this build runs.
+     * Only a ride already condensed keeps the old counting.
+     */
+    @SerialName("seconds_stopped")
+    val secondsStopped: Int = 0,
+    /**
      * The maximum heart rate the zones above were counted against.
      *
      * [ftpWatts]' twin, for [ftpWatts]' reason: `workouts.max_hr_bpm` is the
@@ -74,7 +88,8 @@ data class RideDistributions(
     fun timeInZone(): TimeInZone = TimeInZone(
         secondsByZone = secondsByZone.mapNotNull { (name, seconds) ->
             PowerZone.entries.firstOrNull { it.name == name }?.let { it to seconds }
-        }.toMap()
+        }.toMap(),
+        secondsStopped = secondsStopped
     )
 
     fun heartRateTimeInZone(): TimeInHeartRateZone = TimeInHeartRateZone(
@@ -101,6 +116,7 @@ data class RideDistributions(
                 .map { (zone, seconds) -> zone.name to seconds }
                 .toMap(),
             secondsWithoutHr = charts.timeInHeartRateZone.secondsUnrecorded,
+            secondsStopped = charts.timeInZone.secondsStopped,
             // Zero when the ride had no maximum to count against, in which case
             // the map above is empty too and there is nothing to be a
             // denominator for.
