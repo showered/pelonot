@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<main>
+<main id="main">
   <header>
     <h1>Pelonot</h1>
     <p class="muted small" id="subtitle">Your rides, off the bike.</p>
@@ -40,32 +40,212 @@
     </p>
   </section>
 
-  <!-- Signed in -->
-  <section id="signed-in" class="hidden">
-    <p class="small muted" id="who"></p>
-    <h2>Your rides</h2>
-    <div id="rides"></div>
+  <!-- Signed in. Everything below is one of five views; the nav picks one. -->
+  <nav class="nav hidden" id="nav">
+    <button data-view="rides" aria-current="page">Rides</button>
+    <button data-view="board">Board</button>
+    <button data-view="riders">Riders</button>
+    <button data-view="you">You</button>
+    <span class="spacer"></span>
+    <span class="small muted" id="who"></span>
+  </nav>
+
+  <!-- Your rides ------------------------------------------------------- -->
+  <section id="view-rides" class="hidden">
+    <div class="tiles" id="totals"></div>
+
+    <div class="card" id="weeks-card">
+      <div class="chart-head">
+        <p class="figure-label">Output, last 12 weeks</p>
+        <p class="caption muted" id="weeks-caption"></p>
+      </div>
+      <svg class="chart" id="chart-weeks" style="height:120px"></svg>
+    </div>
+
+    <h2>Every ride</h2>
+    <div class="grid" id="rides"></div>
     <p id="empty" class="muted small hidden">
       Nothing here yet. Rides appear once the bike has backed one up — which it
       does on its own, whenever there is a network.
     </p>
-    <button class="secondary" id="sign-out">Sign out</button>
   </section>
 
-  <!-- One ride -->
-  <section id="ride" class="hidden">
-    <button class="secondary" id="back">← All rides</button>
+  <!-- One ride --------------------------------------------------------- -->
+  <section id="view-ride" class="hidden">
+    <button class="secondary inline" id="back">← All rides</button>
     <h2 id="ride-title"></h2>
     <p class="muted small" id="ride-when"></p>
+
     <div class="card row" id="ride-figures"></div>
+
     <div class="card">
-      <p class="figure-label">Power</p>
-      <svg class="chart" id="chart-power"></svg>
-      <p class="figure-label" style="margin-top:16px">Cadence</p>
+      <div class="chart-head">
+        <p class="figure-label">Power</p>
+        <p class="caption muted" id="power-caption"></p>
+      </div>
+      <svg class="chart tall" id="chart-power"></svg>
+      <div class="zone-key" id="power-zone-key"></div>
+
+      <div class="chart-head">
+        <p class="figure-label">Cadence</p>
+      </div>
       <svg class="chart" id="chart-cadence"></svg>
-      <p class="figure-label" style="margin-top:16px">Heart rate</p>
+
+      <div class="chart-head">
+        <p class="figure-label">Heart rate</p>
+        <p class="caption muted" id="hr-caption"></p>
+      </div>
       <svg class="chart" id="chart-hr"></svg>
+      <div class="zone-key" id="hr-zone-key"></div>
+
       <p class="small muted" id="power-provenance"></p>
+      <p class="caption muted" id="resolution"></p>
+    </div>
+
+    <div class="card" id="time-in-zone-card">
+      <p class="figure-label">Time in zone</p>
+      <div class="zone-bar" id="time-in-zone"></div>
+      <div class="zone-key" id="time-in-zone-key"></div>
+      <p class="caption muted" id="time-in-zone-caption"></p>
+    </div>
+
+    <!-- The keyboard half: a ride's name and who may see it. The bike has no
+         keyboard worth the name, which is Phase 17's whole premise. -->
+    <div class="card" id="ride-edit">
+      <label for="ride-name">Name this ride</label>
+      <input id="ride-name" maxlength="80" placeholder="Thursday climb">
+      <div class="switch">
+        <input type="checkbox" id="ride-hidden">
+        <span class="small">
+          <strong>Hide this ride from everyone else.</strong>
+          It leaves the leaderboard, the ghosts and the feed. It stays here, in
+          full, and your own totals still count it.
+        </span>
+      </div>
+      <button class="inline" id="ride-save">Save</button>
+      <span class="small muted" id="ride-save-note"></span>
+    </div>
+
+    <div class="card" id="ride-social">
+      <p class="figure-label">Kudos and comments</p>
+      <div class="row middle tight" style="margin-top:8px">
+        <button class="secondary inline" id="ride-kudos">👏 Kudos</button>
+        <span class="small muted" id="ride-kudos-count"></span>
+      </div>
+      <div id="ride-comments"></div>
+      <label for="comment-body">Say something</label>
+      <textarea id="comment-body" maxlength="280"
+                placeholder="Nice negative split."></textarea>
+      <button class="inline" id="comment-send">Post</button>
+      <p class="caption muted" id="social-note"></p>
+    </div>
+  </section>
+
+  <!-- The board -------------------------------------------------------- -->
+  <section id="view-board" class="hidden">
+    <h2>Leaderboard</h2>
+    <p class="small muted">
+      Everyone with an account, ranked on their best effort at one class. Only
+      rides where <strong>the bike measured the watts</strong> can be compared —
+      an estimated watt and a measured one are not the same number.
+    </p>
+
+    <label for="board-class">Class</label>
+    <select id="board-class"></select>
+
+    <div class="row middle tight" style="margin-top:12px">
+      <button class="secondary inline" id="board-basis">Show watts per kilo</button>
+    </div>
+
+    <div class="card" id="board"></div>
+    <p class="small muted" id="board-note"></p>
+  </section>
+
+  <!-- Riders and the feed ---------------------------------------------- -->
+  <section id="view-riders" class="hidden">
+    <h2>Recent rides</h2>
+    <div id="feed"></div>
+    <p class="small muted hidden" id="feed-empty">
+      Nobody is sharing their rides yet — including you. It is off until somebody
+      turns it on, which is under <strong>You</strong>.
+    </p>
+
+    <h2>Everyone here</h2>
+    <div class="grid" id="riders"></div>
+    <p class="small muted">
+      This is everyone with an <em>account</em>. Somebody who rides your bike
+      without one is not missing from here — they were never in the cloud at
+      all, and their rides are on the bike where they belong.
+    </p>
+  </section>
+
+  <!-- You -------------------------------------------------------------- -->
+  <section id="view-you" class="hidden">
+    <h2>You</h2>
+    <div class="card">
+      <div class="row middle tight" id="you-header"></div>
+
+      <label for="you-name">Name</label>
+      <input id="you-name" maxlength="40">
+
+      <label for="you-bio">Bio</label>
+      <textarea id="you-bio" maxlength="280"
+                placeholder="Two lines about your riding. Everyone here can read it."></textarea>
+
+      <label for="you-ftp">FTP (watts)</label>
+      <input id="you-ftp" type="number" min="50" max="600" step="1">
+      <p class="caption muted">
+        Functional threshold power — roughly the hardest you could hold for an
+        hour. It is what the power zones on your charts are drawn from. The bike
+        works this out for you as you ride; changing it here changes it
+        everywhere.
+      </p>
+
+      <label for="you-weight">Weight (<span id="weight-unit">kg</span>)</label>
+      <input id="you-weight" type="number" min="20" max="400" step="0.1">
+
+      <label for="you-maxhr">Maximum heart rate (bpm)</label>
+      <input id="you-maxhr" type="number" min="100" max="240" step="1"
+             placeholder="Leave empty if you don't know it">
+      <p class="caption muted">
+        Only used to band the heart-rate charts. Without it they are drawn with
+        no zones, which is the honest answer rather than a guess.
+      </p>
+
+      <label for="you-units">Units</label>
+      <select id="you-units">
+        <option value="metric">Kilometres and kilograms</option>
+        <option value="imperial">Miles and pounds</option>
+      </select>
+
+      <div class="switch">
+        <input type="checkbox" id="you-sharing">
+        <span class="small">
+          <strong>Share my rides with everyone here.</strong>
+          Your rides appear under <em>Recent rides</em> with their date, length
+          and output, and other riders can give kudos and comment. Off by
+          default. Your leaderboard scores are separate and are always visible —
+          that is what the leaderboard is.
+        </span>
+      </div>
+
+      <button id="you-save">Save</button>
+      <p class="small" id="you-note"></p>
+    </div>
+
+    <div class="card">
+      <h3>Your data</h3>
+      <p class="small muted">
+        Everything the cloud holds about you, as one JSON file: your profile,
+        every ride and every stored sample.
+      </p>
+      <button class="secondary" id="you-export">Download my data</button>
+    </div>
+
+    <div class="card">
+      <h3>This account</h3>
+      <p class="small muted" id="you-account"></p>
+      <button class="secondary" id="sign-out">Sign out</button>
     </div>
   </section>
 </main>
@@ -73,6 +253,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js" onerror="void 0"></script>
 <script src="lib.js"></script>
-<script src="rides.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

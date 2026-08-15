@@ -1,14 +1,17 @@
 /*
  * Pelonot on the web — one stylesheet, no framework (PLAN 17.1).
  *
- * The palette, spacing and width cap live in `tokens.css`, transcribed from the
- * Android theme (17.15). Nothing in this file invents a colour or a gap: if a
- * value is not a token, that is a bug rather than a shortcut.
+ * The palette, spacing, type scale and width caps live in `tokens.css`,
+ * transcribed from the Android theme (17.15, 17.15.1). Nothing in this file
+ * invents a colour, a gap or a size: if a value is not a token, that is a bug
+ * rather than a shortcut. The exceptions are borders, opacities and a handful
+ * of grid minimums, which have no Android original to be out of step with.
  *
  * It is opened on two devices with nothing in common: a phone held in one hand
  * (the pairing page, which is the only thing that page is ever for) and a
- * laptop (ride history). So it is a single column that grows, rather than a
- * layout that reflows.
+ * laptop (everything else). So the rule from CLAUDE.md travels: **cap what is
+ * read, tile what is looked at** — `main` is capped at the readable width, and
+ * a view that is a set of figures says `.wide` and gets the content width.
  */
 
 * { box-sizing: border-box; }
@@ -17,20 +20,76 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding: var(--space-xl) var(--space-l) 64px;
+  font-family: var(--font);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  padding: var(--space-xl) var(--space-l) 96px;
 }
 
 main { max-width: var(--readable-width); margin: 0 auto; }
+main.wide { max-width: var(--content-width); }
 
-header { margin-bottom: var(--space-xl); }
+header { margin-bottom: var(--space-l); }
 
-h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
-h2 { font-size: 1.1rem; margin: var(--space-xl) 0 var(--space-s); }
+h1 {
+  font-size: var(--text-headline);
+  font-weight: var(--weight-figure);
+  margin: 0 0 var(--space-xs);
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: var(--text-title);
+  font-weight: var(--weight-figure);
+  margin: var(--space-xl) 0 var(--space-s);
+}
+
+h3 {
+  font-size: var(--text-body);
+  font-weight: var(--weight-title);
+  margin: 0 0 var(--space-xs);
+}
+
+a { color: var(--accent); }
 
 .muted { color: var(--muted); }
-.small { font-size: 0.875rem; }
+.small { font-size: var(--text-label); }
+.caption { font-size: var(--text-caption); }
 .error { color: var(--danger); }
+.hidden { display: none !important; }
+.spacer { flex: 1 1 auto; }
+
+/* --- The bar across the top, once there is somewhere to go ---------------- */
+
+.nav {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-s);
+}
+
+.nav button {
+  width: auto;
+  margin: 0;
+  padding: var(--space-s) var(--space-m);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-label);
+  font-weight: var(--weight-title);
+  border-radius: var(--radius-control);
+}
+
+.nav button:hover { color: var(--text); background: var(--surface-2); }
+
+.nav button[aria-current='page'] {
+  background: var(--accent-container);
+  color: var(--on-accent-container);
+}
+
+/* --- Cards --------------------------------------------------------------- */
 
 .card {
   background: var(--surface);
@@ -47,28 +106,87 @@ h2 { font-size: 1.1rem; margin: var(--space-xl) 0 var(--space-s); }
   text-align: left;
   color: inherit;
   font: inherit;
+  margin-top: 0;
 }
 
 .card.tap:hover { border-color: var(--accent); }
 
-label { display: block; font-size: 0.875rem; color: var(--muted); margin: var(--space-m) 0 var(--space-xs); }
+/* A grid of things that are looked at rather than read (CLAUDE.md, 22.4). */
+.grid {
+  display: grid;
+  gap: var(--space-m);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
 
-input {
+.grid .card { margin-bottom: 0; }
+
+.tiles {
+  display: grid;
+  gap: var(--space-m);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-bottom: var(--space-l);
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--space-l);
+}
+
+/* --- Figures ------------------------------------------------------------- */
+
+.figure {
+  font-size: var(--text-display);
+  font-weight: var(--weight-figure);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.figure.small-figure { font-size: var(--text-headline); }
+
+.figure-label {
+  font-size: var(--text-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.row { display: flex; gap: var(--space-l); flex-wrap: wrap; }
+.row > * { flex: 1 1 120px; }
+.row.tight { gap: var(--space-s); }
+.row.middle { align-items: center; }
+.row.middle > * { flex: 0 0 auto; }
+
+/* --- Forms --------------------------------------------------------------- */
+
+label {
+  display: block;
+  font-size: var(--text-label);
+  color: var(--muted);
+  margin: var(--space-m) 0 var(--space-xs);
+}
+
+input, textarea, select {
   width: 100%;
   padding: var(--space-m);
-  font-size: 1rem;
+  font-family: var(--font);
+  font-size: var(--text-body);
   border-radius: var(--radius-control);
   border: 1px solid var(--line);
   background: var(--surface-3);
   color: var(--text);
 }
 
+textarea { resize: vertical; min-height: 72px; }
+
 button {
   width: 100%;
   padding: 14px;
   margin-top: var(--space-l);
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: var(--font);
+  font-size: var(--text-body);
+  font-weight: var(--weight-title);
   border: 0;
   border-radius: var(--radius-control);
   background: var(--accent);
@@ -82,29 +200,174 @@ button.secondary {
   border: 1px solid var(--line);
 }
 
-button:disabled { opacity: 0.5; cursor: default; }
-
-.row { display: flex; gap: var(--space-l); flex-wrap: wrap; }
-.row > * { flex: 1 1 120px; }
-
-.figure { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-.figure-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+button.inline {
+  width: auto;
+  margin: 0;
+  padding: var(--space-s) var(--space-m);
+  font-size: var(--text-label);
 }
+
+button.link {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-label);
+  font-weight: 400;
+}
+
+button:disabled { opacity: 0.5; cursor: default; }
 
 .tabs { display: flex; gap: var(--space-s); margin: var(--space-l) 0; }
 .tabs button { margin: 0; }
-.tabs button[aria-pressed='false'] { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.tabs button[aria-pressed='false'] {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+/* A switch is a row, not a stacked label — the question and the answer read
+   together or the answer is orphaned on a narrow phone. */
+.switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-m);
+  margin: var(--space-m) 0;
+}
+
+.switch input {
+  width: auto;
+  margin-top: var(--space-xs);
+  accent-color: var(--accent);
+}
+
+.switch span { flex: 1 1 auto; }
+
+/* --- Charts -------------------------------------------------------------- */
+
+.chart { width: 100%; height: 140px; display: block; }
+.chart.tall { height: 180px; }
+
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-s);
+  margin-top: var(--space-l);
+}
+
+.chart-head:first-child { margin-top: 0; }
+
+/* The zone key under a trace: one chip per zone, coloured as the app colours
+   it, so the band behind the line has a name. */
+.zone-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-s);
+  margin-top: var(--space-s);
+}
+
+.zone-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.zone-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Time in zone: a stacked bar, the same shape the app draws. */
+.zone-bar {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--surface-3);
+  margin: var(--space-s) 0;
+}
+
+.zone-bar > span { display: block; height: 100%; }
+
+/* --- Riders, the feed, the board ----------------------------------------- */
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: var(--weight-figure);
+  color: #ffffff;
+  flex: 0 0 auto;
+}
+
+.avatar.large { width: 64px; height: 64px; font-size: var(--text-headline); }
+
+.feed-item { display: flex; gap: var(--space-m); align-items: flex-start; }
+.feed-item > .body { flex: 1 1 auto; min-width: 0; }
+
+.rank {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--muted);
+  width: 24px;
+  flex: 0 0 auto;
+}
+
+.board-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+  padding: var(--space-m) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.board-row:last-child { border-bottom: 0; }
+.board-row.you { color: var(--accent); }
+
+.pill {
+  display: inline-block;
+  padding: 2px var(--space-s);
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.pill.on { border-color: var(--accent); color: var(--accent); }
+
+.comment {
+  padding: var(--space-s) 0;
+  border-top: 1px solid var(--line);
+}
 
 .device {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.05rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
   letter-spacing: 0.02em;
 }
 
-.chart { width: 100%; height: 140px; display: block; }
-
-.hidden { display: none !important; }
+/* A toast, for the writes: a change that saved and said nothing looks exactly
+   like a change that did not save. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-xl);
+  transform: translateX(-50%);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: var(--radius-control);
+  padding: var(--space-s) var(--space-l);
+  font-size: var(--text-label);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}

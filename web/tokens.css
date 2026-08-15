@@ -19,9 +19,14 @@
  * do. The one thing that was *not* a copy is the control radius, which claimed
  * to match the app and never had anything to match; it says so now.
  *
- * What is deliberately NOT copied: the seven power-zone colours and the five
- * heart-rate ones. The web app does not draw a zone today, and a palette copied
- * in advance of a use is a palette that will be wrong by the time it has one.
+ * The zone palettes ARE copied now, and the reason the earlier note gave for
+ * leaving them out is the reason they are here: *"the web app does not draw a
+ * zone today, and a palette copied in advance of a use is a palette that will
+ * be wrong by the time it has one."* It draws them today — 17.3's ride detail
+ * puts power zones under the power trace and heart-rate zones under the heart
+ * rate, which is 21.4.2's rule that any chart showing a heart rate shows what
+ * the bands mean. So the copy has a use, and the condition is met rather than
+ * waived.
  */
 
 :root {
@@ -72,6 +77,16 @@
   --readable-width: 760px;
 
   /*
+   * And the other half of the same rule, which is the web app's own number
+   * rather than a copy: **cap what is read, tile what is looked at**
+   * (CLAUDE.md, PLAN 22.4). Prose and forms stay at 760; a grid of ride cards
+   * or a leaderboard is looked at rather than read, and stopping it at 760 on
+   * a laptop leaves half the window empty for no benefit. There is no Android
+   * original because the bike is one fixed 1280 dp screen and a browser is not.
+   */
+  --content-width: 1080px;       /* web only */
+
+  /*
    * Shapes. The card radius is the app's (`Shapes.kt`, `large = 16.dp`); the
    * control radius is **the web app's own and always was**, which the line
    * that used to be here claimed otherwise. There is no 10 dp shape in
@@ -82,6 +97,58 @@
    */
   --radius-card: 16px;           /* ExpressiveShapes.large */
   --radius-control: 10px;        /* web only — see above */
+
+  /*
+   * --- Power zones (Color.kt, PowerZone1Recovery …) ---
+   * Cool through warm, so intensity reads without needing the number.
+   */
+  --zone-p1: #9e9e9e;            /* PowerZone1Recovery */
+  --zone-p2: #5c6bc0;            /* PowerZone2Endurance */
+  --zone-p3: #26a69a;            /* PowerZone3Tempo */
+  --zone-p4: #ffa726;            /* PowerZone4Threshold */
+  --zone-p5: #ef5350;            /* PowerZone5VO2Max */
+  --zone-p6: #ab47bc;            /* PowerZone6Anaerobic */
+  --zone-p7: #d81b60;            /* PowerZone7Neuromuscular */
+
+  /*
+   * --- Heart-rate zones (Color.kt, HeartRateZone1Recovery …) ---
+   * A different ramp on purpose (21.2.1): sharing the power one would tell a
+   * rider that HR zone 4 and power zone 4 are the same statement about them,
+   * which is false. Five zones against seven, and different boundaries.
+   */
+  --zone-h1: #00e676;            /* HeartRateZone1Recovery */
+  --zone-h2: #76ff03;            /* HeartRateZone2Aerobic */
+  --zone-h3: #ffd600;            /* HeartRateZone3Tempo */
+  --zone-h4: #ff6d00;            /* HeartRateZone4Threshold */
+  --zone-h5: #ff1744;            /* HeartRateZone5Maximum */
+
+  /*
+   * --- Type (Type.kt) — PLAN 17.15.1 ---
+   *
+   * The app's scale, transcribed, and **no webfont**. `Type.kt` sets Inter
+   * throughout; naming Inter first here means a device that already has it
+   * uses it and every other device gets its own system face, which keeps 17.1's
+   * property that this page opens instantly with nothing installed. A 100 KB
+   * font download to match a heading is the wrong trade on a page whose whole
+   * virtue is that it needs nothing.
+   *
+   * Sizes are the sp values as px — the tablet is 240 dpi and a browser's
+   * default is 16, so the ratios are what travels rather than the absolutes.
+   * Only the six the web app actually uses are copied.
+   */
+  --font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-display: 36px;          /* displaySmall  — 36.sp / Bold */
+  --text-headline: 24px;         /* headlineMedium — 24.sp / Bold */
+  --text-title: 18px;            /* titleMedium   — 18.sp / Bold */
+  --text-body: 16px;             /* bodyLarge     — 16.sp / Normal */
+  --text-label: 14px;            /* bodyMedium    — 14.sp / Normal */
+  --text-caption: 12px;          /* bodySmall     — 12.sp / Light */
+
+  --weight-figure: 700;          /* Bold, as the app's metric styles are */
+  --weight-title: 600;           /* SemiBold — titleSmall */
 }
 
 @media (prefers-color-scheme: light) {
