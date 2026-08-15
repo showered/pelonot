@@ -46,16 +46,19 @@ If all four hold, `PostWorkoutAnalyzer.analyze()` runs.
 ## What `analyze()` actually computes
 
 ```kotlin
-fun analyze(metrics, currentFtp, maxHr = null, rpe = null, isHardClass = false): AnalysisResult
+fun analyze(metrics, currentFtp, maxHr: Int?): AnalysisResult
 ```
 
-**Only `metrics` and `currentFtp` are ever passed in production.** `maxHr`,
-`rpe` and `isHardClass` all default to null/null/false at the one call site.
-That matters — see *Dead paths*, below.
+**All three are passed in production, and none of them has a default (7.11.6).**
+It used to take five parameters, of which three — `maxHr`, `rpe`, `isHardClass`
+— defaulted at the one call site and were therefore dead. Two of those are gone
+with the RPE path; `maxHr` is required, so the call site has to say what it
+knows. See *The decision*, below, for what that leaves — the reference to a
+*Dead paths* section this file has never had is itself corrected here.
 
-Two candidate numbers are computed, and the higher one wins:
+One number is computed, and it is the only thing that can propose a change:
 
-### 1. Twenty-minute peak (the only one that ever fires)
+### 1. Twenty-minute peak (the only signal there is)
 
 ```
 FTP ≈ (best 20-minute average power in the ride) × 0.95
@@ -67,21 +70,22 @@ FTP ≈ (best 20-minute average power in the ride) × 0.95
 - `0.95` is Coggan's standard 20-minute-to-FTP correction, a constant
   (`FTP_FROM_20_MIN`).
 
-### 2. RPE-based bump (dead in production — see below)
+### 2. RPE-based bump — deleted (7.11.6)
 
-```
-if rpe != null && isHardClass && rpe <= 4:
-    proposal = currentFtp × 1.03
-```
-
-Since the call site never passes `rpe` or `isHardClass`, `rpe` is always
-`null` and this branch always returns `null`. **It cannot fire today.**
+There used to be a second signal here: `suggestFtpFromRpe` proposed
+`currentFtp × 1.03` for a hard class the rider had rated easy, and `analyze`
+fed it straight into `proposedFtp`. **It never fired once**, because the call
+site never passed `rpe` — the parameter had a default. It is deleted rather
+than wired up: 7.11.2 has since written down that RPE alone must not move a
+rider's FTP, 7.11's replacement is a trend across several rides rather than a
+per-ride check, and the rider answers *How did that feel?* on the same screen
+that runs this analysis, so the rating is null at analysis time by
+construction.
 
 ### The decision
 
 ```kotlin
-proposal = max(fromPeak, fromRpe)  // fromRpe is always null in practice
-isBreakthrough = proposal != null && proposal >= currentFtp × 1.02
+isBreakthrough = fromPeak != null && fromPeak >= currentFtp × 1.02
 ```
 
 So in practice: **`isBreakthrough` is true exactly when the ride is ≥20
@@ -92,15 +96,16 @@ value is at least 2% above the rider's current FTP.**
 current FTP is inside the power model's own error band and would just be
 annoying.
 
-**Biometric decoupling is a complete no-op, not just unread.**
-`detectBiometricDecoupling(metrics, ftp, maxHr)` needs `maxHr`, and the one
-production call site never passes it either — same gap as `rpe` and
-`isHardClass`. `maxHr` defaults to `null`, and the function's first line is
-`if (maxHr == null …) return false`. So `AnalysisResult.biometricDecoupling`
-is not merely discarded downstream — it is always `false`, computed from
-nothing. Three of `analyze()`'s five parameters (`maxHr`, `rpe`,
-`isHardClass`) are dead at the call site; only `metrics` and `currentFtp` ever
-carry real data.
+**Biometric decoupling is computed and unread — but it is no longer computed
+from nothing (7.11.6).** `detectBiometricDecoupling(metrics, ftp, maxHr)` needs
+`maxHr`, and for the project's whole history the one production call site never
+passed it: the parameter defaulted to `null` and the function's first line is
+`if (maxHr == null …) return false`, so `AnalysisResult.biometricDecoupling` was
+always `false` rather than merely discarded. `maxHr` has no default now — a
+signal that is optional at the call site is a signal nobody notices is missing —
+and `PostRideViewModel` passes the rider's resolved maximum (21.1's nullable
+gate: their own number, or Tanaka from the year of birth, or nothing). The
+result still reaches no screen; it is 7.11's seed, recorded honestly.
 
 **And decoupling as built only ever argues for raising FTP, never lowering
 it.** It looks for *low* heart rate at threshold power — evidence the rider
@@ -202,13 +207,10 @@ in `workout_metrics`.
 
 - The dialog itself: generic `AlertDialog`, no provenance mark, states
   "improved" as fact, doesn't explain the 20-minute-peak method.
-- `biometricDecoupling` is computed and silently discarded — either wire it
-  into the copy ("we noticed your heart rate stayed low at threshold power —
-  that's often a sign your FTP is set low") or remove the computation.
-- The RPE path (`suggestFtpFromRpe`) is fully dead code in production — never
-  called with real arguments. Either wire it in (it would let a hard-feeling
-  class nudge FTP up by 3% even under 20 minutes) or it's confusing to keep
-  maintaining/testing a path nothing reaches.
+- `biometricDecoupling` is computed from real inputs since 7.11.6 and still
+  reaches no screen — either wire it into the copy ("we noticed your heart rate
+  stayed low at threshold power — that's often a sign your FTP is set low") or
+  leave it as 7.11's seed, which is the current decision.
 - No cooldown on decline — a rider hovering right at the 2% line could see the
   same prompt ride after ride. Worth deciding if that's desired (7.10.5 already
   covers the "asked too often becomes a reflex tap" risk for the *accept* side,
