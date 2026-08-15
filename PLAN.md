@@ -391,8 +391,9 @@ ticked all four. **Phase 15 (22 of 64)** is still the outlier, followed by
 **Phase 17/18 (14 of 44)**. Phases 27 and 28 are 18/18 and 24/24 and both are
 deliberately untouched — the owner's own weighting.
 
-**Carried forward, unchanged:** **11.3.4** (a one-line item whose stated
-motivation is already served), **11.2.1a** and **11.1b.8**; and from the sitting
+**Carried forward:** **11.2.1a** (blocked behind 2.2a) and **11.1b.8** (which
+asks for the owner's eye on the bike, not a session's judgement on an AVD); and
+from the sitting
 before, both written down rather than built, **15.3.7a** (four cloud profile
 columns and a ride title the bike cannot see) and **15.3.7's blocker being
 gone** — `008` adds the `max_hr_bpm` column it was waiting for, so what is left
@@ -488,6 +489,18 @@ the fuse is out.
     it already exists and is watched — 15.4.2 does precisely the same thing to
     the tablet, and the two must share one implementation rather than two copies
     of the rule.
+
+**11.3.4 was triaged rather than built, and it split in two.** *Skip or extend
+the current interval mid-ride, for a rider who needs to take a call* — the
+motivation is served by pause and has been since 19.1.1, and what is left is a
+feature the line never argues for with a consequence nobody had written down:
+`prescribedPlan` maps the class onto the ride **by second**, so a skipped block
+slides every later one out of register and the compliance percentage and
+21.6.3's verdict would both be scored against a plan the rider deliberately
+departed from. It is not buildable as a control alone — either the departure is
+recorded on the ride (8.3d's shape, and 8.3d.4's trap) or those readers withdraw
+their claims the way 23.4.3 does for a trimmed ride. **The question for the
+owner is *should a class be editable while you ride it?*, not a HUD button.**
 
 **Left deliberately undone, and both are written up:** 24.3.18d's *mark* — the
 moment is built, a permanent marker on a beaten row is not — and 11.8.4, the

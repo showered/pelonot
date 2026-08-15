@@ -360,7 +360,44 @@ less of the screen and less of the attention.
       count is the ride and the heart's is what the strap heard, and 21.4.1's
       caption is the only thing that says so
 
-- [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who needs to take a call
+- [ ] **11.3.4** Skip or extend the current interval mid-ride, for a rider who
+      needs to take a call
+
+      ***Triaged in the fifty-fourth sitting, and the one line turns out to be
+      two different requests with two different answers.***
+
+      ***The stated motivation is already served, and by the thing built for
+      it.*** *A rider who needs to take a call pauses — the ride screen's own
+      control (11.6.6), auto-pause underneath it (19.1.1), and since 19.1.2b the
+      seconds they were away are out of the averages rather than dragging them
+      down. The class clock stops with them. Nothing about a phone call needs an
+      interval skipped, so if this item is only its own sentence it is closed.*
+
+      ***What is left is a real feature the item never argues for, and it has a
+      consequence nobody has written down.*** `prescribedPlan` *maps the class's
+      intervals onto the ride by **second** —* `it.startSec until end` *against
+      the sample timestamps — so a block skipped or stretched mid-ride slides
+      every later block out of register with the seconds the rider actually
+      pedalled. The post-ride prescription chart, its compliance percentage and
+      **21.6.3's whole verdict** (*"harder than the class asked"*) would then be
+      judged against a plan the rider deliberately departed from, and every one
+      of them would still be phrased as a fact about their riding. That is the
+      same family as 7.8 — a claim derived on read from a source that has since
+      moved — arriving from the ride's own side rather than the profile's.*
+
+      ***So it is not buildable as a control alone.*** *Either the departure is
+      **recorded on the ride** the way 8.3d records a resume — in which case
+      read 8.3d.4 first, because `WorkoutSession` must carry it or the finalise
+      writes the default back over it twenty minutes later — or the three
+      readers above have to withdraw their claims for a ride that was edited,
+      the way 23.4.3 withdraws the compliance percentage for a trimmed one.
+      **Withdrawing is the cheaper half and is the honest minimum**: a ride
+      whose plan was changed cannot be scored against the plan.*
+
+      *Left open at that, deliberately: the mechanism is now written down, and
+      what is missing is whether the owner wants the control at all. It is worth
+      asking as* "should a class be editable while you ride it?" *rather than as
+      a HUD button.*
 
 - [x] **11.3.5** ~~Screen-on lock during a ride, so the tablet does not sleep
       mid-class~~ **Built on both surfaces and unticked**: `RideScreen` sets
