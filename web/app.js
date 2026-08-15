@@ -122,6 +122,7 @@ function wire() {
   el('ride-save').addEventListener('click', saveRide);
   el('ride-kudos').addEventListener('click', toggleKudos);
   el('comment-send').addEventListener('click', postComment);
+  el('you-units').addEventListener('change', switchWeightUnits);
   el('you-save').addEventListener('click', saveProfile);
   el('you-export').addEventListener('click', exportData);
 }
@@ -346,7 +347,7 @@ async function loadRides() {
     // are one tap away on the ride itself, where the number is being read
     // rather than scanned past.
     card.innerHTML = `
-      <div class="figure small-figure">${formatDuration(ride.duration_sec)}</div>
+      <div class="figure">${formatDuration(ride.duration_sec)}</div>
       <div class="small muted">${escapeHtml(formatDate(ride.recorded_at))}</div>
       <div class="small">${escapeHtml(rideName(ride))}</div>
       <div class="caption muted">${unit.distance(ride.total_distance_km || 0)}${
@@ -385,7 +386,7 @@ function drawTotals() {
   el('totals').innerHTML = tiles.map(([label, value, note]) => `
     <div class="tile">
       <p class="figure-label">${escapeHtml(label)}</p>
-      <p class="figure small-figure">${escapeHtml(value)}</p>
+      <p class="figure">${escapeHtml(value)}</p>
       <p class="caption muted">${escapeHtml(note)}</p>
     </div>`).join('');
 }
@@ -462,7 +463,7 @@ async function showRide(id) {
   el('ride-figures').innerHTML = figures
     .map(([label, value]) =>
       `<div><div class="figure-label">${label}</div>` +
-      `<div class="figure small-figure">${escapeHtml(value)}</div></div>`)
+      `<div class="figure">${escapeHtml(value)}</div></div>`)
     .join('');
 
   drawRideCharts();
@@ -711,7 +712,7 @@ async function loadBoard() {
       <span class="spacer"><strong>${escapeHtml(row.name)}</strong>${
         row.is_you ? ' <span class="caption muted">you</span>' : ''
       }</span>
-      <span class="figure small-figure">${
+      <span class="figure">${
         boardBasis === 'kj'
           ? `${Math.round(row.output_kj)} kJ`
           : `${value(row).toFixed(1)} kJ/kg`
@@ -820,6 +821,7 @@ function fillProfileForm() {
   el('you-weight').value = profile.weight_kg
     ? Number(unit.fromKg(profile.weight_kg).toFixed(1)) : '';
   el('weight-unit').textContent = unit.weightUnit;
+  weightFieldUnits = profile.units || 'metric';
   el('you-maxhr').value = profile.max_hr_bpm ?? '';
   el('you-units').value = profile.units || 'metric';
   el('you-sharing').checked = Boolean(profile.share_activity);
@@ -828,20 +830,45 @@ function fillProfileForm() {
   el('you-note').textContent = '';
 }
 
+/** Which unit the weight box is currently *displaying* — see below. */
+let weightFieldUnits = 'metric';
+
+/**
+ * Convert the number in the weight box the moment the picker changes.
+ *
+ * **Without this, switching to pounds and pressing Save records the metric
+ * number as pounds**: the field still holds 72, the save reads it in the newly
+ * chosen unit and stores 32.6 kg. Nothing on screen looks wrong — the rider
+ * typed nothing and the field never moved — which is the same family as 7.9,
+ * where one tap wrote a stale copy of a field nobody had touched. So the
+ * conversion happens where the choice is made, and by the time Save runs the
+ * box and its label agree.
+ */
+function switchWeightUnits() {
+  const next = el('you-units').value;
+  const shown = parseFloat(el('you-weight').value);
+  if (Number.isFinite(shown)) {
+    const kilos = units(weightFieldUnits).toKg(shown);
+    el('you-weight').value = Number(units(next).fromKg(kilos).toFixed(1));
+  }
+  weightFieldUnits = next;
+  el('weight-unit').textContent = units(next).weightUnit;
+}
+
 async function saveProfile() {
   const note = el('you-note');
   const chosenUnits = el('you-units').value;
-  const unit = units(chosenUnits);
+  const unit = units(weightFieldUnits);
   const name = el('you-name').value.trim();
   if (!name) { note.classList.add('error'); note.textContent = 'A name is needed.'; return; }
 
   const weightEntered = parseFloat(el('you-weight').value);
   const maxHrEntered = parseInt(el('you-maxhr').value, 10);
 
-  // **The weight is read in the units the field is labelled with**, which is
-  // the whole reason the label carries the unit: a rider who has just switched
-  // to pounds and typed 154 must not be recorded at 154 kg. The unit being
-  // saved in the same write is the one the number was typed in.
+  // **The weight is read in the unit the box is currently showing**, which is
+  // `weightFieldUnits` and not necessarily the one being saved — the picker
+  // converts on change (see `switchWeightUnits`), so by here the two agree, and
+  // reading `chosenUnits` directly is what would be wrong if it ever did not.
   const row = {
     name,
     bio: el('you-bio').value.trim() || null,

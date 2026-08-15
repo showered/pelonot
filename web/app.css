@@ -136,14 +136,20 @@ a { color: var(--accent); }
 
 /* --- Figures ------------------------------------------------------------- */
 
+/*
+ * The headline step rather than the display one, and that is a correction
+ * rather than a preference: this class is shared with the pairing page, where
+ * it draws the **bike's name** (`device-label`), and taking it to 36px wrapped
+ * *"That code has expired"* over two lines on a phone — which is the one device
+ * that page is ever opened on. A shared stylesheet means a size chosen for one
+ * screen is a size imposed on the other.
+ */
 .figure {
-  font-size: var(--text-display);
+  font-size: var(--text-headline);
   font-weight: var(--weight-figure);
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
-
-.figure.small-figure { font-size: var(--text-headline); }
 
 .figure-label {
   font-size: var(--text-caption);
