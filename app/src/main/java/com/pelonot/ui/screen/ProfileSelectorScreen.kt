@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.domain.progress.RidingTotals
+import com.pelonot.ui.components.RiderScore
 import com.pelonot.ui.theme.PowerZone2Endurance
 import com.pelonot.ui.theme.PowerZone3Tempo
 import com.pelonot.ui.theme.PowerZone4Threshold
@@ -107,6 +110,15 @@ fun ProfileSelectorScreen(
     onGuestSelected: () -> Unit,
     onCreateProfile: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Each rider's level (26.4), keyed by profile — absent means level 1.
+     *
+     * **On trial here, and the trial is the item** (26.4.4): 26.1.1 took a
+     * number off this screen and the owner's answer was "SO much better", so a
+     * badge earns its place back only if it reads as *identity* — "I'm the one
+     * on 7" — rather than as a measurement of the rider.
+     */
+    riderLevels: Map<Int, RiderLevel> = emptyMap(),
     onRenameProfile: (UserEntity, String) -> Unit = { _, _ -> },
     onDeleteProfile: (UserEntity) -> Unit = {}
 ) {
@@ -227,6 +239,7 @@ fun ProfileSelectorScreen(
                                 user.localUserId.absoluteValue % AvatarColors.size
                             ],
                             size = tileSize,
+                            level = riderLevels[user.localUserId] ?: RiderLevel.of(RidingTotals()),
                             onClick = { onProfileSelected(user) },
                             onLongClick = { editing = user.localUserId }
                         )
@@ -345,6 +358,7 @@ private fun ProfileTile(
     name: String,
     accent: Color,
     size: Dp,
+    level: RiderLevel,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -403,6 +417,9 @@ private fun ProfileTile(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            RiderScore(level = level)
         }
     }
 }

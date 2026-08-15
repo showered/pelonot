@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -49,12 +51,15 @@ import com.pelonot.ui.theme.spacing
  *    and a rider's own identity must not wear the colour that means *you are
  *    wrong*. It is the brand's own container colour, which is what the rest of
  *    the app uses for a thing that simply *is*.
- * 4. **It draws for a rider who has never ridden**, at level 1, because level 1
- *    is the start rather than an achievement and a badge that appears out of
- *    nowhere after the first ride is a badge nobody was working towards. What
- *    it must not do is appear on a screen that is about somebody *else's*
- *    emptiness — the household panel has no row for a rider who has not ridden
- *    and this does not give it one.
+ * 4. **It draws for a rider who has never ridden, at level 1, and not at all
+ *    for a guest.** Level 1 is the start rather than an achievement, and a
+ *    badge that appears out of nowhere after the first ride is a badge nobody
+ *    was working towards. A guest is the other case and the caller must not
+ *    collapse the two: a guest ride is filed against nobody, so a guest can
+ *    never leave level 1 however much they ride, and a badge promising a ladder
+ *    that does not exist is worse than no badge. `AppUiState.levelFor` returns
+ *    null for exactly that, and it is the same rule as the household panel
+ *    having no row for a rider who has not ridden.
  *
  * **The thin track along the bottom is the progress to the next level.** It is
  * the one thing here that is not a word, and it is deliberately unlabelled: a
@@ -72,10 +77,29 @@ fun RiderScore(
     modifier: Modifier = Modifier
 ) {
     val shape = MaterialTheme.expressiveShapes.pill
+    val track = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f)
+    val trackPx = with(LocalDensity.current) { TRACK.toPx() }
     Box(
         modifier = modifier
             .clip(shape)
             .background(MaterialTheme.colorScheme.primaryContainer)
+            // The progress track, hairline, along the bottom of the pill.
+            //
+            // **Drawn rather than laid out**, and that is not a style choice: a
+            // `fillMaxWidth(fraction)` child resolves the fraction against the
+            // *incoming* constraints, which in a `Row` is the whole row — so the
+            // first version of this badge measured 1,100 dp wide on the
+            // dashboard and squeezed the household panel's figures into a
+            // one-letter-per-line column. Seen immediately on the tablet AVD and
+            // invisible in the diff, which is 26.2.2 exactly.
+            .drawBehind {
+                if (level.progress <= 0f) return@drawBehind
+                drawRect(
+                    color = track,
+                    topLeft = Offset(0f, size.height - trackPx),
+                    size = Size(size.width * level.progress, trackPx)
+                )
+            }
             .defaultMinSize(minWidth = MIN_WIDTH)
             .semantics { contentDescription = describe(level) },
         contentAlignment = Alignment.Center
@@ -101,17 +125,6 @@ fun RiderScore(
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
-
-        // The progress track, hairline and at the very bottom of the pill. It
-        // is drawn inside the clip so it takes the pill's own curve rather than
-        // ruling a straight line across a rounded shape.
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth(level.progress)
-                .height(TRACK)
-                .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f))
-        )
     }
 }
 

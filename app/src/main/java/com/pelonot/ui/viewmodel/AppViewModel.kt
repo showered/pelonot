@@ -91,12 +91,15 @@ data class AppUiState(
     /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
     val ridingHistory: RidingHistory = RidingHistory(),
     /**
-     * How much the selected rider has *ever* ridden, as a level (26.4).
+     * Every profile's level (26.4), keyed by profile.
      *
      * The one figure in this state that is not windowed, and the only one that
-     * cannot go down.
+     * cannot go down. A profile with no finished rides is **absent** rather
+     * than present at level 1 — [levelFor] is what turns each absence into the
+     * answer a screen should draw, and the two absences differ: level 1 for a
+     * rider who has not ridden, no level at all for a guest.
      */
-    val riderLevel: RiderLevel = RiderLevel.of(RidingTotals()),
+    val riderLevels: Map<Int, RiderLevel> = emptyMap(),
     /**
      * The class the dashboard offers, and why (22.8.6). Null only while the
      * library is still loading — a rider with no history has a suggestion too,
@@ -125,6 +128,23 @@ data class AppUiState(
 ) {
     val selectedProfile: UserEntity?
         get() = profiles.firstOrNull { it.localUserId == settings.lastProfileId }
+
+    /**
+     * One profile's level, with both absent cases answered here rather than at
+     * every call site (26.4).
+     *
+     * **A profile with no rides is level 1; a guest has no level at all**, and
+     * the difference is the whole of it. Level 1 is *the start* — a real answer
+     * to a rider whose first ride will move it. A guest's rides are filed
+     * against nobody, so a guest can never leave level 1 however much they
+     * ride: drawing the badge for them would promise a ladder that does not
+     * exist. Absent is a claim, and it is a different claim from 1.
+     */
+    fun levelFor(profileId: Int?): RiderLevel? =
+        if (profileId == null) null else riderLevels[profileId] ?: RiderLevel.of(RidingTotals())
+
+    /** The rider whose dashboard is on screen, or null for a guest. */
+    val selectedRiderLevel: RiderLevel? get() = levelFor(settings.lastProfileId)
 }
 
 /**
@@ -255,25 +275,6 @@ class AppViewModel(
         }
 
     /**
-     * The selected rider's level (26.4).
-     *
-     * **A guest is level 1 and that is a real answer**, not a placeholder: a
-     * guest ride is filed against nobody, so there is no history to count and
-     * the honest reading of an empty history is *the start*. It is the same
-     * shape as the FTP trend being empty for a guest, one line up.
-     *
-     * The map is read here rather than a per-profile query being added, because
-     * the household panel on the same screen needs everybody's — see
-     * `WorkoutRepository.observeRiderLevels`.
-     */
-    private val riderLevel = combine(
-        settingsRepository.settings.map { it.lastProfileId }.distinctUntilChanged(),
-        workoutRepository.observeRiderLevels()
-    ) { profileId, levels ->
-        levels[profileId] ?: RiderLevel.of(RidingTotals())
-    }
-
-    /**
      * The flows about the rider's own riding, travelling together for the same
      * reason [rideStatus] is a pair: the typed `combine` overload stops at five
      * and [dashboard] is already at it.
@@ -281,14 +282,21 @@ class AppViewModel(
     private val riding = combine(
         ridingHistory,
         riderRides,
-        riderLevel
-    ) { history, rides, level -> RiderState(history, rides, level) }
+        workoutRepository.observeRiderLevels()
+    ) { history, rides, levels -> RiderState(history, rides, levels) }
 
     /** [riding]'s three flows, named rather than nested in a `Pair` (see [DashboardState]). */
     private data class RiderState(
         val ridingHistory: RidingHistory,
         val riderRides: RiderRides,
-        val riderLevel: RiderLevel
+        /**
+         * Every profile's level (26.4), keyed by profile — **one map for three
+         * surfaces**: the greeting, the household panel and the profile
+         * selector. A per-profile query beside it would be a second answer to
+         * the same question, and two answers is how two screens on one tablet
+         * come to show a rider two different numbers.
+         */
+        val riderLevels: Map<Int, RiderLevel>
     )
 
     private val dashboard = combine(
@@ -298,7 +306,7 @@ class AppViewModel(
         backupReminder,
         riding
     ) { stats, household, ftp, backup, rider ->
-        DashboardState(stats, household, ftp, backup, rider.ridingHistory, rider.riderRides, rider.riderLevel)
+        DashboardState(stats, household, ftp, backup, rider.ridingHistory, rider.riderRides, rider.riderLevels)
     }
 
     /**
@@ -315,7 +323,7 @@ class AppViewModel(
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory,
         val riderRides: RiderRides,
-        val riderLevel: RiderLevel
+        val riderLevels: Map<Int, RiderLevel>
     )
 
     val uiState: StateFlow<AppUiState> = combine(
@@ -334,7 +342,7 @@ class AppViewModel(
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,
-            riderLevel = dashboard.riderLevel,
+            riderLevels = dashboard.riderLevels,
             // Computed here rather than in a flow of its own because it is a
             // function of two things the state already carries — the library and
             // the rider's rides — and a third flow that re-derives one of them

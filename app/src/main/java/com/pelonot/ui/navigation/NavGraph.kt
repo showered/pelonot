@@ -218,6 +218,7 @@ fun PelonotNavGraph(
         composable(Destination.ProfileSelector.route) {
             ProfileSelectorScreen(
                 profiles = uiState.profiles,
+                riderLevels = uiState.riderLevels,
                 onProfileSelected = { user ->
                     onSelectProfile(user.localUserId)
                     navController.navigate(Destination.Dashboard.route)
@@ -250,7 +251,7 @@ fun PelonotNavGraph(
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 ftpTrend = uiState.ftpTrend,
                 stats = uiState.dashboardStats,
-                riderLevel = uiState.riderLevel,
+                riderLevel = uiState.selectedRiderLevel,
                 householdRecent = uiState.householdRecent,
                 youId = uiState.selectedProfile?.localUserId,
                 backupReminder = uiState.backupReminder,

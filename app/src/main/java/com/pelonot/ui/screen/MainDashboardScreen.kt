@@ -102,7 +102,9 @@ fun MainDashboardScreen(
      * How much this rider has ever ridden, as one dimensionless number (26.4).
      *
      * Level 1 for a rider who has not ridden yet, which is the start rather
-     * than an absence — see `RiderScore`, rule 4.
+     * than an absence — and **null for a guest**, who has no profile for a
+     * level to accumulate onto and would otherwise be shown a 1 they can never
+     * move. See `RiderScore`, rule 4.
      *
      * **No default**, unlike most of this screen's optional furniture: a signal
      * that is optional at the call site is a signal nobody notices is missing,
@@ -110,7 +112,7 @@ fun MainDashboardScreen(
      * `LVL 1` for a rider with two hundred rides is exactly that failure and
      * would look like a working feature.
      */
-    riderLevel: RiderLevel,
+    riderLevel: RiderLevel?,
     ftp: Int,
     ftpTrend: FtpTrend,
     stats: DashboardStats,
@@ -378,7 +380,7 @@ private fun greetingFor(hour: Int): String = when (hour) {
 @Composable
 private fun GreetingHeader(
     userName: String,
-    riderLevel: RiderLevel,
+    riderLevel: RiderLevel?,
     onHistory: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -416,8 +418,10 @@ private fun GreetingHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false)
             )
-            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
-            RiderScore(level = riderLevel)
+            if (riderLevel != null) {
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+                RiderScore(level = riderLevel)
+            }
         }
         HeaderDoor(text = "History", icon = Icons.Default.History, onClick = onHistory)
         Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
