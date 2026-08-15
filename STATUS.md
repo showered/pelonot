@@ -1,11 +1,13 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 15 August (fifty-second sitting).**
-Measured, not estimated: `assembleDebug` passes, **781 JVM tests, 0
+**Written 4 August 2026, updated 15 August (fifty-fifth sitting).**
+Measured, not estimated: `assembleDebug` passes, **787 JVM tests, 0
 failures**, the 21 migration tests green including 20 → 21, and the
 whole 113-test instrumented suite last run green in the forty-fourth sitting.
-**588 of 805 plan boxes** are ticked
-across 28 phases. It is a summary —
+**610 of 812 plan boxes** are ticked — counted as
+`grep -c '^- \[x\]' PLAN.md plan/*.md`, which is worth writing down because the
+figure this page carried before (*588 of 805*) was counted some other way and
+had drifted, across 28 phases. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -145,6 +147,15 @@ the rider's own number or an estimate off their year of birth, the two are 10
 to 12 bpm apart — wider than a zone — and the ride now records which it had.
 A ride from before that column says *nothing* rather than guessing, because the
 answer really is gone.
+
+**A level, and it is the only number here that cannot go down (26.4).** Lifetime
+rides, minutes and kilojoules through a square-law curve, drawn as `LVL 7`
+beside a rider's name on the dashboard, on the household panel and on the
+profile selector. It says *has ridden more* and never *is fitter* — which is why
+it is not the FTP with a nicer badge: the FTP falls when a rider is ill and
+Phase 7 moves it by itself, so a "score" built on it would demote somebody in
+their sleep. A guest gets no badge at all, because a guest's rides are filed
+against nobody and they could never leave level 1.
 
 **The household.** A profile selector built for the tablet, a per-class
 leaderboard, the household's **last 30 days** with streaks and an opt-out — a
