@@ -353,11 +353,30 @@ keyboard should be possible on the web and optional on the bike.**
       line saying to run `check-deployed.sh` after it. The second is worth more
       than the first — a written-down command is a fact the project has, but a
       command that *verifies* is the one that survives the command changing
-- [ ] **17.15.1** **Typography is the half not yet shared.** The tokens cover
+- [x] **17.15.1** **Typography is the half not yet shared.** The tokens cover
       colour, spacing and shape; the web app is still on a system font stack
       while the app has its own type scale. Worth doing when the web app has
       more than three screens — before that, a webfont is weight on a page whose
       whole virtue is that it opens instantly with nothing installed (17.1)
+
+      ***Done, 15 August 2026, and the item's own condition is what triggered
+      it***: it said *"worth doing when the web app has more than three
+      screens"*, and this sitting took it from two to five. `tokens.css` now
+      carries the six type steps and the two weights the web app actually uses,
+      each naming its `Type.kt` original, and `app.css` names no font size of
+      its own.
+
+      **Still no webfont, and the refusal is the same argument the item made.**
+      `Type.kt` sets Inter everywhere, so the stack names Inter *first* — a
+      device that already has it matches the app exactly, and every other device
+      gets its own system face. A 100 KB download to make a heading match is the
+      wrong trade on a page whose whole virtue is that it opens with nothing
+      installed.
+
+      One decision inside it: the sizes are the `sp` values written as `px`.
+      What travels between a 240 dpi tablet and a browser at its default 16 is
+      the *ratio* between the steps rather than the absolute, and pinning the
+      ratios is what makes the two surfaces feel like one product
 - [ ] **17.15.2** **Nothing keeps the two in step, and that is stated rather
       than hidden.** There is no shared build by design (17.1a), so a colour
       changed in `Color.kt` does not change `tokens.css`. What keeps the drift
@@ -388,17 +407,209 @@ keyboard should be possible on the web and optional on the bike.**
       a phone is a design change and this was a sentence rather than a decision.
       Worth knowing before the generator above is ever written: it would have to
       allow for a token that is deliberately the web's own
-- [ ] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
-- [ ] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
-- [ ] **17.4** Profile customisation: display name, avatar, bio, FTP, units
-- [ ] **17.5** Friends — request, accept, block. New `friendships` table with its own RLS; this is the first schema where a rider can see another rider's data and it deserves more care than the rest
-- [ ] **17.6** A light activity feed: friends' recent rides, kudos, a comment. Deliberately not a full social network
-- [ ] **17.7** **Private by default.** Nothing is visible to anyone until the rider opts in, with per-ride visibility (private / friends / public). Defaulting to visible would publish training history people did not know they were publishing
-- [ ] **17.8** Self-hosters get the same deal as 14.10 — the endpoint is configured at build time, not typed in
-- [ ] **17.9** Decide what "public" means before shipping it: a public profile URL is an outward-facing surface with moderation and abuse implications a hobby project has to actually think about
-- [ ] **17.10** The web app never implies a household member is missing data when they have simply never signed in. See the preamble — this is a copy problem with a data-model cause, and it is the one thing about this phase that is peculiar to Pelonot
-- [ ] **17.11** Manage friends, display name and bio here rather than on the bike (see the preamble). The Android side may mirror it read-only and lose nothing
-- [ ] **17.12** The web app reads `metrics_payload`, so it is the consumer that makes 14.4.3's `payload_version` matter. Do not start 17.3 against an unversioned payload
+### The sitting that built the rest of it — 15 August 2026
+
+**Ten of the eleven items below were one line each and had never been touched;
+the whole of Phase 17 past the pairing page was still `link.html` and a list of
+dates.** They are ticked together because they were built together, in one
+sitting, against the live project — and because eight of the ten turned out to
+be *one* piece of work: a page with five views instead of two, and the schema
+underneath it. `supabase/008_companion_web.sql` is that schema and its header
+carries the reasoning that does not fit here.
+
+**Everything below was driven in a browser against the live endpoint**, signed
+in as a throwaway confirmed account created for the purpose and deleted after,
+with three seeded rides — one with a stop in it, one with a gap in the series,
+one condensed and one with no heart rate — because a page that has only ever
+been looked at with one shape of data has not been checked.
+
+- [x] **17.2** Auth shared with the app via the same Supabase project; a rider signs in once conceptually
+
+      *Was already true and had never been ticked* — `index.html` has offered
+      the same email and password against the same project since 17.13. What
+      this sitting adds is that signing in now leads somewhere: five views
+      rather than a list. The sign-up path also stops repeating Supabase's own
+      sentence at a rider — a project with sign-up closed answers *"signups not
+      allowed"*, which is a fact about a setting, and the page says *"this
+      Pelonot is invitation only, ask whoever set the bike up"* instead. That
+      is dead copy on this project today (18.11.1) and is one dashboard toggle
+      away from not being
+
+- [x] **17.3** Ride history and ride detail, reusing the chart definitions from 16 conceptually if not literally
+
+      **Conceptually, and the concepts are the ones that were hard-won.** The
+      traces break across a gap (16.1.2); the power trace has **zone bands**
+      behind it from the rider's FTP and the heart rate has its own five-zone
+      ramp, which is 21.4.2's rule and 21.2.1's insistence that the two ramps
+      are not the same statement; time in zone counts the stopped seconds
+      separately and names them, because **a stop is not Active Recovery**
+      (19.1.2c) and `PEDALLING_RPM` is the app's one definition of pedalling.
+
+      ***Two defects were found in code that has been on the internet for a
+      fortnight***, and both are the same shape — a reader that had never been
+      run against a real payload:
+
+      - **`pm` is `1` and `0`, not `true` and `false`.**
+        `MetricsPayload.CompactBoolean` writes digits deliberately (`true`
+        across 2,700 samples is 13 KB on a 49 KB payload and puts the ride over
+        its budget), and the page compared against `true`. So **every genuinely
+        measured ride said *"this ride does not record where its watts came
+        from"*** — the provenance caption, the one thing on that card whose
+        entire job is not to overclaim, quietly underclaiming instead. Measured
+        on a seeded ride: the caption flipped to *"Power measured by the bike"*
+        the moment the comparison was fixed.
+      - **The resolution key is `d`, not `detail`**, so a condensed ride never
+        said it was one — 23.4.3 applies to any surface drawing the trace and
+        this one was silently exempt.
+
+      And a third that is not a defect but was wrong on the page: the list
+      showed `CLB-01`. `class_templates` is world-readable, so the ride now
+      carries its class's *title*
+
+- [x] **17.4** Profile customisation: display name, avatar, bio, FTP, units
+
+      Name, bio, FTP, weight, maximum heart rate and units, all on one screen
+      and saved in **one write** — 7.9's read-modify-write defect has a web
+      shape, and it is two `update` calls off one button.
+
+      **The avatar is deliberately not an upload.** It is the app's own idea —
+      a deterministic colour from the five in `ProfileSelectorScreen` and the
+      rider's initial — so nobody has to store, moderate or resize a
+      photograph, which is a surface a hobby project should think twice about
+      (17.9's argument, one field along). What differs from the app is only
+      what indexes the palette: the app has a local profile id and the cloud
+      has an account uuid, so one rider can have two colours across the two
+      surfaces. That is a consequence of 003's key choice rather than a bug.
+
+      **The units are on the profile rather than in `localStorage`**, so they
+      are the same answer on a phone and on a laptop; the weight field is read
+      in whatever unit its label says, which is the whole reason the label
+      carries one
+
+- [x] **17.5** Friends — request, accept, block. New `friendships` table with its own RLS; this is the first schema where a rider can see another rider's data and it deserves more care than the rest
+
+      ***Closed as* not *to be built** — and it was already closed, in code,
+      before this sitting: `007_everyone_leaderboard.sql` **drops** the
+      `friendships` table it had created minutes earlier, on the owner's
+      instruction of 3 August. Verbatim, in 18.11: *"there will only be 3 or 4
+      users! So I think everyone should just have visibility over everyone's
+      scores."* Four people who already know each other do not send each other
+      requests.
+
+      The item is ticked rather than deleted because **the care it asks for is
+      the part that survived**: this is still the first schema where a rider
+      can see another rider's data, and what it got instead of its own RLS is
+      narrower — `SECURITY DEFINER` functions that return the columns they
+      name, with the policies on `profiles` and `workouts` untouched at "your
+      own rows and nobody else's". A function cannot leak a column added after
+      it was written; a relaxed policy can
+
+- [x] **17.6** A light activity feed: friends' recent rides, kudos, a comment. Deliberately not a full social network
+
+      Built as written, including the restraint. `activity_feed` is everybody's
+      recent rides with the two counts beside each one, in a single request;
+      `give_kudos` / `remove_kudos` return the new count so the page never asks
+      a second question to redraw; and there is **one comment** — a body, an
+      author, a ride, no threads, no replies, no mentions, no edit.
+
+      **The moderation floor is a delete rather than a graph.** The author can
+      delete their own comment and **the rider whose ride it is can delete any
+      comment on it**. 18.8 asks for mute, block and report from the first
+      version that has a feed, and with public sign-up left open (18.11.1) that
+      argument is live rather than theoretical — but at four invited accounts
+      the delete is the thing that would actually be used, and 18.8 is the item
+      to build the day this has more riders than 18.11 was written for.
+
+      The feed does not carry heart rate, RPE or the sample series. That is
+      007's line held one feature along: a leaderboard's worth of visibility
+
+- [x] **17.7** **Private by default.** Nothing is visible to anyone until the rider opts in, with per-ride visibility (private / friends / public). Defaulting to visible would publish training history people did not know they were publishing
+
+      **Kept, and it is the item that decided the shape of the whole
+      migration.** `profiles.share_activity` defaults to **false**, so on the
+      day `008` runs the feed is empty for everybody and stays empty until
+      somebody turns their own sharing on.
+
+      **The reason it had to be false is not the principle, it is a
+      measurement.** 18.11.1 states the accepted blast radius of leaving public
+      sign-up open in exactly these words: a stranger who registers sees
+      *"display names, class ids, durations, output — not ride dates, not RPE,
+      not heart rate, not anyone's rows"*. **An activity feed is ride dates by
+      construction.** Switching one on for everybody would have widened a risk
+      the owner sized and accepted, without anybody deciding to — which is the
+      quiet kind of change this plan exists to stop.
+
+      The per-ride half is `workouts.hidden`, and it is deliberately *stronger*
+      than the profile switch: a hidden ride leaves the leaderboard and the
+      ghosts as well as the feed. Three visibility levels became two, because
+      "friends" is not a thing this project has (17.5) and "public" is not a
+      thing it does (17.9). ***Measured***: hiding one ride took its rider off
+      that class's board and the class's rider count from three to two
+
+- [x] **17.8** Self-hosters get the same deal as 14.10 — the endpoint is configured at build time, not typed in
+
+      Already true since 17.14 and never ticked: a git-ignored `config.js`
+      beside the page, a checked-in `config.example.js`, and a page that says
+      it is unconfigured **on screen** rather than in a console. What this
+      sitting adds is 17.16.3's answer to *which* publishable key form, in that
+      example file and in `cloud.properties`, and a `check-deployed.sh` that
+      reports which form the host is serving
+
+- [x] **17.9** Decide what "public" means before shipping it: a public profile URL is an outward-facing surface with moderation and abuse implications a hobby project has to actually think about
+
+      **Decided: nothing here is public, and the way that is enforced is that
+      no unauthenticated surface exists.** Every function on the project
+      requires `auth.uid()`; the anon key reaches the class library and nothing
+      else. There is no URL in this app that shows a rider's name, ride or
+      number to somebody who is not signed in, and no profile page addressable
+      from outside.
+
+      That is the question answered by **not building the thing that raises
+      it**, which is the honest answer for a hobby project rather than a
+      deferral: moderation, abuse and take-down are real obligations and the
+      way to not owe them is to not publish. If a public profile is ever
+      wanted, this item reopens with everything it originally asked for still
+      unanswered
+
+- [x] **17.10** The web app never implies a household member is missing data when they have simply never signed in. See the preamble — this is a copy problem with a data-model cause, and it is the one thing about this phase that is peculiar to Pelonot
+
+      The Riders view is the whole of this, and it is a sentence rather than a
+      mechanism: *"This is everyone with an **account**. Somebody who rides
+      your bike without one is not missing from here — they were never in the
+      cloud at all, and their rides are on the bike where they belong."*
+
+      `rider_directory` is what makes it sayable: it lists every account and
+      shows a rider who is not sharing as a name and a bio **with no numbers**,
+      rather than as somebody with zero rides. Zero is a claim about training;
+      absent is a claim about consent, and they are not the same sentence
+
+- [x] **17.11** Manage friends, display name and bio here rather than on the bike (see the preamble). The Android side may mirror it read-only and lose nothing
+
+      Name and bio are here; there are no friends to manage (17.5). **Ride
+      titles are the third thing and were not in the item** — they belong to
+      the same argument and are the clearest case of it, since a ride's name is
+      the one piece of text a rider actually wants to type and the bike's
+      tablet is the worst keyboard in the house.
+
+      **The Android mirror does not exist yet and the plan should not pretend
+      otherwise**: `ProfileDto` carries `id`, `name`, `ftp_watts` and
+      `weight_kg`, so a bio, a maximum heart rate, the units and a ride's title
+      are cloud-only today. Nothing is lost — the upsert only writes the
+      columns it names, so the bike cannot wipe them — but a rider who sets a
+      bio will not see it on the bike. That is **15.3.7a**
+
+- [x] **17.12** The web app reads `metrics_payload`, so it is the consumer that makes 14.4.3's `payload_version` matter. Do not start 17.3 against an unversioned payload
+
+      Honoured, and it paid for itself twice. `decodeMetrics` reads **both**
+      shapes — an absent `v` is the pre-14.4 array-of-objects, and one row in
+      the cloud is still in it — and rejects a ragged columnar payload outright
+      rather than lining sample 900's power up with sample 900's cadence by
+      luck. That is the same rule `MetricsPayload.toMetrics` applies on the
+      Android side.
+
+      What the *version* bought is smaller than what **reading the payload
+      properly** bought: 17.3's two defects were both in this file, and both
+      were a reader that had never met the real bytes
 
 ---
 

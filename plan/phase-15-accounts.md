@@ -254,6 +254,34 @@ something they could have had offline.**
         authority it has not earned — the exact defect 21.4.2c closed, rebuilt
         on the way down instead of at the finalise
 
+      ***The blocker named above is gone.*** `008_companion_web.sql` adds
+      `profiles.max_hr_bpm` and it is applied, so the column this item was
+      waiting on exists — and the web app already reads and writes it, which
+      means a rider who has set a maximum on the web has one in the cloud
+      today. What is still missing is the Android half: `ProfileDto` does not
+      carry it in either direction. `max_hr_source` is still not a column, so
+      the second bullet above is still the open decision rather than a
+      formality — send both or send neither
+- [ ] **15.3.7a** **Four cloud profile columns the bike cannot see.** `008` gave
+      `profiles` a `bio`, `units`, `max_hr_bpm` and `share_activity`, and
+      `workouts` a `title`; `ProfileDto` carries `id`, `name`, `ftp_watts` and
+      `weight_kg`, and `WorkoutDto` carries no title. So a rider who names a
+      ride or writes a bio on the web sees neither on the bike.
+
+      **Nothing is lost, and that is worth stating because it is the failure
+      this shape usually has.** PostgREST's merge-duplicates upsert writes only
+      the columns in the payload, so the bike syncing a profile cannot blank a
+      bio it has never heard of — which is the same family as 8.3d's finalise
+      reverting a column the session did not carry, avoided here by the wire
+      format rather than by care.
+
+      Two of the five are worth carrying and three probably are not:
+      `max_hr_bpm` is 15.3.7's whole subject; a ride's `title` is the thing a
+      rider would most expect to see on the bike having just typed it. `bio`
+      and `share_activity` are about a surface the bike does not have, and
+      `units` duplicates a preference the tablet already keeps locally — a
+      second copy of a setting is a thing that disagrees with itself
+
 ### 15.4 Leaving
 - [x] **15.4.1** Sign out keeps every local ride. A rider signing out has not asked to lose their training history. **They drop from Account to Local profile** — a rung down the ladder, not out of the app: the household leaderboard (24.1) still has them on it, with all the same rides.
 

@@ -33,13 +33,18 @@ degraded one.
 | `003_cloud_identity.sql` | **`profiles.id` becomes the auth user id.** Rewrites every policy against `auth.uid()`, moves DML from `anon` to `authenticated`. **Deletes existing `profiles` rows** — read it before running it |
 | `004_device_link.sql` | The pairing table and four functions behind signing in by QR code (PLAN 15.6) |
 | `005_revoke_truncate.sql` | Takes back `TRUNCATE`, `TRIGGER` and `REFERENCES`, which Supabase's default privileges grant to `anon` on every new table and no migration here ever asked for |
+| `006_service_role.sql` | The service role's own grants, for the scripts beside this file |
+| `007_everyone_leaderboard.sql` | **Leaderboards and ghosts across bikes**, as two narrow `SECURITY DEFINER` functions rather than relaxed policies. Adds `workouts.power_provenance`. Drops the `friendships` table that was written for 17.5 and never needed — read the header for the owner's reasoning |
+| `008_companion_web.sql` | **What the companion web app needs** (Phase 17): a bio, units, a maximum heart rate and a sharing switch on `profiles`; a title and `hidden` on `workouts`; `kudos` and `ride_comments` with the functions that reach them. `share_activity` defaults to **false**, so the day it runs nothing about the project's exposure changes |
 
 Run them in that order in the SQL Editor. `002` is non-destructive; **`003` is
 not** — it clears `profiles`, deliberately, because every row in it was written
 before there was any such thing as consent.
 
 Everything from `004` on is optional: without it the app's email-and-password
-sign-in works and the QR offer simply does not appear.
+sign-in works and the QR offer simply does not appear. Without `007` there are
+no cross-bike leaderboards; without `008` the web app's Riders view has nothing
+behind it and the rest of that app still works.
 
 ### Check what you got, not what you ran
 

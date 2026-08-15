@@ -6,6 +6,83 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 15 August 2026 (fifty-first sitting): the app asked a question no normal person can answer, and then averaged in the seconds nobody rode
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the seventeenth sitting running, so the brief was triage again — and this
+time two items came out of it, both of which had been sitting in the plan with
+the owner's own words attached and neither of which needed anything the session
+did not already have.**
+
+**21.1.6 was the owner's note of 3 August, and it had gone one screen
+unbuilt.** Verbatim: *"It's better UX to ask people their age and weight than to
+ask max bpm. No normal person knows their max bpm!"* Profile creation had come
+out on the right side of it by another route — 21.1.1b made the year of birth
+the only thing it asks — but **Settings was the exact inversion the note
+describes**: the first control in *Heart-rate zones* was an empty box labelled
+`Maximum heart rate (bpm)`, and *Born in 1986* was the fourth thing down under a
+small *Don't know it?*. The KDoc above the composable called that ordering *"the
+design"* and gave the accuracy argument for it, which is why it is rewritten
+rather than deleted — **the accuracy argument is still true and still decides
+which number wins**; what it got wrong is that a field is worthless at any
+accuracy if the rider cannot fill it in.
+
+**The reveal is one-way, which is the one decision not in the item's text.** A
+disclosure that folds away again is a field that can hold a number governing the
+save with nothing on screen showing it — state that acts and cannot be seen,
+which is 7.9's family. So it is shown from the start for a rider who already
+gave a number and thereafter only ever revealed. **And 21.1.3's offer stays
+beside the field rather than being promoted**: the highest a rider has recorded
+is a *floor*, and a floor offered as the first answer gives every rider with a
+strap zones that are systematically too low.
+
+**Then 19.1.2b, and the answer to its open question was already written down
+somewhere else in the app.** The item asked whether `avg_power` and
+`avg_cadence` mean *over the whole recording* or *over the pedalling* —
+`AutoPausePolicy` has been answering that since 19.1.2, stopping the clock, the
+class and the recording on the strength of it. An average taken over seconds the
+app itself had already ruled a stop is the two halves disagreeing, so
+`PEDALLING_RPM` is now the app's single definition of the word and both means
+divide by the seconds that clear it. **The rows are untouched** — the trench is
+in `workout_metrics`, on both traces and in the duration — and what changed is
+one denominator, carried as `pedallingSampleCount` on the session and on the
+aggregates for exactly `heartRateSampleCount`'s reason. **777 JVM tests, 0
+failures**, up from 771.
+
+**Measured on a fresh ride rather than reasoned about, and the two paths checked
+against each other.** 3:09 of Just Ride on the tablet AVD with a 40-second
+`COAST` in the middle, auto-pause watched firing and lifting: **189 recorded
+rows, 168 of them pedalling.** Whole-recording 109.497 W / 68.758 rpm; pedalling
+123.185 W / 77.353 rpm; and the finalised row says **123.185 and 77.353** to
+three decimals — the live path and `SELECT AVG(...) WHERE cadence >= 1.0`
+agreeing exactly. `avg_hr` is deliberately untouched: cadence and power measure
+the riding and there is none while the cranks are still, but a heart rate
+measures the rider, who is still there.
+
+**One defect and one open item came out of looking at the screen rather than the
+diff.** The power chart's caption ended with an average of its own, taken over
+every bucket in the trace, so with `avg_power` redefined the two disagreed on
+any ride with a stop — one screen, two numbers, both called *average*. The
+caption says nothing now rather than a rival version of a figure the card above
+carries. And the *Time in zone* card files those 21 stopped seconds as **Z1
+Active Recovery**, which is a claim about riding easily and is the largest thing
+on the card: written up as **19.1.2c** with 21.4.1's shape recommended, not
+quietly fixed, because it is a *count* and 23.4 has already settled that counts
+cannot be recomputed after a trim.
+
+**Three more findings were read out of the code and written down rather than
+built.** **21.1.1a** is closed by reading the DTO it was waiting for — `ProfileDto`
+carries neither the date nor the year, and neither does the cloud table, so the
+answer turned out to be *neither*, by default rather than by decision. What that
+reading turned up is **15.3.7**: a rider restoring onto a new tablet gets their
+name, FTP and weight and **silently loses their heart-rate zones**, landing back
+at the first question they ever answered. **11.2.1a**'s symptom cannot be seen
+today — 11.7.3 stopped drawing the resistance band anywhere — so it is annotated
+as a modelling observation rather than a live defect. And **11.1b.8** has a
+better fix shape than its own text names: the strip is already two things in one
+window, and giving the metrics half `FLAG_NOT_TOUCHABLE` is the pattern the
+class timeline already uses in the same file.
+
 ## 14 August 2026 (fiftieth sitting): the ride was not hard to re-file, it was invisible
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work
