@@ -49,7 +49,16 @@ let rides = [];
 let openRide = null;
 let openSamples = [];
 
-/** Watts, or watts per kilo — the board's own toggle (24.3.14's question). */
+/**
+ * Total output, or output per kilo — the board's own toggle.
+ *
+ * It is **kJ/kg and not W/kg**, and the label says so: the board's function
+ * returns each rider's best total output and their weight, and dividing those
+ * gives energy per kilo. W/kg would need an average power the function does not
+ * return, and calling it watts because that is the phrase people know would be
+ * a unit invented to match a habit (24.3.14 is the open question about which
+ * figure the board should be on at all).
+ */
 let boardBasis = 'kj';
 
 const VIEWS = ['rides', 'ride', 'board', 'riders', 'you'];
@@ -106,7 +115,7 @@ function wire() {
   el('board-basis').addEventListener('click', () => {
     boardBasis = boardBasis === 'kj' ? 'wkg' : 'kj';
     el('board-basis').textContent =
-      boardBasis === 'kj' ? 'Show watts per kilo' : 'Show total output';
+      boardBasis === 'kj' ? 'Show output per kilo' : 'Show total output';
     loadBoard();
   });
 
@@ -305,8 +314,12 @@ async function loadRides() {
   // megabytes of payload to draw a list of dates. Ride detail fetches its own.
   const { data, error } = await client
     .from('workouts')
+    // `class_templates` is world-readable (15.5.3), so the class's *name* comes
+    // back with the ride rather than the rider being shown `CLB-01`. The bike
+    // never shows an id and neither should this.
     .select('id, class_id, title, hidden, duration_sec, total_output_kj, ' +
-      'total_distance_km, avg_power, avg_cadence, avg_hr, power_provenance, recorded_at')
+      'total_distance_km, avg_power, avg_cadence, avg_hr, power_provenance, ' +
+      'recorded_at, class_templates(title, category)')
     .eq('user_id', session.user.id)
     .order('recorded_at', { ascending: false });
 
@@ -345,8 +358,13 @@ async function loadRides() {
   return undefined;
 }
 
+/**
+ * What to call a ride: the rider's own name for it, then the class's title,
+ * then *Free ride*. The class **id** is never shown — `CLB-01` is a key, and a
+ * rider looking for last Thursday's climb is not looking for a key.
+ */
 function rideName(ride) {
-  return ride.title || ride.class_id || 'Free ride';
+  return ride.title || (ride.class_templates && ride.class_templates.title) || 'Free ride';
 }
 
 function drawTotals() {
@@ -411,7 +429,7 @@ async function showRide(id) {
 
   const { data, error } = await client
     .from('workouts')
-    .select('*')
+    .select('*, class_templates(title, category)')
     .eq('id', id)
     .eq('user_id', session.user.id)
     .maybeSingle();

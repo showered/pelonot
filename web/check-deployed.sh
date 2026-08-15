@@ -19,7 +19,7 @@ set -eu
 
 HOST="${1:-https://pelonot.showered.workers.dev}"
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-FILES="index.html link.html app.css tokens.css lib.js link.js rides.js"
+FILES="index.html link.html app.css tokens.css lib.js link.js app.js"
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -28,7 +28,7 @@ drifted=0
 
 for file in $FILES; do
   # The host trims `.html` with a 307 (17.16), so follow redirects.
-  if ! curl -fsSL "$HOST/$file" -o "$WORK/$file"; then
+  if ! curl -fsSL "$HOST/$file" -o "$WORK/$file" 2>/dev/null; then
     printf 'MISSING  %s — the host did not serve it\n' "$file"
     drifted=$((drifted + 1))
     continue
@@ -41,6 +41,22 @@ for file in $FILES; do
     drifted=$((drifted + 1))
   fi
 done
+
+# Which publishable key is on the internet (17.16.3). Not a diff — `config.js`
+# is git-ignored and the deployed one is *meant* to differ — but a check that
+# the project's decision about the key FORM has actually reached the host. Both
+# forms are publishable and neither is a secret; they revoke separately, which
+# is what makes having two of them a trap the day one is rotated.
+if curl -fsSL "$HOST/config.js" -o "$WORK/config.js" 2>/dev/null; then
+  if grep -q 'sb_publishable_' "$WORK/config.js"; then
+    printf 'same     config.js — publishable key, sb_publishable_ form\n'
+  elif grep -q 'eyJ' "$WORK/config.js"; then
+    printf 'LEGACY   config.js — the deployed key is the old JWT (eyJ…) form.\n'
+    printf '         This project uses sb_publishable_ (17.16.3). Both work;\n'
+    printf '         they revoke separately, so rotating one leaves the other live.\n'
+    drifted=$((drifted + 1))
+  fi
+fi
 
 if [ "$drifted" -eq 0 ]; then
   printf '\nThe deployed app is this working tree.\n'

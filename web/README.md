@@ -8,7 +8,8 @@ only ever see riders with accounts — a household profile with no account does
 not exist in the cloud at all, not even as an empty row — so a housemate who
 has never signed in is invisible here rather than being someone with no rides.
 That distinction is 17.10 and it is the one thing about this app that is
-peculiar to Pelonot.
+peculiar to Pelonot. The Riders view says it in words, on the page, because it
+is the sentence a rider would otherwise get wrong on their own.
 
 ---
 
@@ -30,11 +31,16 @@ reason `local.properties` is: an endpoint is somebody's private household
 project (14.10.4). A page with no config says so on screen rather than failing
 into a console nobody has open.
 
+**Which publishable key**: the `sb_publishable_…` form, not the legacy JWT that
+begins `eyJ` (17.16.3). Both work and neither is a secret; they revoke
+separately, which is what makes having one of each a trap the day one is
+rotated.
+
 ## The pages
 
 | Page | What it is |
 |------|------------|
-| `index.html` | Sign in, your rides, one ride in detail |
+| `index.html` | The app: your rides, one ride, the leaderboard, the other riders, and you |
 | `link.html` | The QR target: sign in on a phone, and the bike signs itself in |
 
 `link.html` expects the pairing code in the URL **fragment** —
@@ -42,11 +48,41 @@ into a console nobody has open.
 lands in an access log. A rider who opens the page directly can type the code
 instead.
 
+`index.html` routes on the fragment too: `#/rides`, `#/ride/<id>`, `#/board`,
+`#/riders`, `#/you`. One document, five sections, no router and no history API
+— a link to a ride survives a reload and that is the whole requirement.
+
+### What each view is for
+
+- **Rides** — your own history, with all-time totals and twelve weeks of output
+  as bars. Twelve rather than one because a week is the wrong window for
+  somebody who rides once of them (22.5). A list row answers *which ride*, so it
+  carries the time, the date, the class and the distance and not five figures
+  (26.1.3).
+- **One ride** — the three traces with **power zones** behind the watts and
+  **heart-rate zones** behind the pulse (21.4.2), time in zone, and the
+  provenance sentence. It is also where a ride gets **a name** and where it can
+  be **hidden**: the bike has no keyboard worth the name, which is this app's
+  whole premise.
+- **Board** — every registered rider's best effort at one class, on total output
+  or on output per kilo. Only rides where the bike **measured** the watts are
+  ranked; the shipped power curve is 137 W RMSE against the real board, so a
+  modelled watt and a measured one are not the same number.
+- **Riders** — everyone's recent rides, with kudos and one comment each, and the
+  directory of who is here at all. The feed shows nothing until riders turn
+  sharing on: it is off by default.
+- **You** — name, bio, FTP, weight, maximum heart rate, units, the sharing
+  switch, and a JSON export of everything the cloud holds about you.
+
 ## What it needs on the server
 
-Run the migrations in `../supabase/` in order. `004_device_link.sql` is the one
-this app's pairing page depends on; without it, `link.html` reports that the
-code has expired, which is the honest thing for it to say.
+Run the migrations in `../supabase/` in order. Two matter to this app:
+
+- `004_device_link.sql` — the pairing page. Without it, `link.html` reports that
+  the code has expired, which is the honest thing for it to say.
+- `008_companion_web.sql` — the bio, the units, the sharing switch, ride titles,
+  kudos and comments. Without it the Rides, Board and one-ride views still work
+  and the Riders view does not.
 
 The **preferred** hand-off also wants an Edge Function deployed:
 
@@ -73,29 +109,42 @@ the good version exists is in `004_device_link.sql`: this project has
 refresh-token rotation on, so two devices sharing one token family revoke each
 other.
 
-## Where it is hosted, and checking that the live copy is this one
+## Deploying it
 
-The owner's deployment is <https://pelonot.showered.workers.dev/> — a static
-host that also **trims `.html`**: `/link.html` answers `307` to `/link`, and the
-QR's fragment survives it, which is the thing that had to be measured rather
-than assumed (17.16).
+The owner's deployment is <https://pelonot.showered.workers.dev/> — a Cloudflare
+Worker serving these files as static assets, which also **trims `.html`**:
+`/link.html` answers `307` to `/link`, and the QR's fragment survives it, which
+is the thing that had to be measured rather than assumed (17.16).
 
-**Nothing about deploying is automatic, and that has already cost something.**
-A fix to `link.js` landed, was verified against the live endpoint from a local
-copy, and never reached the host; the next day the owner scanned a QR and met
-the unfixed page (17.16.6). So before believing anything about the live app:
+`wrangler.jsonc` in this directory is the deploy, and **it is a reconstruction
+rather than a transcript** (17.16.2). How the site was actually put up lives in
+one person's shell history and nowhere else; the `name` in that file is taken
+from the live URL, so deploying with it updates that Worker rather than standing
+up a second one. It has not been run from this repository — the machine that
+wrote it has no `node` — so treat it as the best available answer and correct it
+the first time somebody uses it.
+
+```bash
+cd web && npx wrangler deploy
+```
+
+**Then run the check, which is the part that actually settles anything:**
 
 ```bash
 ./web/check-deployed.sh
 ```
 
-It fetches every file and diffs it against this working tree, needs no
-credentials, and deploys nothing. `config.js` is skipped on purpose — it is
-git-ignored, so the deployed one is *meant* to differ.
+It fetches every file, diffs it against this working tree, and now also reports
+which publishable key form the host is serving. It needs no credentials and
+deploys nothing. `config.js` is not diffed on purpose — it is git-ignored, so
+the deployed one is *meant* to differ.
 
-**How the deploy itself is done is still not written down** (17.16.2). It is one
-command in somebody's shell history, which is the same gap `cloud.properties`
-closed on the Android side. Whoever next redeploys should add it here.
+**Nothing about deploying is automatic, and that has already cost something.** A
+fix to `link.js` landed, was verified against the live endpoint from a local
+copy, and never reached the host; the next day the owner scanned a QR and met
+the unfixed page (17.16.6). The check exists because of that, and the reason the
+gap was open for exactly one drift is that somebody ran it — not that the deploy
+became reliable.
 
 ## Redirect URLs
 
@@ -105,13 +154,23 @@ who signs up will get a link to somewhere that is not running.
 
 ## What it deliberately does not do
 
-- **No friend graph, no feed, no public profiles.** Every policy on the project
-  is "your own rows and nobody else's" (15.5.6), which is the correct floor to
-  build 17.5 on and the wrong thing to relax in advance of one.
-- **No writes to a ride.** The bike is the source of truth for what happened on
-  it; this reads. Profile editing (17.4) is the first write this app should
-  learn, and it is not built yet.
-- **No charting library.** The three traces are drawn straight into an SVG, and
-  they **break the line across a gap in the series** — the bike stops recording
-  when the board goes quiet or the rider stops, and joining across that absence
-  would be a claim about seconds nobody measured.
+- **No friend graph.** The owner's decision, 3 August 2026: with three or four
+  riders who already know each other, request/accept/block is ceremony around a
+  fact everybody already agrees on. Everyone registered is on everyone's board
+  (`007_everyone_leaderboard.sql`), and the friend graph that was written for
+  17.5 was dropped in the same sitting it was applied.
+- **No public profiles, and no public anything.** Every function requires a
+  session; the anon key reaches the class library and nothing else. There is no
+  URL here that shows a rider's rides to somebody who is not signed in, which is
+  17.9's question answered by not building the thing that raises it.
+- **No mute, block or report** (18.8). What exists instead is that **the rider
+  whose ride it is can delete any comment on it**. At four accounts on an
+  invitation-shaped project that is the moderation floor that matters; 18.8 is
+  the item to build if this ever has more riders than 18.11 was written for.
+- **No writes to what happened on a ride.** The bike is the source of truth for
+  the numbers; this app writes a ride's *name* and *visibility*, and the rider's
+  own profile. Nothing here can change a watt.
+- **No charting library.** The traces are drawn straight into an SVG, and they
+  **break the line across a gap in the series** — the bike stops recording when
+  the board goes quiet or the rider stops, and joining across that absence would
+  be a claim about seconds nobody measured.

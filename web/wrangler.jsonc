@@ -1,0 +1,32 @@
+// How this app gets onto the internet (PLAN 17.16.2).
+//
+// The live copy is https://pelonot.showered.workers.dev — a Cloudflare Worker
+// serving these files as static assets, which is why `/link.html` answers a 307
+// to `/link` (the host trims `.html`, measured in 17.16).
+//
+// **This file is a reconstruction, not a transcript.** How the owner actually
+// deployed it lives in their shell history and nowhere else, which is the whole
+// of what 17.16.2 is about: a fact only one person's terminal knows is a fact
+// the project does not have. The `name` below is taken from the live URL, so a
+// deploy with this config updates that Worker rather than standing up a second
+// one. If the owner used the dashboard instead, correcting this file is a
+// smaller job than reconstructing it again.
+//
+// It changes nothing about 17.1: there is still no build step, nothing to
+// install to *run* the app, and the Gradle build cannot see any of this. A
+// deploy tool is not a toolchain — the page still opens from `file://`.
+//
+//     cd web && npx wrangler deploy
+//     ./web/check-deployed.sh          # the part that actually settles it
+//
+// `config.js` is git-ignored and is uploaded from the working copy, which is
+// deliberate and is the same decision as 17.14: the endpoint and its
+// publishable key belong to whoever is hosting, not to this repository.
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "pelonot",
+  "compatibility_date": "2026-08-15",
+  "assets": {
+    "directory": "./"
+  }
+}
