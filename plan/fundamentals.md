@@ -14,7 +14,7 @@ ordering below is the one to work in.
 | 13 Units | A UK rider is shown kilometres with no way to change it. It is an afternoon's work and it is currently wrong for a large fraction of the audience. |
 | 14 Working sync | Cloud sync was ticked as complete having **never written a single row** — see 14.0. The schema is fixed and writes now land; the app driving it is still unproven. Every feature in 15, 17 and 18 sits on top of this. **Re-scoped by the connectivity model: fundamental to the *cloud tier*, not to the app.** A rider who never signs in is not missing anything here, which is a demotion in urgency and a promotion in how carefully it must be gated (23.1). |
 | 15 Accounts | Sync without an identity puts every rider's data in one anonymous pool. This is also where the current RLS policies stop being a placeholder and start being a security problem. **Same re-scoping as 14** — and note that the anonymous pool is not hypothetical: 14.2.1 is open and every ride the app has ever uploaded went up unattributed. |
-| 12.7 Room migrations | `fallbackToDestructiveMigration()` deletes the rider's entire training history on any schema change. Phases 12–19 all change the schema. This has to go first. |
+| 12.5 Room migrations | `fallbackToDestructiveMigration()` deletes the rider's entire training history on any schema change. Phases 12–19 all change the schema. This has to go first. |
 
 Two more that belong in the fundamental list, added after riding the app on the
 tablet:

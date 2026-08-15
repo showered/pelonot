@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fifty-four entries have passed through it.** In order: standing and seated
+**Fifty-five entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -148,11 +148,12 @@ primary action at 22.8.1, the density at 22.8.2–22.8.5 and the social feed at
 screen is **993 dp of content in a 664 dp viewport**), and **achievements**
 (**Phase 28**, at the owner's own weighting of *"one for the backlog"* — and
 28's opening section is the reconciliation between *"gamify it all even
-further"* and 26.4, which the owner and this plan agreed to leave).
-
-### Post-ride question
-
-Where it asks how your workout went shouldn't be lost below the fold. Work out a slightly better design please.
+further"* and 26.4, which the owner and this plan agreed to leave), and **the
+post-ride question being lost below the fold** (**12.7** — and the measurement
+moved the item off the screen the note names: on the summary the question sits
+265 dp into a 664 dp viewport, and it is *ride detail* that has it 2,000 dp
+down under four charts, still saying *"you still can"* to a rider who cannot
+see it).
 
 ---
 

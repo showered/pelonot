@@ -361,3 +361,72 @@ that.
       The summary now pins Done and Discard below a scrolling body; adding two
       charts and a Resume button to that body is exactly the change that pushes
       something below the fold, which is how 22.4.2's regression was found
+
+---
+
+### 12.7 The effort question is at the bottom of the ride — the owner's note, 15 August 2026
+
+**Verbatim:** *"Where it asks how your workout went shouldn't be lost below the
+fold. Work out a slightly better design please."*
+
+**The measurement was taken before the write-up, on the tablet AVD (1280 × 720
+dp, 664 dp of viewport), and it moves the item off the screen the note names.**
+
+- **On the post-ride summary the question is not below the fold.** *How did that
+  feel?* sits **265 dp** into the viewport with all three answers on screen and
+  the charts beginning below them. That is 22.4.6's own decision working: *a
+  question a rider has to scroll to is a question most riders do not answer*.
+- **On ride detail it is roughly 2,000 dp down** — six 500-px swipes to reach
+  it, under four charts and both zone cards, with only *Export* below it. And
+  when the rider skipped it on the night the card reads *"You didn't answer for
+  this one — you still can"*. **An invitation nobody can see** is the same
+  failure 22.4.6 named one screen along, still standing on the screen a rider
+  actually opens when they come back to a ride.
+
+So the note is about the *record*, not about the night — which is why the
+answer is not to redesign the summary's card but to put the question in the same
+place on both screens. The two screens are one layout with a named list of
+deltas (12.6.3) and **where the effort question lives was never on that list**;
+it drifted because 16.1 landed charts on ride detail first and the question was
+appended after them, exactly the way charts came to be missing from the summary.
+
+**Rejected before building.** A modal after a ride — a rider who has just
+stopped pedalling dismisses a dialog to see their numbers, and an unanswered
+question is better than a wrong one tapped to get rid of it (26.3.3 is the
+owner's own reasoning about not forcing an answer). A permanently pinned bar —
+the pinned row on the summary is *Done* and *Discard*, and a question that
+cannot be scrolled away from is a question being demanded rather than offered.
+
+- [ ] **12.7.1** **The question moves under the figures on ride detail**, above
+      the charts, which is where the summary already asks it. The order on that
+      screen becomes: the figures, the claim card if the ride is unclaimed
+      (12.4.1's placement is unchanged and outranks this — an unclaimed ride's
+      only actionable thing stays first), the effort question, the charts,
+      export. **Nothing about the charts changes** and no card is added
+- [ ] **12.7.2** **One control, not two copies.** `RpeCard` on the summary and
+      `RpeEditor` on ride detail are the same three buttons written out twice
+      and they have already drifted four ways: a `Card` against a bare `Column`,
+      *"How did that feel?"* against *"How did it feel?"*, a subtitle on one and
+      not the other, and two private `EFFORT_BUTTON_HEIGHT` constants with a
+      comment on one saying it matches the other. Extract it the way
+      `RideFigures` was extracted in 12.2.2 and `RideChartsSection` in 12.6.1 —
+      one component in `ui/components`, so the next change to the wording is
+      made once. **The tense difference is kept and derived inside it**: this
+      ride tonight asks *did that feel*, a ride from March asks *did it feel*,
+      and both sets of words live in one file
+- [ ] **12.7.3** **The guest destination is the summary's own version of the
+      same fault.** `GuestDestination` — *"Whose ride was this?"*, the profile
+      buttons, *Keep as a guest ride* and *Discard* — is drawn **below**
+      `RideChartsSection`, and a guest ride draws **no pinned action bar at
+      all** (`if (!isGuest)`), so for the one rider on this screen who has a
+      decision to make, both the decision and every way off the screen are
+      about **1,300 dp** down, behind two charts and two zone cards. It moves
+      above the charts with the question. The effort question stays first of the
+      two: it is one tap and it does not leave the screen, where every button on
+      the destination card does
+- [ ] **12.7.4** **The rule that falls out, written where both files can see
+      it: the charts are the last thing on both screens.** Anything a rider can
+      *act on* — a question, a claim, a destination — goes above them, because a
+      chart is the tallest thing either screen draws and everything appended
+      after one is below the fold by construction. This is what 12.6.3's list of
+      deltas would have caught if placement had been on it
