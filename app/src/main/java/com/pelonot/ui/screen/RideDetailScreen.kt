@@ -21,13 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -53,7 +51,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,7 +60,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.chart.RideIntegrity
 import com.pelonot.domain.export.ExportFormat
-import com.pelonot.domain.model.PerceivedEffort
+import com.pelonot.ui.components.EffortQuestion
 import com.pelonot.ui.components.RideChartsSection
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.theme.expressiveShapes
@@ -303,23 +300,33 @@ fun RideDetailScreen(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
 
+            // 12.7.1. Under the figures and above the charts, which is where
+            // the post-ride summary already asks it. It used to sit below four
+            // charts and both zone cards — roughly 2,000 dp down — telling a
+            // rider who could not see it that they could still answer. It saves
+            // on each tap: there is no *Done* on this screen to hang a save off.
+            EffortQuestion(
+                selected = workout.rpeRating,
+                onSelect = viewModel::setRpe,
+                modifier = Modifier.loneCard()
+            )
+
+            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
+
             // 16.1. Every ride since the foreign-key fix has written a full
             // per-second series and no screen had ever drawn one, which is what
             // makes recording it worth doing in the first place.
+            //
+            // 12.7.4: anything a rider can *act on* goes above the charts,
+            // because a chart is the tallest thing this screen draws and
+            // whatever follows one is below the fold by construction. What is
+            // left below is *Export*, which is a door rather than a question.
             RideChartsSection(
                 charts = state.charts,
                 rivals = state.rivals,
                 ghost = state.ghost,
                 onPickRival = viewModel::showGhost,
                 isGuestRide = state.workout?.userId == null
-            )
-
-            Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
-
-            RpeEditor(
-                selected = workout.rpeRating,
-                onSelect = viewModel::setRpe,
-                modifier = Modifier.loneCard()
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
@@ -541,96 +548,5 @@ private fun ClaimRideSection(
         }
     }
 }
-
-/**
- * RPE, after the fact.
- *
- * Same control as the post-ride screen but framed as a correction rather than a
- * question, and it saves on each tap — there is no "Done" button on this screen
- * to hang a save off.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun RpeEditor(
-    selected: Int?,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // 26.3. The same three answers as the post-ride summary, on purpose: a
-    // rider who answered "A good workout" on the night must not come back a
-    // month later to a screen offering them a 7 instead. `PerceivedEffort.of`
-    // is what lets a ride rated on the old ten-point scale read back as one of
-    // the three without anything having been rewritten on disk.
-    val chosen = PerceivedEffort.of(selected)
-
-    Column(modifier) {
-        Text(
-            text = "How did it feel?",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() }
-        )
-        Text(
-            text = if (selected == null) {
-                "You didn't answer for this one — you still can"
-            } else {
-                "Tap a different answer to change it"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-        ) {
-            PerceivedEffort.entries.forEach { effort ->
-                val isSelected = chosen == effort
-                FilledTonalButton(
-                    onClick = { onSelect(effort.rating) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .sizeIn(minHeight = EFFORT_BUTTON_HEIGHT)
-                        .semantics {
-                            contentDescription = "${effort.label}. ${effort.detail}"
-                        },
-                    shape = MaterialTheme.expressiveShapes.pill,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = 12.dp,
-                        vertical = 12.dp
-                    ),
-                    colors = if (isSelected) {
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        ButtonDefaults.filledTonalButtonColors()
-                    }
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = effort.label,
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = effort.detail,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                            color = LocalContentColor.current.copy(alpha = 0.75f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Two lines of text and a comfortable target. Matches the summary screen's. */
-private val EFFORT_BUTTON_HEIGHT = 72.dp
 
 private val MIN_TOUCH_TARGET = 48.dp

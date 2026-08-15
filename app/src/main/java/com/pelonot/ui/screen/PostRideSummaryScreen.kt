@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -22,12 +21,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -42,18 +39,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
-import com.pelonot.domain.model.PerceivedEffort
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.EffortQuestion
 import com.pelonot.ui.components.RideChartsSection
 import com.pelonot.ui.components.RideFigures
 import com.pelonot.ui.theme.expressiveShapes
@@ -179,6 +174,21 @@ fun PostRideSummaryScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // A guest has no pinned row, so this card is their only way off
+                // the screen — including when there is no ride left to file.
+                if (isGuest) {
+                    Spacer(Modifier.size(MaterialTheme.spacing.large))
+                    GuestDestination(
+                        profiles = state.profiles,
+                        onSaveToProfile = { userId ->
+                            viewModel.saveToProfile(context, userId, onDone)
+                        },
+                        onCreateProfile = { showProfileDialog = true },
+                        onKeepAsGuest = onDone,
+                        onDiscard = { viewModel.discard(onDone) },
+                        modifier = Modifier.loneCard()
+                    )
+                }
             } else {
                 RideFigures(workout)
 
@@ -211,10 +221,11 @@ fun PostRideSummaryScreen(
                                 MaterialTheme.spacing.medium
                             )
                         ) {
-                            RpeCard(
-                                state.rpe,
-                                viewModel::setRpe,
-                                Modifier.weight(1f).fillMaxHeight()
+                            EffortQuestion(
+                                selected = state.rpe,
+                                onSelect = viewModel::setRpe,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                isTonight = true
                             )
                             board?.let {
                                 ClassLeaderboardCard(it, Modifier.weight(1f).fillMaxHeight())
@@ -228,10 +239,38 @@ fun PostRideSummaryScreen(
                         ) {
                             // 22.6: alone, so it stops at a column's width
                             // instead of banding across the panel.
-                            RpeCard(state.rpe, viewModel::setRpe, Modifier.loneCard())
+                            EffortQuestion(
+                                selected = state.rpe,
+                                onSelect = viewModel::setRpe,
+                                modifier = Modifier.loneCard(),
+                                isTonight = true
+                            )
                             board?.let { ClassLeaderboardCard(it, Modifier.fillMaxWidth()) }
                         }
                     }
+                }
+
+                // 12.7.3. Above the charts, and below the effort question by
+                // one place: this card is how a guest gets *off* this screen —
+                // there is no pinned row for them — and every button on it
+                // ends the screen, where the question above it is one tap and
+                // stays. Below the charts it was about 1,300 dp down, which
+                // put the only decision on the screen and the only way to
+                // leave it behind two charts and two zone cards.
+                if (isGuest) {
+                    Spacer(Modifier.size(MaterialTheme.spacing.large))
+                    GuestDestination(
+                        profiles = state.profiles,
+                        onSaveToProfile = { userId ->
+                            viewModel.saveToProfile(context, userId, onDone)
+                        },
+                        onCreateProfile = { showProfileDialog = true },
+                        onKeepAsGuest = onDone,
+                        onDiscard = { viewModel.discard(onDone) },
+                        // 22.6, and it was breaking that rule below the fold
+                        // where nobody could see it band across the panel.
+                        modifier = Modifier.loneCard()
+                    )
                 }
 
                 Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
@@ -239,29 +278,15 @@ fun PostRideSummaryScreen(
                 // 12.6.1. The owner's note: *"this should be pretty much the
                 // same as when you view it from history, right? It currently
                 // doesn't contain any graphs."* It is the same ride and the
-                // same component — below the effort question rather than above
-                // it, because the question is the one thing here only the
-                // rider can answer and a question they have to scroll to is a
-                // question most riders do not answer (22.4.6).
+                // same component — and it is **last**, which is 12.7.4: a
+                // chart is the tallest thing this screen draws, so anything
+                // appended after one is below the fold by construction.
                 //
                 // No ghost and no rivals: those are a comparison, and this is
                 // the one screen where the rider has not asked for one.
                 RideChartsSection(
                     charts = state.charts,
                     isGuestRide = workout.userId == null
-                )
-            }
-
-            if (isGuest) {
-                Spacer(Modifier.size(MaterialTheme.spacing.large))
-                GuestDestination(
-                    profiles = state.profiles,
-                    onSaveToProfile = { userId ->
-                        viewModel.saveToProfile(context, userId, onDone)
-                    },
-                    onCreateProfile = { showProfileDialog = true },
-                    onKeepAsGuest = onDone,
-                    onDiscard = { viewModel.discard(onDone) }
                 )
             }
 
@@ -433,10 +458,11 @@ private fun GuestDestination(
     onSaveToProfile: (Int) -> Unit,
     onCreateProfile: () -> Unit,
     onKeepAsGuest: () -> Unit,
-    onDiscard: () -> Unit
+    onDiscard: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.expressiveShapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -509,125 +535,7 @@ private fun GuestDestination(
     }
 }
 
-/**
- * How hard that felt — three answers, not ten (26.3, the owner's note).
- *
- * In a card since 22.4.6 so that it and the leaderboard read as two things of
- * equal standing side by side, rather than a heading floating above a row of
- * pills.
- *
- * Three wide buttons rather than ten small ones is also what lets each carry a
- * line saying what it means, which is what makes them answerable: *comfortable*
- * against *a good workout* is a real distinction a rider can make in a second,
- * where 6 against 7 is not. See [PerceivedEffort] for why the stored column is
- * still 1–10.
- */
-@Composable
-private fun RpeCard(
-    selected: Int?,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val chosen = PerceivedEffort.of(selected)
-
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.expressiveShapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
-    ) {
-        // Filled to whatever the board beside it needs (24.1.8) with the
-        // question still at the top, so *"How did that feel?"* and *"On this
-        // bike"* sit on the same line. Centring it was tried first and reads
-        // worse: the two headings then disagree by a hundred dp and the card
-        // looks like it is missing something above the question.
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(MaterialTheme.spacing.large)
-        ) {
-            Text(
-                text = "How did that feel?",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.semantics { heading() }
-            )
-
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)
-            ) {
-                PerceivedEffort.entries.forEach { effort ->
-                    EffortButton(
-                        effort = effort,
-                        isSelected = chosen == effort,
-                        onSelect = { onSelect(effort.rating) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * One of the three answers.
- *
- * The detail line is inside the button rather than beside it, because the
- * button is what a rider is choosing between and a label they have to look
- * away from to understand is not a label.
- */
-@Composable
-private fun EffortButton(
-    effort: PerceivedEffort,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    FilledTonalButton(
-        onClick = onSelect,
-        modifier = modifier
-            .sizeIn(minHeight = EFFORT_BUTTON_HEIGHT)
-            .semantics {
-                contentDescription = "${effort.label}. ${effort.detail}"
-            },
-        shape = MaterialTheme.expressiveShapes.pill,
-        contentPadding = PaddingValues(
-            horizontal = 12.dp,
-            vertical = 12.dp
-        ),
-        colors = if (isSelected) {
-            ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        } else {
-            ButtonDefaults.filledTonalButtonColors()
-        }
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = effort.label,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = effort.detail,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                color = LocalContentColor.current.copy(alpha = 0.75f)
-            )
-        }
-    }
-}
-
 private val MIN_TOUCH_TARGET = 48.dp
-
-/** Two lines of text and a comfortable target for someone out of breath. */
-private val EFFORT_BUTTON_HEIGHT = 72.dp
 
 /** Wide enough to be the obvious target, narrow enough not to be a banner. */
 private val DONE_WIDTH = 220.dp
