@@ -25,7 +25,7 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 ```bash
 ./gradlew assembleDebug            # must always pass
-./gradlew testDebugUnitTest        # 781 JVM tests, must stay green
+./gradlew testDebugUnitTest        # 787 JVM tests, must stay green
 ./gradlew installDebug             # needs a booted emulator or device
 ./gradlew connectedDebugAndroidTest
 ```
@@ -113,6 +113,17 @@ an AVD at the right resolution but the wrong density hides half of them.
   the failure case: the screen's only question is *which of you is it*. Judge it
   by looking at the screen on the tablet AVD, not by reading the diff.
   **Phase 26**.
+- **A rider's level says *has ridden more* and never *is fitter*.** `RiderScore`
+  is the one component that draws it (26.4.3) and its KDoc carries four rules,
+  three of which a call site will be tempted to break: `LVL` and a number and no
+  other word; never beside the FTP, which is a measurement where this is an
+  accumulation; never amber, because amber means *off target* and a rider's
+  identity must not wear it. The fourth is the one that is a claim rather than a
+  style: **a guest gets no badge at all.** Level 1 is *the start* for a profile
+  that has not ridden, but a guest's rides are filed against nobody, so a guest
+  can never leave level 1 — `AppUiState.levelFor` returns null for exactly that.
+  Same family as nullable `heartRateBpm`: absent is a claim, and it is a
+  different claim from 1. **PLAN.md 26.4.**
 - **The owner leaves notes in PLAN.md's *owner's inbox*** without opening a
   session. Read it before picking work, write each entry up as numbered plan
   items and then **empty it** — an entry still sitting there has not been dealt

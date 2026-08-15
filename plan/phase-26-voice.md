@@ -317,40 +317,115 @@ the app **has no dimensionless number for a rider at all**, and the reason the
 profile tile felt empty is that nothing in this app has ever said *how much you
 have ridden* in one glyph.
 
-- [ ] **26.4.1** **If it is a level, it is built on volume, not on fitness.**
-      Rides, minutes and kilojoules over the rider's whole history, through a
-      curve that grows slowly — monotonic by construction, so it survives an
-      injury, a holiday and a bad winter. This is the same argument 22.5.2 made
-      about the streak: the quantity the app should reward is *getting on the
-      bike*, because that is the one the rider controls. Pure, JVM-testable, and
-      derived from figures `RidingHistory` already produces
-- [ ] **26.4.2** **It must never be presented as fitness, and the wording is the
-      whole risk.** A rider at level 12 beside a rider at level 30 must not read
-      as *fitter* — it reads as *has ridden more*, which is true and is also the
-      only thing the number can honestly claim. This is where Phase 26's own
-      rule cuts both ways: less is more, but a number with no label is a number
-      the reader supplies their own meaning for. One word, not a paragraph
-- [ ] **26.4.3** **The deliverable is the component, not the number.** The
-      owner's phrase is *"consistently, a design system feature"*, and this
-      project's habit is the right one — `readableColumn`, `WideGrid`,
-      `loneCard`: one token, its KDoc naming the others. A `RiderScore`
-      composable with one shape, one type scale and one colour, so the profile
-      tile, the dashboard, the household board (24.1) and the web app (17.15)
-      cannot each draw it slightly differently. **17.15.2 is the catch**:
-      nothing keeps `tokens.css` and `Color.kt` in step, so a badge invented on
-      the bike will not exist on the web until somebody transcribes it
-- [ ] **26.4.4** **Where it goes is a separate decision from what it is, and the
-      profile selector is the one place to be careful.** 26.1.1 just took a
-      number off that screen and the result is the owner's own "SO much better",
-      so a badge goes back there only if it reads as *identity* rather than as
-      *measurement* — "I'm the one on 12" is a recognition cue, "I'm the one on
-      150 W" is not. The dashboard and the household board are the uncontested
-      homes. Judged on the AVD (26.2.2), and it is the kind of thing to draw
-      three ways and look at rather than argue about
-- [ ] **26.4.5** **The FTP is not homeless and does not need this.** It has two
-      screens of its own (7.10.1, 7.10.2), the ride screen's zone ladder is a
-      reading of it, and every chart's bands come from it. Whatever this becomes,
-      it is a second quantity beside the FTP and never a replacement for it —
-      and if the answer turns out to be "leave it", which the owner explicitly
-      allowed for, that is a legitimate close for this section rather than a
-      failure
+- [x] **26.4.1** ***Done, and the curve is the item.*** `domain/progress/
+      RiderLevel.kt` — lifetime rides, minutes and kilojoules, through
+      `level = 1 + floor(sqrt(points / 70))`. Seventy points is one typical
+      ride (thirty minutes, 200 kJ), so **the first finished ride a rider ever
+      does takes them to level 2**, which is the only place on this curve where
+      one ride can move the number and is exactly the moment it should. After
+      that a level costs the square of how far up it is: level 3 at four rides,
+      4 at nine, 11 at a hundred, 30 at 841. A once-a-week rider is level 8
+      after a year and 13 after three.
+
+      **Three weights and one of them carries the item's argument.** A ride is
+      20 points whatever it was, a minute is 1, and ten kilojoules are 1. The
+      per-ride term is the largest for a short ride on purpose — ten twenty-
+      minute rides beat one three-hour one at the same output, which is 22.5.2's
+      *reward getting on the bike* arriving on a badge. And the kilojoule term
+      is deliberately small, because it is the only one that is unfair between
+      bodies: doubling the output over identical time is **at most one level**,
+      which is a test rather than a claim.
+
+      **`RidingHistory` turned out not to be the source, and that is worth
+      writing down.** The item said "derived from figures `RidingHistory`
+      already produces"; it produces seventeen *weeks*, and a level over a
+      window is a level a rider can be demoted from by the calendar. The source
+      is a new grouped query, `WorkoutDao.observeRiderTotals`, which is the only
+      figure in this app that is not windowed. **And a trimmed ride still counts
+      in full** — 23.4 condenses `workout_metrics`, not `workouts`, and all
+      three columns live on the ride row. **Ten JVM tests**, the load-bearing one
+      being that the level never falls across 500 rides of accumulation
+- [x] **26.4.2** ***Done — the visible wording is `LVL` and a number.*** `LVL`
+      is the owner's own word from the note, and it is the whole of what the
+      badge is allowed to say: no unit, no adjective, nothing about fitness.
+      The rule is written as rule 1 of four in `RiderScore`'s KDoc, where the
+      next call site will meet it.
+
+      **The one place it says more is the screen reader**, and that is the
+      opposite of a loophole. A sighted rider reads `LVL 7` beside their own
+      name on their own dashboard and the context supplies most of the meaning;
+      a screen reader has no context to lend it, so the `contentDescription` is
+      *"Riding level 7, earned by 46 rides"* — spelled out rather than left for
+      the listener to supply. Less is more is a rule about a glance, and a
+      screen reader is not glancing
+- [x] **26.4.3** ***Done.*** `ui/components/RiderScore.kt`, one shape (the pill),
+      one type scale (`labelSmall` + `titleSmall`), one colour
+      (`primaryContainer`), and **four rules in the KDoc naming what a future
+      call site must not do** — the `readableColumn` / `WideGrid` / `loneCard`
+      habit the item asked for. Rule 3 is the one that would have been got
+      wrong by taste: **never amber**, because amber is this app's off-target
+      signal (11.8.3) and a rider's own identity must not wear the colour that
+      means *you are wrong*.
+
+      **The thin track along the bottom is the progress to the next level**, and
+      it is unlabelled on purpose — a rider does not need the arithmetic to see
+      that the bar is nearly full. It is also what keeps `RiderLevel.progress`
+      a drawn number rather than a computed one nobody reads.
+
+      **17.15.2's catch is real and is now 26.4.6**: the badge does not exist on
+      the web app
+- [x] **26.4.4** ***Done, in all three places, and the third one is the owner's
+      to overrule.*** The two uncontested homes went in first — beside the name
+      on the dashboard's greeting row, and beside each name on the household
+      panel. On the dashboard it **costs no height at all**, which is the whole
+      reason it is there rather than in a card: 22.8 found that screen carrying
+      993 dp of content into a 664 dp viewport, so a badge that costs a row is a
+      badge that pushes something below the fold.
+
+      **The profile selector carries it too, and the note's own words are why.**
+      26.1.1 took `150 W FTP` off that screen and the owner's verdict was "SO
+      much better", so the item was right to call it the careful one — but the
+      note says *"we removed '200 W FTP' from profile selector screen… but now
+      we don't see '200' at all"*. That screen **is** the one the note is about,
+      so leaving the badge off it answers a different question from the one the
+      owner asked. On the tablet it reads as identity: `LVL 7` under *Simon* is
+      the same shape as a level under a name in a game, where `150 W FTP` was a
+      unit and a piece of jargon on a screen whose only question is *which of
+      you is it*. **It is one line to remove and 26.4.5 explicitly allows
+      "leave it"** — this is a session's judgement, taken because the note named
+      the screen, and it is the owner's to reverse.
+
+      **The household panel's ordering is deliberately untouched.** Alex sits
+      above Simon at LVL 3 to his LVL 7, because the rows are ordered by riding
+      *in the window* and the badge is who somebody is *over years*. Ordering by
+      level would turn a presence card into a lifetime ranking, which is
+      24.2's competition-nobody-entered arriving by the back door
+- [x] **26.4.5** ***Held, and it decided one thing.*** The FTP keeps its two
+      screens, its zone ladder and its chart bands; nothing was moved, replaced
+      or captioned. Rule 2 in `RiderScore`'s KDoc is the rule that keeps it that
+      way: **never beside the FTP as if they were the same kind of thing**,
+      because a row containing both invites the reading that a higher level is a
+      fitter rider — the one thing this number must never say. The FTP glance
+      card and the level badge are on the same dashboard and are 400 dp apart
+- [ ] **26.4.6** **The badge does not exist on the web app, which is 17.15.2
+      arriving exactly as it said it would.** `RiderScore` is Compose, its
+      colour is `primaryContainer` out of `Color.kt`, and nothing keeps
+      `web/tokens.css` in step — so a rider who opens the companion app sees the
+      number nowhere. **Deliberately not built in the same sitting**: the web
+      app's own profile view is 17.x work, the deploy is the owner's (17.16.2),
+      and a badge transcribed into CSS that nobody can see until a redeploy is
+      the third fix stacked behind that door. What it needs when it comes: the
+      *arithmetic* must not be transcribed with the colour. `RiderLevel` is
+      pure Kotlin and a second implementation in JavaScript is two answers to
+      one question — the level belongs in the payload or in a shared rule, not
+      recomputed on the page
+- [ ] **26.4.7** **Nothing writes the level down, and one day something should
+      want to.** It is derived on read from three columns, every time, which is
+      right today and is the same shape as the trap at 7.8: a figure derived on
+      read cannot answer *what was it then*. It matters the moment anything
+      wants to say **"you reached level 8"** — Phase 27's alerts are the obvious
+      caller and Phase 28's achievements the other — because a level-up is an
+      event and this has no memory of one. **Not a defect and not scheduled**:
+      the honest note is that the first feature to need it should add the
+      column, and should add it as *the level at the moment it changed* rather
+      than as a cache of the current one

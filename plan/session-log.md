@@ -6,6 +6,65 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 15 August 2026 (fifty-third sitting): the phase that was one line per feature, built
+
+**The owner asked for the rest of the companion web app in one sitting —
+"full of whichever features are required", not fussy, no questions back — and
+what that turned out to mean is that Phase 17 was eleven one-line items nobody
+had ever opened.** Everything past the pairing page was still a sign-in and a
+list of dates. It is five views now: your rides with totals and twelve weeks of
+output, one ride with zone bands and time in zone, the leaderboard, the other
+riders with a feed, and your own profile.
+
+**Eight of the ten items were one piece of work, and the schema is where the
+thinking went.** `supabase/008_companion_web.sql` adds a bio, units, a maximum
+heart rate and a sharing switch to `profiles`; a title and `hidden` to
+`workouts`; and `kudos` and `ride_comments` with the six functions that reach
+them. It is 007's shape inherited rather than re-taken: **narrow `SECURITY
+DEFINER` functions, not relaxed policies**, because a function returns the
+columns it names and no column the table grows afterwards.
+
+**The one real decision in it is `share_activity` defaulting to false, and it
+was forced by a measurement rather than by a principle.** 17.7 asks for private
+by default; the owner's decision of 4 August left public sign-up **on**, and
+18.11.1 wrote down the accepted blast radius in exactly these words — a stranger
+who registers sees *"display names, class ids, durations, output — not ride
+dates, not RPE, not heart rate"*. An activity feed is ride dates by
+construction. A feed switched on for everybody would have widened a risk the
+owner had sized and accepted, without anybody deciding to. So the feed is empty
+for everyone on the day the migration runs, and turning it on is one switch on
+one screen. **Nothing about the project's exposure changed when `008` was
+applied**, which is the property a migration adding a social feature should
+have.
+
+**Two defects came out of the ride detail, both in code that has been on the
+internet for a fortnight, and both are the same shape.** `metrics_payload.pm` is
+`1` and `0` rather than `true` and `false` — `CompactBoolean` writes digits
+because `true` across 2,700 samples is 13 KB on a 49 KB payload — and the page
+compared against `true`, so **every genuinely measured ride's caption read
+*"this ride does not record where its watts came from"***. The card whose entire
+job is not to overclaim was underclaiming, on every row, since it was written.
+Beside it, the resolution key is `d` rather than `detail`, so a condensed ride
+never said it was one (23.4.3). **A reader that has never been run against the
+real bytes is the seam**, and it is 17.12's own warning arriving from the other
+direction: the item was about the payload having a version, and what actually
+paid was reading the payload properly.
+
+**17.16.2 is finally closed, and honestly rather than tidily.** It has been open
+since it predicted its own cost and has since delayed three fixes. The deploy is
+now `web/wrangler.jsonc`, **labelled a reconstruction rather than a transcript**:
+the Worker name is taken from the live URL so a deploy updates the site rather
+than standing up a second one, and it has not been run from here because this
+machine has no `node`. `check-deployed.sh` is what settles it either way, and it
+now also answers 17.16.3 by reporting which publishable key form the host
+serves. Today it says **LEGACY** — the deployed `config.js` still carries the
+old `eyJ` JWT while everything else uses `sb_publishable_`. Both work; they
+revoke separately, which is the whole trap.
+
+**What is built is not what is live.** `./web/check-deployed.sh` reports six
+files drifted, and the redeploy is the owner's — the fifth time that sentence
+has had to be written and the first time the command is in the repository.
+
 ## 15 August 2026 (fifty-second sitting): the card that called standing still Active Recovery, and a unit audit whose premise was wrong
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work
