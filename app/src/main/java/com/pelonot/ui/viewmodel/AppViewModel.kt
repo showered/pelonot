@@ -14,7 +14,9 @@ import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.backup.BackupReminder
 import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
+import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingHistory
+import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.domain.suggest.ClassToRide
@@ -88,6 +90,13 @@ data class AppUiState(
     val ftpTrend: FtpTrend = FtpTrend(),
     /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
     val ridingHistory: RidingHistory = RidingHistory(),
+    /**
+     * How much the selected rider has *ever* ridden, as a level (26.4).
+     *
+     * The one figure in this state that is not windowed, and the only one that
+     * cannot go down.
+     */
+    val riderLevel: RiderLevel = RiderLevel.of(RidingTotals()),
     /**
      * The class the dashboard offers, and why (22.8.6). Null only while the
      * library is still loading — a rider with no history has a suggestion too,
@@ -246,11 +255,41 @@ class AppViewModel(
         }
 
     /**
-     * The two flows about the rider's own riding, paired for the same reason
-     * [rideStatus] is a pair: the typed `combine` overload stops at five and
-     * [dashboard] is already at it.
+     * The selected rider's level (26.4).
+     *
+     * **A guest is level 1 and that is a real answer**, not a placeholder: a
+     * guest ride is filed against nobody, so there is no history to count and
+     * the honest reading of an empty history is *the start*. It is the same
+     * shape as the FTP trend being empty for a guest, one line up.
+     *
+     * The map is read here rather than a per-profile query being added, because
+     * the household panel on the same screen needs everybody's — see
+     * `WorkoutRepository.observeRiderLevels`.
      */
-    private val riding = combine(ridingHistory, riderRides) { history, rides -> history to rides }
+    private val riderLevel = combine(
+        settingsRepository.settings.map { it.lastProfileId }.distinctUntilChanged(),
+        workoutRepository.observeRiderLevels()
+    ) { profileId, levels ->
+        levels[profileId] ?: RiderLevel.of(RidingTotals())
+    }
+
+    /**
+     * The flows about the rider's own riding, travelling together for the same
+     * reason [rideStatus] is a pair: the typed `combine` overload stops at five
+     * and [dashboard] is already at it.
+     */
+    private val riding = combine(
+        ridingHistory,
+        riderRides,
+        riderLevel
+    ) { history, rides, level -> RiderState(history, rides, level) }
+
+    /** [riding]'s three flows, named rather than nested in a `Pair` (see [DashboardState]). */
+    private data class RiderState(
+        val ridingHistory: RidingHistory,
+        val riderRides: RiderRides,
+        val riderLevel: RiderLevel
+    )
 
     private val dashboard = combine(
         dashboardStats,
@@ -258,8 +297,8 @@ class AppViewModel(
         ftpTrend,
         backupReminder,
         riding
-    ) { stats, household, ftp, backup, (history, rides) ->
-        DashboardState(stats, household, ftp, backup, history, rides)
+    ) { stats, household, ftp, backup, rider ->
+        DashboardState(stats, household, ftp, backup, rider.ridingHistory, rider.riderRides, rider.riderLevel)
     }
 
     /**
@@ -275,7 +314,8 @@ class AppViewModel(
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory,
-        val riderRides: RiderRides
+        val riderRides: RiderRides,
+        val riderLevel: RiderLevel
     )
 
     val uiState: StateFlow<AppUiState> = combine(
@@ -294,6 +334,7 @@ class AppViewModel(
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,
+            riderLevel = dashboard.riderLevel,
             // Computed here rather than in a flow of its own because it is a
             // function of two things the state already carries — the library and
             // the rider's rides — and a third flow that re-derives one of them

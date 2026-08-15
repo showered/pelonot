@@ -1,5 +1,6 @@
 package com.pelonot.domain.social
 
+import com.pelonot.domain.progress.RiderLevel
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -31,7 +32,19 @@ data class HouseholdRider(
      * ride a week a perfect year of Sundays is a day-streak of 1, which is not
      * worth showing and is not what the rider did.
      */
-    val streakWeeks: Int
+    val streakWeeks: Int,
+    /**
+     * Their riding level (26.4), which is the one figure on this row that is
+     * **not** about the last 30 days.
+     *
+     * That mixture is the point rather than an inconsistency: the rest of the
+     * row is what somebody has been doing lately and the level is who they are,
+     * so a housemate who has been ill for a month is still recognisably
+     * themselves on the card. It is deliberately not defaulted — a signal that
+     * is optional at the call site is a signal nobody notices is missing, which
+     * is the general form of the defect 7.11.6 found.
+     */
+    val level: RiderLevel
 )
 
 /**

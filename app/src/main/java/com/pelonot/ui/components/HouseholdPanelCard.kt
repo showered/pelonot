@@ -40,6 +40,14 @@ import com.pelonot.ui.theme.spacing
  * class is the same; a month of somebody else’s riding is not, and turning
  * it into a table with places in it would invent a competition nobody entered.
  *
+ * **The level badge does not change that, and the ordering is where it could
+ * have** (26.4.4). The rows are still ordered by riding in the window, so a
+ * housemate with a higher level can sit below one with a lower — which reads
+ * oddly for about a second and is right: the badge says who somebody is over
+ * years, and the row says what they have been doing this month. Ordering by
+ * level instead would turn a presence card into a lifetime ranking, which is
+ * the competition nobody entered arriving by the back door.
+ *
  * **It is windowed at six** ([HouseholdPanel]), which is 24.1.8 arriving on the
  * card next door: the note capped the class leaderboard and this panel was left
  * listing every profile that had ridden, twelve deep on the tablet AVD.
@@ -77,6 +85,14 @@ fun HouseholdPanelCard(
                         .padding(top = MaterialTheme.spacing.medium),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // The level is *identity*, so it goes with the name rather
+                    // than with the figures at the other end of the row (26.4.4)
+                    // — and it is the one thing on this row that is not about
+                    // the last 30 days, which is why it must not be read as
+                    // part of the sequence beside it.
+                    RiderScore(level = rider.level)
+                    Spacer(Modifier.width(MaterialTheme.spacing.medium))
+
                     Text(
                         text = if (rider.localUserId == youId) "${rider.name} (you)" else rider.name,
                         style = MaterialTheme.typography.bodyLarge,

@@ -1,5 +1,7 @@
 package com.pelonot.domain.social
 
+import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.domain.progress.RidingTotals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -19,7 +21,8 @@ class HouseholdPanelTest {
         rides = rides,
         outputKj = rides * 100.0,
         lastRideAt = 0L,
-        streakWeeks = 0
+        streakWeeks = 0,
+        level = RiderLevel.of(RidingTotals(rides = rides, durationSec = rides * 1_800L, outputKj = rides * 200.0))
     )
 
     /** Query order, most active first — what the DAO already returns. */

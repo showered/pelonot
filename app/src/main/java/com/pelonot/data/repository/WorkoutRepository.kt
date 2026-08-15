@@ -33,6 +33,8 @@ import com.pelonot.domain.progress.PersonalBests
 import com.pelonot.domain.progress.PowerSample
 import com.pelonot.domain.progress.RECENT_WINDOW_DAYS
 import com.pelonot.domain.progress.RideRecord
+import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
 import com.pelonot.domain.social.StreakCalculator
@@ -895,8 +897,42 @@ class WorkoutRepository(
         }
     }
 
+    /**
+     * Every profile's riding level, keyed by profile (26.4.1).
+     *
+     * One flow for the whole tablet rather than one per rider: the dashboard
+     * needs the current rider's and the household panel needs everybody's, and
+     * two sources for one number is how two surfaces come to disagree.
+     *
+     * A profile with no finished rides is **absent from the map**, not present
+     * at level 1 — same rule as the household panel's missing rows. The caller
+     * decides what an absence draws, and on the dashboard it is level 1,
+     * because *your* level before your first ride is a real answer.
+     */
+    fun observeRiderLevels(): Flow<Map<Int, RiderLevel>> =
+        workoutDao.observeRiderTotals().map { rows ->
+            rows.associate { row ->
+                row.localUserId to RiderLevel.of(
+                    RidingTotals(
+                        rides = row.rides,
+                        durationSec = row.durationSec,
+                        outputKj = row.outputKj
+                    )
+                )
+            }
+        }
+
+    /**
+     * **Both flows are needed and neither is redundant.** The count is what
+     * mentions `profiles`, so it is the only one of the two that re-emits when
+     * somebody turns `household_visible` off; the levels are what mention
+     * nothing but `workouts`. Dropping either leaves the panel stale for one of
+     * the two things that can change it, which is the defect
+     * [WorkoutDao.observeAnyCompletedCount] was written to fix.
+     */
     fun observeHousehold(): Flow<List<HouseholdRider>> =
-        workoutDao.observeAnyCompletedCount().map { householdRecent() }
+        combine(workoutDao.observeAnyCompletedCount(), observeRiderLevels()) { _, levels -> levels }
+            .map { levels -> householdRecent(levels = levels) }
 
     /**
      * Who on this bike has ridden **in the last 30 days** (24.2, 22.5.4).
@@ -914,7 +950,10 @@ class WorkoutRepository(
      * run of **weeks**, which is the thing a once-a-week rider is actually
      * keeping up.
      */
-    suspend fun householdRecent(now: Long = System.currentTimeMillis()): List<HouseholdRider> {
+    suspend fun householdRecent(
+        now: Long = System.currentTimeMillis(),
+        levels: Map<Int, RiderLevel> = emptyMap()
+    ): List<HouseholdRider> {
         val since = now - HOUSEHOLD_WINDOW_MS
         return workoutDao.householdRecent(since).map { row ->
             HouseholdRider(
@@ -923,6 +962,10 @@ class WorkoutRepository(
                 rides = row.rides,
                 outputKj = row.outputKj,
                 lastRideAt = row.lastRideAt,
+                // A row exists only because this rider has ridden inside the
+                // window, so an absent level means the two queries were read
+                // either side of a delete rather than that they never rode.
+                level = levels[row.localUserId] ?: RiderLevel.of(RidingTotals()),
                 streakWeeks = StreakCalculator.currentWeeklyStreak(
                     rideTimestamps = workoutDao.rideTimestampsSince(
                         userId = row.localUserId,

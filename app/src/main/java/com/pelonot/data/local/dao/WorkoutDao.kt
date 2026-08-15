@@ -19,6 +19,21 @@ data class HouseholdRiderRow(
     val lastRideAt: Long
 )
 
+/**
+ * Everything one rider has ever ridden here, in three numbers (26.4.1).
+ *
+ * Deliberately not windowed and deliberately not joined to anything: the level
+ * this feeds is the app's only figure that cannot go down, and every window in
+ * the project — 30 days, 17 weeks, the last ten rides — is a thing a rider can
+ * fall out of.
+ */
+data class RiderTotalsRow(
+    val localUserId: Int,
+    val rides: Int,
+    val durationSec: Long,
+    val outputKj: Double
+)
+
 /** One rider's place on a class's household board — see [WorkoutDao.householdLeaderboard]. */
 data class ClassLeaderboardRow(
     val localUserId: Int,
@@ -916,6 +931,33 @@ interface WorkoutDao {
         """
     )
     suspend fun householdRecent(sinceMs: Long): List<HouseholdRiderRow>
+
+    /**
+     * Lifetime totals for every profile that has ever finished a ride here
+     * (26.4.1), keyed by profile so a panel can look one up.
+     *
+     * **One grouped query rather than one per rider.** The streak beside it on
+     * the same panel costs a query a head, and that is a cost worth not paying
+     * twice — a household of six would otherwise be twelve round trips to draw
+     * one card.
+     *
+     * **No `household_visible` predicate, and it is not an oversight.** This
+     * says *how much has this profile ridden* and nothing about who may see it;
+     * the callers filter. Putting the opt-out here would silently give a rider
+     * who left the household panel a level of 1 on their own dashboard.
+     */
+    @Query(
+        """
+        SELECT user_id AS localUserId,
+               COUNT(*) AS rides,
+               COALESCE(SUM(duration_sec), 0) AS durationSec,
+               COALESCE(SUM(total_output_kj), 0) AS outputKj
+        FROM workouts
+        WHERE is_complete = 1 AND user_id IS NOT NULL
+        GROUP BY user_id
+        """
+    )
+    fun observeRiderTotals(): Flow<List<RiderTotalsRow>>
 
     /**
      * A change signal for the household panel, not a number anyone displays.

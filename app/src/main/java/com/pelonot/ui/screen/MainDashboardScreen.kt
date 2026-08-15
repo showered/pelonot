@@ -8,6 +8,7 @@ import com.pelonot.domain.model.RideDayGrouping
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.LastRide
 import com.pelonot.domain.progress.RideStanding
+import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingWindow
 import com.pelonot.data.local.entity.FtpChangeSource
@@ -78,6 +79,7 @@ import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.ui.components.HouseholdPanelCard
+import com.pelonot.ui.components.RiderScore
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -96,6 +98,19 @@ import com.pelonot.ui.theme.spacing
 @Composable
 fun MainDashboardScreen(
     userName: String,
+    /**
+     * How much this rider has ever ridden, as one dimensionless number (26.4).
+     *
+     * Level 1 for a rider who has not ridden yet, which is the start rather
+     * than an absence — see `RiderScore`, rule 4.
+     *
+     * **No default**, unlike most of this screen's optional furniture: a signal
+     * that is optional at the call site is a signal nobody notices is missing,
+     * which is the general form of the defect 7.11.6 found. A dashboard drawing
+     * `LVL 1` for a rider with two hundred rides is exactly that failure and
+     * would look like a working feature.
+     */
+    riderLevel: RiderLevel,
     ftp: Int,
     ftpTrend: FtpTrend,
     stats: DashboardStats,
@@ -176,6 +191,7 @@ fun MainDashboardScreen(
                 // ── 1️⃣ The greeting, and the two doors ─────────────────
                 GreetingHeader(
                     userName = userName,
+                    riderLevel = riderLevel,
                     onHistory = onHistory,
                     onSettings = onSettings
                 )
@@ -362,6 +378,7 @@ private fun greetingFor(hour: Int): String = when (hour) {
 @Composable
 private fun GreetingHeader(
     userName: String,
+    riderLevel: RiderLevel,
     onHistory: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -375,18 +392,33 @@ private fun GreetingHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = buildAnnotatedString {
-                append("$greeting ")
-                pushStyle(SpanStyle(fontWeight = FontWeight.ExtraBold))
-                append(userName)
-            },
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        // The badge sits *against the name*, not at the far end of the row, so
+        // the inner row takes the space and the name gives up what it does not
+        // need. 26.4.4, decided by 22.8's arithmetic as much as by taste: this
+        // screen was 993 dp of content in a 664 dp viewport, so a badge that
+        // costs a row is a badge that pushes something below the fold. Here it
+        // costs nothing — the greeting is one line tall either way — and it
+        // reads as part of *who this is*, which is the only true reading of the
+        // number.
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = buildAnnotatedString {
+                    append("$greeting ")
+                    pushStyle(SpanStyle(fontWeight = FontWeight.ExtraBold))
+                    append(userName)
+                },
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            RiderScore(level = riderLevel)
+        }
         HeaderDoor(text = "History", icon = Icons.Default.History, onClick = onHistory)
         Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
         HeaderDoor(text = "Settings", icon = Icons.Default.Settings, onClick = onSettings)
