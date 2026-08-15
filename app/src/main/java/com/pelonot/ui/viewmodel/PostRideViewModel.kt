@@ -111,6 +111,10 @@ class PostRideViewModel(
             val profileId = settingsRepository.settings.first().lastProfileId
             val rider = profileId?.let { userRepository.getUser(it) }
             val currentFtp = rider?.ftpWatts ?: 0
+            // 21.1's nullable gate, resolved once and used twice: the analyser
+            // wants it for 7.11's decoupling seed and the charts want it for
+            // their heart-rate bands.
+            val riderMaxHr = rider?.let { MaxHeartRate.resolve(it.maxHrBpm, it.birthDate) }
 
             // Read once and used twice — the breakthrough analysis and the
             // charts (12.6.1) both want the whole series, and it is a few
@@ -139,7 +143,13 @@ class PostRideViewModel(
                 if (provenance.isTrustworthyAsMeasured) {
                     analyzer.analyze(
                         metrics = metrics,
-                        currentFtp = currentFtp.toDouble()
+                        currentFtp = currentFtp.toDouble(),
+                        // 7.11.6. Passed rather than defaulted away: the
+                        // decoupling check has returned `false` before
+                        // reaching its own logic for the whole project,
+                        // because the parameter had a default and nobody
+                        // noticed the signal was missing.
+                        maxHr = riderMaxHr?.bpm
                     ).proposedFtp?.toInt()
                 } else {
                     null
@@ -167,9 +177,7 @@ class PostRideViewModel(
                         metrics = metrics,
                         intervals = plan?.intervals.orEmpty(),
                         riderFtp = currentFtp.takeIf { ftp -> ftp > 0 },
-                        riderMaxHr = rider?.let { r ->
-                            MaxHeartRate.resolve(r.maxHrBpm, r.birthDate)
-                        }
+                        riderMaxHr = riderMaxHr
                     )
                 }
             }

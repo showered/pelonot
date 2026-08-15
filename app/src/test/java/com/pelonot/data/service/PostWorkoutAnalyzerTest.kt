@@ -149,32 +149,6 @@ class PostWorkoutAnalyzerTest {
         )
     }
 
-    // ── RPE ─────────────────────────────────────────────────────────
-
-    @Test
-    fun `proposes a bump when a hard class felt easy`() {
-        assertEquals(
-            206.0,
-            analyzer.suggestFtpFromRpe(rpe = 3, isHardClass = true, currentFtp = 200.0)!!,
-            0.01
-        )
-    }
-
-    @Test
-    fun `no proposal when the class felt as hard as it was`() {
-        assertNull(analyzer.suggestFtpFromRpe(rpe = 8, isHardClass = true, currentFtp = 200.0))
-    }
-
-    @Test
-    fun `no proposal from an easy class that felt easy`() {
-        assertNull(analyzer.suggestFtpFromRpe(rpe = 2, isHardClass = false, currentFtp = 200.0))
-    }
-
-    @Test
-    fun `no proposal without an RPE rating`() {
-        assertNull(analyzer.suggestFtpFromRpe(rpe = null, isHardClass = true, currentFtp = 200.0))
-    }
-
     // ── Combined analysis ───────────────────────────────────────────
 
     @Test
@@ -183,7 +157,8 @@ class PostWorkoutAnalyzerTest {
         // a decrease, so nothing should be offered.
         val result = analyzer.analyze(
             metrics = metrics(steady(205.0, 1200)),
-            currentFtp = 200.0
+            currentFtp = 200.0,
+            maxHr = null
         )
 
         assertNull(result.proposedFtp)
@@ -196,7 +171,8 @@ class PostWorkoutAnalyzerTest {
     fun `surfaces a breakthrough after a genuinely stronger effort`() {
         val result = analyzer.analyze(
             metrics = metrics(steady(260.0, 1200)),
-            currentFtp = 200.0
+            currentFtp = 200.0,
+            maxHr = null
         )
 
         assertTrue(result.hasBreakthrough)
@@ -204,23 +180,40 @@ class PostWorkoutAnalyzerTest {
     }
 
     @Test
-    fun `picks the higher of the peak and RPE proposals`() {
+    fun `the twenty-minute peak is the only thing that can propose a number`() {
+        // 7.11.6. `suggestFtpFromRpe` used to be able to out-propose the peak,
+        // and never once did in production because the rating never reached it.
+        // The proposal is now the peak or nothing, which is what makes an
+        // automatic FTP change a measurement rather than an opinion.
         val result = analyzer.analyze(
             metrics = metrics(steady(260.0, 1200)),
             currentFtp = 200.0,
-            rpe = 3,
-            isHardClass = true
+            maxHr = null
         )
 
-        // Peak gives 247W, RPE gives 206W.
-        assertEquals(247.0, result.proposedFtp!!, 0.01)
+        assertEquals(result.estimatedFtpFromPeak!!, result.proposedFtp!!, 0.0)
+    }
+
+    @Test
+    fun `the decoupling seed is answered rather than defaulted away`() {
+        // A rider holding Zone 4 with a heart rate well under their maximum:
+        // evidence the FTP is set too low, which nothing reads yet (7.11).
+        // What is tested is that passing the maximum reaches the check at all —
+        // the whole of 7.11.6 is that it never did.
+        val zone4 = metrics(steady(195.0, 900), List(900) { 130 })
+        val withMax = analyzer.analyze(zone4, currentFtp = 200.0, maxHr = 190)
+        val without = analyzer.analyze(zone4, currentFtp = 200.0, maxHr = null)
+
+        assertTrue(withMax.biometricDecoupling)
+        assertFalse(without.biometricDecoupling)
     }
 
     @Test
     fun `a recovery spin never triggers a breakthrough dialog`() {
         val result = analyzer.analyze(
             metrics = metrics(steady(90.0, 1800)),
-            currentFtp = 200.0
+            currentFtp = 200.0,
+            maxHr = null
         )
 
         assertFalse(result.hasBreakthrough)
@@ -228,7 +221,7 @@ class PostWorkoutAnalyzerTest {
 
     @Test
     fun `an empty ride analyses without throwing`() {
-        val result = analyzer.analyze(metrics = emptyList(), currentFtp = 200.0)
+        val result = analyzer.analyze(metrics = emptyList(), currentFtp = 200.0, maxHr = null)
 
         assertNull(result.estimatedFtpFromPeak)
         assertFalse(result.hasBreakthrough)
@@ -236,7 +229,7 @@ class PostWorkoutAnalyzerTest {
 
     @Test
     fun `an unknown FTP does not produce a proposal`() {
-        val result = analyzer.analyze(metrics = metrics(steady(250.0, 1200)), currentFtp = 0.0)
+        val result = analyzer.analyze(metrics = metrics(steady(250.0, 1200)), currentFtp = 0.0, maxHr = null)
 
         assertFalse(result.hasBreakthrough)
     }

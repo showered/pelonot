@@ -7,6 +7,27 @@ import com.pelonot.domain.model.PowerZone
  * Post-ride analysis: FTP estimation and effort/heart-rate decoupling.
  *
  * Pure Kotlin, no Android dependencies, so it is unit-testable.
+ *
+ * **RPE proposes nothing, and that is a decision (7.11.6).** There used to be a
+ * `suggestFtpFromRpe` here that returned `currentFtp × 1.03` for a hard class
+ * the rider had called easy, and [analyze] fed it straight into `proposedFtp`.
+ * It never ran — the one production call site passed no `rpe`, because the
+ * parameter had a default — so for the project's whole history the entirety of
+ * auto-FTP that actually happened was the twenty-minute peak. It is deleted
+ * rather than wired up or fenced, for three reasons:
+ *
+ * - **7.11.2 has since written down that RPE alone must not be enough.** A
+ *   rider who rates every ride *Everything I had* is describing their effort,
+ *   not their fitness. A function whose only behaviour is forbidden is not
+ *   plumbing waiting to be connected.
+ * - **It is the wrong shape for what will replace it.** 7.11's RPE half is a
+ *   *trend across several rides*, which is a different computation from a check
+ *   that reads one ride and returns. `detectBiometricDecoupling` is kept for
+ *   exactly the opposite reason: it is the right shape facing the wrong way.
+ * - **It could not have fired anyway.** The rider answers *How did that feel?*
+ *   on the same screen that runs this analysis, so `rpe` is null at analysis
+ *   time by construction. Any RPE-fed proposal needs a second pass triggered by
+ *   the answer — a different flow, not an extra argument.
  */
 class PostWorkoutAnalyzer {
 
@@ -72,53 +93,49 @@ class PostWorkoutAnalyzer {
     }
 
     /**
-     * A hard class that felt easy is evidence the rider has improved.
-     * Returns the proposed FTP, or null when no change is warranted.
-     */
-    fun suggestFtpFromRpe(rpe: Int?, isHardClass: Boolean, currentFtp: Double): Double? {
-        if (rpe == null || !isHardClass || currentFtp <= 0.0) return null
-        if (rpe > EASY_RPE_THRESHOLD) return null
-        return currentFtp * RPE_FTP_BUMP
-    }
-
-    /**
      * Runs every check and picks a single recommendation.
      *
      * A proposal is only surfaced when it is a meaningful improvement on the
      * current value — otherwise a rider gets an "FTP breakthrough!" dialog
      * after a recovery spin.
+     *
+     * **The twenty-minute peak is the only thing that can propose a number,
+     * and that is the decision rather than the state of the work (7.11.6).**
+     * [maxHr] takes no default on purpose: a signal that is optional at the
+     * call site is a signal nobody notices is missing, which is precisely how
+     * the decoupling check spent the project's whole history returning `false`
+     * before reaching its own logic.
      */
     fun analyze(
         metrics: List<WorkoutMetricEntity>,
         currentFtp: Double,
-        maxHr: Int? = null,
-        rpe: Int? = null,
-        isHardClass: Boolean = false
+        maxHr: Int?
     ): AnalysisResult {
         val fromPeak = estimateFtpFrom20MinPeak(metrics)
-        val fromRpe = suggestFtpFromRpe(rpe, isHardClass, currentFtp)
         val decoupling = detectBiometricDecoupling(metrics, currentFtp, maxHr)
 
-        val proposal = listOfNotNull(fromPeak, fromRpe).maxOrNull()
-        val isBreakthrough = proposal != null &&
+        val isBreakthrough = fromPeak != null &&
             currentFtp > 0 &&
-            proposal >= currentFtp * MIN_MEANINGFUL_GAIN
+            fromPeak >= currentFtp * MIN_MEANINGFUL_GAIN
 
         return AnalysisResult(
             estimatedFtpFromPeak = fromPeak,
-            suggestedFtpFromRpe = fromRpe,
             biometricDecoupling = decoupling,
-            proposedFtp = proposal.takeIf { isBreakthrough }
+            proposedFtp = fromPeak.takeIf { isBreakthrough }
         )
     }
 
     /**
      * @property proposedFtp Non-null only when a breakthrough is worth showing
      *   the rider; the other fields are the raw evidence behind it.
+     * @property biometricDecoupling Evidence the rider's FTP is set too *low*.
+     *   **Nothing reads it yet** — it is the seed of 7.11's downward path
+     *   facing the wrong way, and it is recorded honestly rather than left as a
+     *   constant `false` so that the day something does read it, it is a
+     *   measurement rather than a default.
      */
     data class AnalysisResult(
         val estimatedFtpFromPeak: Double? = null,
-        val suggestedFtpFromRpe: Double? = null,
         val biometricDecoupling: Boolean = false,
         val proposedFtp: Double? = null
     ) {
@@ -134,9 +151,6 @@ class PostWorkoutAnalyzer {
         const val HR_THRESHOLD_FRACTION = 0.80
         const val DECOUPLING_MIN_SEC = 600
         const val DECOUPLING_MAJORITY = 0.5
-
-        const val EASY_RPE_THRESHOLD = 4
-        const val RPE_FTP_BUMP = 1.03
 
         /** Below a 2% gain, the change is inside the noise of the power model. */
         const val MIN_MEANINGFUL_GAIN = 1.02

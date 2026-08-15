@@ -12,11 +12,20 @@ package com.pelonot.domain.model
  * living room it manufactures a decision and then a doubt about it.
  *
  * **The column does not change.** `workouts.rpe_rating` is still 1–10, still
- * nullable, and still means what it always meant, for three reasons: rides
- * already recorded keep their exact answer rather than being reinterpreted, the
- * cloud payload's field is unchanged (14.4), and `PostWorkoutAnalyzer`'s
- * `EASY_RPE_THRESHOLD` of 4 keeps working — [Easy] stores 3, so *a hard class
- * that felt easy* still proposes an FTP bump exactly as before.
+ * nullable, and still means what it always meant, for two reasons: rides
+ * already recorded keep their exact answer rather than being reinterpreted, and
+ * the cloud payload's field is unchanged (14.4).
+ *
+ * **This KDoc used to give a third reason and it was false** — that [Easy]
+ * storing 3 kept `PostWorkoutAnalyzer.EASY_RPE_THRESHOLD` working, *"so a hard
+ * class that felt easy still proposes an FTP bump exactly as before."* Nothing
+ * has ever proposed an FTP bump from an RPE: the parameter carrying it had a
+ * default and the one call site never passed it. The mapping reasoning was
+ * sound and the claim about its effect was not, which is worth leaving on the
+ * record because it is the same shape as every other stale claim this project
+ * keeps finding, this time in a source comment. **Nothing reads the number
+ * today** — it is shown back to the rider and it is carried to the cloud —
+ * and 7.11.6 is where that was decided rather than discovered.
  *
  * Each level stores the **middle** of its band, and reads back anything inside
  * it. That is what lets a ride rated 7 on the old scale come back as *A good
