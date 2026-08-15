@@ -339,6 +339,52 @@ does today — it operates on one ride's `metrics` and returns.
       can draw a downward automatic change differently from a rider's own
       manual edit, the same distinction 20.3.4 drew for `Estimated`
 
+- [ ] **7.11.6** **Two of the three FTP signals are dead code with a live fuse,
+      and one KDoc claims otherwise.** Read in the fifty-second sitting while
+      triaging 7.11, and it is a sharper version of the fact 7.11's preamble
+      already states in passing.
+
+      `PostWorkoutAnalyzer.analyze` takes `maxHr`, `rpe` and `isHardClass` as
+      **defaulted** parameters, and the one production call
+      (`PostRideViewModel`) passes neither of the first two. So
+      `detectBiometricDecoupling` returns `false` before touching its own logic,
+      `suggestFtpFromRpe` returns null before touching its own, and
+      `AnalysisResult.biometricDecoupling` is computed and never read. The whole
+      of auto-FTP that actually runs is the 20-minute peak.
+
+      **The live fuse is the RPE path, not the decoupling one.**
+      `suggestFtpFromRpe` proposes `currentFtp × 1.03` for a hard class rated
+      easy, and `analyze` feeds it straight into `proposedFtp` — so a future
+      session wiring `rpe` through would ship an automatic **+3% FTP change off
+      one subjective answer**, which is a permanent edit to the rider's record
+      and is the thing **7.11.2 has since written down as forbidden**: *"RPE
+      alone should not be enough."* The parameter having a default is what makes
+      it look like plumbing rather than a decision.
+
+      **And `PerceivedEffort`'s KDoc states the opposite as fact.** It says the
+      column stays 1–10 partly so that `EASY_RPE_THRESHOLD` *"keeps working —
+      `Easy` stores 3, so a hard class that felt easy still proposes an FTP bump
+      exactly as before."* Nothing has proposed an FTP bump from RPE at any
+      point in this project's history. The mapping reasoning is sound; the claim
+      about the effect is false, and it is the same shape as every other
+      written-down claim this plan keeps finding — this time in a source comment
+      rather than in the plan or in `STATUS.md`.
+
+      There is also a sequencing fact that makes wiring it up harder than it
+      looks and is worth recording so it is not rediscovered: **the rider
+      answers RPE after `analyze` has already run.** The proposal is computed
+      when the summary screen loads and the *How did that feel?* buttons are on
+      that same screen, so `rpe` is null at analysis time by construction. Any
+      RPE-fed proposal needs a second pass triggered by the answer, which is a
+      different flow rather than an extra argument.
+
+      **What to do is a decision this item does not make**, and there are only
+      two honest options: delete `suggestFtpFromRpe` and let 7.11 rebuild the
+      RPE half under 7.11.1's evidence rules, or keep it and fence it so it
+      cannot reach `proposedFtp` without the trend 7.11.2 requires.
+      `detectBiometricDecoupling` should be kept either way — 7.11's preamble is
+      right that it is the downward path's seed facing the wrong way
+
 **The owner returned to this exact question from the inbox, 4 August 2026,
 without having seen the write-up above.** Verbatim: *"Let's make a solid and
 wonderful plan to automatically update FTP both up and down... Going UP is a

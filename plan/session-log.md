@@ -6,6 +6,66 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 14 August 2026 (fiftieth sitting): the ride was not hard to re-file, it was invisible
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the sixteenth sitting running, so the brief was triage again — and this time
+the seam was neither the previous sitting's lead nor a stale claim. It was a
+one-line item nobody had opened.** **12.4.1** has read *"re-file a household
+guest ride against a profile from history"* since Phase 12 was written, with a
+parenthesis saying the post-ride flow is the only chance today. Reading the code
+underneath it took ten minutes and the line turned out to understate its own
+problem by a long way.
+
+**Every query on `workouts` is filtered to a profile, and a guest ride has
+none.** `observeHistory`, the dashboard, the household leaderboards, the
+personal bests — all of them take a `userId`, and there was no query anywhere
+that did not. So from the moment the post-ride summary closed, a guest ride
+appeared on **no screen in the app**: not awkward to re-file, unreachable.
+Nothing was lost — the row and its 379 metric rows sit on disk exactly as
+recorded — and there was no way to ask for either. That is the shape this plan
+keeps finding: **a written-down item describing a smaller version of the thing
+that is actually true.**
+
+**One deliberately owner-less query, and where it is drawn is the design.**
+`observeUnclaimedRides` is `user_id IS NULL AND is_complete = 1`, and what it
+returns is drawn **above** the rider's own days under *Not filed against
+anyone* — shown to **every** profile and never folded into any one of them. An
+unclaimed ride is a *question*, and putting it inside somebody's history would
+be answering it for them. Opening one gives the ride detail screen a *Whose ride
+was this?* section under the figures, because that question is answered by
+looking at the ride. **771 JVM tests, 0 failures; 41 instrumented `WorkoutDao`
+tests, 0 failures**, including the new pair-wise assertion — absent from both
+riders' history, present in the owner-less query, moving between the two on the
+claim.
+
+**Claiming rebuilds the charts, and that is load-bearing rather than tidy.** A
+guest ride has no rider, so 7.8's and 21.4.2a's fallbacks had nothing to fall
+back to; without the rebuild the screen goes on saying *"no rider on this ride —
+zones from the app's default FTP"* about a ride that now has one. It was watched
+happening: the caption loses that clause and the heart-rate card starts drawing
+zone bands off the new owner's estimated maximum.
+
+**Watched as a full round trip on the tablet AVD, both directions, with each
+other as controls and the row read at every step.** Two profiles through the
+real flow, a 6:19 guest ride of `Zone 2 Steady`, and **the summary walked away
+from without answering** — which is the defect, and the guest's dashboard says
+*"No rides recorded yet"* the second afterwards. Then the section at the top of
+**Simon's** history, the ride opened, and **`Alex`** tapped — deliberately not
+the profile signed in, because claiming for whoever happens to be looking is the
+obvious wrong implementation. `user_id = 2`, 379 metric rows untouched, the
+section gone, Simon's history back to *"No rides yet"* and the ride under *Today*
+in Alex's. Then the column set back to null by hand and the same ride claimed for
+**Simon**: `user_id = 1`.
+
+**And one defect came out of looking at the screen rather than the diff.** The
+claim card had a branch of copy for a bike with no profiles at all — which cannot
+happen, since the card is reached from a profile's own history, but which *does*
+describe the first composition before `allUsers` emits. **A sentence no rider can
+be shown on purpose and every rider is shown for a frame.** The section draws
+only once the list is non-empty now, and the sentence is gone rather than left to
+flash.
+
 ## 14 August 2026 (forty-ninth sitting): the ride wrote down the number and never once said where it came from
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work

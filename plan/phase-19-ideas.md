@@ -124,7 +124,7 @@ has simply never been written down.
       worse than a dated one. The column is display-only — nothing gates on it,
       not the FTP proposal and not any leaderboard — which is what makes living
       with two definitions cheaper than half-fixing it.*
-- [ ] **19.1.2c** **A stop is filed as Active Recovery.** Found on the same
+- [x] **19.1.2c** ~~**A stop is filed as Active Recovery.**~~ Found on the same
       screen in the same sitting, and it is 19.1.2b's decision reaching one card
       further than 19.1.2b touched. The verification ride's *Time in zone* card
       reads **Z1 Active Recovery 01:19 · 42%** on a 3:09 ride, and 21 of those
@@ -149,6 +149,62 @@ has simply never been written down.
       - And the cadence spread (16.x) is the same count with the same question,
         one card along. Whatever is decided has to answer for both, or the two
         cards on one screen divide the same ride by different totals
+
+      ***Done in the fifty-second sitting, and the third bullet turned out to be
+      the interesting one.*** *The cadence spread was **already** excluding the
+      stop, and had been since it was written — with a comment saying* "Coasting
+      is not a cadence" *— so the two cards on that screen have disagreed about
+      the same ride for as long as both have existed, one of them naming the
+      stopped seconds after a zone and the other silently dropping them. What
+      made it worth reading rather than copying is **how** it excluded them: a
+      private `MIN_CHARTED_CADENCE = 20.0` of its own, which meant this app held
+      **three answers to the question* was the rider pedalling* — the pause's
+      1.0, the averages' 1.0 as of 19.1.2b, and the charts' 20.0. That is the
+      thing 19.1.2b's write-up warned about arriving one sitting later.*
+
+      ***So one definition, and the collapse is measured rather than argued.***
+      *`AutoPausePolicy.PEDALLING_RPM` now decides for both cards. The reason 20
+      was costing nothing is that **a stop produces no samples at all between 1
+      and 19 rpm**: 21 zeros and 168 seconds above 20 on the ride this was
+      checked against, which is the board reporting a true zero the moment the
+      cranks stop rather than a flywheel coasting down through the low bands —
+      the same claim `AutoPausePolicy`'s own comment makes about real hardware.
+      What the collapse buys is that a genuine 14 rpm grind is now on the chart
+      instead of being silently deleted, and `RideChartBuilderTest` asserts the
+      two cards agreeing on a ride that has 85 rpm, 14 rpm and 0 rpm in it.*
+
+      ***Built as the second bullet recommended, and the refusal came with it.***
+      `TimeInZone` *gains `secondsStopped`, `recordedSeconds` and `isPartial` —
+      `TimeInHeartRateZone`'s three members under different names, because it is
+      the same question one metric along. The card says* "pedalling for 02:48 of
+      03:09" *when part of the recording was not ridden and **says nothing at
+      all** when it was; the stopped seconds are not drawn as a wedge in the bar.*
+
+      ***And the third card on that screen was checked and is deliberately
+      different.*** `prescribedPlan` *counts a stop as time **outside** the
+      target, with a comment already saying why —* "the rider was asked to turn
+      the pedals at 85 and was not" *— and that is right, because compliance
+      asks* did you do what was asked *where time in zone asks* what did you do.
+      *Two questions, two answers, and neither is the other's bug.*
+
+      ***Watched on the tablet AVD on the ride that exposed it, with the previous
+      build as the control and a second ride as the control for silence.*** *Z1
+      went from* `01:19 · 42%` *to* `00:58 · 35%` *— a difference of exactly 21
+      seconds, which is exactly the number of zero-cadence rows in that ride —
+      and the caption appeared reading* "pedalling for 02:48 of 03:09"*, where
+      02:48 is 168 seconds and 03:09 is 189, both matching the row counts. A
+      second ride with no stop in it draws **no caption at all**. The numbers
+      were read against `SELECT COUNT(*) … WHERE power/155.0 < 0.56` in both
+      directions rather than off the screenshots: 79 and 58.*
+
+      ***One case this cannot reach, and it is written on the field rather than
+      guessed at.*** *A ride **already condensed** by 23.4 carries its counts in
+      `distributions_json`, and a blob written before this build has no
+      `seconds_stopped` in it — so it keeps the old counting and says nothing
+      about it. An untrimmed ride recomputes from its own samples every time, so
+      every ride on a tablet today corrects itself the moment this build runs,
+      which is a better story than 19.1.2b's `avg_*` got and is the reason no
+      backfill is needed here.*
 - [x] **19.1.3** **Local backup/restore of the database to a file** — the only safety net that exists before 15, and it survives the destructive-migration problem too
       *Done, and 12.4.4 with it — they were always one piece of work. Settings
       → **Backup** writes the database through the system's own file picker as

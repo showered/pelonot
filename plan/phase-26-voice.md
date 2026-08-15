@@ -80,7 +80,7 @@ claim (14.4.7, 21.1).
       rather than part of it, and **the largest type on the screen is the class
       the rider chose** — it used to be the words "Ride Summary", which is the
       one thing a rider who has just stopped pedalling already knows.*
-- [ ] **26.1.3** **Audit for "output" and kilojoules.** `Total output` in kJ is
+- [x] **26.1.3** ~~**Audit for "output" and kilojoules.**~~ `Total output` in kJ is
       on the summary card, the dashboard and the leaderboards. It is the one
       genuinely obscure unit in the app — watts at least appear on every gym
       bike in the world — and it is used in places where *what a rider did* is
@@ -89,6 +89,48 @@ claim (14.4.7, 21.1).
       what replaces it where it is not. Note it cannot simply go: the household
       leaderboard ranks on it (24.1) and two riders' kJ is the only fair
       comparison the app has
+
+      ***Done in the fifty-second sitting, and the premise needed correcting
+      before the audit could be run.*** *This item calls kJ* "the one genuinely
+      obscure unit in the app" *and reasons from there —* "watts at least appear
+      on every gym bike in the world." *For this app's actual audience it is
+      close to the opposite. **Everyone who runs this owns a Peloton bike**, and
+      Total Output in kilojoules is the number Peloton's own leaderboard has
+      ranked them on since the day they bought it. It is the most familiar unit
+      in the app to the only people who will ever see it, not the least. An
+      audit run on the original premise would have removed the one figure this
+      audience already reads fluently.*
+
+      ***So the rule that decides it is CLAUDE.md's rather than obscurity: a
+      unit belongs where a measurement is being* read*, not where a choice is
+      being* made.*** *That gives one answer per surface and it is the decision
+      this item asked to be made once:*
+
+      - ***Kept, because the number is being read or compared:*** *the ride
+        screen's output tile, the overlay, `RideFigures` on the summary and on
+        ride detail, chart captions, **every leaderboard**, the rival chips on
+        class detail and the race score. The item is right that it cannot simply
+        go from the leaderboards — two riders' kJ is the only fair comparison
+        this app has (24.1) — and that is not a grudging exception: a
+        comparison* is *a measurement being read.*
+      - ***Cut, because a choice is being made:*** *the **history list row**,
+        which carried five facts — the time, the duration, the kilojoules, the
+        average watts and the distance — on a screen whose only question is
+        which ride to open. That is precisely the failure case CLAUDE.md spells
+        out for a profile tile reading `150 W FTP` under a name, on a screen
+        whose only question is* which of you is it. *The class name answers most
+        of it and the time and duration answer the rest; the other three are one
+        tap away on the ride itself, where they are being read. Observed on the
+        tablet AVD.*
+      - ***Already done by another item, and nobody crossed it off:*** *the
+        **dashboard**, one of this item's three named places, has carried no
+        kilojoule total since **22.1.2** replaced two of them with rides and
+        minutes —* "Rides rather than kilojoules, because 'have I been riding'
+        is answered by rides" *is a comment in `MainDashboardScreen` today. So a
+        third of this item was finished weeks ago by a phase that was not
+        looking for it. Same family as 19.1.6 and 21.4.1: **a written-down claim
+        goes stale in the direction of* already finished *as readily as the
+        other way.***
 - [x] **26.1.4** **Settings, and the difference between a setting and an
       explanation.** Several rows carry a paragraph of body text under them.
       Some of it is load-bearing (the telemetry source, the consent gate — 23.1)
