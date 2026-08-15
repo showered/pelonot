@@ -397,13 +397,22 @@ owner's own reasoning about not forcing an answer). A permanently pinned bar —
 the pinned row on the summary is *Done* and *Discard*, and a question that
 cannot be scrolled away from is a question being demanded rather than offered.
 
-- [ ] **12.7.1** **The question moves under the figures on ride detail**, above
+- [x] **12.7.1** **The question moves under the figures on ride detail**, above
       the charts, which is where the summary already asks it. The order on that
       screen becomes: the figures, the claim card if the ride is unclaimed
       (12.4.1's placement is unchanged and outranks this — an unclaimed ride's
       only actionable thing stays first), the effort question, the charts,
       export. **Nothing about the charts changes** and no card is added
-- [ ] **12.7.2** **One control, not two copies.** `RpeCard` on the summary and
+
+      *Done and watched on the tablet AVD with the previous build as the
+      control. Before: six 500-px swipes to reach it. After:* **How did it
+      feel?** *at 282 dp into a 664 dp viewport, all three answers on screen
+      without scrolling, and the card carrying the subtitle it has always
+      carried — which now reaches the rider it was written for.* **The database
+      is the witness for the half a screenshot cannot show**: tapping *A good
+      workout* wrote `rpe_rating = 6` onto the row, and the subtitle changed to
+      *"Tap a different answer to change it"* in the same breath.
+- [x] **12.7.2** **One control, not two copies.** `RpeCard` on the summary and
       `RpeEditor` on ride detail are the same three buttons written out twice
       and they have already drifted four ways: a `Card` against a bare `Column`,
       *"How did that feel?"* against *"How did it feel?"*, a subtitle on one and
@@ -414,7 +423,14 @@ cannot be scrolled away from is a question being demanded rather than offered.
       made once. **The tense difference is kept and derived inside it**: this
       ride tonight asks *did that feel*, a ride from March asks *did it feel*,
       and both sets of words live in one file
-- [ ] **12.7.3** **The guest destination is the summary's own version of the
+
+      *Done — `ui/components/EffortQuestion.kt`, the third card both screens
+      draw through one component after `RideFigures` (12.2.2) and
+      `RideChartsSection` (12.6.1). Ride detail's copy was a bare `Column`, so
+      it is a card on that screen too now; the summary is unchanged and was
+      re-measured to prove it —* How did that feel? *at 256 dp with Done and
+      Discard still pinned. 781 JVM tests, 0 failures.*
+- [x] **12.7.3** **The guest destination is the summary's own version of the
       same fault.** `GuestDestination` — *"Whose ride was this?"*, the profile
       buttons, *Keep as a guest ride* and *Discard* — is drawn **below**
       `RideChartsSection`, and a guest ride draws **no pinned action bar at
@@ -424,9 +440,30 @@ cannot be scrolled away from is a question being demanded rather than offered.
       above the charts with the question. The effort question stays first of the
       two: it is one tap and it does not leave the screen, where every button on
       the destination card does
-- [ ] **12.7.4** **The rule that falls out, written where both files can see
+
+      *Done, on a guest ride ridden for it and watched end to end.* Whose ride
+      was this? *now sits at 416 dp and* Keep as a guest ride *at 541 dp of a
+      664 dp viewport — both above the fold, with the charts below them. Filing
+      it against a profile from the moved card was checked in `sqlite3` rather
+      than on screen: the ride came back with `user_id = 1`.*
+
+      ***And it took `loneCard()` with it**, which was not in the item. The
+      card was `fillMaxWidth()`, so moving it above the fold moved a card
+      banded across 1,872 dp into view beside one capped at 760 — 22.6 was
+      being broken where nobody could see it. The `workout == null` branch
+      keeps its own copy of the card, because a guest has no pinned row and
+      that card is their only way off a screen with no ride left on it.*
+- [x] **12.7.4** **The rule that falls out, written where both files can see
       it: the charts are the last thing on both screens.** Anything a rider can
       *act on* — a question, a claim, a destination — goes above them, because a
       chart is the tallest thing either screen draws and everything appended
       after one is below the fold by construction. This is what 12.6.3's list of
       deltas would have caught if placement had been on it
+
+      *Written at the call site in both files rather than into a document
+      nobody opens while adding a card. What is left below the charts on either
+      screen is* Export*, which is a door rather than a question.*
+
+      *Written into both files at the call site rather than into a document
+      nobody opens while adding a card. What is left below the charts on either
+      screen is* Export*, which is a door rather than a question.*

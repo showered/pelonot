@@ -6,6 +6,79 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 15 August 2026 (fifty-second sitting): the card that called standing still Active Recovery, and a unit audit whose premise was wrong
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the eighteenth sitting running, so the brief was triage again. Two items
+went, and the useful part of both is that the plan's own text about them had to
+be corrected before either could be built.**
+
+**19.1.2c was the previous sitting's own finding, and its third bullet turned
+out to be the interesting one.** The item said *Time in zone* files a stop as
+`Z1 Active Recovery` — measured at 21 of 79 Z1 seconds on a 3:09 ride, the
+largest thing on the card — and guessed that the cadence spread beside it had
+the same problem. It did not: the spread has excluded coasting since it was
+written, with a comment saying so. **What it had instead was a private
+`MIN_CHARTED_CADENCE = 20.0`**, which meant the app was holding **three answers
+to the question *was the rider pedalling*** — the pause's 1.0, the averages' 1.0
+as of 19.1.2b, and the charts' 20.0. That is exactly what 19.1.2b's write-up
+warned about, arriving one sitting later, and the two cards on that screen have
+quietly disagreed about the same ride for as long as both have existed.
+
+**One definition now, and the collapse is measured rather than argued.**
+`AutoPausePolicy.PEDALLING_RPM` decides for both. The reason 20 was costing
+nothing is that **a stop produces no samples at all between 1 and 19 rpm** — 21
+zeros and 168 seconds above 20 on the ride this was checked against, the board
+reporting a true zero the moment the cranks stop. What it buys is that a genuine
+14 rpm grind is on the chart instead of silently deleted. `TimeInZone` gains
+`secondsStopped` and `isPartial`, which are `TimeInHeartRateZone`'s members
+under different names because it is the same question one metric along, and the
+stopped seconds are **not** drawn as a wedge in the bar. **781 JVM tests, 0
+failures**, up from 777.
+
+**Watched on the ride that exposed it with the previous build as the control:**
+Z1 went from `01:19 · 42%` to `00:58 · 35%` — a difference of exactly the 21
+zero-cadence rows — and the caption appeared reading *"pedalling for 02:48 of
+03:09"*, both numbers matching the row counts. A second ride with no stop draws
+**no caption at all**, which is 21.4.1's rule that a caption always present stops
+being read. The numbers were checked against `SELECT COUNT(*) … WHERE
+power/155.0 < 0.56` in both directions rather than off the screenshots: 79 and
+58. **The third card on that screen was checked and is deliberately different** —
+`prescribedPlan` counts a stop as time *outside* the target, because compliance
+asks *did you do what was asked* where time in zone asks *what did you do*.
+
+**Then 26.1.3, the kilojoule audit, whose premise needed correcting before it
+could be run.** The item calls kJ *"the one genuinely obscure unit in the app"*.
+For this app's actual audience it is close to the opposite: **everyone who runs
+this owns a Peloton bike**, and Total Output in kilojoules is the number
+Peloton's own leaderboard has ranked them on since the day they bought it. An
+audit run on the original premise would have removed the one figure this
+audience already reads fluently.
+
+**So the rule that decides it is CLAUDE.md's rather than obscurity — a unit
+belongs where a measurement is being *read*, not where a choice is being
+*made*.** kJ stays on the ride screen, the overlay, the ride figures, the chart
+captions and every leaderboard and rival chip, where the number is the thing
+being read or compared. It goes from the **history list row**, which carried
+five facts — time, duration, kilojoules, average watts and distance — on a
+screen whose only question is *which ride to open*. That is the failure case
+CLAUDE.md spells out for a profile tile reading `150 W FTP` under a name, and
+all three are one tap away on the ride itself. **And a third of the item was
+already done**: the dashboard has carried no kilojoule total since 22.1.2
+replaced two of them with rides and minutes, and nobody crossed it off.
+
+**One finding written down rather than built, and it has a live fuse.**
+**7.11.6**: `PostWorkoutAnalyzer.analyze` takes `maxHr`, `rpe` and
+`isHardClass` as *defaulted* parameters and the one production call passes none
+of them, so two of the three FTP signals are dead — the whole of auto-FTP that
+runs is the 20-minute peak. The dangerous one is `suggestFtpFromRpe`, which
+proposes `currentFtp × 1.03` straight into `proposedFtp`: a session wiring `rpe`
+through would ship **an automatic +3% FTP change off one subjective answer**,
+which 7.11.2 has since written down as forbidden. `PerceivedEffort`'s KDoc
+states the opposite as fact — *"a hard class that felt easy still proposes an
+FTP bump exactly as before"* — and nothing has ever proposed one. Same shape as
+every stale claim this plan keeps finding, this time in a source comment.
+
 ## 15 August 2026 (fifty-first sitting): the app asked a question no normal person can answer, and then averaged in the seconds nobody rode
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work
