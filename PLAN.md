@@ -209,7 +209,7 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 15 August 2026 (fifty-fourth sitting): the question was below the fold on the other screen
+### Latest session — 15 August 2026 (fifty-fourth sitting): the question was below the fold on the other screen, and the signal that fed it was never wired
 
 **The owner's inbox had one entry and it named a fault: *"Where it asks how your
 workout went shouldn't be lost below the fold. Work out a slightly better design
@@ -268,6 +268,39 @@ and *Discard* still pinned. **781 JVM tests, 0 failures.**
 are the last thing on both screens.** Anything a rider can *act on* goes above
 them, because a chart is the tallest thing either screen draws and whatever
 follows one is below the fold by construction.
+
+**Then 7.11.6, carried forward for two sittings with a fuse on it, and the item
+deliberately did not make its own decision.** `PostWorkoutAnalyzer
+.suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class the rider had
+called easy, and `analyze` fed it straight into `proposedFtp` — a permanent edit
+to the rider's record off one subjective answer. It has never run: the one call
+site passed no `rpe`, because the parameter had a default. **So the whole of
+auto-FTP that has ever happened is the twenty-minute peak.**
+
+**Deleted rather than fenced, and the first of the three reasons settles it: a
+function whose only behaviour 7.11.2 forbids is not plumbing waiting to be
+connected.** Fencing it means keeping a guard against a caller who does not
+exist. Second, it is the **wrong shape** for what replaces it — 7.11's RPE half
+is a trend across several rides, where this reads one ride and returns, which is
+exactly why `detectBiometricDecoupling` is kept and this is not. Third, it could
+not have fired even if somebody wired it: the rider answers *How did that feel?*
+on the same screen that runs the analysis, so `rpe` is null at analysis time by
+construction. **And it is the sitting's own first change that makes this worth
+doing now rather than later** — the effort question was just moved somewhere
+riders will actually answer it.
+
+**`maxHr` losing its default is the general form of the defect rather than one
+instance of it.** A signal that is optional at the call site is a signal nobody
+notices is missing, which is how the decoupling check spent the project's whole
+history returning `false` before reaching its own logic. It is required now and
+`PostRideViewModel` passes the rider's resolved maximum — hoisted out of the
+chart builder two blocks below, which was already resolving it inline. **Nothing
+reads the result and the KDoc says so**: it is 7.11's downward-path seed
+recorded honestly rather than left as a constant. **777 JVM tests, 0 failures**,
+and `PerceivedEffort`'s KDoc — which stated the opposite as fact, that *"a hard
+class that felt easy still proposes an FTP bump exactly as before"* — is
+corrected on the record rather than quietly, because the false claim is more
+instructive than the fix.
 
 ### The sitting before — 15 August 2026 (fifty-third sitting): the phase that was one line per feature, built
 
@@ -358,15 +391,14 @@ ticked all four. **Phase 15 (22 of 64)** is still the outlier, followed by
 **Phase 17/18 (14 of 44)**. Phases 27 and 28 are 18/18 and 24/24 and both are
 deliberately untouched — the owner's own weighting.
 
-**Carried forward from the sitting before, both written down rather than built:**
-**15.3.7a** (four cloud profile columns and a ride title the bike cannot see) and
-**15.3.7's blocker being gone** — `008` adds the `max_hr_bpm` column it was
-waiting for, so what is left is the Android half and the open decision about
-`max_hr_source` travelling with it.
-
-**Carried forward, unchanged:** **7.11.6** (the dead FTP signals, with a fuse on
-it), **11.3.4** (a one-line item whose stated motivation is already served),
-**11.2.1a** and **11.1b.8**.
+**Carried forward, unchanged:** **11.3.4** (a one-line item whose stated
+motivation is already served), **11.2.1a** and **11.1b.8**; and from the sitting
+before, both written down rather than built, **15.3.7a** (four cloud profile
+columns and a ride title the bike cannot see) and **15.3.7's blocker being
+gone** — `008` adds the `max_hr_bpm` column it was waiting for, so what is left
+is the Android half and the open decision about `max_hr_source` travelling with
+it. **7.11.6 is off this list**: it was the one item on it with a live fuse, and
+the fuse is out.
 
 0. **Watch 15.3.2 against the real endpoint, and it is a sitting's setup rather
    than an item.** Everything about the restore is measured against a real Room
@@ -491,6 +523,17 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**7.11.6 — the RPE proposal, deleted rather than fenced.**~~ **Done in the
+  fifty-fourth sitting.** **Do not "restore" `suggestFtpFromRpe`** when 7.11
+  builds the RPE half: that function is a per-ride check and 7.11.1's evidence
+  rules are a trend across several rides, so restoring it would rebuild the
+  thing 7.11.2 forbids. **Do not give `analyze`'s `maxHr` a default back** — the
+  default is the defect, not the style. **Do not delete
+  `detectBiometricDecoupling` on the grounds that nothing reads it**: it is
+  7.11's downward path facing the wrong way, and its result is now a measurement
+  rather than a constant. And **do not wire an RPE-fed proposal in as an extra
+  argument** if it ever comes back — the rider answers on the same screen that
+  runs the analysis, so it needs a second pass triggered by the answer.
 - ~~**12.7 — the effort question, where the rider can see it.**~~ **Done in the
   fifty-fourth sitting**, watched on the tablet AVD in three cases with the
   previous build as the control and the row read in `sqlite3` after each tap.
@@ -970,7 +1013,7 @@ Two notes worth carrying into the next bike session:
 | 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 **Auto-FTP is upward-only, and the owner asked why (7.11).** Checked against the code rather than assumed: `PostWorkoutAnalyzer`'s gate is `proposal >= currentFtp × 1.02`, which cannot produce a downward number by construction, and `FtpChangeSource` has no case for an automatic decrease. `detectBiometricDecoupling` already looks for the *opposite* signal (low heart rate at threshold power, evidence FTP is too low) and is itself a complete no-op today — `maxHr` is one of three parameters the one production call site never passes. Written up rather than built: it needs a multi-ride trend rather than a per-ride check, unlike everything else in this phase, because a single hard-feeling ride is not reliable evidence of declining fitness the way a 20-minute peak is reliable evidence of a good one. See [AUTO_FTP.md](AUTO_FTP.md) for the full mechanism as it stands. Otherwise: detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted one can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all (7.10.7). Open otherwise only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 **The RPE proposal is gone, and it had never once fired (7.11.6).** `suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class the rider had called easy and `analyze` fed it straight into `proposedFtp` — a permanent edit to the record off one subjective answer — but the one call site passed no `rpe`, because the parameter had a default, **so the whole of auto-FTP that has ever run is the twenty-minute peak**. Deleted rather than fenced: a function whose only behaviour 7.11.2 forbids is not plumbing waiting to be connected, it is the wrong shape for the trend that will replace it, and it could not have fired anyway because the rider answers on the same screen that runs the analysis. `detectBiometricDecoupling` is kept — 7.11's downward path facing the wrong way — and **`maxHr` lost its default**, which is the general form of the defect: a signal optional at the call site is a signal nobody notices is missing. It is passed now, and nothing reads the result yet, which the KDoc says. `PerceivedEffort`'s KDoc claimed the opposite as fact and is corrected on the record. Previously: **Auto-FTP is upward-only, and the owner asked why (7.11).** Checked against the code rather than assumed: `PostWorkoutAnalyzer`'s gate is `proposal >= currentFtp × 1.02`, which cannot produce a downward number by construction, and `FtpChangeSource` has no case for an automatic decrease. `detectBiometricDecoupling` already looks for the *opposite* signal (low heart rate at threshold power, evidence FTP is too low) and is itself a complete no-op today — `maxHr` is one of three parameters the one production call site never passes. Written up rather than built: it needs a multi-ride trend rather than a per-ride check, unlike everything else in this phase, because a single hard-feeling ride is not reliable evidence of declining fitness the way a 20-minute peak is reliable evidence of a good one. See [AUTO_FTP.md](AUTO_FTP.md) for the full mechanism as it stands. Otherwise: detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted one can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all (7.10.7). Open otherwise only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |

@@ -339,7 +339,7 @@ does today — it operates on one ride's `metrics` and returns.
       can draw a downward automatic change differently from a rider's own
       manual edit, the same distinction 20.3.4 drew for `Estimated`
 
-- [ ] **7.11.6** **Two of the three FTP signals are dead code with a live fuse,
+- [x] **7.11.6** **Two of the three FTP signals are dead code with a live fuse,
       and one KDoc claims otherwise.** Read in the fifty-second sitting while
       triaging 7.11, and it is a sharper version of the fact 7.11's preamble
       already states in passing.
@@ -384,6 +384,43 @@ does today — it operates on one ride's `metrics` and returns.
       cannot reach `proposedFtp` without the trend 7.11.2 requires.
       `detectBiometricDecoupling` should be kept either way — 7.11's preamble is
       right that it is the downward path's seed facing the wrong way
+
+      ***Decided in the fifty-fourth sitting: deleted.** `suggestFtpFromRpe`,
+      `EASY_RPE_THRESHOLD` and `RPE_FTP_BUMP` are gone, and `analyze` no longer
+      takes `rpe` or `isHardClass`. Three reasons, and the first is the one that
+      settles it: **a function whose only behaviour 7.11.2 forbids is not
+      plumbing waiting to be connected**, and fencing it would mean keeping a
+      guard against a caller who does not exist. Second, it is the **wrong
+      shape** for what replaces it — 7.11's RPE half is a trend across several
+      rides and this reads one ride and returns, which is exactly why
+      `detectBiometricDecoupling` is kept and this is not. Third, it could not
+      have fired even if wired: the rider answers on the same screen that runs
+      the analysis.*
+
+      ***And `maxHr` lost its default**, which is the general form of the
+      defect rather than one instance of it: a signal that is optional at the
+      call site is a signal nobody notices is missing. `PostRideViewModel`
+      passes the rider's resolved maximum now — hoisted out of the chart builder
+      two blocks below, which was already resolving it inline — so the
+      decoupling check reaches its own logic for the first time. **Nothing reads
+      the result**, and the `AnalysisResult` KDoc says so: it is 7.11's seed
+      recorded honestly rather than left as a constant `false`.*
+
+      ***No rider-visible change by construction**, so the evidence is the tests
+      and the call site rather than a screenshot: **777 JVM tests, 0 failures**
+      — four RPE tests and two in `PerceivedEffortTest` deleted, three added,
+      including one asserting that passing the maximum is what reaches the
+      decoupling check and one that the twenty-minute peak is now the only thing
+      that can propose a number. Watched on the tablet AVD to the extent it can
+      be: a ride summary loads with the heart-rate chart still captioned* "zones
+      from %HRmax · your own number"*, which is the hoisted value arriving where
+      it already went, and nothing in logcat.*
+
+      ***`PerceivedEffort`'s KDoc is corrected on the record rather than
+      quietly***, because the false claim is more instructive than the fix: the
+      mapping reasoning was sound and the sentence about its *effect* was
+      invented, which is the same shape as every other stale claim this plan
+      keeps finding.
 
 **The owner returned to this exact question from the inbox, 4 August 2026,
 without having seen the write-up above.** Verbatim: *"Let's make a solid and
