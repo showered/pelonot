@@ -6,6 +6,77 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 16 August 2026 (fifty-sixth sitting): three defects on the path a rider walks once, and every one of them invisible to anybody who had walked it before
+
+**The inbox was empty, the top of *What to do next* is owner-and-bike work for
+the twenty-second sitting running, so the brief was triage again. 20.4.3 went:
+walk the whole first-run path with fresh eyes at the AVD's real size.** It is
+the item the plan itself argues hardest for — the last time it was even
+half-done it turned up 20.4.4, which was worse than either fault the owner had
+reported — and it needs no owner, no bike and no deploy. From `pm clear`:
+profile creation, the account offer, the dashboard, the class library, Start
+Class, the countdown, the first ride, the summary.
+
+**It found three, and two of them are the same shape: a one-shot trigger that
+fires before the thing it needs exists, and never fires again.**
+
+**20.4.7 — the account offer's QR never arrived.** On the last screen between a
+rider and their first ride, the left half drew a spinner saying *"Checking…"*
+and it was still spinning minutes later. Nothing had asked: the `Log.w` that
+reports a failed mint never fired. `startPairing` returns silently without a
+profile, and the offer keyed its `LaunchedEffect` on `pairingAvailable` alone —
+so the emission that turned it true could still carry no profile, and **nothing
+in the key ever changed again.** `AccountScreen`'s own condition was right the
+whole time because it includes `!isGuest`; the two were **one rule written
+twice with a clause missing from one copy**, which is 12.7's two effort cards
+and 23.4.12's seven leaderboard queries. There is one answer now,
+`wantsPairingCode`, seven cases pinned by a test, and a rule in its KDoc: **the
+profile is part of the trigger, not merely a precondition.** The spinner also
+stopped borrowing the session check's word — `Idle` and `Starting` draw
+identically, so a trigger that never fired looked exactly like a request in
+flight.
+
+**20.4.8 — the notification permission was asked 21 seconds into the first
+class**, over the ride screen, with the rider pedalling. It was composed
+*below* the countdown's own `return`, so the earliest it could fire was after
+the class had started. That is **11.6.14's fault on the other permission**, and
+11.6.14's answer is the one to copy: it is asked in the countdown now, the
+count is held while it is up — a system dialog is drawn by another process and
+the count would otherwise run out behind it — and the order is deterministic,
+because deferring on *no dialog being up* is equally true of *not having looked
+yet*, which is how the platform's terse question came to be asked in front of
+the app's own.
+
+**20.4.9 — *Not now* was un-answered by the next resume, and 20.4.8's fix is
+what made it visible.** Answering the platform dialog resumes the Activity,
+`OnResume` re-runs the overlay check, and the check knew only that the
+permission was ungranted — which is exactly what *Not now* means. So the prompt
+came back thirty seconds after it was declined. The re-ask is right for the
+rider who went to Android's settings and wrong for the rider who said no, which
+is **11.6.15's rule arriving on the other control**. Per ride, not per process:
+the view model is scoped to the ride's back-stack entry, so the next class asks
+again.
+
+**The walk is also evidence about what works, which is half of doing it
+honestly**: 20.4.2's keyboard fix, 21.1.1b's year picker, 20.4.4's two routes —
+carrying a live QR for the first time, because until this sitting there was
+never a code to draw — 19.1.6's first-run picker, 11.8.2's `NEW TO THIS?`
+passage, 11.6.16's countdown fitting, and 12.7's effort question at **217 dp of
+a 664 dp viewport**. One thing looked wrong and is not: pounds and miles are
+`UnitSystem.fromLocale()` reading the AVD's `en-US`.
+
+**And one thing was checked against the plan's own claim rather than assumed.**
+26.4 says the first finished ride takes a rider to level 2; the badge said
+`LVL 1` after mine. That is the arithmetic working — seventy points is a
+*typical* ride and a three-and-a-half-minute stub is worth about 26 — not the
+claim failing.
+
+**Watched on the tablet AVD across four installs from `pm clear`, each fix with
+the previous build as its own control. 794 JVM tests, 0 failures** (787 plus
+`AccountPairingTriggerTest`'s seven). **20.4.10 is written down rather than
+built**: the goal dialog is the last Title Case on the path, and it belongs
+beside 26.1.5 rather than smuggled in behind three defect fixes.
+
 ## 15 August 2026 (fifty-fifth sitting): a number for a rider that only goes up, and two faults a diff could not have shown
 
 **The inbox was empty and the top of *What to do next* is owner-and-bike work

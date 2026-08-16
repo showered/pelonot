@@ -88,18 +88,96 @@ right one — same device shape, same distance, same job.
 
 ### 20.2 Avatars
 
-- [ ] **20.2.1** A checked-in set of avatars to choose from. Licence first:
+- [x] **20.2.1** A checked-in set of avatars to choose from. Licence first:
       whatever is used has to be genuinely open (SIL OFL, CC0 or MIT), credited
       in the repo, and vendored rather than fetched at runtime — the app starts
       a ride with no network and that is not negotiable (19.4). Generated
       identicon-style avatars derived from the profile name are the other
       candidate and have no licence question at all
-- [ ] **20.2.2** `profiles.avatar` in Room, behind a real migration (12.5).
+
+      ***Done and observed on the tablet AVD in five states.*** **Eight colours
+      and six marks**, and the licence question was answered by not creating
+      one: the colours are this project's own hex values and the marks are
+      Material icons already in the build, so nothing is fetched, nothing is
+      vendored and nothing needs crediting. **The identicon route was
+      deliberately not taken** — an identicon is a hash, so it cannot be
+      *chosen*, and on a household bike the point of a face is that the rider
+      picked it.
+
+      **The palette is the finding, and it was live rather than cosmetic.** The
+      selector drew its discs in `PowerZone2Endurance` through
+      `PowerZone6Anaerobic`, which is wrong twice. **One in five profiles was
+      amber**: `PowerZone4Threshold` is the amber this app uses for *off target*
+      (11.8.3), and `RiderScore`'s third rule already says in those words that a
+      rider's identity must not wear the colour meaning *you are wrong*. And the
+      zone ramp is itself a claim — it runs cool through warm so intensity reads
+      without the number, which is exactly why 21.2.1 gave the heart-rate zones
+      a *different* ramp rather than sharing this one. A face is not an
+      intensity. `AvatarPalette` is now eight colours that are **no zone colour,
+      no live-metric accent and nothing amber**, with the reasoning at its
+      definition
+
+- [x] **20.2.2** `profiles.avatar` in Room, behind a real migration (12.5).
       Store a **reference** — a pack id or a relative file path — never image
       bytes in the row: a database that carries photos is a database that
       cannot be exported, synced or backed up cheaply
-- [ ] **20.2.3** Pick from the built-in set at profile creation, with a sensible
+
+      ***Done and observed*** — migration 21 → 22, schema 22 exported,
+      `MigrationTest` covering it, and the upgrade watched on a tablet AVD
+      carrying 45 rides and two profiles. One short string: `rose:bolt`, read
+      back in `sqlite3` after the save rather than off a screenshot.
+
+      **Not backfilled, and that is the whole of the decision.** Null means
+      *this rider has never chosen* and `Avatar.defaultFor` answers for them
+      from their own row id — so every existing profile keeps exactly the disc
+      it already draws, **and the app can still tell a rider who picked that
+      colour from one who never looked**. Writing the derived value in would
+      have changed nothing visible, which is precisely what makes it tempting,
+      and would have collapsed the two claims for ever. Third column with this
+      argument after 12 → 13 and 20 → 21. Measured on the device: `rose:bolt`
+      on the rider who opened the dialog, still `NULL` on the one who did not
+
+- [x] **20.2.3** Pick from the built-in set at profile creation, with a sensible
       default so nobody is forced through a choice to start riding
+
+      ***Done and observed, with the creation half answered rather than
+      built.*** The picker is on the **press-and-hold dialog** the selector
+      already had (20.1.5), because that dialog is where a rider is looking at
+      their own name; **profile creation was deliberately left alone.** The
+      whole of 20.4 is about that path being too long for somebody meeting the
+      app for the first time, and 20.4.6 and 20.4.8 are both about things put in
+      front of a rider before they had earned the interruption. This item's own
+      clause is what makes leaving it correct: the default is *sensible* — one
+      of eight, derived from the row id, so a household of three gets three
+      faces — and nobody is forced through anything. **If it ever moves into
+      creation it belongs at the end, not the start**, and it needs the owner's
+      eye rather than a session's, since it lengthens the one journey four items
+      have been shortening.
+
+      Two decisions inside the picker worth keeping. **The rider's own initial
+      is the first option in the mark row and is the default**, and it is a
+      choice rather than an absence: an initial is unambiguous between two
+      housemates with different names, and a mark is what serves the household
+      where two names start with the same letter. And **two short rows rather
+      than a grid** — eight colours times seven faces is fifty-six tiles and a
+      decision nobody asked for (26.3's argument, applied to a control)
+
+- [x] **20.2.3a** **The selected swatch needs a gap, not a ring on the
+      colour.** ***Found and fixed by looking at the tablet AVD*** and it could
+      not have been found any other way. The selection was a 3 dp border drawn
+      *on* the disc in the brand teal: perfectly legible on the mark row, where
+      every swatch is a dark grey, and **very nearly invisible on the colour
+      row, because one of the eight colours is a turquoise.** The state a rider
+      is in most often is the one where the selected swatch is the colour they
+      already have, so this was the common case rather than an edge.
+
+      The fill is inset when selected, so the dialog's own surface shows between
+      the ring and the colour and the signal is the **separation** — which no
+      hue can defeat. A tick on top was the other candidate and is worse: it
+      hides part of the thing being chosen. **Same family as every "one rule,
+      two colour systems" fault in this plan**: the ring colour was chosen
+      against the dark grey it was first drawn on and then reused on a surface
+      that could be the same hue
 - [ ] **20.2.4** **Set an avatar from the camera or the gallery on Android.**
       `PhotoPicker` on API 33+ and `ACTION_OPEN_DOCUMENT` below it, so the
       common path needs no storage permission at all. Downscale and re-encode
@@ -108,11 +186,61 @@ right one — same device shape, same distance, same job.
 - [ ] **20.2.5** Strip EXIF on import, and honour the orientation tag before
       discarding it. A gallery photo carries GPS coordinates, and this one will
       end up synced (15) and possibly visible to friends (17.5)
-- [ ] **20.2.6** Avatars appear wherever a rider is named: the selector, the
+- [x] **20.2.6** Avatars appear wherever a rider is named: the selector, the
       dashboard greeting, history, and any leaderboard. Not on the HUD (18.6)
+
+      ***Done and observed on three surfaces; the fourth and fifth are named
+      below and deliberately left.*** `RiderAvatar` is the one component, in the
+      `RiderScore` mould with its rules in its own KDoc — never on the HUD,
+      scales with what it sits in, silent to a screen reader (a face beside a
+      name says nothing a name does not, and "avatar" announced per row is three
+      words per rider for no fact), and the colour is never a status.
+
+      **Before it existed the only avatar in the app lived *inside*
+      `ProfileSelectorScreen` as a private `Box`**, which is both why it was
+      drawn off the zone palette and why nothing else drew one at all. That is
+      this project's recurring defect — one rule written in one file — arriving
+      on the first screen anybody sees.
+
+      **A guest gets no face**, which is `RiderScore`'s fourth rule's argument
+      exactly (26.4): a guest's rides are filed against nobody, so there is no
+      profile to be the face *of*, and drawing one promises an identity that
+      does not exist. Watched: greeting, household panel and selector all
+      showing the same face for the same rider, and the guest greeting showing
+      neither face nor badge.
+
+      **It costs no height on the dashboard**, which mattered because 22.8 and
+      22.9 are both about that screen: the greeting is one line of headline
+      either way, and the household rows grow to the avatar's 32 dp from a
+      `RiderScore` pill that was nearly that already. Measured on the AVD at
+      about 560 dp of a 664 dp viewport for the household state 22.9 recorded at
+      541 dp, and it does not scroll
+
+- [ ] **20.2.6a** **History and the leaderboard are the two surfaces left, and
+      the leaderboard is a question rather than a job.** History rows are the
+      rider's *own* rides, so there is nobody to name on them — the avatar would
+      be the same face repeated down a list, which is decoration. The
+      leaderboard is the interesting one: since 24.3.18 a board carries
+      **auto-generated ghosts** alongside real housemates, and 24.3.12a is
+      *still open* on what those rows should even be called. Putting faces there
+      forces an answer to **what a ghost looks like** — give it one and the
+      board claims a person who does not exist; leave it blank and the board has
+      two classes of row, which is arguably honest and arguably just untidy.
+      That is a design decision with the owner's existing open question sitting
+      on top of it, so it is written down rather than guessed at
 - [ ] **20.2.7** Avatar changes sync with the profile, once 14 and 15 work. A
       custom image is a blob and needs Supabase Storage rather than a column;
       decide deliberately whether it goes up at all before building it
+
+      **Still open, and 21.1.1a is the precedent for how to close it**: that
+      item was answered by *reading* `ProfileDto` rather than by building
+      anything, and the answer was *neither*. The same is true here — the cloud
+      profile row has no avatar column and adding one is a migration only the
+      owner can apply, which is 15.3.7's queue. **The colour-and-mark form makes
+      this cheaper than the item assumed**: a chosen face is one short string,
+      not a blob, so it needs no Storage bucket at all and could ride in the
+      profile payload the day that migration happens. Only 20.2.4's photograph
+      needs Storage, and that is an argument for deciding the two separately
 - [ ] **20.2.8** Change your avatar from the companion web app — **much later**,
       and strictly after 17 exists. Listed here so it is not re-invented as a
       separate feature when it is the same field
@@ -646,7 +774,7 @@ it is the only one.
       is the whole scope it needs: the view model is scoped to the ride's own
       back-stack entry, so the next class asks again, which is right for a
       permission that may have been granted in between
-- [ ] **20.4.10** **The pre-ride goal prompt is the last Title Case on the
+- [x] **20.4.10** **The pre-ride goal prompt is the last Title Case on the
       path**, and it is the one screen Phase 26 audited without touching the
       words on the buttons. *Reach New Milestones* and *Just Stay Fit* are
       marketing capitals on a dialog whose every neighbour is sentence case —
@@ -659,6 +787,20 @@ it is the only one.
       the sitting that found it — it is a change to the app's voice on a screen
       the owner has already had opinions about (26.1.5, 26.1.6), and it belongs
       beside those rather than smuggled in behind three defect fixes
+
+      ***Done and observed on the tablet AVD.*** *Reach new milestones* and
+      *Just stay fit*, matching every neighbour on the path. The item's claim
+      was checked rather than trusted: `displayName` is read in exactly one
+      place, `PreRideIntentPrompt`, and `id` is what persists.
+
+      **The case changed and the words did not, deliberately**, and the session
+      that did it started by changing them and backed out. *Push a bit harder* /
+      *Keep it steady* is wrong twice over — it is a rewrite of a dialog the
+      owner has already had opinions about, made without asking, and each new
+      name would then say exactly what the description beneath it already says.
+      **That redundancy is real and is worth the owner's eye**: *Reach new
+      milestones* sits above *A bit harder than your zones ask for*, and one of
+      those two lines is doing no work. It is not a session's call which
 
 ---
 
