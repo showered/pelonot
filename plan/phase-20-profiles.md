@@ -1167,8 +1167,11 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       photograph is a different feature with a privacy surface on it — the note
       asked for a downloaded set, in those words, and got one
 
-- [ ] **20.6.8** **The level as a *ring* round the face, with a tab under it —
+- [x] **20.6.8** **The level as a *ring* round the face, with a tab under it —
       the owner's reference picture, and it is better than what 20.6.4 built.**
+      ***Done and watched on the tablet AVD at five tiles***, where the arc is
+      legibly different between a rider a fifth of the way up and one nearly
+      there — which the 2 dp hairline it replaces never was at that size.
       The note came with an image (`plan/images/leaderboard-idea.png`, Peloton's
       own leaderboard row) and the words *"let's make `lvl` part of the avatar,
       like that"*. What "like that" is, precisely:
@@ -1189,7 +1192,13 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
 
       **The floor stays.** A ring at 32 dp is a hairline and the tab is
       unreadable, so the household row and the greeting keep the pill beside the
-      name exactly as 20.6.4 decided
+      name exactly as 20.6.4 decided.
+
+      **One consequence worth naming, because it removes a duplicate rather
+      than adding a feature: the compact badge stops drawing its own track.**
+      Two progress indicators for one value is two answers to one question, and
+      the ring is the one that can be read. The full-size pill beside a name is
+      untouched and still carries it
 
 - [ ] **20.6.9** **`FTP: 215 W` "on whichever screen requires it" — the third
       widening, and the surfaces still narrow it.** The owner's words are *"show

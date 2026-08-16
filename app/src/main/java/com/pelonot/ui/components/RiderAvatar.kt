@@ -1,6 +1,7 @@
 package com.pelonot.ui.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -56,11 +61,18 @@ import com.pelonot.ui.theme.expressiveShapes
  *    colour, no live-metric accent and nothing amber, and the reason is written
  *    where the palette is defined.
  * 5. **The level rides on the face only where the face is big enough to carry
- *    it** (20.6.4). The owner's note is *"lvl should be part of the avatar
- *    (overlaid somehow)"* and that is what [level] does — but a badge shrunk
- *    onto a 32 dp disc is two illegible things instead of one legible one, so
+ *    it** (20.6.4, 20.6.8). The owner's note is *"lvl should be part of the
+ *    avatar (overlaid somehow)"* and their follow-up came with a picture — a
+ *    **ring** round the face with a small `LVL` tab on the bottom of it
+ *    (`plan/images/leaderboard-idea.png`). That is what [level] draws, and the
+ *    ring is the better half of it: **it is the progress arc**, so
+ *    `RiderLevel.progress` gets somewhere it can actually be read, and the
+ *    drawing inside is left alone. The first version put a filled pill on the
+ *    figure's collar, which worked and covered part of them.
+ *
+ *    But a ring at 32 dp is a hairline and the tab under it is unreadable, so
  *    the household row and the dashboard greeting keep the pill *beside* the
- *    name and simply do not pass a level. Below [LEVEL_BADGE_FLOOR] it is not
+ *    name and simply do not pass a level. Below [LEVEL_RING_FLOOR] it is not
  *    drawn at all, which is the one place this component silently declines to
  *    draw something it was handed; the alternative is a caller shipping an
  *    unreadable badge without ever seeing it.
@@ -83,10 +95,54 @@ fun RiderAvatar(
      */
     level: RiderLevel? = null
 ) {
+    // The ring and the tab are one decision: either the face carries its level
+    // or it does not, and half of it is worse than neither.
+    val ringed = level != null && size >= LEVEL_RING_FLOOR
+    val ringStroke = size * RING_STROKE
+    // Rule 2: the initial scales with the *disc*, which is smaller than the
+    // component once a ring is round it.
+    val disc = if (ringed) size - ringStroke * RING_GAP else size
+    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+    val arc = MaterialTheme.colorScheme.primary
+
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
+        if (ringed) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = ringStroke.toPx()
+                val topLeft = Offset(stroke / 2f, stroke / 2f)
+                val arcSize = Size(size.toPx() - stroke, size.toPx() - stroke)
+                // The whole circle first, so an early level reads as *a ring
+                // with a little of it filled* rather than as a broken one.
+                drawArc(
+                    color = track,
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = stroke, cap = StrokeCap.Round)
+                )
+                if (level!!.progress > 0f) {
+                    drawArc(
+                        // From the top, clockwise — the direction every
+                        // progress ring anybody has seen goes.
+                        color = arc,
+                        startAngle = -90f,
+                        sweepAngle = 360f * level.progress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+                }
+            }
+        }
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                // Inside the ring rather than under it: the face is a drawing
+                // and an arc across its shoulders would read as a fault.
+                .size(disc)
                 .clip(MaterialTheme.expressiveShapes.pill)
                 .background(AvatarPalette[avatar.paint.ordinal])
                 // Rule 3: the name is beside it in every call site there is.
@@ -113,34 +169,30 @@ fun RiderAvatar(
                     // disc.
                     text = name.take(1).uppercase(),
                     // Scaled with the disc rather than a type style: rule 2.
-                    fontSize = (size.value * 0.5f).sp,
-                    lineHeight = (size.value * 0.55f).sp,
+                    fontSize = (disc.value * 0.5f).sp,
+                    lineHeight = (disc.value * 0.55f).sp,
                     fontWeight = FontWeight.Bold,
                     color = ON_AVATAR
                 )
             }
         }
 
-        if (level != null && size >= LEVEL_BADGE_FLOOR) {
-            LevelBadge(level, size)
+        if (ringed) {
+            LevelBadge(level!!, size)
         }
     }
 }
 
 /**
- * The level, sitting on the bottom edge of the face (20.6.4).
+ * The level's tab, centred on the bottom of the ring (20.6.4, 20.6.8).
  *
- * **Centred on the bottom edge rather than tucked into a corner**, and the
- * reason is the artwork: an Open Peeps figure is a head and a pair of
- * shoulders, so the bottom corners of the disc are where the drawing is and the
- * bottom centre is a collar. A badge on the corner covers a shoulder and looks
- * like a sticker; on the collar it looks like part of the same object, which is
- * what *"part of the avatar"* asks for.
+ * **Centred on the bottom rather than tucked into a corner**, which is where
+ * the owner's reference puts it and is also what the artwork wants: an Open
+ * Peeps figure is a head and a pair of shoulders, so the bottom *corners* of
+ * the disc are where the drawing is and the bottom *centre* is a collar.
  *
- * It overhangs the disc by design — half the badge's height sits below the
- * circle — so it reads as attached to the face rather than printed on it, and
- * so it never covers the chin. That overhang is why [RiderAvatar]'s outer `Box`
- * is not clipped and the *inner* one is.
+ * It sits *on* the ring rather than beside it, so the two are one object. The
+ * ring is the progress; this is the number.
  */
 @Composable
 private fun BoxScope.LevelBadge(level: RiderLevel, size: Dp) {
@@ -206,11 +258,23 @@ val AVATAR_GREETING: Dp = 40.dp
  * The smallest face that may carry a level (rule 5).
  *
  * Set from the two sizes above rather than picked: both of them are *beside* a
- * name, and this sits above both so that neither can acquire a badge by
+ * name, and this sits above both so that neither can acquire a ring by
  * accident. The profile tile derives 66–114 dp from the screen and is
  * comfortably over it.
  */
-private val LEVEL_BADGE_FLOOR: Dp = 56.dp
+private val LEVEL_RING_FLOOR: Dp = 56.dp
 
 /** The badge's height as a fraction of the face it sits on. */
 private const val COMPACT_BADGE = 0.26f
+
+/** The progress ring's thickness, as a fraction of the face. */
+private const val RING_STROKE = 0.055f
+
+/**
+ * How far the face is inset inside the ring, in ring-strokes.
+ *
+ * Over 2 because the stroke is centred on the circle it is drawn along, so one
+ * stroke of it is already inside the outer edge; the rest is the gap that makes
+ * the ring and the face read as two objects rather than a border.
+ */
+private const val RING_GAP = 3.2f

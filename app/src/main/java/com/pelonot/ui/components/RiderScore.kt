@@ -77,7 +77,8 @@ import com.pelonot.ui.theme.spacing
  * the one thing here that is not a word, and it is deliberately unlabelled: a
  * rider does not need to know the arithmetic to see that the bar is nearly
  * full. It is also what keeps `RiderLevel.progress` a drawn number rather than
- * a computed one nobody reads.
+ * a computed one nobody reads. **The compact form does not draw it** — it sits
+ * on a face whose ring is the same progress at a legible size (20.6.8).
  *
  * **17.15.2 is the catch and it is unfixed.** Nothing keeps `web/tokens.css`
  * and `Color.kt` in step, so this badge does not exist on the companion web app
@@ -121,7 +122,13 @@ fun RiderScore(
             // one-letter-per-line column. Seen immediately on the tablet AVD and
             // invisible in the diff, which is 26.2.2 exactly.
             .drawBehind {
-                if (level.progress <= 0f) return@drawBehind
+                // **Not in compact form**, and that is a rule rather than a
+                // saving. A 2 dp track on a 22 dp pill is a hairline nobody can
+                // read — and every compact badge there is sits inside
+                // `RiderAvatar`'s progress *ring* (20.6.8), which is the same
+                // number drawn at a size that can be. Two indicators for one
+                // value is two answers to one question.
+                if (compact != null || level.progress <= 0f) return@drawBehind
                 drawRect(
                     color = track,
                     topLeft = Offset(0f, size.height - trackPx),
