@@ -49,6 +49,14 @@ keyboard's top edge at 590. Related trap — `imePadding()` is a **no-op inside 
 `Dialog`** unless the dialog is given `decorFitsSystemWindows = false`, because
 the dialog gets its own window and that window reports no IME insets.
 
+**And `hw.keyboard=no` in `config.ini` is not the end of it: Gboard itself can
+sit in a floating mode that reports zero IME insets**, which hides the same
+class of defect on an AVD whose config is correct. It looks like a narrow strip
+of icons down the left edge instead of a keyboard, and `dumpsys window` confirms
+it — `mInsetsHint=Insets{... bottom=0}` on the `InputMethod` window. Reset it
+with `adb shell pm clear com.google.android.inputmethod.latin`; a screen checked
+under the floating keyboard has not been checked.
+
 **A long-running emulator silently loses DNS, and every cloud call then looks
 like a broken feature.** The AVD's resolvers are fixed at launch from the host's
 — `netsimd --host-dns=…` in `ps` shows which — so an emulator started on one
