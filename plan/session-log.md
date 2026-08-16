@@ -6,6 +6,91 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 15 August 2026 (fifty-fifth sitting): a number for a rider that only goes up, and two faults a diff could not have shown
+
+**The inbox was empty and the top of *What to do next* is owner-and-bike work
+for the twenty-first sitting running, so the brief was triage. 26.4 went — the
+owner's note of 4 August, five items, none of them needing the owner, the bike
+or a deploy.** The note is *"we removed '200 W FTP' from profile selector screen
+and now it looks SO much better. But now we don't see '200' at all… a bit like
+'lvl' in video games."*
+
+**The item's own analysis was already right and the build only had to not spoil
+it.** A level in a game has three properties — it only goes up, it is earned by
+playing, and it is comparable without a unit — and the FTP has none of the
+three. Phase 7 moves the FTP *by itself*, so putting it back as a "score" would
+have let an algorithm demote a rider in their sleep. So `RiderLevel` is
+lifetime rides, minutes and kilojoules through `1 + floor(sqrt(points / 70))`,
+where seventy points is one typical ride. **The first finished ride a rider ever
+does takes them to level 2**, and after that a level costs the square of how far
+up it is: four rides to 3, nine to 4, a hundred to 11, 841 to 30.
+
+**The one weight worth arguing about is the kilojoules, because it is the only
+one that is unfair between bodies.** It is ten kJ to the point, which on a
+typical ride is 20 points of 70 — so doubling the output over identical time on
+the bike is **at most one level**, and that is a test rather than a claim. The
+per-ride term is the largest for a short ride on purpose: ten twenty-minute
+rides beat one three-hour one, which is 22.5.2's *reward getting on the bike*
+arriving on a badge.
+
+**The item said to derive it from `RidingHistory` and that turned out to be
+wrong in a way worth keeping.** `RidingHistory` produces seventeen *weeks*, and
+a level over a window is a level the calendar can demote you from. The source is
+a new grouped query — `WorkoutDao.observeRiderTotals`, the only figure in this
+app that is not windowed — and **a trimmed ride still counts in full**, because
+23.4 condenses `workout_metrics` and all three of these columns live on
+`workouts`.
+
+**Then the screen, and both faults were found by looking at the tablet rather
+than at the diff.** The progress track along the bottom of the badge was a
+`fillMaxWidth(fraction)` child, and a fraction resolves against the *incoming*
+constraints — which inside a `Row` is the whole row. The pill measured about
+1,100 dp on the dashboard and squeezed the household panel's `9 rides · 1220 kJ`
+into a **one-letter-per-line column**. It is drawn in `drawBehind` off the
+pill's own resolved size now. That is 26.2.2 stated as plainly as it can be:
+*density is a thing you see and not a thing you count*, and this one was a
+layout rule nobody could have read in a diff.
+
+**The second was a claim rather than a layout, and it is the one worth
+remembering.** A guest was shown `LVL 1`. A guest's rides are filed against
+nobody, so **a guest can never leave level 1 however much they ride** — a badge
+promising a ladder that does not exist is worse than no badge. `levelFor`
+returns null for a guest and level 1 for a *profile* that has not ridden,
+because those are two different claims: one is the start, the other is not a
+ladder at all. Same family as nullable `heartRateBpm` and as `target_position`
+— absent is a claim, and it is a different claim from either value.
+
+**All three placements are built and the third is the owner's to overrule.**
+The dashboard's greeting row and the household panel are 26.4.4's uncontested
+homes, and on the dashboard the badge **costs no height at all**, which matters
+on the screen 22.8 measured at 993 dp of content in a 664 dp viewport. The
+careful one is the profile selector, and it carries the badge on the note's own
+grounds: 26.1.1 took `150 W FTP` off *that screen* and the note is about
+*that screen*, so leaving the badge off it answers a different question from the
+one the owner asked. `LVL 7` under *Simon* reads as identity where `150 W FTP`
+read as measurement. **It is one line to remove**, and 26.4.5 explicitly allows
+"leave it".
+
+**Watched on the tablet AVD in four states with each other as controls**, on a
+profile seeded with fourteen months of riding because every ride on the test
+device was otherwise a 20-second stub: Simon at `LVL 7` with the track at 77% of
+the pill, Alex at `LVL 3` sitting *above* him on a panel still ordered by the
+30-day window — which is the documented behaviour rather than a bug, because the
+badge is who somebody is over years and the row is what they did this month —
+the profile tiles, and a guest with no badge at all. **787 JVM tests, 0
+failures.**
+
+**Two things are written down rather than built.** **26.4.6**: the badge does
+not exist on the web app, which is 17.15.2 arriving exactly as it predicted —
+and the note on it is that the *arithmetic* must not be transcribed with the
+colour, because `RiderLevel` in Kotlin and a second copy in JavaScript is two
+answers to one question. **26.4.7**: nothing writes the level down, so nothing
+can ever say *"you reached level 8"* — a level-up is an event and this has no
+memory of one. That is 7.8's shape on a new quantity, and the honest note is
+that the first feature to need it (Phase 27's alerts, Phase 28's achievements)
+should add the column as *the level at the moment it changed* rather than as a
+cache of the current one.
+
 ## 15 August 2026 (fifty-fourth sitting): the question was below the fold on the other screen, and the signal that fed it was never wired
 
 **The owner's inbox had one entry and it named a fault: *"Where it asks how your
