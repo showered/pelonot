@@ -115,7 +115,12 @@ right one — same device shape, same distance, same job.
       a *different* ramp rather than sharing this one. A face is not an
       intensity. `AvatarPalette` is now eight colours that are **no zone colour,
       no live-metric accent and nothing amber**, with the reasoning at its
-      definition
+      definition.
+
+      **Superseded in part by 20.6.1 the following day** — the owner's verdict
+      on this set was *"the ones we have are not good"*, and the six Material
+      marks are gone. **The palette survives untouched and the argument above is
+      why**: what replaced the marks is twenty drawn faces *on* these colours
 
 - [x] **20.2.2** `profiles.avatar` in Room, behind a real migration (12.5).
       Store a **reference** — a pack id or a relative file path — never image
@@ -153,6 +158,12 @@ right one — same device shape, same distance, same job.
       creation it belongs at the end, not the start**, and it needs the owner's
       eye rather than a session's, since it lengthens the one journey four items
       have been shortening.
+
+      **Both halves of this item have since moved** (20.6). The picker is now a
+      shared component rather than a private one, the marks are twenty Open
+      Peeps faces, and **profile creation does carry it** — this item's own
+      condition for that, *"it needs the owner's eye rather than a session's"*,
+      was met by the note of 16 August.
 
       Two decisions inside the picker worth keeping. **The rider's own initial
       is the first option in the mark row and is the default**, and it is a
@@ -894,7 +905,9 @@ both are taste rather than reasoning and the note is itself a complaint about
 taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
 **twenty faces**.
 
-- [ ] **20.6.1** **A downloaded set of faces, vendored — Open Peeps, CC0.**
+- [x] **20.6.1** **A downloaded set of faces, vendored — Open Peeps, CC0.**
+      ***Done and watched on the tablet AVD*** — twenty PNGs in
+      `res/drawable-nodpi`, 268 KB, written by `avatars/fetch.sh` and committed.
       20.2.1's rule stands unchanged and is what picked the set: whatever is
       used has to be genuinely open (CC0, SIL OFL or MIT), credited in the repo,
       and **vendored rather than fetched at runtime**, because the app starts a
@@ -921,10 +934,48 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       licence and the attribution go in a file beside them, and nothing in the
       app calls an API. The DiceBear HTTP API is how they were *fetched once*,
       by a script that is checked in so the set can be regenerated — it is not a
-      runtime dependency and must never become one
+      runtime dependency and must never become one.
 
-- [ ] **20.6.2** **Pick one when signing up, which reverses 20.2.3's deliberate
-      decision — and the owner is the one who may.** That item put the picker on
+      **The set is fitted to the household that will use the bike, at the
+      owner's instruction, and it is a settings question rather than a hand-pick
+      one.** Their words: *"more white-skinned avatars and fewer BAME. Not
+      because of racism but because the people that are going to be using this
+      are all white and non-religious."* This is a family's tablet and not a
+      product with a public audience, and a picker where nobody recognises
+      themselves is a picker nobody opens. Two lists at the top of `fetch.sh`
+      answer it — `SKIN`, where a repeated value is simply a heavier weight, and
+      `HEADS`, which names every option Open Peeps offers **except `hijab` and
+      `turban`**. Naming the whole list rather than an exclusion is deliberate:
+      the API has no *not this*, so an option added upstream would otherwise
+      arrive in the set unasked. **Measured rather than eyeballed** — the
+      vendored PNGs were decoded and their dominant skin hex counted against
+      Open Peeps' own five-value palette: **10 lightest, 7 light, 3 mid, none
+      darker**.
+
+      **`maskProbability=0`, found the same way.** The default is a 5% chance of
+      a surgical mask, which at twenty faces put one on `haze` — a thing that
+      happened to the world in 2020 rather than a face.
+
+      **And the door is left open to picking them by hand**, which the owner
+      asked for in as many words. A seed is opaque and nobody should have to
+      guess what one looks like, so `avatars/browse.sh` renders a sheet of
+      candidates in a browser with the seed printed under each face: pick the
+      words, paste them into `SEEDS`, run `fetch.sh`, commit. An entry may also
+      carry its own query after a `|` to pin one face's hair, glasses and skin
+      exactly.
+
+      **One trap worth writing down, because it nearly produced a false
+      conclusion.** The browser preview pane served a *stale* render of a local
+      file twice in a row — identical pixels after the PNGs on disk had
+      changed — and the mask looked like it was still there after it had gone.
+      What settled it was reading the PNG itself. Same family as *the database
+      is the witness, not the screenshots*: **the artefact is the witness, not
+      the previewer**
+
+- [x] **20.6.2** **Pick one when signing up, which reverses 20.2.3's deliberate
+      decision — and the owner is the one who may.** ***Done and walked end to
+      end on the tablet AVD, twice, with the row read in `sqlite3` after each
+      walk.*** That item put the picker on
       the press-and-hold dialog and left profile creation alone, on the grounds
       that the whole of 20.4 is about that path being too long for somebody
       meeting the app for the first time. It also wrote down the condition for
@@ -938,9 +989,43 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       *fun*, which is an argument for it being last rather than an argument
       against it being there. The default remains derived from the row id
       (20.2.2), so a rider who taps straight past still has a face and the
-      column still says *never chose*
+      column still says *never chose*.
 
-- [ ] **20.6.3** **What happens to a rider who already chose `rose:bolt`.**
+      **"The end" turned out to mean *after the questions and before the
+      number*, and 15.8.1 is why.** The obvious reading — last step of all —
+      cannot be built: the profile is written the moment the rider leaves the
+      FTP reveal, deliberately, so that walking away mid-account-offer still
+      leaves a rideable bike. A face step *after* that point would either write
+      the row twice or hold it back, and holding it back is the thing 15.8.1
+      exists to forbid. So the reveal stays the ending and *Pick a face* is the
+      last thing the rider **chooses**.
+
+      **Both claims were watched on the device rather than reasoned about.**
+      *Sam* touched the picker and the row reads `lilac:reed`; *Jo* pressed
+      Continue without touching anything and the row is **NULL**, with `Avatar
+      .defaultFor(5)` drawing the sky disc on the selector. That is 20.2.2's
+      distinction surviving its first contact with a screen that shows a face
+      before the rider has chosen one.
+
+      **The step has no skip control and does not apologise for existing.**
+      There is a face on screen from the first frame and `Continue` is live
+      throughout, so *"optional"* would be a word spent on something the rider
+      can already see (Phase 26). The subheading says what the step is for
+      instead: *"So the bike knows you at a glance. Change it any time."*
+
+      **The suggested colour is a guess and is honest about being one.** A new
+      row has no id, so `Avatar.defaultFor` cannot be asked the question it
+      exists to answer; the caller passes the number of profiles already on the
+      bike, which is what the autoincrement usually hands out next. It matched
+      on both walks. A rider who picks gets exactly what they picked; a rider
+      who does not care may see a different colour later, and that is the price
+      of not writing a value down for somebody who expressed no preference
+
+- [x] **20.6.3** **What happens to a rider who already chose `rose:bolt`.**
+      ***Done, and confirmed against a real row rather than a fixture*** — the
+      test device's profile 1 has said `rose:bolt` since the fifty-eighth
+      sitting and now draws as rose with an `R`, with the column untouched. The
+      other six retired ids are pinned in `AvatarTest`.
       `AvatarMark` is retired by 20.6.1, not renamed: the six icon marks stop
       being offered and the ids stop being recognised. `Avatar.parse` already
       handles this exactly as it should — a known colour with an unknown mark
@@ -952,8 +1037,10 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       older one and is doing the opposite job here. Nothing is migrated: the
       column keeps the string it has
 
-- [ ] **20.6.4** **The level, overlaid on the face — and this half needs no
-      argument.** *"lvl should be part of the avatar (overlaid somehow)."* A
+- [x] **20.6.4** **The level, overlaid on the face — and this half needs no
+      argument.** ***Done and watched on the tablet AVD at two tile sizes***,
+      three profiles and five, where the badge scales with the face exactly as
+      rule 2 asks. *"lvl should be part of the avatar (overlaid somehow)."* A
       level badge sitting on the corner of a face is what every game the owner
       is thinking of does, and it says the thing `RiderScore` exists to say:
       this is **who somebody is**, not a measurement of them. It also buys back
@@ -970,10 +1057,25 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       **It is not drawn at 32 dp**, and that is a rule rather than an accident:
       the household row and the dashboard greeting keep the pill *beside* the
       name, because a badge shrunk onto a 32 dp disc is two illegible things
-      instead of one legible one. The caller decides by not passing a level
+      instead of one legible one. The caller decides by not passing a level —
+      and below `LEVEL_BADGE_FLOOR` (56 dp) it is not drawn even if one is
+      passed, which is the single place `RiderAvatar` declines to draw something
+      it was handed. The alternative is a call site shipping an unreadable badge
+      without ever seeing it.
 
-- [ ] **20.6.5** **The FTP under the avatar — the reversal, on one screen, and
-      the reasoning is the item.** This is 26.1.1 undone where 26.1.1 was made,
+      **Centred on the bottom edge rather than tucked into a corner, and the
+      artwork is the reason.** An Open Peeps figure is a head and a pair of
+      shoulders, so the bottom *corners* of the disc are where the drawing is
+      and the bottom *centre* is a collar. A badge on the corner covers a
+      shoulder and reads as a sticker; on the collar it reads as part of the
+      same object, which is what *"part of the avatar"* asks for. It overhangs
+      the disc by half its height so it is attached to the face rather than
+      printed on it
+
+- [x] **20.6.5** **The FTP under the avatar — the reversal, on one screen, and
+      the reasoning is the item.** ***Done and watched on the tablet AVD***, and
+      the tile is the same height it was: the level moving onto the face is what
+      paid for the row. This is 26.1.1 undone where 26.1.1 was made,
       and it is worth being plain about that rather than filing it as a tweak.
 
       **What 26.1.1's argument actually was:** the screen's only question is
