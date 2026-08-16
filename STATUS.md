@@ -1,10 +1,10 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 16 August (fifty-sixth sitting).**
-Measured, not estimated: `assembleDebug` passes, **794 JVM tests, 0
+**Written 4 August 2026, updated 16 August (fifty-seventh sitting).**
+Measured, not estimated: `assembleDebug` passes, **795 JVM tests, 0
 failures**, the 21 migration tests green including 20 → 21, and the
 whole 113-test instrumented suite last run green in the forty-fourth sitting.
-**614 of 816 plan boxes** are ticked — counted as
+**618 of 837 plan boxes** are ticked — counted as
 `grep -c '^- \[x\]' PLAN.md plan/*.md`, which is worth writing down because the
 figure this page carried before (*588 of 805*) was counted some other way and
 had drifted, across 28 phases. It is a summary —
@@ -19,14 +19,18 @@ names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 > YouTube**, the post-ride summary and charts, and history. It is the shortest
 > answer to *what is this* that exists.
 >
-> **The dashboard in it is out of date as of 10 August.** The owner's note —
-> *"seems very stretched"* — was measured at 993 dp of content in a 664 dp
-> viewport and answered: History and Settings are doors in the greeting row
-> rather than cards, and the household panel is beside the rider's own numbers
-> instead of below the fold. **And the primary action is no longer a door at
-> all** — it names a class to ride, chosen from the rider's own history and
-> saying why (22.8.6, 22.8.11). Everything else in the recording still
-> stands.
+> **The dashboard in it is out of date twice over, as of 10 and 16 August.**
+> The owner's first note — *"seems very stretched"* — was measured at 993 dp of
+> content in a 664 dp viewport and answered: History and Settings are doors in
+> the greeting row rather than cards, and the household panel is beside the
+> rider's own numbers instead of below the fold. **And the primary action is no
+> longer a door at all** — it names a class to ride, chosen from the rider's own
+> history and saying why (22.8.6, 22.8.11). Their second note was about what
+> that left behind — *"lots of unused space… we shouldn't have empty space"* —
+> and the screen now fills its own fold without stretching anything: the offer
+> card **draws the shape of the class it is offering**, and the right-hand rail
+> carries **the rider's ride-days grid** when there is nobody else on the bike
+> (22.9). Everything else in the recording still stands.
 
 > This page exists because the plan answers *why* extremely well and *where are
 > we* not at all (19.1.7). It is rewritten by whichever sitting changes the
@@ -251,6 +255,27 @@ for.
   degrade under a trim and both are honest losses rather than wrong numbers: a
   condensed rival draws no live ghost, and Settings' maximum-heart-rate
   suggestion drops.
+- **Phase 29, Health Connect and Apple Health** — the owner's note of 16 August,
+  marked *"REALLY HIGH importance"*, and it is written up rather than built
+  because it is blocked on things a session cannot do. **Health Connect asks
+  nothing of anybody**: no account, no registration, no API key, no fee, and
+  the Play Store's health-data declaration binds an app distributed on Play,
+  which this is not. What it needs is the **bike** — Health Connect is part of
+  the platform only from Android 14, the tablet is Android 11, and three adb
+  commands (29.1.1) decide whether the rest of the phase is a feature or an
+  essay — plus one decision that is genuinely the owner's, since the client
+  library floors at minSdk 26 and this app claims 24. **Apple Health is a *no*
+  on the facts**: HealthKit has no Android SDK and no server API at all, because
+  the data lives on the rider's iPhone, so the honest route is the `.tcx` this
+  app already exports, carried across once (29.2.2). An iOS app built *for*
+  HealthKit would be the largest thing in the plan for a feature a file already
+  delivers.
+- **21.7, an Apple Watch as the heart-rate strap** — the owner's other note of
+  16 August, and the likely answer is that **it already works and nobody has
+  tried it**: the strap scan filters on the standard heart-rate service rather
+  than on a device name, so anything advertising it is an ordinary strap. The
+  item is one measurement with a friend's watch, and the thing to write down
+  afterwards is whether their phone had to be in the room.
 - **17.5 / 18.1 friends** — dropped in favour of "everyone registered"
   (18.11) while the population is four people. The item stays open for the day
   the answer changes.
