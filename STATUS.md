@@ -134,10 +134,19 @@ duration. **The same charts appear on the post-ride summary and on a ride from
 March**, out of one component — they are the same ride, and the only differences
 left are the three things that are true only tonight (12.6).
 
-**FTP that corrects itself** — detected from a ride, proposed rather than
-applied, declinable in a way that stays declined, reversible in one action that
-appends rather than erases, never proposed from simulated watts, and recorded
-onto the ride so a later change cannot silently redraw history.
+**FTP that corrects itself, and now in both directions (7.11).** Upwards it is
+one ride: a twenty-minute peak the bike measured, proposed rather than applied.
+Downwards it is a trend, because it has to be — a twenty-minute effort below
+your FTP is the ordinary result of a recovery spin, so the app waits for **three
+consecutive rides you were working at** to all come in more than 5% short, and
+one good ride among them ends it. What it offers is the best of those three
+rather than an average of your worst days: something you have actually ridden.
+The dialog shows you the three rides and their dates rather than telling you
+your fitness has dropped, both buttons name their number, and answering it
+either way restarts the evidence, so it cannot ask again after every ride.
+Either direction is declinable in a way that stays declined, reversible in one
+action that appends rather than erases, never proposed from simulated watts, and
+recorded onto the ride so a later change cannot silently redraw history.
 
 **Heart-rate zones** built on the rider's own maximum, with Tanaka as a labelled
 estimate and every column nullable, because a default maximum is a guess about
