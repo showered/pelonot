@@ -793,7 +793,7 @@ class WorkoutRepository(
                 name = it.name,
                 kind = RaceCompetitor.Kind.Housemate,
                 outputKj = it.outputKj,
-                identity = raceIdentity(it.localUserId, it.avatar, it.ftpWatts, levels)
+                identity = raceIdentity(it.localUserId, it.name, it.avatar, it.ftpWatts, levels)
             )
         }
 
@@ -811,7 +811,7 @@ class WorkoutRepository(
                 name = "${it.name}'s last ride",
                 kind = RaceCompetitor.Kind.HousemateLatest,
                 outputKj = it.outputKj,
-                identity = raceIdentity(it.localUserId, it.avatar, it.ftpWatts, levels)
+                identity = raceIdentity(it.localUserId, it.name, it.avatar, it.ftpWatts, levels)
             )
         }
 
@@ -855,11 +855,14 @@ class WorkoutRepository(
      */
     private fun raceIdentity(
         localUserId: Int,
+        name: String,
         avatar: String?,
         ftpWatts: Int,
         levels: Map<Int, RiderLevel>
     ) = RaceIdentity(
         localUserId = localUserId,
+        // The profile's own name, not the row's label — see `RaceIdentity.name`.
+        name = name,
         // Null in the column means *never chosen* and `defaultFor` answers from
         // the row id — never backfilled, so the board draws the same disc the
         // household panel does for the same rider (20.2.2).

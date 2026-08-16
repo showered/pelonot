@@ -36,6 +36,19 @@ import com.pelonot.domain.progress.RiderLevel
 data class RaceIdentity(
     /** The profile this row belongs to. Guests have none and get no identity. */
     val localUserId: Int,
+    /**
+     * **The rider's own name, which is not the row's label.**
+     *
+     * Carried because the face falls back to an initial when a rider has no
+     * picture, and the row's label is not always their name: the rider's own
+     * row says `YOU` (deliberately — `LiveStanding.YOU` is not a name so it can
+     * never collide with one) and a housemate's activity row says *"Alex's last
+     * ride"*. Drawing the label's initial put a **`Y`** on Robin's disc, which
+     * is the same rider drawn two different ways on two screens. Seen on the
+     * tablet AVD, and it could not have been found any other way — the row was
+     * correct in every other respect.
+     */
+    val name: String,
     val avatar: Avatar,
     val level: RiderLevel,
     /**

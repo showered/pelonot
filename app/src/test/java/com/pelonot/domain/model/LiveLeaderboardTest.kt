@@ -290,6 +290,7 @@ class LiveLeaderboardTest {
 
     private fun identity(id: Int, ftp: Int? = 215) = RaceIdentity(
         localUserId = id,
+        name = "Rider $id",
         avatar = Avatar.defaultFor(id),
         level = RiderLevel.of(RidingTotals(rides = 40, durationSec = 40 * 1800L, outputKj = 8000.0)),
         ftpWatts = ftp

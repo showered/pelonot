@@ -721,6 +721,9 @@ class WorkoutService : Service() {
             .getOrNull() ?: return null
         return RaceIdentity(
             localUserId = id,
+            // Their name, for the initial on a disc with no face — the row
+            // itself says `YOU`, which is a label rather than a name.
+            name = profile.name,
             avatar = Avatar.parse(profile.avatar, id),
             level = workoutRepository.riderLevel(id),
             ftpWatts = _currentSession.value?.ftpWatts?.takeIf { it > 0 } ?: profile.ftpWatts

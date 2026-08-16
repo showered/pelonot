@@ -1175,7 +1175,10 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
     ) {
         if (identity != null) {
             RiderAvatar(
-                name = row.name,
+                // The rider's own name and not the row's label: `YOU` would put
+                // a `Y` on the disc of a rider called Robin. See
+                // `RaceIdentity.name` — found on the tablet, invisible in a diff.
+                name = identity.name,
                 avatar = identity.avatar,
                 size = LEADERBOARD_FACE,
                 level = identity.level
