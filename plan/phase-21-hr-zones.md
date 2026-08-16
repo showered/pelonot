@@ -778,3 +778,59 @@ Three things this could feed, in increasing order of how much they can hurt:
       or whole rides, never single samples — and it must degrade to silence
       when no strap is worn, which on this bike is most of the time
 
+
+---
+
+### 21.7 An Apple Watch as the strap — the owner's note, 16 August 2026
+
+**The owner's words, verbatim:** *"Apple Watch as heart rate monitor. I don't
+use Apple Watch but my friend does. Let's do what we realistically can to
+support this as HRM. Peloton support it."*
+
+**The likely answer is that it already works and nobody has tried it.**
+`BleHeartRateManager` does not look for straps by name — it filters the scan on
+the **standard Heart Rate service UUID (0x180D)**, which is why a Polar H10 is
+found and why the previous name-matching implementation found nothing. Anything
+that advertises that service is an ordinary strap to this app. **So the work
+here is a measurement and a sentence, not a feature** — unless the measurement
+says otherwise, in which case 21.7.3 is the fallback.
+
+**Why Peloton supporting it is not evidence that we can.** Peloton's Apple Watch
+support is their own watchOS app talking to their own iPhone app talking to
+their own account — a platform, not a Bluetooth trick. Copying that shape needs
+an iOS app, a watchOS app, a paid Apple Developer account and a transport to
+this tablet that does not exist (29.2, route 3). **That is not the realistic
+thing the note asks for.**
+
+**And the fact that decides the shape needs confirming before anything is
+promised.** watchOS supports CoreBluetooth as a *central* — a watch can talk to
+a strap — and, as far as this plan knows, **not as a peripheral**: a watch
+cannot advertise itself as a heart-rate monitor. If that is right, then every
+App Store app that claims to "broadcast your Apple Watch heart rate" is really
+watch → iPhone → **iPhone** advertising as the BLE peripheral, and the rider
+needs their phone near the bike as well as the watch. **Both routes look
+identical to this app** — a standard HRM appears in the strap list — but they
+are different instructions to the rider, and telling somebody the wrong one is
+how a working feature reads as broken.
+
+- [ ] **21.7.1 Try it before building anything**, with the friend and their
+      watch, and it needs no bike and no pedalling: install a broadcaster app
+      on the watch or phone, open Settings → heart-rate strap, and see whether
+      it appears in the scan and delivers BPM. **The whole item may close
+      here.** Note the trap this tablet has already produced twice: on
+      Android 11 the BLE scan permission is `ACCESS_FINE_LOCATION`, and a
+      permission the manifest does not declare is denied instantly with no
+      dialog and nothing in logcat — that is declared and granted today, and it
+      is the first thing to re-check if the scan finds nothing
+- [ ] **21.7.2 Write down which route worked**, in `HARDWARE.md` beside the
+      strap that has been verified, naming the app and whether the phone had to
+      be present. A rider being told *"pair your Apple Watch"* when the answer
+      is *"and keep your phone on the bike"* is a support problem this project
+      can avoid for the cost of one sentence
+- [ ] **21.7.3 If it does not work, the fallback is a list rather than a
+      build.** Straps this app has been *seen* to work with, in Settings, where
+      a rider chooses one — the Polar H10 is verified (2.3.5) and an Apple Watch
+      would join it or not. **Do not build a special Apple Watch path**: there
+      is no Android API that reaches a watch except the standard one already
+      here, and a second code path for a device nobody in the project owns is a
+      path nobody can test

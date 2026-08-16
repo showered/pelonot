@@ -1411,3 +1411,136 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       comment that lied is preserved in the source where `WideRow` used to be —
       **a wrong comment above working code on the only path anybody walks is
       the cheapest possible place for a defect to hide.**
+
+---
+
+### 22.9 "Lots of unused space" — the dashboard's other axis — the owner's note, 16 August 2026
+
+**The owner's words, verbatim:** *"Lots of unused space on the home screen. Bear
+in mind we KNOW exactly the dimensions of the app (it will only be used o
+peloton hardware device). We can either maximise it, or even slightly
+over-utilise (with scrolling) if we want. We shouldn't have empty space. It's an
+exciting part of the app. At the very least we should centre it or do something
+to make it super exciting and engaging."*
+
+**This is the fifth note on this screen and it is 22.8's note pointing the other
+way.** Six days ago the complaint was *"seems very stretched… more info can be
+shown above the fold"*, and the answer took the screen from **993 dp of content
+in a 664 dp viewport** down to 609 dp with the backup nag showing and 513 dp
+without. That was the right move and the note above is not a reversal of it —
+but the room it bought was then left as *"honest emptiness"* (22.8.6), on the
+grounds that a card with nothing to say draws nothing (22.2.3). **The owner has
+now looked at that emptiness and does not want it.** They are the last word on
+it, and this section takes it as settled rather than argued.
+
+**Measured before any of this was written**, on the tablet AVD at 1280 × 720 dp,
+on the profile the fifty-sixth sitting's `pm clear` walk left behind — one
+rider, one 3-minute ride, the account offer showing:
+
+| What | Bounds (px) | In dp |
+|------|-------------|-------|
+| The scrolling viewport | `[0,36][1920,1032]` | 1280 × **664** |
+| Everything in it | `[0,36][1920,611]` | **383 dp tall** |
+| **Empty below the last card** | `[0,611][1920,1032]` | **281 dp — 42% of the screen** |
+| Greeting row | `[24,74][1878,118]` | 44 dp |
+| Ride this / All Classes / Just Ride | `[24,155][1896,323]` | 112 dp |
+| The account offer | `[24,347][1160,467]` | 80 dp, and it is temporary |
+| FTP / Last 30 days / Last ride | `[24,491][1896,611]` | 80 dp |
+
+**Two of those rows are not permanent, which makes the real figure worse.** The
+account offer is dismissible and the last-ride card does not exist for a rider
+who has not ridden; on a profile that has just been made, this screen is a
+greeting, three action cards and two figures — **about 287 dp of a 664 dp
+viewport, 57% of it empty** — and that is the state a rider is in the first time
+they ever see the app (20.4).
+
+**And the emptiness is worst exactly where nobody looks for it.** The right-hand
+rail is the household panel, and `household = householdRecent.takeIf { it.size
+>= 2 }` — so **a bike with one rider on it has no rail at all**, which is the
+ordinary case for a new bike and the case the screenshots in 22.8 were not taken
+in. Same shape as 20.4's lesson: the state that is empty is the state a
+developer never sits in.
+
+- [ ] **22.9.1 The trap, and it is the whole reason this section is not one
+      line.** 22.8's fault was that eight cards took 993 dp to say what 600 dp
+      of them said — *"the screen is not full, it is loose"*. **Filling this
+      space by making the cards taller would put that back exactly**, and it is
+      the obvious way to answer the note: give the column `fillMaxSize`, weight
+      the rows, and every card grows into the gap. That produces a 152 dp card
+      carrying 43 dp of text, which is the sentence 22.8.2 was written to
+      delete. **The room is to be filled with more things the rider wants, not
+      with more of the same thing.** Any change under this section is judged
+      against both notes at once: *does it add content, or does it add air*
+
+- [ ] **22.9.2 Centring is the floor the owner named and it is not the
+      answer.** *"At the very least we should centre it"* — worth knowing what
+      it buys and what it costs, since it is one modifier. It costs nothing to
+      write, it makes the emptiness symmetrical rather than absent, and it has
+      a defect of its own: **this screen changes height under the rider.**
+      Dismissing the account offer removes 96 dp, finishing a first ride adds
+      the last-ride card, a second rider on the bike adds a rail — and with the
+      content centred, every one of those moves *everything else* up or down by
+      half the difference. Top-aligned, only the thing below the change moves.
+      **Build it only as the fallback**, if 22.9.4 turns out to have nothing
+      honest to put in the space
+
+- [ ] **22.9.3 The band to hit, stated so it can be argued with.** The owner
+      permits *"slightly over-utilise (with scrolling)"*, which sets a ceiling
+      as well as a floor. The fold is **664 dp on the AVD and 672 dp on the
+      bike** (`HARDWARE.md`, 22.2.5). The target is **the fold, filled, in the
+      states that matter** — a rider with history and a household should reach
+      it without a scrollbar being the point; a rider with neither will not,
+      and that is 22.9.5's problem rather than a licence to invent. **993 dp
+      was too much and 383 dp is too little**, and the honest way to say what
+      "too much" means is that the *primary action must never leave the fold*:
+      whatever is added goes below the row that gets a rider onto the bike
+
+- [ ] **22.9.4 What goes in the space, ranked — and every candidate here is a
+      fact this tablet already holds.** The rule 22.8.6 set stands: *a rethink
+      is not a licence to fill it*, and the dashboard got to three summaries of
+      the past by accretion once already. What has changed is that the owner
+      has weighed the emptiness against the risk and chosen. In order:
+      1. **The shape of the class being offered.** The primary card names a
+         class and says nothing about what riding it is like. `Interval`
+         carries `target_power_zone` and start/end seconds for every block, so
+         a silhouette of the class — its blocks, at their zone, across its
+         length — is authored data drawn as a picture rather than a claim
+         invented for the screen. **It is the one candidate that works from
+         ride zero**, which is the emptiest state and the first-run rider's,
+         and it answers *what should I ride* better than the three words under
+         the title do
+      2. **Ride days.** `RidingHistory` is already loaded by this screen and
+         already carries seventeen weeks of per-day riding; *Your riding* draws
+         it as a day grid (`RideDaysCard`) and the dashboard reduces the whole
+         thing to `1 ride · 3 min` and a chevron. A short window of the same
+         grid answers *should I ride today* with the gap in it, which is the
+         first half of 22.1.1's sentence. **One component, two screens** — the
+         recurring defect of this project is one rule written twice (12.7's two
+         effort cards, 20.4.7's two pairing triggers), so this is an extraction
+         and never a second copy
+      3. **Personal bests** (22.1.6) — built, and suppressed until there are
+         enough rides to mean anything, so it is empty in exactly the state
+         that needs filling most
+      4. **A social feed** (22.8.7) — still the owner's own *"maybe"*, and a
+         feed is a thing you scroll
+      5. **Achievements** (Phase 28, 22.8.8) — the owner's *"one for the
+         backlog"*, and the slot is deliberately a hole
+
+- [ ] **22.9.5 The empty rail is a state, not a screen, and it needs naming.**
+      A household of one draws no panel; a rider with no history draws no
+      last-ride card and an empty day grid. **A day grid of seventeen grey
+      squares is not "exciting and engaging"** — it is an honest nothing, drawn
+      larger. So the first-run state is answered by the candidates that need no
+      history (22.9.4 candidate 1) and by 22.5.5's empty-state work, and the
+      question this item holds open is whether the *last* gap on a brand new
+      profile is worth filling at all or is simply what a new profile looks
+      like. **Do not answer it by drawing a card that says nothing** (22.2.3)
+
+- [ ] **22.9.6 Judge it in five states with each other as controls**, because
+      every measurement in 22.8 was taken in one of them and the note above is
+      about the other four: a **guest**; a **new profile** with no rides; the
+      **one-rider bike** measured in the table above; a rider with **history
+      and a household**; and a rider with the **account offer showing**, which
+      is 96 dp that comes and goes. `pm clear` is the instrument for the first
+      two (20.4.3) and `household_visible` for the rail. And 22.2.5 is owed on
+      all of it — the AVD has the geometry and not the furniture

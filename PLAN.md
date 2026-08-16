@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fifty-five entries have passed through it.** In order: standing and seated
+**Fifty-eight entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -153,7 +153,21 @@ post-ride question being lost below the fold** (**12.7** — and the measurement
 moved the item off the screen the note names: on the summary the question sits
 265 dp into a 664 dp viewport, and it is *ride detail* that has it 2,000 dp
 down under four charts, still saying *"you still can"* to a rider who cannot
-see it).
+see it), and **the dashboard's unused space** (**22.9** — the same screen's
+fifth note and 22.8's pointing the other way: six days after *"seems very
+stretched"* took it from 993 dp to 513, the room that bought is 42% of the
+viewport and the owner does not want it left there), and **Health Connect and
+Apple Health** (**Phase 29** — the note asks *what is needed from me* and the
+answer is **nothing for Health Connect**, no account, no registration, no key,
+no form, while **Apple Health has no Android path at all** and the honest route
+is the `.tcx` this app already writes), and **an Apple Watch as the strap**
+(**21.7** — likely already working, because `BleHeartRateManager` filters on the
+standard heart-rate service rather than on a name, so the item is a measurement
+with the friend's watch rather than a feature).
+
+*Empty. Three entries came in during the fifty-seventh sitting and all three are
+in the plan: the dashboard's unused space at **22.9**, Health Connect and Apple
+Health at **Phase 29**, and the Apple Watch at **21.7**.*
 
 ---
 
@@ -198,6 +212,7 @@ file to open for each.
 | [plan/phase-26-voice.md](plan/phase-26-voice.md) | **Phase 26** — the app's voice: less is more, and where jargon belongs |
 | [plan/phase-27-alerts.md](plan/phase-27-alerts.md) | **Phase 27** — being told something worth knowing: records, streaks, and being beaten |
 | [plan/phase-28-achievements.md](plan/phase-28-achievements.md) | **Phase 28** — achievements: things the rider owns, not things the app says |
+| [plan/phase-29-health-platforms.md](plan/phase-29-health-platforms.md) | **Phase 29** — Health Connect and Apple Health: the ride where the rest of the rider's life keeps it |
 | [plan/reference.md](plan/reference.md) | The Coggan zone table and the ride-intent multipliers |
 
 **Adding to the plan:** put the item in its phase's file. Only the four
