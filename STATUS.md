@@ -203,11 +203,24 @@ among real names until 24.3.12a was settled.
 the owner wanted and is Peloton's own shape. Start a class anybody on this bike
 has ridden and a board appears with no choosing: your best ever, your best of
 the last twelve months, your best of the last thirty days, and every
-housemate's best, ranked live on the class total in kilojoules. It shows
-**three rows — the one you are chasing, you, and the one chasing you** — which
-is what keeps a leaderboard readable by somebody at 90 rpm. Your row carries
-your total; every other row carries the gap to you. Somebody whose ride ends
-before yours says `FINISHED` and their number stops. **`LEADERBOARD.md` is the
+housemate's best, ranked live on the class total in kilojoules. It shows a
+**window onto the board rather than all of it** — up to six rows around you,
+with the rest a scroll away — which is what keeps a leaderboard readable by
+somebody at 90 rpm. Every row carries its own total, in the same unit, with no
+rank and no unit label: the owner cut all three, on the argument that *a gap is
+arithmetic the rider did not ask for* and that a position over a field that is
+mostly your own past rides is a category error (24.3.17). Somebody whose ride
+ends before yours says `FINISHED` and their number stops.
+
+**A row that is a person now looks like one** (24.3.19, from a picture the
+owner sent). Their face sits in a ring that is their progress to the next
+level, with the level on it, and their FTP is a quiet caption under their name.
+**A row this app invented gets neither**, and nor do your own past rides — give
+a made-up target a face and the board is claiming somebody who does not exist.
+The two classes of row look different on purpose. Publishing a housemate's FTP
+is allowed here and nowhere else social, because a leaderboard is the one
+surface every row has opted into being ranked on, and the household opt-out is
+that opt-in. **`LEADERBOARD.md` is the
 plain-English description**, and `RIVALS.md` describes the single-rival version
 it replaced, which is switched off rather than deleted.
 
