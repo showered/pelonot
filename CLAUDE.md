@@ -32,6 +32,28 @@ to the phase file; only those four sections of PLAN.md move each session.
 
 `adb` lives at `~/Library/Android/sdk/platform-tools/adb`.
 
+**The companion web app deploys on `git push`, and that is the whole command.**
+The owner's own words, 16 August 2026, closing PLAN.md 17.16.2 — an item that
+had delayed three fixes to the live site because the deploy lived in one
+person's shell history and nowhere else. Cloudflare is watching the repository,
+so pushing the branch republishes `https://pelonot.showered.workers.dev`. There
+is no build step and nothing to install; `npx wrangler deploy` in `web/` is a
+manual alternative, not the route.
+
+```bash
+./web/check-deployed.sh
+```
+
+That is what *settles* it — it diffs every file on the host against the working
+copy, and it is how this session confirmed the push carried 15.6.14's fix.
+**One fact it reports is not drift and must not be "fixed" by redeploying:**
+`web/config.js` is git-ignored and untracked, yet the host serves it — so the
+push does **not** supply it, something on the hosting side does, and the
+deployed copy is still on the legacy JWT key while the repo has moved to
+`sb_publishable_` (17.16.3). Both keys work and they revoke separately. Nobody
+has established what supplies it; that is written here as an open fact rather
+than a guess.
+
 **`connectedDebugAndroidTest` can fail on ordering, not on code.**
 `WorkoutService` is one instance per test process, so a test asserting the
 service is `Idle` only holds while nothing earlier in the run has finished a

@@ -155,7 +155,30 @@ keyboard should be possible on the web and optional on the bike.**
       before the next bike sitting, because 15.6's remaining unknowns
       (15.6.4's hand-off, the confirmation the owner has not yet given it) all
       need a phone that can open the page
-- [ ] **17.16.2** **How it is deployed is written down nowhere.** `web/README.md`
+- [x] **17.16.2** **How it is deployed is written down nowhere.** ***Answered by
+      the owner in the fifty-eighth sitting, and it is one word: `git push`.***
+      Cloudflare is watching the repository, so the branch reaching GitHub *is*
+      the deploy — there is no build step, no `wrangler` invocation and nothing
+      to install, which is why the reconstruction in `wrangler.jsonc` was a
+      manual alternative rather than the route. **It is in CLAUDE.md now**,
+      beside the adb path, because a fact only one person's terminal knows is a
+      fact the project does not have, and this one had delayed three fixes to
+      the live site.
+
+      **Measured rather than taken on the word**: before the push
+      `./web/check-deployed.sh` reported `link.js` and `link.html` drifted;
+      after it, all seven files matched, which is 15.6.14's pairing fix and
+      17.16.9's voice reaching the internet in the same change.
+
+      **One thing the answer does *not* explain, and it is written down as an
+      open fact rather than guessed at.** `web/config.js` is git-ignored and
+      untracked, so a push cannot carry it — and the host serves it anyway, 200,
+      still on the legacy JWT key form (17.16.3). Something on the hosting side
+      supplies it. That means **a `git push` deploy will never move 17.16.3**,
+      and whoever closes that item needs the Cloudflare side rather than a
+      commit. Original note follows.
+
+      `web/README.md`
       says how to *run* the app — `python3 -m http.server`, or open the file —
       and says nothing about where it now lives or how a change reaches it.
       That is the same gap 14.10 closed on the Android side: a fact that lives

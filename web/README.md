@@ -116,16 +116,23 @@ Worker serving these files as static assets, which also **trims `.html`**:
 `/link.html` answers `307` to `/link`, and the QR's fragment survives it, which
 is the thing that had to be measured rather than assumed (17.16).
 
-`wrangler.jsonc` in this directory is the deploy, and **it is a reconstruction
-rather than a transcript** (17.16.2). How the site was actually put up lives in
-one person's shell history and nowhere else; the `name` in that file is taken
-from the live URL, so deploying with it updates that Worker rather than standing
-up a second one. It has not been run from this repository — the machine that
-wrote it has no `node` — so treat it as the best available answer and correct it
-the first time somebody uses it.
+**The deploy is `git push`, and that is the whole of it** (17.16.2, answered by
+the owner on 16 August 2026). Cloudflare is watching the repository, so the
+branch reaching GitHub republishes the site: no build step, no `wrangler`
+invocation, nothing to install.
 
 ```bash
-cd web && npx wrangler deploy
+git push
+```
+
+`wrangler.jsonc` in this directory is a **manual alternative**, and it is a
+reconstruction rather than a transcript. The `name` in it is taken from the live
+URL, so deploying with it updates that Worker rather than standing up a second
+one — but it is not the route anyone takes, and it has never been run from this
+repository.
+
+```bash
+cd web && npx wrangler deploy    # not the route; kept as a fallback
 ```
 
 **Then run the check, which is the part that actually settles anything:**
@@ -139,12 +146,17 @@ which publishable key form the host is serving. It needs no credentials and
 deploys nothing. `config.js` is not diffed on purpose — it is git-ignored, so
 the deployed one is *meant* to differ.
 
-**Nothing about deploying is automatic, and that has already cost something.** A
+**And `config.js` is the one thing a push does not carry.** It is untracked, so
+it cannot ride along with a commit, and the host serves it anyway — `200`, still
+on the legacy JWT key form. Something on the hosting side supplies it. Nobody
+has established what, so **17.16.3 cannot be closed from this repository**:
+moving the deployed key needs the Cloudflare side, not a change here.
+
+**Nothing about deploying *used* to be automatic, and that cost something.** A
 fix to `link.js` landed, was verified against the live endpoint from a local
 copy, and never reached the host; the next day the owner scanned a QR and met
-the unfixed page (17.16.6). The check exists because of that, and the reason the
-gap was open for exactly one drift is that somebody ran it — not that the deploy
-became reliable.
+the unfixed page (17.16.6). The check exists because of that, and it is still
+worth running — a push that deploys is not the same as a push that deployed.
 
 ## Redirect URLs
 

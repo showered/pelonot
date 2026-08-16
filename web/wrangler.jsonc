@@ -4,19 +4,22 @@
 // serving these files as static assets, which is why `/link.html` answers a 307
 // to `/link` (the host trims `.html`, measured in 17.16).
 //
-// **This file is a reconstruction, not a transcript.** How the owner actually
-// deployed it lives in their shell history and nowhere else, which is the whole
-// of what 17.16.2 is about: a fact only one person's terminal knows is a fact
-// the project does not have. The `name` below is taken from the live URL, so a
-// deploy with this config updates that Worker rather than standing up a second
-// one. If the owner used the dashboard instead, correcting this file is a
-// smaller job than reconstructing it again.
+// **This file is not how the site is deployed.** 17.16.2 is answered: Cloudflare
+// watches the repository, so `git push` is the deploy — no build step, no
+// invocation of this config. It is kept as a manual fallback, and the `name`
+// below is taken from the live URL so running it would update that Worker rather
+// than standing up a second one. It has never been run from this repository.
+//
+// One thing neither route explains: `config.js` is git-ignored and untracked,
+// and the host serves it anyway. A push cannot be carrying it, so something on
+// the hosting side does — which is why 17.16.3's key form cannot be moved from
+// here.
 //
 // It changes nothing about 17.1: there is still no build step, nothing to
 // install to *run* the app, and the Gradle build cannot see any of this. A
 // deploy tool is not a toolchain — the page still opens from `file://`.
 //
-//     cd web && npx wrangler deploy
+//     git push                         # the deploy
 //     ./web/check-deployed.sh          # the part that actually settles it
 //
 // `config.js` is git-ignored and is uploaded from the working copy, which is
