@@ -6,6 +6,120 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 16 August 2026 (fifty-ninth sitting): the face the owner asked for, and the number they asked to see beside it
+
+**The inbox had two entries when this sitting started, a third arrived while
+they were being written up, and a fourth and fifth arrived while the work was
+being built.** All five are about one screen — the profile selector — and
+between them they undo two decisions the previous sitting took and one this plan
+took a fortnight ago. **They are all written up at 20.6**, with the rule change
+the second forces at **26.4.8** and the open question the third opens at
+**20.6.7**.
+
+**The first note is a verdict on yesterday's work and it is the kind a session
+cannot reach on its own.** *"Download a free set of avatars online somewhere and
+use those… the ones we have are not good."* The fifty-eighth sitting built eight
+colours and six Material icons and wrote down at 20.2.1 that the licence
+question had been *answered by not creating one*. That was true and the result
+was still weak, which is exactly the thing a diff cannot show and a glance can.
+
+**Five CC0 sets were rendered on this app's own disc and compared at 32 dp as
+well as large**, and the small column is the whole decision: 32 dp is the
+household row and the dashboard greeting, and it is where the line-art sets
+(Notionists, Lorelei) collapse to a hairline. **Open Peeps** — Pablo Stanley,
+CC0 — is the only one of the five still legible as *a particular person* small.
+The owner chose it, and chose twenty.
+
+**The set is fitted to the household that will ride the bike, at the owner's own
+instruction**, and the honest way to do that is a setting rather than a
+hand-pick: `SKIN` weights the palette and `HEADS` names every option Open Peeps
+offers except `hijab` and `turban`. **Measured rather than eyeballed** — the
+vendored PNGs were decoded and their dominant skin hex counted: 10 lightest, 7
+light, 3 mid. And because the owner asked for the door to be left open,
+`avatars/browse.sh` renders a sheet of candidates with the seed under each face,
+so a face can be swapped by eye and one line.
+
+**A trap that nearly produced a false conclusion, and it is a new one for this
+project.** The browser preview pane served a **stale render of a local file
+twice in a row** — identical pixels after the images on disk had changed — so a
+surgical mask appeared to still be on one face after `maskProbability=0` had
+removed it. What settled it was reading the PNG itself. Same family as *the
+database is the witness, not the screenshots*: **the artefact is the witness,
+not the previewer.**
+
+**The second note asks for two things the app's own rules forbid, says so, and
+hands the judgement over.** *"lvl should be part of the avatar (overlaid
+somehow). FTP score should be displayed under the avatar… I understand there are
+repercussions… Happy to go with what you think."* 26.1.1 took `150 W FTP` off
+that tile **at this owner's request** and their verdict then was "SO much
+better"; `RiderScore` rule 2 says the level is never drawn beside the FTP.
+
+**The level half needed no argument and the FTP half is a real reversal.** The
+badge now rides on the bottom edge of the face — on the collar, not the
+shoulder, because an Open Peeps figure is a head and a pair of shoulders and a
+corner badge covers the drawing. It is a *compact form of `RiderScore`* rather
+than a second badge, so all four rules travel with it, and it is **not drawn
+below 56 dp**: the household row and the greeting keep the pill beside the name.
+The FTP is one quiet caption under the name, **`FTP 150 W` and not `150 W
+FTP`** — the rejected form led with the number on a tile whose headline is the
+rider's name. **26.4.8 is where the rule is narrowed rather than lifted**, with
+the three conditions it survives under, because a rule relaxed quietly in a diff
+is a rule that has stopped existing.
+
+**The third note is the sharpest thing anybody has said about `RiderLevel` since
+it was built** and it arrived mid-write-up: *"someone could be lvl 20 but only
+50 FTP so not a very good rider. The goal should be FTP, not lvl."* Read
+carefully it is **not** a claim that the level is wrong — `RiderScore`'s KDoc
+already says the number's only honest claim is *has ridden more* — it is that
+the app is loudest about the accumulation and quietest about the ability on the
+one screen where a rider looks at themselves. **20.6.7 is an open item with the
+owner's name on it**, at their own suggestion (*"maybe i should go away and
+design something"*), and a session that finds it open should say so rather than
+invent a progression system.
+
+**Picking a face is now part of signing up** (20.6.2), which is 20.2.3's own
+stated condition being met — that item left profile creation alone deliberately
+and wrote that moving it *"needs the owner's eye rather than a session's"*.
+**"The end" turned out to mean after the questions and before the number**, and
+15.8.1 is why: the profile is written the moment the rider leaves the FTP
+reveal, so a face step after that would either write the row twice or hold it
+back.
+
+**Both halves of 20.2.2's claim were watched on the device rather than reasoned
+about.** *Sam* touched the picker and the row reads `lilac:reed`; *Jo* pressed
+Continue without touching anything and the row is **NULL**, with
+`Avatar.defaultFor` drawing the sky disc. And profile 1 has said `rose:bolt`
+since yesterday — a retired mark — and now draws as rose with an `R`, with the
+column untouched. That is `Avatar.parse`'s graceful-degradation clause being
+cashed in for the first time, on real data, doing the opposite of the job it was
+written for.
+
+**Watched on the tablet AVD across the whole journey** — the selector at three
+tiles and at five, the edit dialog's picker, *Pick a face* mid-choice, two
+complete profile creations, and the row read in `sqlite3` after each. **806 JVM
+tests, 0 failures.** The test device now carries five profiles: the two seeded
+riders, an older `x`, and **Sam and Jo**, which are this sitting's two walks and
+are the evidence for the paragraph above.
+
+**Phase 20 gains nine items and five ticks — 35 of 46 in its own file**, with
+20.6.9's leaderboard half open behind **24.3.19**, and **20.6.7 open with the
+owner's name on it**. Phase 24 gains five and is 42 of 50, all five of the new
+ones deliberately unbuilt: they are a design the owner sent a picture of, and
+one of them (24.3.19d, the rank) asks them to confirm a reversal rather than
+taking one. Phase 26 gains one at 14 of 19. Everything else is unchanged.
+
+**The seam this sitting found is that a previewer is not a witness.** The
+browser preview pane served an identical render of a local file twice after the
+images behind it had changed, and the wrong conclusion it invited — *the mask
+parameter did nothing* — was reached and held for two attempts. What settled it
+was decoding the PNG. This project already has *the database is the witness, not
+the screenshots* (2.4/8.3d) and *measure it on the tablet, do not read the diff*
+(26.2.2); the general form of all three is that **the thing you are asking about
+must be the thing you look at**, and every layer between them is somewhere a
+stale answer can live.
+
+---
+
 ## 16 August 2026 (fifty-eighth sitting): the deploy turned out to be one word, and a rider got a face
 
 **The owner answered a question this plan had asked for three sittings, and the

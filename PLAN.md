@@ -227,7 +227,114 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 16 August 2026 (sixtieth sitting): the board's row, from the owner's own picture
+### Latest session — 16 August 2026 (sixty-first sitting): an FTP that can go down
+
+**The inbox was empty and the top of *What to do next* was mostly not work** —
+items 0 through 3 need the owner, the mailer or a real phone — so the pick was
+made on merit from further down: **7.11, auto-FTP that can go *down*.** It is
+an inbox item in the owner's own words, it is what *What to do next* itself
+names as one of the two honest answers to **20.6.7** (*"the goal should be FTP,
+not lvl"*), and it is the only large item left that needs neither the bike nor
+a decision. **7.11.1 through 7.11.5 are built and watched; three new items are
+open underneath them.**
+
+**The owner's note, verbatim:** *"Can it go down? It should go down. If your BPM
+is unusually high and/or you mark a workout as 'really difficult' and despite
+this your scores are going down, it should probably adjust downwards too?"* The
+answer was no, by construction rather than by omission: the breakthrough gate is
+`proposal >= currentFtp × 1.02`, a number above the current FTP by definition,
+so a computed peak *below* it failed the gate and produced nothing.
+
+**The item as written expected a new estimator, and every such estimator needs
+the calibration 7.11.1 warns against in its own last sentence.** *Heart rate at
+a given power has drifted up by some margin* — and the margin is exactly the
+guessed threshold the item forbids. **The rule inverts that, and inverting it is
+what made 7.11 buildable at all.** The number a downward proposal offers is the
+*same measurement the upward path already makes*, `P₂₀ × 0.95` on measured
+watts, so it is never modelled, never a percentage step, and always something
+the rider has demonstrably ridden. What 7.11 adds is a rule about **when that
+measurement is allowed to be believed**.
+
+**Three rides, all short, all worked at — and the corroboration is the owner's
+own sentence rather than a physiological threshold.** A twenty-minute peak below
+a rider's FTP is the ordinary result of a recovery spin; it happens constantly
+and says nothing. So a ride only speaks when something says the rider was
+trying: with a heart rate, the measurement leads and the rider's own answer can
+only *veto* — *Comfortable* discards the ride however high the trace went — and
+with no heart rate at all, only *Everything I had* counts, which is *"really
+difficult"* word for word. **A ride at which the rider was not working is
+skipped, not counted against**: an easy spin is silent, and treating silence as
+either evidence or counter-evidence is wrong.
+
+**And it needed no migration, which is the second reason it landed.**
+`workout_power_bests` has held each measured ride's twenty-minute effort since
+16.3.3a, computed at finalise — the evidence was already on disk in the one form
+23.4's trimmer cannot falsify. Recomputing it from `workout_metrics` is
+precisely what 23.4.2 forbids: **a condensed ride has real rows in that table**,
+so the scan would return a number rather than nothing, and the number would be
+wrong. Two instrumented tests pin that from both sides — a ride whose stored
+effort is missing contributes nothing though its samples remain, and a ride
+whose samples are gone still speaks through the effort it recorded.
+
+**7.11.5's suggested name is the one name that could not be used.**
+`AutoDecline` sits two identifiers away from `declineFtpProposal` and
+`workouts.ftp_proposal_declined`, both of which spend that word on *the rider
+saying no*, so it would read as "the app declined" on every screen naming a
+source. It is `AutoReduction`. Adding the case **failed the build in exactly the
+three places that had to learn new words** — Settings, *Your FTP* and the
+dashboard — which is 5.8's argument for a typed enum cashing itself in again.
+
+**The dialog is where most of the design went, and the reason not to copy
+`FtpBreakthroughDialog` is sharper than "that dialog is poor".** Its shortcuts
+all point one way: *"Your fitness has improved!"* as fact, no mention of the
+twenty minutes it read or the provenance that is the whole gate, and `Keep
+Current` against `Update FTP` — two buttons neither of which names a number. **A
+rider handed good news on thin reasoning loses nothing. Reverse the direction
+and every one of those is a defect.** So this one shows the three rides with
+their dates and what each measures, states nothing as a verdict — the claim is
+about the rides, and a rider's FTP is *a setting that has become wrong for
+them*, which is smaller and truer than saying they have got worse — and names
+the number on both buttons.
+
+**The cooldown is the part that matters most and the upward path has never had
+one.** Keeping the number is also the dismiss, because a tap outside must
+resolve to the safe direction, and the write it makes restarts the evidence
+window: three fresh hard rides before the question can be asked again. Being
+told the same thing about your body after every ride is the failure this feature
+most has to avoid. **7.11.8 is the asymmetry that leaves**, written down rather
+than quietly made symmetrical.
+
+**Watched on the tablet AVD with a negative control, which is the half worth
+having.** The live gate excludes every ride an AVD can produce, so three
+measured 21-minute rides were built for Alex in `sqlite3` — and then **the app
+computed their twenty-minute efforts itself**, off real samples, through the
+backfill *Your FTP* already runs: 176, 186, 180 W. The dialog offered `Lower to
+177 W` against `Keep 190 W`, and accepting wrote 177 as `AutoReduction` tied to
+**ftp-down-2** — the strongest evidence ride, *not* the ride that had just
+finished, which is the trap the accept path is written against. Then the control:
+a second ride, the same three rides still on disk, **and no dialog**. Reverting
+wrote `AutoBreakthroughReverted`, drew a hollow mark where the reduction's is
+filled, and kept all three rows. **831 JVM tests and 9 new instrumented tests, 0
+failures.**
+
+**Phase 7 gains three items and five ticks — 31 of 36.** The three are
+deliberately open and one of them is the honest limit: **7.11.7** is the single
+constant still guessed, 5% against the upward path's 2%, with the measurement
+that would settle it — the spread of one rider's own twenty-minute efforts,
+which `workout_power_bests` can answer **per rider**, the same move 2.2a made
+for the power curve. **7.11.9** is one look rather than a change: a `-13` chip
+in amber on a change the app itself made, on a screen where amber means *off
+target*.
+
+**The seam this sitting found is that the two directions are not one feature
+with a sign.** They read different evidence, over different spans, at different
+bars, with different consequences for being wrong — and the moment they were
+treated as one thing, every honest property of the upward path (one ride is
+enough, no cooldown needed, the copy may celebrate) became a defect pointed at
+somebody's body. Same family as *absent is a claim*: the symmetry is in the
+arithmetic and nowhere else.
+
+### The sitting before — 16 August 2026 (sixtieth sitting): the board's row, from the owner's own picture
 
 **The inbox was empty and the top of *What to do next* named the work**, which
 does not happen often: *"The first thing worth doing next is 24.3.19 — the
@@ -311,127 +418,29 @@ Same family as *absent is a claim* — the app has one string for a row and a
 different one for the person on it, and the moment those are conflated is the
 moment a surface starts describing the wrong thing quietly.
 
-### The sitting before — 16 August 2026 (fifty-ninth sitting): the face the owner asked for, and the number they asked to see beside it
-
-**The inbox had two entries when this sitting started, a third arrived while
-they were being written up, and a fourth and fifth arrived while the work was
-being built.** All five are about one screen — the profile selector — and
-between them they undo two decisions the previous sitting took and one this plan
-took a fortnight ago. **They are all written up at 20.6**, with the rule change
-the second forces at **26.4.8** and the open question the third opens at
-**20.6.7**.
-
-**The first note is a verdict on yesterday's work and it is the kind a session
-cannot reach on its own.** *"Download a free set of avatars online somewhere and
-use those… the ones we have are not good."* The fifty-eighth sitting built eight
-colours and six Material icons and wrote down at 20.2.1 that the licence
-question had been *answered by not creating one*. That was true and the result
-was still weak, which is exactly the thing a diff cannot show and a glance can.
-
-**Five CC0 sets were rendered on this app's own disc and compared at 32 dp as
-well as large**, and the small column is the whole decision: 32 dp is the
-household row and the dashboard greeting, and it is where the line-art sets
-(Notionists, Lorelei) collapse to a hairline. **Open Peeps** — Pablo Stanley,
-CC0 — is the only one of the five still legible as *a particular person* small.
-The owner chose it, and chose twenty.
-
-**The set is fitted to the household that will ride the bike, at the owner's own
-instruction**, and the honest way to do that is a setting rather than a
-hand-pick: `SKIN` weights the palette and `HEADS` names every option Open Peeps
-offers except `hijab` and `turban`. **Measured rather than eyeballed** — the
-vendored PNGs were decoded and their dominant skin hex counted: 10 lightest, 7
-light, 3 mid. And because the owner asked for the door to be left open,
-`avatars/browse.sh` renders a sheet of candidates with the seed under each face,
-so a face can be swapped by eye and one line.
-
-**A trap that nearly produced a false conclusion, and it is a new one for this
-project.** The browser preview pane served a **stale render of a local file
-twice in a row** — identical pixels after the images on disk had changed — so a
-surgical mask appeared to still be on one face after `maskProbability=0` had
-removed it. What settled it was reading the PNG itself. Same family as *the
-database is the witness, not the screenshots*: **the artefact is the witness,
-not the previewer.**
-
-**The second note asks for two things the app's own rules forbid, says so, and
-hands the judgement over.** *"lvl should be part of the avatar (overlaid
-somehow). FTP score should be displayed under the avatar… I understand there are
-repercussions… Happy to go with what you think."* 26.1.1 took `150 W FTP` off
-that tile **at this owner's request** and their verdict then was "SO much
-better"; `RiderScore` rule 2 says the level is never drawn beside the FTP.
-
-**The level half needed no argument and the FTP half is a real reversal.** The
-badge now rides on the bottom edge of the face — on the collar, not the
-shoulder, because an Open Peeps figure is a head and a pair of shoulders and a
-corner badge covers the drawing. It is a *compact form of `RiderScore`* rather
-than a second badge, so all four rules travel with it, and it is **not drawn
-below 56 dp**: the household row and the greeting keep the pill beside the name.
-The FTP is one quiet caption under the name, **`FTP 150 W` and not `150 W
-FTP`** — the rejected form led with the number on a tile whose headline is the
-rider's name. **26.4.8 is where the rule is narrowed rather than lifted**, with
-the three conditions it survives under, because a rule relaxed quietly in a diff
-is a rule that has stopped existing.
-
-**The third note is the sharpest thing anybody has said about `RiderLevel` since
-it was built** and it arrived mid-write-up: *"someone could be lvl 20 but only
-50 FTP so not a very good rider. The goal should be FTP, not lvl."* Read
-carefully it is **not** a claim that the level is wrong — `RiderScore`'s KDoc
-already says the number's only honest claim is *has ridden more* — it is that
-the app is loudest about the accumulation and quietest about the ability on the
-one screen where a rider looks at themselves. **20.6.7 is an open item with the
-owner's name on it**, at their own suggestion (*"maybe i should go away and
-design something"*), and a session that finds it open should say so rather than
-invent a progression system.
-
-**Picking a face is now part of signing up** (20.6.2), which is 20.2.3's own
-stated condition being met — that item left profile creation alone deliberately
-and wrote that moving it *"needs the owner's eye rather than a session's"*.
-**"The end" turned out to mean after the questions and before the number**, and
-15.8.1 is why: the profile is written the moment the rider leaves the FTP
-reveal, so a face step after that would either write the row twice or hold it
-back.
-
-**Both halves of 20.2.2's claim were watched on the device rather than reasoned
-about.** *Sam* touched the picker and the row reads `lilac:reed`; *Jo* pressed
-Continue without touching anything and the row is **NULL**, with
-`Avatar.defaultFor` drawing the sky disc. And profile 1 has said `rose:bolt`
-since yesterday — a retired mark — and now draws as rose with an `R`, with the
-column untouched. That is `Avatar.parse`'s graceful-degradation clause being
-cashed in for the first time, on real data, doing the opposite of the job it was
-written for.
-
-**Watched on the tablet AVD across the whole journey** — the selector at three
-tiles and at five, the edit dialog's picker, *Pick a face* mid-choice, two
-complete profile creations, and the row read in `sqlite3` after each. **806 JVM
-tests, 0 failures.** The test device now carries five profiles: the two seeded
-riders, an older `x`, and **Sam and Jo**, which are this sitting's two walks and
-are the evidence for the paragraph above.
-
-**Phase 20 gains nine items and five ticks — 35 of 46 in its own file**, with
-20.6.9's leaderboard half open behind **24.3.19**, and **20.6.7 open with the
-owner's name on it**. Phase 24 gains five and is 42 of 50, all five of the new
-ones deliberately unbuilt: they are a design the owner sent a picture of, and
-one of them (24.3.19d, the rank) asks them to confirm a reversal rather than
-taking one. Phase 26 gains one at 14 of 19. Everything else is unchanged.
-
-**The seam this sitting found is that a previewer is not a witness.** The
-browser preview pane served an identical render of a local file twice after the
-images behind it had changed, and the wrong conclusion it invited — *the mask
-parameter did nothing* — was reached and held for two attempts. What settled it
-was decoding the PNG. This project already has *the database is the witness, not
-the screenshots* (2.4/8.3d) and *measure it on the tablet, do not read the diff*
-(26.2.2); the general form of all three is that **the thing you are asking about
-must be the thing you look at**, and every layer between them is somewhere a
-stale answer can live.
-
-
 ### What to do next, in order
 
-**The owner's inbox is empty and stayed empty.** All five entries of 16 August
-are written up at 20.6 and 24.3.19 and **all seven of the items they became are
-now built or open with the owner's name on them**. What is still true is that
-the top of this list is mostly not work — 15.3.2 is built and unticked and item
-0 is still its reason, and the mailer (15.7.7) is still what stands between the
-*journey* and anybody.
+**The owner's inbox is empty and stayed empty for a second sitting.** All five
+entries of 16 August are written up at 20.6 and 24.3.19 and **all seven of the
+items they became are now built or open with the owner's name on them**. What is
+still true is that the top of this numbered list is mostly not work — 15.3.2 is
+built and unticked and item 0 is still its reason, and the mailer (15.7.7) is
+still what stands between the *journey* and anybody. **That is why 7.11 was
+picked this sitting rather than item 0**, and it is worth saying plainly: the
+list is ordered by what would help most, and four of its top five entries cannot
+be advanced by a session at all.
+
+**7.11 is built, so one of the two things to hand the owner about 20.6.7 now
+exists.** *"The goal should be FTP, not lvl"* — and an FTP that can only ever go
+**up** is not a goal, it is a ratchet. It can go down now, on three consecutive
+hard rides that all came in short, and the rider is shown the three rides rather
+than told a verdict. **What is open underneath it is three items and one of them
+is the honest limit**: 7.11.7 is the single constant still guessed, 5% against
+the upward path's 2%, and the write-up says what would settle it. 7.11.8 is the
+asymmetry it created — the downward path has a cooldown and the upward one still
+does not. **7.11.9 is one look on the tablet rather than a change**, and it
+belongs on 22.2.5's trip: a `-13` chip in amber on a change the app itself made,
+on a screen where amber means *off target*.
 
 **24.3.19 is built and what is left of it is two questions for the owner, not
 two jobs.** The row from their picture is on the board: the face with its ring,
@@ -481,12 +490,10 @@ needs the friend with the Apple Watch** and nothing else. And **29.2.2 needs an
 iPhone once** — one exported `.tcx` carried into the Health app, which is the
 whole of what "Apple Health support" honestly means here.
 
-**Phase 24 gains one item and four ticks — 46 of 51 in its own file**, with
-**24.3.19d** and **24.3.19e** deliberately open and both the owner's. **Phase
-20 is 35 of 46** and **Phase 26 is 14 of 19**, both unchanged in count: what
-moved in each was prose that had gone stale — 20.2.6a's open question about
-what a ghost's face should be, closed by the picture, and 26.4.8's *"not any
-leaderboard"*, which 24.3.19b contradicted on the same day it was written.
+**Phase 7 gains three items and five ticks — 31 of 36**, and the three new ones
+are deliberately open. **Phase 24 is 46 of 51**, with **24.3.19d** and
+**24.3.19e** open and both the owner's; **Phase 20 is 35 of 46** and **Phase 26
+is 14 of 19**, all three unchanged this sitting.
 Everything else is unchanged: **Phase 15 (22 of 64)** is still the outlier,
 followed by **Phase 8 (16 of 53)**, **Phase 11 (15 of 70)** and **Phase 21 (17
 of 35)**. Phase 17/18 is 31 of 44 and Phase 22 is 50 of 56. Phases 27, 28 and 29
@@ -655,6 +662,27 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**7.11 — an FTP that can go down.**~~ **Done in the sixty-first sitting**
+  (7.11.1–7.11.5), watched on the tablet AVD with a negative control. **Do not
+  rebuild it as the breakthrough check with its sign flipped** — a peak below a
+  rider's FTP is the ordinary result of a recovery spin, so the whole of 7.11 is
+  the rule about *when a shortfall may be believed*, and one signed gate cannot
+  express it. **Do not add a new estimator**: the number offered is the upward
+  path's own `P₂₀ × 0.95`, which is what keeps a downward proposal a
+  measurement rather than a guess, and any margin-based drift metric walks
+  straight into the calibration 7.11.1 forbids. **Do not read the evidence out
+  of `workout_metrics`** — a condensed ride has real rows there and the scan
+  returns a wrong number rather than nothing (23.4.2); `workout_power_bests` is
+  the source and the existence of a row is itself the claim. **Do not let an
+  easy ride break the streak**, and do not let it count either: it is silent.
+  **Do not rename `AutoReduction` to `AutoDecline`** — two neighbouring
+  identifiers already spend that word on the rider saying *no*. **Do not point
+  the accepted change at the ride that just finished**: it is filed against the
+  strongest evidence ride, which is usually a different one, and *Your FTP*
+  links the row to it. **Do not remove the cooldown** on the grounds the upward
+  path has none — that is 7.11.8, and it points the other way. And **do not
+  lower the 5% bar because the feature rarely fires**: rarely firing is the
+  design (7.11.7)
 - ~~**20.2 — a rider has a face.**~~ **Done in the fifty-eighth sitting**
   (20.2.1, 20.2.2, 20.2.3, 20.2.3a, 20.2.6), watched on the tablet AVD in five
   states with the row read in `sqlite3` after each save. **Do not put the
@@ -1236,7 +1264,7 @@ Two notes worth carrying into the next bike session:
 | 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
-| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 **The RPE proposal is gone, and it had never once fired (7.11.6).** `suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class the rider had called easy and `analyze` fed it straight into `proposedFtp` — a permanent edit to the record off one subjective answer — but the one call site passed no `rpe`, because the parameter had a default, **so the whole of auto-FTP that has ever run is the twenty-minute peak**. Deleted rather than fenced: a function whose only behaviour 7.11.2 forbids is not plumbing waiting to be connected, it is the wrong shape for the trend that will replace it, and it could not have fired anyway because the rider answers on the same screen that runs the analysis. `detectBiometricDecoupling` is kept — 7.11's downward path facing the wrong way — and **`maxHr` lost its default**, which is the general form of the defect: a signal optional at the call site is a signal nobody notices is missing. It is passed now, and nothing reads the result yet, which the KDoc says. `PerceivedEffort`'s KDoc claimed the opposite as fact and is corrected on the record. Previously: **Auto-FTP is upward-only, and the owner asked why (7.11).** Checked against the code rather than assumed: `PostWorkoutAnalyzer`'s gate is `proposal >= currentFtp × 1.02`, which cannot produce a downward number by construction, and `FtpChangeSource` has no case for an automatic decrease. `detectBiometricDecoupling` already looks for the *opposite* signal (low heart rate at threshold power, evidence FTP is too low) and is itself a complete no-op today — `maxHr` is one of three parameters the one production call site never passes. Written up rather than built: it needs a multi-ride trend rather than a per-ride check, unlike everything else in this phase, because a single hard-feeling ride is not reliable evidence of declining fitness the way a 20-minute peak is reliable evidence of a good one. See [AUTO_FTP.md](AUTO_FTP.md) for the full mechanism as it stands. Otherwise: detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted one can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all (7.10.7). Open otherwise only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
+| 7 | Auto-FTP, workload JSON, cloud sync | 🔶 **An FTP can go down, which it never could (7.11).** The owner asked *"can it go down? It should go down"*, and the answer was no by construction: the breakthrough gate is `proposal >= currentFtp × 1.02`, above the number by definition, so a peak below it produced nothing rather than a downward proposal. `FtpReductionRule` is the trend the item said this had to be — three consecutive rides at which the rider was **working** all coming in more than 5% short, one good ride among them ending it — and it needed **no new estimator and no migration**: the number offered is the upward path's own `P₂₀ × 0.95`, so it is always something the rider has demonstrably ridden, and `workout_power_bests` has held each measured ride's twenty minutes since 16.3.3a in the one form 23.4's trimmer cannot falsify. `FtpChangeSource.AutoReduction` (not `AutoDecline` — two neighbouring identifiers already spend that word on the rider saying *no*), a dialog that shows the three rides rather than stating a verdict about somebody's body, and **the cooldown the upward path has never had**: answering restarts the evidence. Watched on the tablet AVD on three doctored measured rides, with a negative control — a second ride, same evidence, no dialog. Open underneath it: the 5% bar is the one number still guessed (7.11.7), the two directions now disagree about cooldowns (7.11.8), and a downward change wears amber nobody chose (7.11.9). Previously: **the RPE proposal is gone and had never once fired (7.11.6)** — `suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class rated easy and `analyze` fed it straight into `proposedFtp`, but the one call site passed no `rpe` because the parameter had a default, **so the whole of auto-FTP that had ever run was the twenty-minute peak**. `maxHr` lost its default with it, which is the general form: a signal optional at the call site is a signal nobody notices is missing. `detectBiometricDecoupling` survives and is now the odd one out — 7.11 shipped without it — so it is either wired into the breakthrough's copy or deleted. See [AUTO_FTP.md](AUTO_FTP.md) for both directions in full. Otherwise: detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted change of either direction can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all, in either direction (7.10.7, 7.11.2). Open otherwise only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
