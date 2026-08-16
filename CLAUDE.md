@@ -358,6 +358,17 @@ Two consequences to know before you are surprised by them:
   0 — that writes a fake sample into the rider's record and drags averages down.
 - **`PelonotTheme` may be composed from a Service context** (the HUD overlay),
   so anything reaching for an Activity must use a safe cast.
+- **`softWrap = false` on a metric tile does not shrink, it amputates** — and it
+  has now bitten twice in the same component. `MetricReadout` renders a value, a
+  unit and a label in a tile whose width is somebody else's `weight(1f)`: at
+  24.3.16 the value row drew `100 RP` and `188 BP`, and the label row was left
+  alone and drew `RESISTANC` the moment 11.1b.5 put two readouts in a 76 dp
+  cell. Both are fixed with `ShrinkToFitText`, which measures against **the
+  widest string the tile can ever hold** rather than the one in it — otherwise a
+  readout changing twice a second pulses between two type sizes as it crosses 99.
+  The rule: **on the overlay and the ride screen, a word that does not fit gets
+  smaller or wraps; it never gets cut.** A truncated word read at two metres is
+  worse than a small whole one, and it compiles and tests green either way.
 - **`PowerModel`'s coefficients are not merely unvalidated, they are measurably
   wrong.** Against 310 steady-state samples off the real board they score
   **RMSE 137 W, median absolute error 66%, R² 0.21** (`calibration/`). Never
