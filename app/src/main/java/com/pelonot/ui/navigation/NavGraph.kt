@@ -36,6 +36,7 @@ import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
 import com.pelonot.ui.screen.PreRideIntentPrompt
 import com.pelonot.di.ServiceLocator
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.NewProfile
 import com.pelonot.ui.screen.ProfileAccountOfferStep
 import com.pelonot.ui.screen.ProfileCreationDialog
@@ -189,7 +190,13 @@ fun PelonotNavGraph(
             } else {
                 null
             },
-            onAccountOfferFinished = leaveProfileCreation
+            onAccountOfferFinished = leaveProfileCreation,
+            // The face the picker opens on. A new row has no id yet, so this is
+            // the best guess at the one the autoincrement will hand out — which
+            // is enough to give the second rider in a household a different
+            // colour from the first, and is never written down as a choice
+            // (20.6.2).
+            suggestedAvatar = Avatar.defaultFor(uiState.profiles.size + 1)
         )
     }
 

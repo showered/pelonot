@@ -1,6 +1,7 @@
 package com.pelonot.domain.model
 
 import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.domain.identity.Avatar
 
 /**
  * Everything a new profile carries out of `ProfileCreationScreen`.
@@ -23,5 +24,19 @@ data class NewProfile(
      */
     val ftpSource: FtpChangeSource,
     val birthDate: Long?,
-    val fitnessLevel: FitnessLevel?
+    val fitnessLevel: FitnessLevel?,
+    /**
+     * The face the rider chose on the way in (20.6.2), or **null if they never
+     * touched the picker** — which is not the same claim and must not be
+     * collapsed into one.
+     *
+     * `profiles.avatar` keeps that distinction for the life of the profile
+     * (20.2.2): null means *never chose*, `Avatar.defaultFor` answers from the
+     * row id, and only a rider who never chose may be re-answered if the
+     * default rule ever changes. Writing the suggestion in because it happened
+     * to be on screen would destroy that for every profile made from now on,
+     * and it would change nothing visible — which is precisely what makes it
+     * tempting.
+     */
+    val avatar: Avatar? = null
 )

@@ -45,9 +45,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.identity.Avatar
+import com.pelonot.ui.components.AvatarPicker
 import com.pelonot.ui.components.BirthYearPicker
 import com.pelonot.ui.components.PickerField
 import com.pelonot.ui.components.birthYearToMillis
+import com.pelonot.ui.components.RiderAvatar
 import com.pelonot.ui.components.millisToBirthYear
 import com.pelonot.domain.model.FitnessLevel
 import com.pelonot.domain.model.NewProfile
@@ -122,6 +125,19 @@ fun ProfileCreationScreen(
      * before 15.8 (see [PostRideSummaryScreen], which never passes an offer).
      */
     onAccountOfferFinished: () -> Unit = {},
+    /**
+     * The face the *Pick a face* step opens on (20.6.2).
+     *
+     * A new profile has no row id yet, so `Avatar.defaultFor` cannot be asked
+     * the question it exists to answer, and the caller supplies its best guess
+     * at what this rider will be given — the number of profiles already on the
+     * bike, which is what the autoincrement will usually hand out next. **A
+     * guess is honest here and would not be in the column**: a rider who picks
+     * gets exactly what they picked, and a rider who does not care may see a
+     * different colour later, which is the cost of not writing a value down for
+     * somebody who expressed no preference.
+     */
+    suggestedAvatar: Avatar = Avatar.defaultFor(1),
     nowMillis: Long = System.currentTimeMillis()
 ) {
     var step by remember { mutableStateOf(Step.Name) }
@@ -130,6 +146,14 @@ fun ProfileCreationScreen(
     var weight by remember { mutableStateOf("") }
     var birthDate by remember { mutableStateOf<Long?>(null) }
     var level by remember { mutableStateOf<FitnessLevel?>(null) }
+
+    // **Null until the rider touches the picker** (20.6.2). The step shows
+    // [suggestedAvatar] from the first frame, so there is always a face on
+    // screen — but a face that was merely *shown* is a different claim from one
+    // that was *chosen*, and `profiles.avatar` keeps the two apart for the life
+    // of the profile (20.2.2).
+    var chosenAvatar by remember { mutableStateOf<Avatar?>(null) }
+    val shownAvatar = chosenAvatar ?: suggestedAvatar
 
     // Opens on whatever the rest of the app is using, which on a fresh install
     // is the locale's guess. 13.8: the unit is asked, not assumed — a 77 kg
@@ -165,7 +189,8 @@ fun ProfileCreationScreen(
             ftpWatts = resolvedFtp,
             ftpSource = resolvedSource,
             birthDate = birthDate,
-            fitnessLevel = level
+            fitnessLevel = level,
+            avatar = chosenAvatar
         )
     )
 
@@ -202,6 +227,13 @@ fun ProfileCreationScreen(
                 onContinue = { step = Step.About }
             )
 
+            Step.Face -> FaceStep(
+                name = name,
+                avatar = shownAvatar,
+                onAvatar = { chosenAvatar = it },
+                onContinue = { step = Step.Result }
+            )
+
             Step.About -> AboutStep(
                 weight = weight,
                 onWeightChange = { weight = it.filter { c -> c.isDigit() || c == '.' } },
@@ -211,7 +243,7 @@ fun ProfileCreationScreen(
                 onBirthDateChange = { birthDate = it },
                 level = level,
                 onLevelChange = { level = it },
-                onContinue = { step = Step.Result }
+                onContinue = { step = Step.Face }
             )
 
             Step.Result -> ResultStep(
@@ -239,12 +271,13 @@ fun ProfileCreationScreen(
 }
 
 private enum class Step {
-    Name, About, Result, Account;
+    Name, About, Face, Result, Account;
 
     fun previous(): Step = when (this) {
         Name -> Name
         About -> Name
-        Result -> About
+        Face -> About
+        Result -> Face
         // Going back from the account offer would re-ask a question the rider
         // has already answered about a profile that, by 15.8.1, already exists.
         Account -> Account
@@ -253,6 +286,7 @@ private enum class Step {
     fun heading(name: String): String = when (this) {
         Name -> "Who's riding?"
         About -> if (name.isBlank()) "A bit about you" else "A bit about you, ${name.trim()}"
+        Face -> "Pick a face"
         Result -> "Here's where we'll start you"
         Account -> "Keep your rides safe"
     }
@@ -260,6 +294,10 @@ private enum class Step {
     fun subheading(): String? = when (this) {
         Name -> "This is the name on the bike, not an account. You can change it later."
         About -> "Three things, and then you're riding. None of them leave this bike."
+        // Not "optional" and not "you can skip this": there is already a face on
+        // the screen and Continue is live from the first frame, so the step says
+        // what it is *for* instead of apologising for existing (Phase 26).
+        Face -> "So the bike knows you at a glance. Change it any time."
         Result -> null
         Account -> null
     }
@@ -331,6 +369,62 @@ private fun StepScaffold(
             if (backLabel != null) {
                 TextButton(onClick = onBack) { Text(backLabel) }
             }
+        }
+    }
+}
+
+/**
+ * *Pick a face* — the last thing the rider chooses, and the only question on
+ * this path that anybody can answer without knowing anything (20.6.2).
+ *
+ * **It is here at all because the owner asked for it** — *"user should pick one
+ * when signing up"* — which is 20.2.3's own condition for moving the picker
+ * into creation being met: that item left profile creation alone deliberately
+ * and wrote down that it *"needs the owner's eye rather than a session's"*.
+ *
+ * **It sits after the questions and before the number.** The whole of 20.4 is
+ * about this path being too long, so the placement is not incidental: the FTP
+ * reveal is the ending and stays the ending, and the profile is still written
+ * the moment the rider leaves *that* step (15.8.1) rather than this one — so
+ * walking away mid-face still leaves nothing half-made.
+ *
+ * **Nothing here can fail and Continue is never disabled.** There is a face on
+ * screen from the first frame; touching nothing writes null and keeps the
+ * *never chose* claim (20.2.2).
+ */
+@Composable
+private fun FaceStep(
+    name: String,
+    avatar: Avatar,
+    onAvatar: (Avatar) -> Unit,
+    onContinue: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.widthIn(max = 560.dp)
+    ) {
+        // Big, because this is the one screen where the face is the subject
+        // rather than a label beside a name. No level badge: the profile does
+        // not exist yet, and a rider who has never ridden being shown `LVL 1`
+        // on the way in is a ladder promised before the first rung.
+        RiderAvatar(name = name, avatar = avatar, size = 112.dp)
+
+        Spacer(Modifier.height(MaterialTheme.spacing.extraLarge))
+
+        AvatarPicker(
+            paint = avatar.paint,
+            face = avatar.face,
+            onPaint = { onAvatar(avatar.copy(paint = it)) },
+            onFace = { onAvatar(avatar.copy(face = it)) },
+            name = name
+        )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.extraLarge))
+        Button(
+            onClick = onContinue,
+            modifier = Modifier.width(PRIMARY_BUTTON_WIDTH)
+        ) {
+            Text("Continue", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -735,7 +829,9 @@ fun ProfileCreationDialog(
     onProfileCreated: (NewProfile) -> Unit,
     onDismiss: () -> Unit,
     accountOffer: (@Composable (onDone: () -> Unit) -> Unit)? = null,
-    onAccountOfferFinished: () -> Unit = onDismiss
+    onAccountOfferFinished: () -> Unit = onDismiss,
+    /** See [ProfileCreationScreen]'s own parameter — a guess, deliberately. */
+    suggestedAvatar: Avatar = Avatar.defaultFor(1)
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -760,7 +856,8 @@ fun ProfileCreationDialog(
             onProfileCreated = onProfileCreated,
             onCancel = onDismiss,
             accountOffer = accountOffer,
-            onAccountOfferFinished = onAccountOfferFinished
+            onAccountOfferFinished = onAccountOfferFinished,
+            suggestedAvatar = suggestedAvatar
         )
     }
 }

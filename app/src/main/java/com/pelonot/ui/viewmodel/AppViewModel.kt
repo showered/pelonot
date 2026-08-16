@@ -458,7 +458,12 @@ class AppViewModel(
                     weightKg = profile.weightKg ?: DEFAULT_WEIGHT_KG,
                     ftpWatts = profile.ftpWatts,
                     birthDate = profile.birthDate,
-                    fitnessLevel = profile.fitnessLevel?.id
+                    fitnessLevel = profile.fitnessLevel?.id,
+                    // Null when the rider walked past the face step without
+                    // touching it (20.6.2). `Avatar.defaultFor` answers for
+                    // them from the row id at read time, and the column keeps
+                    // saying *never chose* — the distinction 20.2.2 exists for.
+                    avatar = profile.avatar?.store()
                 ),
                 // 20.3.4: an estimate is not a claim the rider made, and the
                 // funnel is where that distinction gets recorded.
