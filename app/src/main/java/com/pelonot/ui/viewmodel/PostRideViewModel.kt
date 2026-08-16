@@ -17,6 +17,7 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.MaxHeartRate
+import com.pelonot.domain.progress.FtpReduction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,16 @@ data class PostRideUiState(
     val rpe: Int? = null,
     val currentFtp: Int = 0,
     val proposedFtp: Int? = null,
+    /**
+     * The app's offer to lower this rider's FTP, or null (7.11).
+     *
+     * A separate field from [proposedFtp] rather than a signed version of it,
+     * because the two are different claims read off different evidence — one
+     * ride's peak against three rides' shortfall — and they are shown by
+     * different dialogs. They cannot both be non-null: a ride cannot be 2%
+     * above the rider's FTP and part of a run that is 5% below it.
+     */
+    val ftpReduction: FtpReduction? = null,
     val saved: Boolean = false,
     /** Profiles a guest ride could be filed against. */
     val profiles: List<UserEntity> = emptyList(),
@@ -69,6 +80,8 @@ data class PostRideUiState(
     val canResume: Boolean = false
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
+
+    val hasFtpReduction: Boolean get() = ftpReduction != null
 
     /**
      * What the rider just did, in the words they chose it by.
@@ -158,6 +171,27 @@ class PostRideViewModel(
                 null
             }
 
+            // 7.11. Asked of the rider's recent rides rather than of this one,
+            // which is why it is not inside the block above: the ride that has
+            // just finished may not itself be evidence at all — the trend can
+            // close on a ride the rider took easy — and the question is whether
+            // their *number* is still right, not whether this ride beat it.
+            //
+            // Skipped entirely when there is a breakthrough on the table. Both
+            // cannot be true of the same evidence, and a screen that raised two
+            // dialogs about one number would be arguing with itself.
+            val reduction = if (workout != null && currentFtp > 0 && proposed == null &&
+                profileId != null && !workout.ftpProposalDeclined
+            ) {
+                workoutRepository.ftpReduction(
+                    userId = profileId,
+                    currentFtp = currentFtp,
+                    ftpSettledAt = userRepository.lastFtpChangeAt(profileId)
+                )
+            } else {
+                null
+            }
+
             // 24.1.2. A Room query and nothing else — no network, no account,
             // and it runs for a rider who has neither.
             val leaderboard = workout?.classId?.let { classId ->
@@ -187,6 +221,7 @@ class PostRideViewModel(
                     workout = workout,
                     currentFtp = currentFtp,
                     proposedFtp = proposed,
+                    ftpReduction = reduction,
                     leaderboard = leaderboard,
                     charts = charts,
                     canResume = workout != null &&
@@ -253,6 +288,50 @@ class PostRideViewModel(
                 workoutId = _uiState.value.workout?.id
             )
             _uiState.update { it.copy(currentFtp = proposed, proposedFtp = null) }
+        }
+    }
+
+    /**
+     * The rider accepts that their FTP is set too high (7.11).
+     *
+     * Filed as [FtpChangeSource.AutoReduction] and tied to the ride the number
+     * came off — **the strongest of the evidence rides, not the one that has
+     * just finished.** They are usually different, and pointing at the wrong
+     * one would put "this ride said 175" on a ride that said something else on
+     * the one screen built to answer *why did my FTP move*.
+     */
+    fun acceptFtpReduction() {
+        val reduction = _uiState.value.ftpReduction ?: return
+        viewModelScope.launch {
+            val profileId = settingsRepository.settings.first().lastProfileId ?: return@launch
+            userRepository.updateFtp(
+                userId = profileId,
+                ftpWatts = reduction.proposedFtp,
+                source = FtpChangeSource.AutoReduction,
+                workoutId = reduction.strongestRide.workoutId
+            )
+            _uiState.update {
+                it.copy(currentFtp = reduction.proposedFtp, ftpReduction = null)
+            }
+        }
+    }
+
+    /**
+     * The rider keeps their number (7.11.4).
+     *
+     * The same write as [declineFtpProposal] and deliberately so: the flag on
+     * the ride is *the rider has answered this ride's FTP question*, and
+     * `WorkoutRepository.ftpReduction` reads the most recent one of those as
+     * the start of its evidence window. So keeping the number does not merely
+     * close a dialog — it restarts the evidence, and the rider has to ride
+     * three fresh hard rides before being asked again. That is the cooldown the
+     * upward path has never had, and a downward claim needs it far more.
+     */
+    fun keepFtpAgainstReduction() {
+        val workoutId = _uiState.value.workout?.id
+        _uiState.update { it.copy(ftpReduction = null) }
+        if (workoutId != null) {
+            viewModelScope.launch { workoutRepository.declineFtpProposal(workoutId) }
         }
     }
 

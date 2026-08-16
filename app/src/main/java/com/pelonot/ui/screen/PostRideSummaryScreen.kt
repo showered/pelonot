@@ -152,6 +152,18 @@ fun PostRideSummaryScreen(
         )
     }
 
+    // 7.11. The other direction, and never at the same time as the one above —
+    // the view model refuses to compute this one while a breakthrough is on the
+    // table, because a ride cannot be 2% above the rider's FTP and part of a run
+    // that is 5% below it.
+    state.ftpReduction?.let { reduction ->
+        FtpReductionDialog(
+            reduction = reduction,
+            onKeep = viewModel::keepFtpAgainstReduction,
+            onAccept = viewModel::acceptFtpReduction
+        )
+    }
+
     val workout = state.workout
 
     Column(modifier.fillMaxSize()) {
