@@ -137,6 +137,39 @@ data class AccountUiState(
     val signedInAsSomebodyElse: Boolean
         get() = session is AccountState.SignedIn && !signedInAsThisProfile
 
+    /**
+     * Whether this screen should be asking the server for a pairing code
+     * (15.6.6, 15.6.15) — **one answer, because two of them drifted**.
+     *
+     * Both screens that draw the QR start pairing from a `LaunchedEffect` keyed
+     * on this, and `startPairing` needs [profile]: it returns silently without
+     * one, leaving the pairing at [PairingState.Idle], which draws a spinner
+     * with no end. So the profile is not merely a precondition, it is part of
+     * the **trigger** — a screen composed before the profile flow has emitted
+     * has to ask again when it arrives, and a condition that does not mention
+     * the profile never changes value and never re-runs.
+     *
+     * That is exactly what happened on the account offer at profile creation
+     * (20.4.7): the rider had just been written to `profiles`, the offer keyed
+     * its effect on `pairingAvailable` alone, and the one composition that
+     * mattered ran a millisecond too early. Measured on the tablet AVD as
+     * *"Checking…"* still spinning minutes later, with no `device_link_begin`
+     * ever attempted. `AccountScreen`'s own condition happened to be right —
+     * it includes `!isGuest` — and the two were the same rule written twice,
+     * which is the family of 12.7's two effort cards and 23.4.12's seven
+     * leaderboard queries.
+     */
+    val wantsPairingCode: Boolean
+        get() = pairingAvailable &&
+            cloudConfigured &&
+            !isGuest &&
+            // Not "signed out" — see AccountState.Unknown. Minting a code for
+            // a rider whose stored session has not finished loading is a
+            // request to the server that nothing on the tablet will ever show.
+            session != AccountState.Unknown &&
+            !signedInAsThisProfile &&
+            awaitingConfirmationFor == null
+
     val emailProblem: String? get() = if (problem == null) null else
         CredentialCheck.emailProblem(email)
 

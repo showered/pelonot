@@ -97,13 +97,10 @@ fun AccountScreen(
     // and only on the one branch that draws it. A rider who is already signed
     // in, riding as a guest, or waiting on a confirmation email is on a
     // different screen, and minting a pairing code for them is a request to the
-    // server that nothing on the tablet will ever show.
-    val wantsCode = state.pairingAvailable &&
-        state.cloudConfigured &&
-        !state.isGuest &&
-        state.session != AccountState.Unknown &&
-        !state.signedInAsThisProfile &&
-        state.awaitingConfirmationFor == null
+    // server that nothing on the tablet will ever show. The condition lives on
+    // `AccountUiState` because the offer step asks the same question and its
+    // own copy was missing a clause (20.4.7).
+    val wantsCode = state.wantsPairingCode
 
     LaunchedEffect(wantsCode) {
         if (wantsCode && state.pairing == PairingState.Idle) {
@@ -294,11 +291,11 @@ private fun GuestCannotBackUp() {
  * again.
  */
 @Composable
-internal fun Loading() {
+internal fun Loading(label: String = "Checking…") {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
-        Text("Checking…", style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -809,7 +806,11 @@ internal fun ScanToSignIn(
     when (val pairing = state.pairing) {
         // Idle is the half-second before the first code is asked for, and
         // Starting is every subsequent one. Both are the same to a rider.
-        PairingState.Idle, PairingState.Starting -> Loading()
+        //
+        // Its own word rather than the session check's *"Checking…"*: this
+        // column is where a QR is about to be, and a spinner that names what
+        // it is fetching is the difference between waiting and wondering.
+        PairingState.Idle, PairingState.Starting -> Loading("Getting a code…")
 
         // The caller draws this one: it is a moment rather than a route, and it
         // belongs to the whole screen.

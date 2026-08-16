@@ -115,8 +115,16 @@ fun ProfileAccountOfferStep(
     // *Show me a code*, and this is the moment it matters most: a rider who has
     // just answered four questions about themselves is being offered an account
     // and should be able to point a phone at the bike without reading anything.
-    LaunchedEffect(state.pairingAvailable) {
-        if (state.pairingAvailable && state.pairing == PairingState.Idle && !linked) {
+    //
+    // **20.4.7: this was keyed on `pairingAvailable` alone and the code never
+    // arrived.** The profile is written to `profiles` a moment before this step
+    // composes, so the first emission carrying `pairingAvailable = true` can
+    // still carry no profile — and `startPairing` returns silently without one,
+    // leaving a spinner that says *"Getting a code…"* for ever because nothing
+    // in the key ever changes again. `wantsPairingCode` includes the profile,
+    // so the effect runs again the instant it lands.
+    LaunchedEffect(state.wantsPairingCode) {
+        if (state.wantsPairingCode && state.pairing == PairingState.Idle && !linked) {
             viewModel.startPairing(onSignedIn = { linked = true })
         }
     }
