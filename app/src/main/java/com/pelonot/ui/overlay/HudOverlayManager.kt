@@ -41,10 +41,15 @@ import kotlinx.coroutines.launch
  * Hosts the floating ride HUD in a `WindowManager` overlay so it can sit on
  * top of whatever the rider is actually watching.
  *
- * The window is **full width and docked to one screen edge**, not a floating
- * card. That is the whole design: the rider has a film on, and the middle of
- * the screen has to stay clear. It also means the overlay only intercepts
- * touches within its own strip, so the video underneath stays fully usable.
+ * The window **spans one whole screen edge**, not a floating card. That is the
+ * whole design: the rider has a film on, and the middle of the screen has to
+ * stay clear. It also means the overlay only intercepts touches within its own
+ * strip, so the video underneath stays fully usable.
+ *
+ * Since 11.1b.4 that is any of **four** edges. Top and bottom give a full-width
+ * band; left and right give a fixed-width column down the side, which is a
+ * different window shape and a different layout, not a rotation — see
+ * [HudDock.VERTICAL_WIDTH_DP] and `applyDock`.
  *
  * The Compose content is themed `darkTheme = true` with dynamic colour off
  * regardless of the app's own setting — the HUD is translucent over arbitrary
@@ -119,6 +124,18 @@ class HudOverlayManager(private val context: Context) {
         gravity = gravityFor(HudDock.DEFAULT)
     }
 
+    /**
+     * The strip's own width when it runs down a side (11.1b.4).
+     *
+     * `WRAP_CONTENT` would work and is the wrong answer: the window would be as
+     * wide as whatever the tallest chip happened to measure, so the amount of
+     * film a rider loses would depend on whether their class is prescribing a
+     * three-digit target this minute. A fixed width is also what lets the
+     * timeline bar inset itself by exactly the right amount.
+     */
+    private val verticalWidthPx =
+        (HudDock.VERTICAL_WIDTH_DP * context.resources.displayMetrics.density).toInt()
+
     private val timelineParams = WindowManager.LayoutParams().apply {
         type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -134,7 +151,7 @@ class HudOverlayManager(private val context: Context) {
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         width = WindowManager.LayoutParams.MATCH_PARENT
         height = WindowManager.LayoutParams.WRAP_CONTENT
-        gravity = gravityFor(HudDock.DEFAULT.opposite())
+        gravity = gravityFor(HudDock.DEFAULT.timelineEdge())
     }
 
     val isShowing: Boolean get() = composeView != null
@@ -161,7 +178,7 @@ class HudOverlayManager(private val context: Context) {
         }
 
         _dock.value = dock
-        layoutParams.gravity = gravityFor(dock)
+        applyDock(dock)
 
         val owner = OverlayLifecycleOwner().apply {
             performRestore(null)
@@ -258,12 +275,17 @@ class HudOverlayManager(private val context: Context) {
 
             setContent {
                 val snapshot by snapshotFlow.collectAsStateWithLifecycle()
+                val currentDock by _dock.collectAsStateWithLifecycle()
                 val opacity by ServiceLocator.settingsRepository.settings
                     .map { it.hudOpacity }
                     .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
 
                 PelonotTheme(darkTheme = true, useDynamicColor = false) {
-                    HudTimelineBar(snapshot = snapshot, opacity = opacity)
+                    HudTimelineBar(
+                        snapshot = snapshot,
+                        dock = currentDock,
+                        opacity = opacity
+                    )
                 }
             }
         }
@@ -281,7 +303,6 @@ class HudOverlayManager(private val context: Context) {
 
         // Failing to attach the timeline must not take the ride controls down
         // with it: the strip is the part the rider needs.
-        timelineParams.gravity = gravityFor(dock.opposite())
         runCatching { windowManager.addView(timeline, timelineParams) }
             .onSuccess { timelineView = timeline }
             .onFailure { Log.w(TAG, "Could not attach the timeline bar", it) }
@@ -302,18 +323,39 @@ class HudOverlayManager(private val context: Context) {
     fun moveTo(dock: HudDock) {
         if (_dock.value == dock) return
         _dock.value = dock
-        layoutParams.gravity = gravityFor(dock)
+        applyDock(dock)
         composeView?.let { view ->
             runCatching { windowManager.updateViewLayout(view, layoutParams) }
                 .onFailure { Log.w(TAG, "Could not re-dock the HUD", it) }
         }
-        // The timeline always sits opposite, so re-docking swaps both.
-        timelineParams.gravity = gravityFor(dock.opposite())
+        // The timeline never shares the strip's edge, so re-docking moves both.
         timelineView?.let { view ->
             runCatching { windowManager.updateViewLayout(view, timelineParams) }
                 .onFailure { Log.w(TAG, "Could not re-dock the timeline bar", it) }
         }
         onDockChanged?.invoke(dock)
+    }
+
+    /**
+     * Points both windows at [dock] — gravity *and* shape.
+     *
+     * The shape is the half that is easy to forget: a vertical dock is not the
+     * same window rotated, it is a window that spans the height and is
+     * [HudDock.VERTICAL_WIDTH_DP] wide, and going back to a horizontal edge has
+     * to put both dimensions back or the strip stays a column pinned to the top.
+     */
+    private fun applyDock(dock: HudDock) {
+        layoutParams.gravity = gravityFor(dock)
+        if (dock.isVertical) {
+            layoutParams.width = verticalWidthPx
+            layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT
+        } else {
+            layoutParams.width = WindowManager.LayoutParams.MATCH_PARENT
+            layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT
+        }
+        // The timeline is a horizontal bar on every dock (see `timelineEdge`),
+        // so only its edge ever moves.
+        timelineParams.gravity = gravityFor(dock.timelineEdge())
     }
 
     fun hide() {
@@ -342,6 +384,11 @@ class HudOverlayManager(private val context: Context) {
     private fun gravityFor(dock: HudDock): Int = when (dock) {
         HudDock.Top -> Gravity.TOP or Gravity.CENTER_HORIZONTAL
         HudDock.Bottom -> Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        // LEFT and RIGHT rather than START and END: this window has no parent
+        // to inherit a layout direction from, and an overlay that swapped sides
+        // with the device's locale would be a setting the rider cannot see.
+        HudDock.Left -> Gravity.LEFT or Gravity.CENTER_VERTICAL
+        HudDock.Right -> Gravity.RIGHT or Gravity.CENTER_VERTICAL
     }
 
     /**

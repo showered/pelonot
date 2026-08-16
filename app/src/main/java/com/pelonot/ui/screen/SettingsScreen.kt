@@ -1182,9 +1182,13 @@ private fun RideHudSection(
             // 26.1.4: the second half used to explain why the default is the
             // default. Turned round, the same fact is the reason a rider would
             // choose one edge over the other.
-            text = "You can also drag the overlay's handle to move it between edges " +
-                "mid-ride. Subtitles live along the bottom, so top is usually the " +
-                "safer edge.",
+            // 11.1b.4. Four edges rather than two, so the sentence names the
+            // trade rather than one default: a band across the top or bottom
+            // and a column down a side lose different parts of the picture, and
+            // which of those matters is the rider's own call.
+            text = "You can also drag the overlay's handle to any edge mid-ride. " +
+                "Subtitles live along the bottom; a side keeps them and faces " +
+                "clear, at the cost of a narrower strip.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

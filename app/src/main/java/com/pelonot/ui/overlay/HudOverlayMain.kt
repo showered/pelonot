@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -111,10 +113,16 @@ import kotlinx.coroutines.delay
  *
  * This is the app's primary surface, not a secondary one. The rider is almost
  * always watching something else full-screen on the same tablet, so the HUD is
- * docked to one edge and spans the full width of it, leaving the middle of the
+ * docked to one edge and spans the whole of it, leaving the middle of the
  * screen — where faces and subtitles live — completely clear. It is not a
- * draggable card: dragging snaps it between the top and bottom edges, and
- * nothing parks it over the film.
+ * draggable card: dragging snaps it between the four screen edges, and nothing
+ * parks it over the film.
+ *
+ * **A vertical dock re-flows rather than rotates** (11.1b.5). Docked left or
+ * right the strip is a fixed-width column, so the chips stack, the four live
+ * numbers go from one row of four to two rows of two, and the controls sit at
+ * the far end of the column instead of the far end of a row. Every one of those
+ * is the same component in a different arrangement; nothing here is drawn twice.
  *
  * The previous version was a 300dp square panel floating wherever it was last
  * dropped, with no class information at all.
@@ -210,13 +218,16 @@ fun HudOverlayMain(
     // edge to edge across somebody's film **is** a rule, whatever colour it is.
     // Nothing is lost by its absence: at rest it was saying only what the zone
     // badge, the chips' wash and the ladder already say.
+    //
+    // Docked down a side it is the same hairline stood on its end: a rule along
+    // the edge the strip is pinned to, whichever edge that is.
     val edge: @Composable () -> Unit = {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(edgeGlow)
-                .background(accent.copy(alpha = if (interval.isChangeImminent) glowPulse else 0f))
-        )
+        val paint = accent.copy(alpha = if (interval.isChangeImminent) glowPulse else 0f)
+        if (dock.isVertical) {
+            Box(Modifier.fillMaxHeight().width(edgeGlow).background(paint))
+        } else {
+            Box(Modifier.fillMaxWidth().height(edgeGlow).background(paint))
+        }
     }
 
     // 11.1b.2. Every label on the strip reads `onSurfaceVariant`, including the
@@ -238,81 +249,108 @@ fun HudOverlayMain(
         // for more of their picture back could only ask for a lighter wash over
         // all of it — the numbers got harder to read and the picture never came
         // back. Backing goes only where a number or a control sits.
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                // 11.1a.1: double tap anywhere on the strip opens the full app.
-                // Double rather than single deliberately — a single tap is what
-                // a rider fires by accident reaching past the tablet, and one
-                // that yanked their film off the screen mid-scene would be the
-                // worst possible mis-fire on this surface. The buttons and the
-                // handle sit in front of this and consume their own taps.
-                .pointerInput(Unit) {
-                    detectTapGestures(onDoubleTap = { onOpenApp() })
+        val frame = modifier
+            // 11.1a.1: double tap anywhere on the strip opens the full app.
+            // Double rather than single deliberately — a single tap is what
+            // a rider fires by accident reaching past the tablet, and one
+            // that yanked their film off the screen mid-scene would be the
+            // worst possible mis-fire on this surface. The buttons and the
+            // handle sit in front of this and consume their own taps.
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { onOpenApp() })
+            }
+            .semantics {
+                // The gesture is invisible otherwise: there is nothing to
+                // see, and a rider who has not been told will never find it.
+                onClick(label = "Open Pelonot") { onOpenApp(); true }
+            }
+
+        // The pieces are the same four whichever edge the strip is on; what
+        // changes is whether they are stacked across the screen or down it, and
+        // in which order — the handle and the hairline always end up on the
+        // rider's side of the numbers, so the figures never move under them.
+        val body: @Composable () -> Unit = {
+            HudBody(
+                snapshot = snapshot,
+                reading = reading,
+                dock = dock,
+                collapsed = collapsed,
+                coachStyle = coachStyle,
+                accent = accent,
+                opacity = panelOpacity,
+                flash = flash,
+                volumeOpen = volumeOpen,
+                onToggleVolume = onToggleVolume,
+                onPause = onPause,
+                onResume = onResume,
+                onStop = onStop
+            )
+        }
+
+        // Between the handle and the numbers, so it opens *into* the screen
+        // rather than pushing the numbers away from the edge they are
+        // docked against.
+        val volumePanel: @Composable () -> Unit = {
+            HudVolumePanel(
+                visible = volumeOpen,
+                dock = dock,
+                opacity = panelOpacity,
+                mediaVolume = mediaVolume,
+                coachVolume = coachVolume,
+                error = volumeError,
+                onMediaVolumeChange = onMediaVolumeChange,
+                onCoachVolumeChange = onCoachVolumeChange,
+                onDismiss = onCloseVolume,
+                onOpenSettings = onOpenSettings
+            )
+        }
+
+        // Always on the *inner* side of the numbers, whichever edge the
+        // strip is docked against, so the window grows into the screen and
+        // the figures the rider is reading do not move underneath them.
+        // It survives collapsing for the same reason the countdown does: a
+        // rider who has given the film back the rest of the band still has
+        // to be told to stand up.
+        val positionCue: @Composable () -> Unit = {
+            HudPositionCall(call = positionCall, animate = coachStyle.animates)
+        }
+
+        val handle: @Composable () -> Unit = {
+            HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
+        }
+
+        // The handle and the hairline sit on the rider's side of the numbers —
+        // the *inner* side for the handle, the screen edge itself for the
+        // hairline — so both are ordered by which end of the axis the strip is
+        // pinned to. Everything else is the same call in both branches.
+        val edgeFirst = dock == HudDock.Bottom || dock == HudDock.Right
+
+        if (dock.isVertical) {
+            // Docked down a side, the volume panel and the stand/sit cue stack
+            // *inside* the column rather than beside it: the window is a fixed
+            // 244 dp wide, so anything placed alongside the numbers would be
+            // taking width off the one thing the rider is reading.
+            val column: @Composable () -> Unit = {
+                body(); positionCue(); volumePanel()
+            }
+            Row(modifier = frame.fillMaxHeight()) {
+                if (edgeFirst) {
+                    edge()
+                    handle()
+                    Column(Modifier.weight(1f).fillMaxHeight()) { column() }
+                } else {
+                    Column(Modifier.weight(1f).fillMaxHeight()) { column() }
+                    handle()
+                    edge()
                 }
-                .semantics {
-                    // The gesture is invisible otherwise: there is nothing to
-                    // see, and a rider who has not been told will never find it.
-                    onClick(label = "Open Pelonot") { onOpenApp(); true }
+            }
+        } else {
+            Column(modifier = frame.fillMaxWidth()) {
+                if (edgeFirst) {
+                    edge(); handle(); volumePanel(); positionCue(); body()
+                } else {
+                    body(); positionCue(); volumePanel(); handle(); edge()
                 }
-        ) {
-            val body: @Composable () -> Unit = {
-                HudBody(
-                    snapshot = snapshot,
-                    reading = reading,
-                    collapsed = collapsed,
-                    coachStyle = coachStyle,
-                    accent = accent,
-                    opacity = panelOpacity,
-                    flash = flash,
-                    volumeOpen = volumeOpen,
-                    onToggleVolume = onToggleVolume,
-                    onPause = onPause,
-                    onResume = onResume,
-                    onStop = onStop
-                )
-            }
-
-            // Between the handle and the numbers, so it opens *into* the screen
-            // rather than pushing the numbers away from the edge they are
-            // docked against.
-            val volumePanel: @Composable () -> Unit = {
-                HudVolumePanel(
-                    visible = volumeOpen,
-                    dock = dock,
-                    opacity = panelOpacity,
-                    mediaVolume = mediaVolume,
-                    coachVolume = coachVolume,
-                    error = volumeError,
-                    onMediaVolumeChange = onMediaVolumeChange,
-                    onCoachVolumeChange = onCoachVolumeChange,
-                    onDismiss = onCloseVolume,
-                    onOpenSettings = onOpenSettings
-                )
-            }
-
-            // Always on the *inner* side of the numbers, whichever edge the
-            // strip is docked against, so the window grows into the screen and
-            // the figures the rider is reading do not move underneath them.
-            // It survives collapsing for the same reason the countdown does: a
-            // rider who has given the film back the rest of the band still has
-            // to be told to stand up.
-            val positionCue: @Composable () -> Unit = {
-                HudPositionCall(call = positionCall, animate = coachStyle.animates)
-            }
-
-            if (dock == HudDock.Top) {
-                body()
-                positionCue()
-                volumePanel()
-                HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
-                edge()
-            } else {
-                edge()
-                HudHandle(dock, collapsed, panelOpacity, onToggleCollapsed, onDockChange)
-                volumePanel()
-                positionCue()
-                body()
             }
         }
     }
@@ -369,6 +407,7 @@ private fun HudChip(
 fun HudTimelineBar(
     snapshot: RideSnapshot,
     modifier: Modifier = Modifier,
+    dock: HudDock = HudDock.DEFAULT,
     opacity: Float = HudOpacity.DEFAULT
 ) {
     val interval = snapshot.interval
@@ -383,10 +422,22 @@ fun HudTimelineBar(
         typography = MaterialTheme.typography,
         shapes = MaterialTheme.shapes
     ) {
+        // Docked down a side, the strip is a full-height column and this bar
+        // takes the top edge (`HudDock.timelineEdge`), so the two would meet in
+        // a corner. The bar steps aside by exactly the strip's own width rather
+        // than being drawn under it: a timeline whose first minutes are hidden
+        // is worse than a slightly shorter one, and the width is a constant
+        // precisely so this can be an inset rather than a guess.
+        val strip = HudDock.VERTICAL_WIDTH_DP.dp
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small)
+                .padding(
+                    start = if (dock == HudDock.Left) strip else HUD_MARGIN,
+                    end = if (dock == HudDock.Right) strip else HUD_MARGIN,
+                    top = MaterialTheme.spacing.small,
+                    bottom = MaterialTheme.spacing.small
+                )
         ) {
             HudChip(
                 opacity = panelOpacity,
@@ -425,13 +476,23 @@ private fun hudChipColor(opacity: Float): Color =
         .copy(alpha = HudOpacity.clamp(opacity, HudMinimumOpacity))
 
 /**
- * The grab bar. Tapping collapses the HUD to a slim strip; dragging away from
- * the current edge sends it to the other one.
+ * The grab bar. Tapping collapses the HUD to a slim strip; dragging it towards
+ * a screen edge sends it there.
  *
- * A small centred pill rather than the full-width invisible band it used to be:
- * with no panel behind it, a 1280 dp drag target that shows nothing is a
- * gesture the rider fires by accident over their film and can never find on
- * purpose.
+ * A small pill rather than the full-width invisible band it used to be: with no
+ * panel behind it, a 1280 dp drag target that shows nothing is a gesture the
+ * rider fires by accident over their film and can never find on purpose.
+ *
+ * **The drag is two-dimensional since 11.1b.4**, because there are four edges
+ * to reach. The rule lives in [HudDock.dragTarget] rather than here: it is the
+ * one piece of this surface that is a decision rather than a drawing, the
+ * dominant axis decides so a drag that wanders is read as where it mostly went,
+ * and being pure it can be tested without a window.
+ *
+ * The whole gesture is measured rather than each `onDrag` step. Deciding per
+ * step meant a slow drag never crossed the threshold in a single callback and a
+ * fast one fired on whichever axis happened to move first; both are the same
+ * bug, which is that a drag is a shape and not a sample.
  */
 @Composable
 private fun HudHandle(
@@ -441,51 +502,81 @@ private fun HudHandle(
     onToggleCollapsed: () -> Unit,
     onDockChange: (HudDock) -> Unit
 ) {
-    // Aligned with the chips rather than centred in the window. Centring it
-    // looks deliberate while the strip spans the width and looks like a stray
-    // object the moment it does not — which, collapsed, it does not.
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HUD_MARGIN, vertical = 3.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
+    val snap = with(LocalDensity.current) { DRAG_SNAP_DP.dp.toPx() }
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragY by remember { mutableFloatStateOf(0f) }
+
+    val pill = @Composable {
         Box(
             modifier = Modifier
-                .size(width = 72.dp, height = 18.dp)
+                .then(
+                    if (dock.isVertical) {
+                        Modifier.size(width = 18.dp, height = 72.dp)
+                    } else {
+                        Modifier.size(width = 72.dp, height = 18.dp)
+                    }
+                )
                 .clip(MaterialTheme.expressiveShapes.pill)
                 .background(hudChipColor(opacity))
                 .clickable(onClick = onToggleCollapsed)
                 .pointerInput(dock) {
-                    detectVerticalDragGestures { change, dragAmount ->
-                        change.consume()
-                        // Only a decisive drag away from the current edge moves
-                        // it, so brushing the handle mid-ride does nothing.
-                        if (dock == HudDock.Bottom && dragAmount < -DRAG_SNAP_PX) {
-                            onDockChange(HudDock.Top)
-                        } else if (dock == HudDock.Top && dragAmount > DRAG_SNAP_PX) {
-                            onDockChange(HudDock.Bottom)
+                    detectDragGestures(
+                        onDragStart = { dragX = 0f; dragY = 0f },
+                        onDragEnd = {
+                            HudDock.dragTarget(dock, dragX, dragY, snap)
+                                ?.let(onDockChange)
+                            dragX = 0f
+                            dragY = 0f
                         }
+                    ) { change, amount ->
+                        change.consume()
+                        dragX += amount.x
+                        dragY += amount.y
                     }
                 }
                 .semantics {
                     contentDescription = if (collapsed) {
-                        "Expand the ride overlay. Drag to move it to the other " +
-                            "edge, or double tap it to open Pelonot."
+                        "Expand the ride overlay. Drag it to any screen edge, " +
+                            "or double tap it to open Pelonot."
                     } else {
-                        "Collapse the ride overlay. Drag to move it to the other " +
-                            "edge, or double tap it to open Pelonot."
+                        "Collapse the ride overlay. Drag it to any screen edge, " +
+                            "or double tap it to open Pelonot."
                     }
                 },
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 36.dp, height = 3.dp)
+                    .then(
+                        if (dock.isVertical) {
+                            Modifier.size(width = 3.dp, height = 36.dp)
+                        } else {
+                            Modifier.size(width = 36.dp, height = 3.dp)
+                        }
+                    )
                     .clip(MaterialTheme.expressiveShapes.pill)
                     .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
             )
         }
+    }
+
+    // Aligned with the chips rather than centred in the window. Centring it
+    // looks deliberate while the strip spans the edge and looks like a stray
+    // object the moment it does not — which, collapsed, it does not.
+    if (dock.isVertical) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(vertical = HUD_MARGIN, horizontal = 3.dp),
+            contentAlignment = Alignment.TopCenter
+        ) { pill() }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = HUD_MARGIN, vertical = 3.dp),
+            contentAlignment = Alignment.CenterStart
+        ) { pill() }
     }
 }
 
@@ -493,6 +584,7 @@ private fun HudHandle(
 private fun HudBody(
     snapshot: RideSnapshot,
     reading: SensorReading,
+    dock: HudDock,
     collapsed: Boolean,
     coachStyle: CoachStyle,
     accent: Color,
@@ -511,13 +603,24 @@ private fun HudBody(
         },
         label = "HudDensity"
     ) { isCollapsed ->
-        if (isCollapsed) {
-            HudCollapsed(
+        when {
+            // Collapsed down a side, everything the band held in a row has to
+            // stack — which is the one place the vertical dock genuinely earns
+            // its own composable rather than a different arrangement of the
+            // same one.
+            isCollapsed && dock.isVertical -> HudCollapsedVertical(
                 snapshot, reading, accent, opacity, flash,
                 volumeOpen, onToggleVolume, onPause, onResume, onStop
             )
-        } else {
-            HudExpanded(
+            isCollapsed -> HudCollapsed(
+                snapshot, reading, accent, opacity, flash,
+                volumeOpen, onToggleVolume, onPause, onResume, onStop
+            )
+            dock.isVertical -> HudExpandedVertical(
+                snapshot, reading, coachStyle, accent, opacity, flash,
+                volumeOpen, onToggleVolume, onPause, onResume, onStop
+            )
+            else -> HudExpanded(
                 snapshot, reading, coachStyle, accent, opacity, flash,
                 volumeOpen, onToggleVolume, onPause, onResume, onStop
             )
@@ -554,8 +657,13 @@ private fun HudVolumePanel(
     // The swipe goes *towards the strip's own edge* — up when docked top, down
     // when docked bottom — so the direction follows the dock rather than being
     // hardcoded, and the panel folds back into the strip it came out of.
-    // Vertical only: a slider is a horizontal drag consumer sitting inside this
-    // gesture, and the two must not fight over the same finger.
+    //
+    // On a **vertical** dock the panel sits inside the column, so the edge it
+    // would fold into is left or right — and that is the one axis a slider is
+    // already consuming. It gets the same vertical swipe as a bottom dock
+    // instead: a flick down the column, away from the numbers. The two must not
+    // fight over the same finger, and the slider's claim wins because it is the
+    // control the rider actually came here for.
     val threshold = with(LocalDensity.current) { VOLUME_DISMISS_DP.dp.toPx() }
 
     // And a timeout, because this panel is the one part of the strip that is
@@ -575,31 +683,29 @@ private fun HudVolumePanel(
     ) {
         var dragged by remember { mutableFloatStateOf(0f) }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = HUD_MARGIN,
-                    vertical = MaterialTheme.spacing.extraSmall
-                )
-                .pointerInput(dock) {
-                    detectVerticalDragGestures(
-                        onDragStart = { dragged = 0f },
-                        onDragEnd = {
-                            val towardsEdge = when (dock) {
-                                HudDock.Top -> dragged <= -threshold
-                                HudDock.Bottom -> dragged >= threshold
-                            }
-                            if (towardsEdge) onDismiss()
-                            dragged = 0f
+        val swipe = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = HUD_MARGIN,
+                vertical = MaterialTheme.spacing.extraSmall
+            )
+            .pointerInput(dock) {
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f },
+                    onDragEnd = {
+                        val towardsEdge = when (dock) {
+                            HudDock.Top -> dragged <= -threshold
+                            HudDock.Bottom, HudDock.Left, HudDock.Right ->
+                                dragged >= threshold
                         }
-                    ) { _, amount -> dragged += amount }
-                }
-        ) {
-            // Half the width, not the whole of it: this is two sliders, and a
-            // panel that reaches the far edge of a 1280 dp screen to hold them
-            // is covering film for nothing.
-            HudChip(opacity = opacity, modifier = Modifier.weight(1f)) {
+                        if (towardsEdge) onDismiss()
+                        dragged = 0f
+                    }
+                ) { _, amount -> dragged += amount }
+            }
+
+        val sliders: @Composable (Modifier) -> Unit = { m ->
+            HudChip(opacity = opacity, modifier = m) {
                 VolumeSliders(
                     mediaVolume = mediaVolume,
                     coachVolume = coachVolume,
@@ -609,19 +715,41 @@ private fun HudVolumePanel(
                     compact = true
                 )
             }
-            // 11.6.10. The overlay's route into the settings a rider discovers
-            // they need mid-ride — a strap that never paired, a board that has
-            // died. It lives here rather than as a fifth button on the resting
-            // strip, because this panel is already where a rider comes when
-            // they want to change something rather than read something, and the
-            // strip's job is the next sixty seconds of pedalling.
-            HudChip(opacity = opacity, modifier = Modifier.padding(start = MaterialTheme.spacing.small)) {
+        }
+
+        // 11.6.10. The overlay's route into the settings a rider discovers
+        // they need mid-ride — a strap that never paired, a board that has
+        // died. It lives here rather than as a fifth button on the resting
+        // strip, because this panel is already where a rider comes when
+        // they want to change something rather than read something, and the
+        // strip's job is the next sixty seconds of pedalling.
+        val moreSettings: @Composable (Modifier) -> Unit = { m ->
+            HudChip(opacity = opacity, modifier = m) {
                 TextButton(onClick = onOpenSettings) {
                     Text("More settings", style = MaterialTheme.typography.labelLarge)
                 }
             }
+        }
 
-            Spacer(Modifier.weight(1f))
+        if (dock.isVertical) {
+            // The column is already the narrow dimension, so there is no half
+            // of it to leave as film — the two stack instead.
+            Column(
+                modifier = swipe,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+            ) {
+                sliders(Modifier.fillMaxWidth())
+                moreSettings(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(modifier = swipe) {
+                // Half the width, not the whole of it: this is two sliders, and
+                // a panel that reaches the far edge of a 1280 dp screen to hold
+                // them is covering film for nothing.
+                sliders(Modifier.weight(1f))
+                moreSettings(Modifier.padding(start = MaterialTheme.spacing.small))
+                Spacer(Modifier.weight(1f))
+            }
         }
     }
 }
@@ -717,6 +845,103 @@ private fun HudExpanded(
                 )
             }
         }
+    }
+}
+
+/**
+ * The same strip, stood on its end (11.1b.5).
+ *
+ * A column of 244 dp is not a row with less width in it, so this re-flows
+ * rather than shrinking: the chips stack, the four live numbers go from one row
+ * of four to two rows of two, and the controls sit at the far end of the column
+ * where the eye finishes rather than beside the numbers.
+ *
+ * Two things are deliberately dropped rather than squeezed. The **next-up
+ * preview** goes, because the timeline bar still runs across the top edge and
+ * the countdown replaces it wholesale the moment a change is imminent — which
+ * is the part that is never optional. And the zone ladder keeps its place: it
+ * is a 8 dp band that reads at a glance, which is the whole reason it survived
+ * the horizontal strip's own width budget.
+ */
+@Composable
+private fun HudExpandedVertical(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    coachStyle: CoachStyle,
+    accent: Color,
+    opacity: Float,
+    flash: Float,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    val interval = snapshot.interval
+    val wash = accent.copy(alpha = 0.30f * flash)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        CueBand(interval.cue, accent, animate = coachStyle.animates)
+
+        HudChip(opacity = opacity, wash = wash, modifier = Modifier.fillMaxWidth()) {
+            ClockBlock(snapshot, Modifier.fillMaxWidth())
+        }
+
+        if (interval.hasClass) {
+            HudChip(opacity = opacity, wash = wash, modifier = Modifier.fillMaxWidth()) {
+                NowBlock(snapshot, accent, Modifier.fillMaxWidth(), compact = true)
+            }
+        }
+
+        HudChip(opacity = opacity, wash = wash, modifier = Modifier.fillMaxWidth()) {
+            MetricsBlock(
+                snapshot = snapshot,
+                reading = reading,
+                showTargets = interval.hasClass,
+                stacked = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // The countdown only. It is the one element on this HUD that is never
+        // optional, and in a column there is no width to trade it against.
+        if (interval.hasClass && interval.isChangeImminent) {
+            interval.next?.let { next ->
+                HudChip(
+                    opacity = opacity,
+                    wash = wash,
+                    padding = PaddingValues(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    CountdownBanner(
+                        secondsRemaining = interval.remainingInIntervalSec,
+                        nextZone = next.powerZone,
+                        animate = coachStyle.animates
+                    )
+                }
+            }
+        }
+
+        // Pushed to the bottom of the column rather than following the numbers,
+        // so pause and stop are always in the same place however much the class
+        // above them is saying this minute. A control that moves is a control
+        // somebody reaches past their handlebars and misses.
+        Spacer(Modifier.weight(1f))
+
+        Controls(
+            isPaused = snapshot.isPaused,
+            volumeOpen = volumeOpen,
+            onToggleVolume = onToggleVolume,
+            onPause = onPause,
+            onResume = onResume,
+            onStop = onStop
+        )
     }
 }
 
@@ -837,7 +1062,13 @@ private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
 
 /** The current interval: zone badge inside its own countdown ring, and targets. */
 @Composable
-private fun NowBlock(snapshot: RideSnapshot, accent: Color, modifier: Modifier = Modifier) {
+private fun NowBlock(
+    snapshot: RideSnapshot,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    /** A vertical dock has 190 dp to put this in, against the band's 216. */
+    compact: Boolean = false
+) {
     val interval = snapshot.interval
     val zone = interval.targetZone
 
@@ -851,23 +1082,27 @@ private fun NowBlock(snapshot: RideSnapshot, accent: Color, modifier: Modifier =
             progress = 1f - interval.intervalProgress,
             color = accent,
             strokeWidth = 5.dp,
-            modifier = Modifier.size(78.dp)
+            modifier = Modifier.size(if (compact) 64.dp else 78.dp)
         ) {
             ZoneGlyph(
                 zone = zone,
-                modifier = Modifier.size(54.dp),
+                modifier = Modifier.size(if (compact) 44.dp else 54.dp),
                 rotating = zone.number >= 5
             ) {
                 Text(
                     text = "${zone.number}",
-                    fontSize = 24.sp,
+                    fontSize = if (compact) 20.sp else 24.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.Black.copy(alpha = 0.8f)
                 )
             }
         }
 
-        Spacer(Modifier.width(MaterialTheme.spacing.medium))
+        Spacer(
+            Modifier.width(
+                if (compact) MaterialTheme.spacing.small else MaterialTheme.spacing.medium
+            )
+        )
 
         Column {
             Text(
@@ -921,7 +1156,16 @@ private fun MetricsBlock(
     snapshot: RideSnapshot,
     reading: SensorReading,
     showTargets: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * Two rows of two rather than one row of four, for a vertical dock
+     * (11.1b.5).
+     *
+     * The pairing is the same one the row already reads left to right, so a
+     * rider who has moved the strip does not have to re-learn where a number
+     * is: **what you change** on the top row, **what it produces** underneath.
+     */
+    stacked: Boolean = false
 ) {
     // Cadence and resistance first, together: they are the only two things the
     // rider can actually change. Power is what those two produce, and heart
@@ -932,13 +1176,11 @@ private fun MetricsBlock(
     // stopped pedalling is the one thing this display must never say.
     val live = snapshot.telemetryLive
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-        ) {
+    // One list of four, arranged either way. Written out once because four
+    // readouts duplicated across two branches is four places for a target band
+    // or a "--" to go quietly missing on one dock and not the other.
+    val cells: List<@Composable (Modifier) -> Unit> = listOf(
+        { m ->
             MetricReadout(
                 label = "CADENCE",
                 icon = MetricIcons.Cadence,
@@ -949,8 +1191,10 @@ private fun MetricsBlock(
                 emphasis = if (showTargets) snapshot.cadenceEmphasis else TargetEmphasis.None,
                 rawValue = reading.cadenceRpm,
                 valueSize = 42.sp,
-                modifier = Modifier.weight(1f)
+                modifier = m
             )
+        },
+        { m ->
             MetricReadout(
                 label = "RESISTANCE",
                 icon = MetricIcons.Resistance,
@@ -962,8 +1206,10 @@ private fun MetricsBlock(
                 emphasis = TargetEmphasis.None,
                 rawValue = reading.resistancePercent,
                 valueSize = 42.sp,
-                modifier = Modifier.weight(1f)
+                modifier = m
             )
+        },
+        { m ->
             MetricReadout(
                 label = "POWER",
                 icon = MetricIcons.Power,
@@ -974,8 +1220,10 @@ private fun MetricsBlock(
                 emphasis = if (showTargets) snapshot.powerEmphasis else TargetEmphasis.None,
                 rawValue = reading.powerWatts,
                 valueSize = 42.sp,
-                modifier = Modifier.weight(1f)
+                modifier = m
             )
+        },
+        { m ->
             MetricReadout(
                 label = "HEART RATE",
                 icon = MetricIcons.HeartRate,
@@ -986,8 +1234,29 @@ private fun MetricsBlock(
                 rawValue = (reading.heartRateBpm ?: 0).toDouble(),
                 valueSize = 42.sp,
                 compact = true,
-                modifier = Modifier.weight(1f)
+                modifier = m
             )
+        }
+    )
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val gap = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        if (stacked) {
+            Row(horizontalArrangement = gap) {
+                cells[0](Modifier.weight(1f))
+                cells[1](Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = gap) {
+                cells[2](Modifier.weight(1f))
+                cells[3](Modifier.weight(1f))
+            }
+        } else {
+            Row(horizontalArrangement = gap) {
+                cells.forEach { cell -> cell(Modifier.weight(1f)) }
+            }
         }
 
         // 11.6.2a. The ladder under the numbers it is a reading of, in its
@@ -1294,6 +1563,117 @@ private fun HudCollapsed(
     }
 }
 
+/**
+ * Collapsed, down a side.
+ *
+ * The horizontal version is one pill and a row of buttons with the whole middle
+ * of the band left as film. A column cannot spend width that way — it has 244
+ * dp and the pill would be the entire strip — so the numbers stack into a short
+ * chip at the top and the controls stay at the bottom where they are in every
+ * other state. What the rider gets back is the rest of the side.
+ */
+@Composable
+private fun HudCollapsedVertical(
+    snapshot: RideSnapshot,
+    reading: SensorReading,
+    accent: Color,
+    opacity: Float,
+    flash: Float,
+    volumeOpen: Boolean,
+    onToggleVolume: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit
+) {
+    val interval = snapshot.interval
+    val wash = accent.copy(alpha = 0.30f * flash)
+    val live = snapshot.telemetryLive
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        HudChip(opacity = opacity, wash = wash) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+            ) {
+                Text(
+                    text = Formatters.duration(snapshot.elapsedSeconds),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (interval.hasClass) {
+                    ZoneGlyph(zone = interval.targetZone, modifier = Modifier.size(28.dp)) {
+                        Text(
+                            text = "${interval.targetZone.number}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                CompactMetric(
+                    if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
+                    "RPM",
+                    MetricCadenceCyan
+                )
+                CompactMetric(
+                    if (live) reading.resistancePercent.toInt().toString() else NO_READING,
+                    "%",
+                    MetricResistanceViolet
+                )
+                CompactMetric(
+                    if (live) reading.powerWatts.toInt().toString() else NO_READING,
+                    "W",
+                    MetricPowerCoral
+                )
+                CompactMetric(
+                    reading.heartRateBpm?.toString() ?: "--",
+                    "BPM",
+                    MetricHeartRateGreen
+                )
+            }
+        }
+
+        val next = interval.next
+        if (interval.isChangeImminent && next != null) {
+            // Survives collapsing here for the same reason it does on the band.
+            Row(
+                modifier = Modifier
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(next.powerZone.color)
+                    .padding(horizontal = MaterialTheme.spacing.medium, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Z${next.powerZone.number} in ${interval.remainingInIntervalSec}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black.copy(alpha = 0.85f)
+                )
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Controls(
+            isPaused = snapshot.isPaused,
+            volumeOpen = volumeOpen,
+            onToggleVolume = onToggleVolume,
+            onPause = onPause,
+            onResume = onResume,
+            onStop = onStop
+        )
+    }
+}
+
 @Composable
 private fun CompactMetric(value: String, unit: String, accent: Color) {
     Row(verticalAlignment = Alignment.Bottom) {
@@ -1354,6 +1734,17 @@ private const val POSITION_CALL_MS = 6_000L
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp
-private const val DRAG_SNAP_PX = 12f
+
+/**
+ * How far the handle has to travel before the strip changes edge (11.1b.4).
+ *
+ * In **dp** rather than the raw pixels it used to be, which mattered less when
+ * the gesture was one axis and a decisive flick: on this tablet's 240 dpi the
+ * old 12 px was 8 dp, and a two-dimensional gesture that fires at 8 dp is one a
+ * rider trips over reaching past the handlebars. 40 dp is deliberate travel and
+ * still well short of a drag across the screen — the direction is what is being
+ * asked, not the distance.
+ */
+private const val DRAG_SNAP_DP = 40
 private val WIDE_BREAKPOINT = 900.dp
 private val ROOMY_BREAKPOINT = 1100.dp
