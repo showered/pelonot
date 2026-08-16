@@ -165,9 +165,12 @@ is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 standard heart-rate service rather than on a name, so the item is a measurement
 with the friend's watch rather than a feature).
 
-### Leaderboard idea, and a possible resolution to the lvl/ftp thing
-
-Ok please see `leaderboard-idea.png`. Something like that for leaderboard please! And this could solve the lvl/ftp problem. Let's make `lvl` part of the avatar, like that. And then show FTP as appropriate on which ever screen requires it. Login screen, leaderboard screen, for sure, and maybe others too. Happy for you to use judgement.
+*Empty. The five entries of 16 August 2026 are written up together at **20.6** —
+the avatars not being good enough, the level and the FTP belonging on the face,
+the level not being what the app should point at (**20.6.7**, an open item with
+the owner's name on it), who the set should look like, and the reference picture
+(**20.6.8** for the ring, **20.6.9** for where the FTP goes, and **24.3.19** for
+the board's own row). The rule change the second forces is at **26.4.8**.*
 
 ---
 
@@ -224,7 +227,103 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 16 August 2026 (fifty-eighth sitting): the deploy turned out to be one word, and a rider got a face
+### Latest session — 16 August 2026 (fifty-ninth sitting): the face the owner asked for, and the number they asked to see beside it
+
+**The inbox had two entries when this sitting started, a third arrived while
+they were being written up, and a fourth and fifth arrived while the work was
+being built.** All five are about one screen — the profile selector — and
+between them they undo two decisions the previous sitting took and one this plan
+took a fortnight ago. **They are all written up at 20.6**, with the rule change
+the second forces at **26.4.8** and the open question the third opens at
+**20.6.7**.
+
+**The first note is a verdict on yesterday's work and it is the kind a session
+cannot reach on its own.** *"Download a free set of avatars online somewhere and
+use those… the ones we have are not good."* The fifty-eighth sitting built eight
+colours and six Material icons and wrote down at 20.2.1 that the licence
+question had been *answered by not creating one*. That was true and the result
+was still weak, which is exactly the thing a diff cannot show and a glance can.
+
+**Five CC0 sets were rendered on this app's own disc and compared at 32 dp as
+well as large**, and the small column is the whole decision: 32 dp is the
+household row and the dashboard greeting, and it is where the line-art sets
+(Notionists, Lorelei) collapse to a hairline. **Open Peeps** — Pablo Stanley,
+CC0 — is the only one of the five still legible as *a particular person* small.
+The owner chose it, and chose twenty.
+
+**The set is fitted to the household that will ride the bike, at the owner's own
+instruction**, and the honest way to do that is a setting rather than a
+hand-pick: `SKIN` weights the palette and `HEADS` names every option Open Peeps
+offers except `hijab` and `turban`. **Measured rather than eyeballed** — the
+vendored PNGs were decoded and their dominant skin hex counted: 10 lightest, 7
+light, 3 mid. And because the owner asked for the door to be left open,
+`avatars/browse.sh` renders a sheet of candidates with the seed under each face,
+so a face can be swapped by eye and one line.
+
+**A trap that nearly produced a false conclusion, and it is a new one for this
+project.** The browser preview pane served a **stale render of a local file
+twice in a row** — identical pixels after the images on disk had changed — so a
+surgical mask appeared to still be on one face after `maskProbability=0` had
+removed it. What settled it was reading the PNG itself. Same family as *the
+database is the witness, not the screenshots*: **the artefact is the witness,
+not the previewer.**
+
+**The second note asks for two things the app's own rules forbid, says so, and
+hands the judgement over.** *"lvl should be part of the avatar (overlaid
+somehow). FTP score should be displayed under the avatar… I understand there are
+repercussions… Happy to go with what you think."* 26.1.1 took `150 W FTP` off
+that tile **at this owner's request** and their verdict then was "SO much
+better"; `RiderScore` rule 2 says the level is never drawn beside the FTP.
+
+**The level half needed no argument and the FTP half is a real reversal.** The
+badge now rides on the bottom edge of the face — on the collar, not the
+shoulder, because an Open Peeps figure is a head and a pair of shoulders and a
+corner badge covers the drawing. It is a *compact form of `RiderScore`* rather
+than a second badge, so all four rules travel with it, and it is **not drawn
+below 56 dp**: the household row and the greeting keep the pill beside the name.
+The FTP is one quiet caption under the name, **`FTP 150 W` and not `150 W
+FTP`** — the rejected form led with the number on a tile whose headline is the
+rider's name. **26.4.8 is where the rule is narrowed rather than lifted**, with
+the three conditions it survives under, because a rule relaxed quietly in a diff
+is a rule that has stopped existing.
+
+**The third note is the sharpest thing anybody has said about `RiderLevel` since
+it was built** and it arrived mid-write-up: *"someone could be lvl 20 but only
+50 FTP so not a very good rider. The goal should be FTP, not lvl."* Read
+carefully it is **not** a claim that the level is wrong — `RiderScore`'s KDoc
+already says the number's only honest claim is *has ridden more* — it is that
+the app is loudest about the accumulation and quietest about the ability on the
+one screen where a rider looks at themselves. **20.6.7 is an open item with the
+owner's name on it**, at their own suggestion (*"maybe i should go away and
+design something"*), and a session that finds it open should say so rather than
+invent a progression system.
+
+**Picking a face is now part of signing up** (20.6.2), which is 20.2.3's own
+stated condition being met — that item left profile creation alone deliberately
+and wrote that moving it *"needs the owner's eye rather than a session's"*.
+**"The end" turned out to mean after the questions and before the number**, and
+15.8.1 is why: the profile is written the moment the rider leaves the FTP
+reveal, so a face step after that would either write the row twice or hold it
+back.
+
+**Both halves of 20.2.2's claim were watched on the device rather than reasoned
+about.** *Sam* touched the picker and the row reads `lilac:reed`; *Jo* pressed
+Continue without touching anything and the row is **NULL**, with
+`Avatar.defaultFor` drawing the sky disc. And profile 1 has said `rose:bolt`
+since yesterday — a retired mark — and now draws as rose with an `R`, with the
+column untouched. That is `Avatar.parse`'s graceful-degradation clause being
+cashed in for the first time, on real data, doing the opposite of the job it was
+written for.
+
+**Watched on the tablet AVD across the whole journey** — the selector at three
+tiles and at five, the edit dialog's picker, *Pick a face* mid-choice, two
+complete profile creations, and the row read in `sqlite3` after each. **806 JVM
+tests, 0 failures.** The test device now carries five profiles: the two seeded
+riders, an older `x`, and **Sam and Jo**, which are this sitting's two walks and
+are the evidence for the paragraph above.
+
+
+### The sitting before — 16 August 2026 (fifty-eighth sitting): the deploy turned out to be one word, and a rider got a face
 
 **The owner answered a question this plan had asked for three sittings, and the
 answer is `git push`.** 17.16.2 — *how the web app is deployed is written down
@@ -302,72 +401,6 @@ save, the picker mid-choice, a chosen rider's dashboard, a never-chosen rider's
 dashboard, and the guest's — on a device carrying 45 rides and two profiles, so
 the 21 → 22 migration ran over real data. **The row was read in `sqlite3` after
 the save rather than off a screenshot. 805 JVM tests, 0 failures.**
-
-
-### The sitting before — 16 August 2026 (fifty-seventh sitting): three notes in the inbox, and the screen the owner keeps coming back to now fills itself
-
-**The inbox had three entries when this sitting started and a fourth arrived
-while it was working, so the first job was emptying it.** All three are written
-up with the reasoning kept: **22.9** for the dashboard's unused space, **Phase
-29** for Health Connect and Apple Health, **21.7** for an Apple Watch as the
-strap. The plan's rule is that an entry jumps the queue *into* the plan and then
-takes its place in it, so what got built afterwards was chosen on merit.
-
-**Two of the notes are answered on paper and one of them is a *no*, said
-plainly.** Health Connect needs **nothing from the owner** — no account, no
-registration, no API key, no fee; the Play declaration form binds an app
-distributed through Play and this one is not. What it needs is the *bike*:
-Health Connect is part of the platform only from Android 14, and the tablet is
-**Android 11**, so below that it is an app that has to be installed and 29.1.1
-is three adb commands that decide whether the rest of the phase is a feature or
-an essay. **Apple Health is not reachable from Android at all** — HealthKit has
-no Android SDK and no server API, because the data lives on the rider's iPhone —
-so the honest route is the `.tcx` this app already writes (12.4.3), carried
-across once by hand. And the Apple Watch is very likely already supported:
-`BleHeartRateManager` filters the scan on the **standard heart-rate service**
-rather than on a device name, so anything advertising it is an ordinary strap.
-21.7 is a measurement with the friend's watch, not a build.
-
-**What was built is 22.9, because the owner has now looked at the screen twice
-in six days and it is the one thing on the list that needed neither them nor the
-bike.** The note is *"lots of unused space… we shouldn't have empty space. It's
-an exciting part of the app."* Measured before anything was written: **383 dp of
-content in a 664 dp viewport — 42% of the screen empty**, and **57% on a profile
-that has not ridden**. The emptiest state is a bike with one rider on it, because
-the right-hand rail is the household panel and it draws nothing below two riders.
-
-**The trap is that 22.8 said the opposite six days ago**, and the obvious way to
-answer this note — weight the rows, let the cards grow — rebuilds the *stretched*
-fault word for word. So nothing was stretched and two things were added, both of
-them facts this tablet already held. **The offer card carries the class's own
-shape** instead of a dumbbell: the same `ClassProfileChart` the class screen
-draws, derived beside the suggestion from its own id so the card can never name
-one class and draw another. **The rail carries the ride-days grid** when there is
-nobody else on the bike — extracted from *Your riding* rather than copied, since
-two grids disagreeing about which days were ridden would be this project's
-recurring defect on the first screen anybody sees.
-
-**Both traps were met anyway, and both by looking at the tablet.** Stacking the
-two doors in their old vertical shape set the action row to **296 dp** and
-stretched the offer card into a field of teal — 22.8.2's fault reached from the
-other side, a card *demanding* room rather than being given it; sideways they are
-92 dp. And drawing the day grid beside the household as well took the screen to
-**about 990 dp**, which is 22.8's own number restored by the fix for the note
-that followed it. The grid is the rail's understudy now and never plays beside
-it.
-
-**One live defect fell out of the extraction**, in a string a screen reader reads
-aloud: *"1 days ridden in the last 17 weeks"*. That is 21.6.3's *"1 minutes 42
-seconds"* again, and the reason it was available to be made a second time is that
-`domain` held **two private copies** of `plural()` — so the third call site had
-none. `Formatters.plural` is the one answer now and both copies delegate to it.
-
-**Watched on the tablet AVD in five states with each other as controls**, on a
-device seeded with 45 rides across 15 weeks and a second profile, because the one
-real ride on it drew seventeen weeks of grey: solo with the nag **645 dp**,
-household with a nag **637 dp**, household without **541 dp**, guest about
-**380 dp**, and the suggestion tapped through to a class screen drawing the
-identical shape. **None of them scrolls.** **795 JVM tests, 0 failures.**
 
 
 ### What to do next, in order

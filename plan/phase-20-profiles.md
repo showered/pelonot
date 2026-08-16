@@ -1166,3 +1166,50 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       vendored set answers *"the ones we have are not good"* completely and a
       photograph is a different feature with a privacy surface on it — the note
       asked for a downloaded set, in those words, and got one
+
+- [ ] **20.6.8** **The level as a *ring* round the face, with a tab under it —
+      the owner's reference picture, and it is better than what 20.6.4 built.**
+      The note came with an image (`plan/images/leaderboard-idea.png`, Peloton's
+      own leaderboard row) and the words *"let's make `lvl` part of the avatar,
+      like that"*. What "like that" is, precisely:
+
+      - a **ring** round the disc rather than a badge on it — and the ring is
+        drawn as an *arc*, which is where a progress track belongs;
+      - a small **`LVL 35` tab** centred on the bottom of the ring, overlapping
+        it, in a quiet colour rather than the badge's filled pill;
+      - the face inside is untouched, because the ring costs it nothing.
+
+      **It is a straight improvement on 20.6.4 and it should replace it.** The
+      pill on the collar works and was watched on the tablet, but it covers part
+      of the drawing and it puts `RiderLevel.progress` — the hairline track
+      along the bottom of `RiderScore` — somewhere it is invisible at that size.
+      A ring has room for the progress *and* leaves the face alone. **`LVL` and
+      the number stay** (rule 1), it is still not amber (rule 3), still nothing
+      for a guest (rule 4), and it is still one component.
+
+      **The floor stays.** A ring at 32 dp is a hairline and the tab is
+      unreadable, so the household row and the greeting keep the pill beside the
+      name exactly as 20.6.4 decided
+
+- [ ] **20.6.9** **`FTP: 215 W` "on whichever screen requires it" — the third
+      widening, and the surfaces still narrow it.** The owner's words are *"show
+      FTP as appropriate on whichever screen requires it. Login screen,
+      leaderboard screen, for sure, and maybe others too. Happy for you to use
+      judgement."*
+
+      - **"Login screen" is the profile selector** — this app has no login — and
+        that is **20.6.5, built**.
+      - **The leaderboard is 24.3.19** and is the real new work, because a
+        leaderboard is where an FTP beside a name stops being *your* number and
+        becomes a comparison between people. That is the objection 20.6.5 raised
+        against the household panel and it does not go away because the picture
+        is attractive; what changes it is that **the picture is a leaderboard**,
+        where riders have already agreed to be ranked. Written up there.
+      - **"Maybe others too"** — the dashboard already draws the FTP big in
+        `FtpGlanceCard` with its trend, so a second copy beside the greeting is
+        the same number twice on one screen. **Still no**, and still not a
+        refusal.
+
+      The reference writes it `FTP: 215 W`. This app writes `FTP 150 W` — the
+      colon is a word's worth of punctuation doing nothing, and Phase 26's rule
+      is to say less. Noted rather than silently diverged from

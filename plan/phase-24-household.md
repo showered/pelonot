@@ -1153,6 +1153,64 @@ and no amount of social plumbing fixes that.
       `12 months` and `30 days` were weak labels beside a rank and are the
       whole row without one.
 
+### 24.3.19 The board's row, from a picture — the owner's note, 16 August 2026
+
+**The owner sent a reference image** (`plan/images/leaderboard-idea.png`, which
+is Peloton's own leaderboard) with *"something like that for leaderboard
+please! And this could solve the lvl/ftp problem."* The row in it is: a rank
+number, a face inside a progress **ring** with a small `LVL 35` tab under it,
+the name, `FTP: 215 W` beneath the name, and the output as a large number on the
+right.
+
+**Four of those five this board should take, and the fifth it should not** —
+and the fifth is the owner's own decision from nine days ago, which is why this
+item quotes it rather than quietly overruling it.
+
+- [ ] **24.3.19a** **The face, with the level on it** (20.6.8's ring). This is
+      **20.2.6a arriving with an answer**: that item left faces off the board
+      because a board carrying auto-generated ghosts (24.3.18) forces the
+      question *what does a ghost look like* — give it a face and the board
+      claims a person who does not exist. **The reference does not settle that
+      and neither does this item.** The rule that does: a ghost is not a person,
+      so it gets **no face and no level**, and the two classes of row are
+      visibly different on purpose. That is arguably untidy and it is honest,
+      which is 24.3.18a's rule applied to a picture instead of a number
+
+- [ ] **24.3.19b** **The FTP under the name.** This is where 20.6.5's objection
+      genuinely stops applying, and the reason is worth being precise about: an
+      FTP beside a *housemate's* name on a presence card publishes a measurement
+      of somebody who was never asked (which is why the household panel does not
+      get one), but a leaderboard is a surface every row on it has agreed to be
+      ranked on. **`household_visible` is already that consent** (24.2.3) and it
+      is one switch with one meaning. A ghost has no FTP and draws none
+
+- [ ] **24.3.19c** **The output as the large number on the right**, which the
+      board already does — 24.3.17a made every row carry its own total rather
+      than the gap to you, and 24.3.17b took the unit off it. Nothing to change;
+      it is listed so that a session working from the picture does not
+      "restore" a `W` that was deliberately removed
+
+- [ ] **24.3.19d** **The rank stays off, and it is the owner's to put back.**
+      The picture has `41` and `42` down its left edge and **24.3.17c deleted
+      exactly that**, on the owner's own argument: *"most of the 'people' are
+      actually going to be targets rather than people"* — four of the row kinds
+      on this board are the rider's own past rides, so *4th of 6* where four of
+      the six are you is a category error rather than an overstatement.
+
+      **Peloton's board is thousands of strangers and this one is a household
+      plus your own history**, which is the whole difference. The argument has
+      not changed and the picture is not evidence against it — it is evidence of
+      what a different board looks like. **Written down as a question rather
+      than acted on in either direction**, because reversing a decision the
+      owner made with a stated reason needs them, not a session
+
+- [ ] **24.3.19e** **What this does not decide: `12 MONTHS` and `30 DAYS`.**
+      24.3.12a is still open with the owner's name on it, and 24.3.17c raised
+      its stakes because the name is now the only identity a row has. The
+      picture makes it *sharper* rather than easier — every row in it is a
+      person with a face, and the two rows this board cannot give a face to are
+      the two that already have the wrong kind of name
+
 ### 24.4 Honesty, and the column that is now blocking three things
 
 - [x] **24.4.1** No caveat, and the card carries none

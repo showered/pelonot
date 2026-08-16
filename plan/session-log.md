@@ -913,6 +913,71 @@ whose fix is already described in the test's own comment).
 
 ---
 
+### 16 August 2026 (fifty-seventh sitting): three notes in the inbox, and the screen the owner keeps coming back to now fills itself
+
+**The inbox had three entries when this sitting started and a fourth arrived
+while it was working, so the first job was emptying it.** All three are written
+up with the reasoning kept: **22.9** for the dashboard's unused space, **Phase
+29** for Health Connect and Apple Health, **21.7** for an Apple Watch as the
+strap. The plan's rule is that an entry jumps the queue *into* the plan and then
+takes its place in it, so what got built afterwards was chosen on merit.
+
+**Two of the notes are answered on paper and one of them is a *no*, said
+plainly.** Health Connect needs **nothing from the owner** — no account, no
+registration, no API key, no fee; the Play declaration form binds an app
+distributed through Play and this one is not. What it needs is the *bike*:
+Health Connect is part of the platform only from Android 14, and the tablet is
+**Android 11**, so below that it is an app that has to be installed and 29.1.1
+is three adb commands that decide whether the rest of the phase is a feature or
+an essay. **Apple Health is not reachable from Android at all** — HealthKit has
+no Android SDK and no server API, because the data lives on the rider's iPhone —
+so the honest route is the `.tcx` this app already writes (12.4.3), carried
+across once by hand. And the Apple Watch is very likely already supported:
+`BleHeartRateManager` filters the scan on the **standard heart-rate service**
+rather than on a device name, so anything advertising it is an ordinary strap.
+21.7 is a measurement with the friend's watch, not a build.
+
+**What was built is 22.9, because the owner has now looked at the screen twice
+in six days and it is the one thing on the list that needed neither them nor the
+bike.** The note is *"lots of unused space… we shouldn't have empty space. It's
+an exciting part of the app."* Measured before anything was written: **383 dp of
+content in a 664 dp viewport — 42% of the screen empty**, and **57% on a profile
+that has not ridden**. The emptiest state is a bike with one rider on it, because
+the right-hand rail is the household panel and it draws nothing below two riders.
+
+**The trap is that 22.8 said the opposite six days ago**, and the obvious way to
+answer this note — weight the rows, let the cards grow — rebuilds the *stretched*
+fault word for word. So nothing was stretched and two things were added, both of
+them facts this tablet already held. **The offer card carries the class's own
+shape** instead of a dumbbell: the same `ClassProfileChart` the class screen
+draws, derived beside the suggestion from its own id so the card can never name
+one class and draw another. **The rail carries the ride-days grid** when there is
+nobody else on the bike — extracted from *Your riding* rather than copied, since
+two grids disagreeing about which days were ridden would be this project's
+recurring defect on the first screen anybody sees.
+
+**Both traps were met anyway, and both by looking at the tablet.** Stacking the
+two doors in their old vertical shape set the action row to **296 dp** and
+stretched the offer card into a field of teal — 22.8.2's fault reached from the
+other side, a card *demanding* room rather than being given it; sideways they are
+92 dp. And drawing the day grid beside the household as well took the screen to
+**about 990 dp**, which is 22.8's own number restored by the fix for the note
+that followed it. The grid is the rail's understudy now and never plays beside
+it.
+
+**One live defect fell out of the extraction**, in a string a screen reader reads
+aloud: *"1 days ridden in the last 17 weeks"*. That is 21.6.3's *"1 minutes 42
+seconds"* again, and the reason it was available to be made a second time is that
+`domain` held **two private copies** of `plural()` — so the third call site had
+none. `Formatters.plural` is the one answer now and both copies delegate to it.
+
+**Watched on the tablet AVD in five states with each other as controls**, on a
+device seeded with 45 rides across 15 weeks and a second profile, because the one
+real ride on it drew seventeen weeks of grey: solo with the nag **645 dp**,
+household with a nag **637 dp**, household without **541 dp**, guest about
+**380 dp**, and the suggestion tapped through to a class screen drawing the
+identical shape. **None of them scrolls.** **795 JVM tests, 0 failures.**
+
 ### 13 August 2026 (forty-third sitting): the way back down, and the ride facts the wire never carried
 
 **The inbox was empty and the top of *What to do next* was, for the ninth
