@@ -378,13 +378,34 @@ Two consequences to know before you are surprised by them:
   property is kept for the day 2.2a lands. **If you are about to add a third,
   stop**: anything that derives a *recorded* number from the curve breaks the
   reason calibration is allowed to exist. PLAN.md 2.2a.8 makes this a test.
-- **Nothing records the FTP a ride was ridden at.** `workouts` has no FTP
-  column, so the ride detail chart reads the rider's *current* `ftp_watts` and
-  draws every past ride's zone bands and FTP rule from it. Auto-FTP (Phase 7)
-  moves that number by itself, so accepting one breakthrough silently redraws
-  the whole history. Same family as the `avg_*` trap below — derived on read
-  from a source that has since moved. PLAN.md 7.8, and 7.9 for the change
-  history that also does not exist.
+- **A ride carries the FTP and the maximum heart rate it was judged against,
+  and a reader must use the ride's, never the rider's.** This bullet used to say
+  neither existed; both do (7.8, 21.4.2c), and the rule they leave behind is
+  permanent. `workouts.ftp_watts` and `workouts.max_hr_bpm` are **nullable, and
+  null means nobody wrote it down** — a reader falls back to the profile's
+  number today *and says that it is doing so* (7.8.4, 21.4.2a). **Do not
+  backfill either**: it changes nothing visible, which is what makes it
+  tempting, and it bakes today's guess permanently into last summer's rides.
+  The defect this replaces is worth keeping in mind because Phase 7 has since
+  got sharper teeth: auto-FTP moves that number by itself and **since 7.11 it
+  moves it down as well as up**, so a chart reading the current value would
+  redraw a rider's whole history off a change they accepted last night. Same
+  family as the `avg_*` trap below — derived on read from a source that has
+  since moved.
+- **The two directions of auto-FTP are not one feature with a sign.** Up is one
+  ride's twenty-minute peak (`PostWorkoutAnalyzer`); down is a trend across
+  three consecutive rides the rider was *working* at (`FtpReductionRule`,
+  7.11), because a twenty-minute effort below somebody's FTP is the ordinary
+  result of a recovery spin and means nothing on its own. Three rules follow.
+  **The downward number is never newly derived** — it is the same `P₂₀ × 0.95`,
+  so a proposal is always something the rider has actually ridden. **Its
+  evidence comes off `workout_power_bests`, never a scan of `workout_metrics`**
+  — a ride 23.4 has condensed still has real rows there, so the scan returns a
+  wrong number rather than nothing. And **answering it restarts the evidence**,
+  which the upward path does not do (7.11.8) and which is deliberate: being told
+  the same thing about your body after every ride is the failure this most has
+  to avoid. `AutoReduction` is the source, and it is not `AutoDecline` because
+  `declineFtpProposal` already spends that word on the rider saying no.
 - **Bike telemetry does not come from a serial port.** The bike's tablet is
   stock, not jailbroken, and no app can open the sensor board's UART
   (`/dev/ttyO0`, `system:system`). `/dev/ttyS1` does not exist and `/dev/ttyS2`
