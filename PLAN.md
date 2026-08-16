@@ -227,7 +227,98 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 16 August 2026 (sixty-first sitting): an FTP that can go down
+### Latest session — 17 August 2026 (sixty-second sitting): the overlay on four edges
+
+**The inbox was empty for a third sitting and the top of *What to do next* is
+still mostly not work**, so the pick was made on merit from the phases: **11.1b.4,
+the HUD docked to the left and right as well as the top and bottom.** It is the
+owner's own words from 31 July — *"I would like a version of the HUD on the right
+and left too, should be able to drag it where you want"* — it has sat unbuilt for
+seventeen days, it needs neither the bike nor a decision, and it is the largest
+rider-facing item left in that state. **11.1b.4, 11.1b.4a, 11.1b.5 and 11.1b.6
+are built and watched; 11.1b.4b is what is left and it is the owner's.**
+
+**Three things the item did not anticipate, and each is a rule rather than a
+detail.** The first is that **a vertical dock is a different window, not the
+same one rotated**: `WRAP_CONTENT` on the width would have worked and is the
+wrong answer, because the strip would then be as wide as whatever the tallest
+chip happened to measure that minute — the film a rider loses would depend on
+whether their class is prescribing a three-digit target this block. It is a
+constant, 244 dp, and that constant is also what lets the timeline bar inset
+itself by exactly the right amount instead of guessing.
+
+**The second is that the timeline does not go to the opposite side.**
+`opposite()` was the obvious extension and it is wrong, because **time runs left
+to right**: standing the bar on its end is a redesign of the one element on this
+HUD nobody has complained about. `timelineEdge()` is a second function beside it
+— the far edge for a band, the **top** for a column, because the bottom is where
+subtitles live — and the invariant a test holds is only that it never shares an
+edge with the strip.
+
+**The third is that the drag rule had to leave the composable.** One axis and a
+per-callback threshold does not survive four edges: a slow drag never crosses 12
+px inside a single `onDrag` and a fast one fires on whichever axis happened to
+move first, which are the same bug — a drag is a shape, not a sample.
+`HudDock.dragTarget` is pure, measures the **whole gesture**, and lets the
+**dominant axis** decide, so a drag that wanders is read as where it mostly went.
+The threshold moved to 40 dp from 12 raw pixels, which on this 240 dpi tablet was
+8 dp — a gesture a rider trips over reaching past the handlebars.
+
+**11.1b.5 asked for a re-flow rather than a rotation and the metrics chip is
+where that work was.** Four readouts become **two rows of two**, keeping the
+pairing the row already reads left to right — what you change on top, what it
+produces underneath — so a rider who has moved the strip does not re-learn where
+a number is. They are one list of four arranged either way rather than two
+copies, because four readouts written out twice is four places for a target band
+or a `--` to go quietly missing on one dock and not the other. Two things are
+dropped rather than squeezed: the **next-up preview**, because a column has no
+width to trade against a countdown that is never optional and the timeline still
+says the same thing more quietly; and nothing else.
+
+**The decision that changed the sitting was made by looking at it.** The vertical
+strip was built full-height first, exactly as "spans one whole edge" implies —
+and that put pause and stop **400 px clear of the last chip** with nothing in
+between. Two objects instead of one instrument, which is 11.1b.7's own open worry
+arriving from a different direction. Wrapped to its content and centred on the
+side, the controls sit under the numbers and the top and bottom of that edge go
+back to the film as well as the middle of the screen. **That is also what closed
+11.1b.4a**: the owner's corners are free on a vertical dock once the strip stops
+spanning the edge, so the two states do not need different position sets after
+all. What is left is an alignment *along* a horizontal edge, which is one
+`Arrangement` and one preference — and **11.1b.4b is deliberately unbuilt,
+because the default decides which corner of somebody's film is gone.**
+
+**One defect found by looking at the tablet was not this feature's at all.**
+`RESISTANCE` drew as `RESISTANC` the moment two readouts shared a 76 dp cell —
+the label row is `softWrap = false` with nothing to fall back on, which is
+**exactly the defect 24.3.16 fixed one row above it in the same tile** and never
+came back for. It is `ShrinkToFitText` now, so the word stays whole, and on a
+wide tile nothing changes because the size only ever comes down. It was latent on
+the ride screen the whole time. `ACTIVE RECOVERY` becoming `ACTIVE RECO…` is the
+same family and got the other answer — a column has height, so the zone's *name*
+wraps.
+
+**Watched on the tablet AVD on all four edges, expanded and collapsed, with a
+real class running rather than a still bike.** The strip was dragged Top →
+Bottom → Right → Left mid-ride, the app was restarted between two of those, and
+Settings' **Position** row — four chips now, not two — read back `Left` at the
+end, which is 11.1b.6. The volume panel stacks inside the column and *More
+settings* still reaches the in-ride sheet from a vertical dock. **841 JVM tests,
+0 failures**, 10 of them new and all on the pure drag rule.
+
+**Phase 11 gains one item and four ticks — 59 of 71 by a straight count of the
+boxes in its file.** *(The index's own per-phase figures do not all agree on
+whether they count boxes ticked or boxes left; this one is ticked-of-total, and
+it is measured rather than carried forward.)*
+
+**The seam this sitting found is that "spans one whole edge" was a rule about
+the middle of the screen wearing the clothes of a rule about the edge.** It is
+why the HUD is a band and not a card, and it is right — but read literally it
+made a vertical dock 1080 px tall to protect a middle that a 244 dp column was
+already leaving clear. Same family as *absent is a claim*: the reason and the
+implementation had drifted apart, and only one of them was ever the point.
+
+### The sitting before — 16 August 2026 (sixty-first sitting): an FTP that can go down
 
 **The inbox was empty and the top of *What to do next* was mostly not work** —
 items 0 through 3 need the owner, the mailer or a real phone — so the pick was
@@ -334,103 +425,27 @@ enough, no cooldown needed, the copy may celebrate) became a defect pointed at
 somebody's body. Same family as *absent is a claim*: the symmetry is in the
 arithmetic and nowhere else.
 
-### The sitting before — 16 August 2026 (sixtieth sitting): the board's row, from the owner's own picture
-
-**The inbox was empty and the top of *What to do next* named the work**, which
-does not happen often: *"The first thing worth doing next is 24.3.19 — the
-leaderboard row from the owner's own picture — and it is the only item on this
-list that arrived with a design attached."* Four of its five parts were decided
-and unbuilt; **24.3.19a, b and c are built and watched, and d and e are still
-the owner's.**
-
-**What the picture asked for is a row: a face inside a progress ring with the
-level on it, the name, `FTP 190 W` under the name, and the output as the large
-number on the right.** Three of those the live board already had. What was new
-is the face and the FTP, and the question the picture does *not* answer is the
-one that mattered — **what does a ghost look like?**
-
-**The rule is that a ghost is not a person, so it gets no face and no level**,
-and it is 24.3.18a's honesty rule applied to a picture instead of to a number:
-give a generated target a face and the board claims somebody who does not
-exist. **The rider's own past rides fall on the same side and that is the same
-rule rather than an exception to it** — `GhostKind.isPerson` was already false
-for them, and 20.2.6a's own argument against faces on history was *"the same
-face repeated down a list, which is decoration"*. So `RaceIdentity` is nullable
-on every row that carries one and **null is the ordinary case**: on a typical
-board two rows of six are people.
-
-**20.2.6a is closed by that**, three sittings after it wrote the question down
-and declined to guess.
-
-**The cost was a row height, and the decision was to leave the card alone.**
-`RiderAvatar` will not draw a level ring below 56 dp — that is the one place
-the component declines to draw something it was handed, rather than shipping an
-unreadable badge — so a person's row is 64 dp against a ghost's 44. 24.3.18c
-measured this card on the AVD and wrote *six rows fit*; what it actually
-measured was a **height**, and six was only how it was counted. So the ceiling
-did not move: a board with faces on it shows fewer rows at once and scrolls the
-rest, which it already did past the sixth. The alternative was the card growing
-into *View in Overlay Mode*, which is exactly the defect 24.3.18d was caught by.
-
-**The FTP half is a rule being narrowed for the second time in two days, and it
-is written down rather than left in a diff.** 26.4.8 said *"not any
-leaderboard"* on 16 August; 24.3.19b was written the same day and argues the
-opposite. **What separates them is consent, not layout.** An FTP beside a
-housemate's name on the *household panel* publishes a measurement of somebody
-who was never asked; a leaderboard is the one social surface every row has
-opted into being ranked on, and `household_visible` **is** that opt-in (24.2.3).
-The enforcement is structural: `avatar` and `ftp_watts` are read in the same
-join that carries the switch, so a rider who leaves the panel leaves the board
-with their face and their FTP together, and neither can be reintroduced without
-the other. `RiderScore`'s rule 2 now names two screens and no more.
-
-**One defect, found by looking at the tablet and invisible in the diff.** The
-rider's own row is labelled `YOU` — `LiveStanding.YOU`, chosen deliberately so
-it can never collide with a name — and the face beneath it fell back to the
-**label's** initial. Robin's disc said **`Y`**, on a rider who is an `R` on the
-profile selector and in the dashboard greeting. It compiled and it tested green.
-`RaceIdentity` carries the profile's own name now, for the initial only, and the
-same trap was waiting under *"Alex's last ride"* — right by coincidence rather
-than by rule.
-
-**Measured on the tablet AVD with a real race rather than reasoned about.** The
-board excludes any ride without measured watts and an AVD can only produce
-simulated ones, so this needed setting up: a ride with 209 real samples was
-reassigned to Alex and marked `Measured` in `sqlite3`, and `com.pelonot.debug
-.RACE` (24.3.13a) let Robin's own modelled ride race it. Four rows — `○ 150`,
-**ALEX** with her face, ring, `LVL 3` and `FTP 190 W`, **YOU** with Robin's
-disc, `LVL 6` and `FTP 155 W`, and `○ CLASS TARGET`. 207 dp of card against a
-budget of about 315, *Pause ride* and *End ride* untouched, and the two faces
-swapped places mid-ride with nothing reflowing. **810 JVM tests, 0 failures.**
-
-**Phase 24 gains one item and four ticks — 46 of 51.** 24.3.19d and 24.3.19e are
-deliberately open and both have the owner's name on them: **d is whether the
-rank comes back**, which their picture has and their own argument of nine days
-earlier deleted, and e is what `12 MONTHS` and `30 DAYS` should be called.
-Phase 20 and Phase 26 are unchanged in count; what moved in both is prose that
-had gone stale — 20.2.6a's open question, and 26.4.8's *"not any leaderboard"*.
-
-**The seam this sitting found is that a label is not a name.** `YOU` is a
-correct label, chosen for a good reason, and everything that read it as a name
-was wrong in a way nothing could catch: the row was right, the ranking was
-right, the number was right, and one letter on one disc was a different rider.
-Same family as *absent is a claim* — the app has one string for a row and a
-different one for the person on it, and the moment those are conflated is the
-moment a surface starts describing the wrong thing quietly.
-
 ### What to do next, in order
 
-**The owner's inbox is empty and stayed empty for a second sitting.** All five
-entries of 16 August are written up at 20.6 and 24.3.19 and **all seven of the
-items they became are now built or open with the owner's name on them**. What is
+**The owner's inbox is empty and stayed empty for a third sitting.** What is
 still true is that the top of this numbered list is mostly not work — 15.3.2 is
 built and unticked and item 0 is still its reason, and the mailer (15.7.7) is
-still what stands between the *journey* and anybody. **That is why 7.11 was
-picked this sitting rather than item 0**, and it is worth saying plainly: the
-list is ordered by what would help most, and four of its top five entries cannot
-be advanced by a session at all.
+still what stands between the *journey* and anybody. **That is why 11.1b.4 was
+picked this sitting rather than item 0**, the same reasoning that picked 7.11
+last time: the list is ordered by what would help most, and four of its top five
+entries cannot be advanced by a session at all.
 
-**7.11 is built, so one of the two things to hand the owner about 20.6.7 now
+**The overlay docks to four edges now, which was the owner's oldest outstanding
+request** — 31 July, *"should be able to drag it where you want"*. A vertical
+dock re-flows rather than rotating, the choice persists, and 11.1b.4a's corners
+came free once the vertical strip stopped spanning its edge. **What is left is
+one item and it is the owner's**: 11.1b.4b, an alignment *along* a horizontal
+edge for the collapsed strip, where the default decides which corner of
+somebody's film is gone. **Worth the owner's eye on the same trip as 22.2.5**:
+whether a column down the side is the better default on the bike, which is what
+the 31 July note suspected and only a film can settle.
+
+**7.11 is built, so one of the two things to hand the owner about 20.6.7
 exists.** *"The goal should be FTP, not lvl"* — and an FTP that can only ever go
 **up** is not a goal, it is a ratchet. It can go down now, on three consecutive
 hard rides that all came in short, and the rider is shown the three rides rather
@@ -490,13 +505,18 @@ needs the friend with the Apple Watch** and nothing else. And **29.2.2 needs an
 iPhone once** — one exported `.tcx` carried into the Health app, which is the
 whole of what "Apple Health support" honestly means here.
 
-**Phase 7 gains three items and five ticks — 31 of 36**, and the three new ones
-are deliberately open. **Phase 24 is 46 of 51**, with **24.3.19d** and
+**Phase 11 gains one item and four ticks**, and by a straight count of the boxes
+in its file it is now 59 ticked of 71. **Phase 7 is 31 of 36** with three
+deliberately-open items, **Phase 24 is 46 of 51** with **24.3.19d** and
 **24.3.19e** open and both the owner's; **Phase 20 is 35 of 46** and **Phase 26
-is 14 of 19**, all three unchanged this sitting.
+is 14 of 19**, all unchanged this sitting. *(The figures below are carried
+forward from earlier sittings and do not all agree on whether they count boxes
+ticked or boxes left — worth re-measuring rather than trusting.)*
 Everything else is unchanged: **Phase 15 (22 of 64)** is still the outlier,
-followed by **Phase 8 (16 of 53)**, **Phase 11 (15 of 70)** and **Phase 21 (17
-of 35)**. Phase 17/18 is 31 of 44 and Phase 22 is 50 of 56. Phases 27, 28 and 29
+followed by **Phase 8 (16 of 53)** and **Phase 21 (17 of 35)** — *and Phase 11's
+old figure of 15 of 70 was one of the ones counting the wrong way round; it was
+55 ticked of 70 before this sitting.* Phase 17/18 is 31 of 44 and Phase 22 is 50
+of 56. Phases 27, 28 and 29
 are 0/18, 0/24 and 0/12 and all three are deliberately untouched — the owner's
 own weighting on the first two, and the bike's Android version gating the third.
 
@@ -662,6 +682,28 @@ row really has is now genuinely unknown rather than known to be none.
   needs a rider, and CLAUDE.md is right that it is a perishable resource.
 
 **Already done and not to be re-picked:**
+- ~~**11.1b.4, 11.1b.4a, 11.1b.5, 11.1b.6 — the overlay on four edges.**~~
+  **Done in the sixty-second sitting**, watched on the tablet AVD on all four
+  edges in both densities with a class running. **Do not send the timeline to
+  the opposite edge on a vertical dock** — `opposite()` is the obvious extension
+  and it stands a bar on its end whose whole meaning is that time runs left to
+  right; `timelineEdge()` is the second function, and the only invariant is that
+  it never shares an edge with the strip. **Do not make the vertical width
+  `WRAP_CONTENT`**: the strip would be as wide as the tallest chip measured that
+  minute, so the film a rider loses would depend on whether this block
+  prescribes three digits — and the timeline's inset would have nothing to be
+  computed from. **Do not put the drag rule back in the composable, or decide it
+  per `onDrag` callback**: a slow drag never crosses the threshold inside one
+  callback and a fast one fires on whichever axis moved first. **Do not lower
+  the 40 dp threshold** to the old 12 — that was 12 raw *pixels*, 8 dp on this
+  tablet, and a two-dimensional gesture that fires at 8 dp is one a rider trips
+  over. **Do not stretch the vertical strip down the whole side**: it puts pause
+  and stop 400 px clear of the last chip and the strip reads as two objects, and
+  it is also what makes 11.1b.4a's corners impossible. **Do not give the
+  vertical dock its own copy of the four readouts** — one list arranged two ways
+  is why a target band cannot go missing on one dock and not the other. And
+  **do not "restore" the next-up preview** to the column: the countdown replaces
+  it wholesale when it matters and the timeline bar says the rest
 - ~~**7.11 — an FTP that can go down.**~~ **Done in the sixty-first sitting**
   (7.11.1–7.11.5), watched on the tablet AVD with a negative control. **Do not
   rebuild it as the breakthrough check with its sign flipped** — a peak below a
@@ -1268,7 +1310,7 @@ Two notes worth carrying into the next bike session:
 | 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
-| 11 | **HUD-first experience — the current priority** | 🔶 **The overlay prompt now says which of its buttons is permanent (11.6.15)** — three buttons, one writing `hudEnabled = false` for good, and nothing telling the rider that or where it comes back, which on a first ride is the app's primary surface declined by somebody answering a different question. Settings already offered it back under the same name, so the fix is one sentence at the moment of the decision and no new screen; the obvious alternative, a line on the ride screen, is the same defect mirrored at a rider who meant it. **The ride screen's bottom row is a fixed point now (11.6.16–11.6.19).** The owner's three notes of 5 August, and two of them turned out to be one change: the rest of the class **scrolls** and holds every remaining block instead of three, and it is the weighted child of the effort column — so the countdown growing above it is paid for by the list getting shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in silence, which a `Column` does without complaining. `NextUpBlock` reserves the taller of its two states as well, measured rather than typed in. The totals **shrink rather than clip** (`ShrinkToFitText`, a `TextMeasurer` deciding the size once so a number changing twice a second does not pulse) — seen at four digits, `OUTPUT 1083 kJ` and `AVG POWER 1195 W`, on the same tile 11.6.12 caught rendering `63.`. And tapping the distance reads it the other way for one ride only, writing nothing, so Settings stays the single writer of the preference. **The line across the film is gone (11.1b.10)** — the owner reported the same hairline twice, once grey and once orange, which is the answer rather than two reports: a rule drawn edge to edge across somebody's film is a rule whatever colour it is. It still thickens and pulses before an interval change, which is the only part of it that was earning its place. **And the first ride nobody had watched is fixed (11.6.14)**: the overlay permission was raised by `startRide` on the far side of the countdown, so a rider's ten seconds of clipping in bought them a modal, a trip to Android's settings and a class already running. It is asked inside the countdown now and the count stops while the question is outstanding — including while the rider is away answering it, which the obvious implementation got wrong. 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7); resizing and side docking (11.1b.3–11.1b.5) and the rest of 11.2 remain. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |
+| 11 | **HUD-first experience — the current priority** | 🔶 **The overlay prompt now says which of its buttons is permanent (11.6.15)** — three buttons, one writing `hudEnabled = false` for good, and nothing telling the rider that or where it comes back, which on a first ride is the app's primary surface declined by somebody answering a different question. Settings already offered it back under the same name, so the fix is one sentence at the moment of the decision and no new screen; the obvious alternative, a line on the ride screen, is the same defect mirrored at a rider who meant it. **The ride screen's bottom row is a fixed point now (11.6.16–11.6.19).** The owner's three notes of 5 August, and two of them turned out to be one change: the rest of the class **scrolls** and holds every remaining block instead of three, and it is the weighted child of the effort column — so the countdown growing above it is paid for by the list getting shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in silence, which a `Column` does without complaining. `NextUpBlock` reserves the taller of its two states as well, measured rather than typed in. The totals **shrink rather than clip** (`ShrinkToFitText`, a `TextMeasurer` deciding the size once so a number changing twice a second does not pulse) — seen at four digits, `OUTPUT 1083 kJ` and `AVG POWER 1195 W`, on the same tile 11.6.12 caught rendering `63.`. And tapping the distance reads it the other way for one ride only, writing nothing, so Settings stays the single writer of the preference. **The line across the film is gone (11.1b.10)** — the owner reported the same hairline twice, once grey and once orange, which is the answer rather than two reports: a rule drawn edge to edge across somebody's film is a rule whatever colour it is. It still thickens and pulses before an interval change, which is the only part of it that was earning its place. **And the first ride nobody had watched is fixed (11.6.14)**: the overlay permission was raised by `startRide` on the far side of the countdown, so a rider's ten seconds of clipping in bought them a modal, a trip to Android's settings and a class already running. It is asked inside the countdown now and the count stops while the question is outstanding — including while the rider is away answering it, which the obvious implementation got wrong. 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7), and **it docks to all four screen edges (11.1b.4)** — a vertical dock re-flows rather than rotating (11.1b.5): a fixed 244 dp column, the four live numbers in two rows of two, the timeline staying horizontal along the top because time runs left to right, and a pure `HudDock.dragTarget` deciding which edge a two-dimensional drag is asking for. The choice persists (11.1b.6) and 11.1b.4a's corners came free once the vertical strip stopped spanning its edge; **resizing (11.1b.3), the alignment along a horizontal edge (11.1b.4b) and the rest of 11.2 remain**. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |
 | 12 | Ride history & the rider's own record | 🔶 **The question a rider is asked about their ride is now on the screen (12.7).** The owner's note said it was lost below the fold; the measurement moved the item off the screen the note names — on the post-ride summary it sits **265 dp into a 664 dp viewport**, and it was **ride detail** that had it roughly **2,000 dp down**, under four charts and both zone cards, still offering *"You didn't answer for this one — you still can"* to a rider who could not see it. It drifted for a reason the plan can name: 12.6.3 wrote down what the two screens differ by and **where the effort question lives was never on that list**. One `EffortQuestion` in `ui/components` serves both now — the third card shared after `RideFigures` and `RideChartsSection` — and the pair it replaces had already drifted four ways in one file each. **The same fault was on the summary with worse consequences and only a guest could see it**: `GuestDestination` sat below the charts on a screen that draws **no pinned action bar for a guest**, so both the only decision and every way off were about 1,300 dp down; it is above the charts now, and it took `loneCard()` with it, because 22.6 was being broken where nobody could watch a card band across 1,872 dp. The rule left behind is at both call sites: **the charts are the last thing on both screens**. Previously: **The summary and the record are one ride now (12.6)** — the owner asked whether they should be, and the answer was nearly yes with the difference unprincipled: charts were private to ride detail because 16.1 landed there first, so a rider who had just stopped pedalling got six figures and half a screen of black. One `RideChartsSection` and one `buildRideCharts` serve both, and that second extraction is the one that mattered — the rule deciding which FTP draws the zone bands (7.8) was inside a ViewModel, and a second copy is a second answer to the question this app has already got wrong once. **A ride ended by accident can be carried on (12.6.2)**: 8.3d's machinery had never met a *finished* ride, so the reopen now clears `is_complete` and `synced_at`, and it was checked in `sqlite3` rather than on screen because a resumed series comes back contiguous and cannot show any of it. **History's panels are centred where they do not fill the row (22.7.1)**, which is 22.5's assumption arriving on a second screen: at one ride a week most days hold exactly one ride. **And a ride nobody claimed is reachable at all (12.4.1)** — the item said re-filing a guest ride was awkward, and every query on `workouts` takes a `userId` a guest ride does not have, so it appeared on no screen in the app once the summary closed. One owner-less query draws them above the rider's own days under *Not filed against anyone*, and opening one asks whose it was. History, detail, delete, export and migrations done; the rest of housekeeping (12.3.5's tombstone, 12.4.2's filters) remains. **Both screens were rebuilt for the panel in the twenty-third sitting**: history is a two-across grid with the day headings still spanning it, and ride detail is one row of six figures with the charts two-up behind them (22.4.2, 22.4.3). The owner found the regression on the way — the charts had not disappeared, they had been pushed below the fold by a figures grid inside a 760 dp cap |
 | 13 | Units and display preferences | ✅ Complete — miles, and the locale default that goes with them |
 | 14 | Cloud sync that actually reaches the cloud | 🔶 **A row knows whose it is now (14.2.1)** — every ride the app ever uploaded arrived anonymous, and `profiles` was keyed by a per-device autoincrement, so the second bike to sign in would have overwritten the first rider's profile rather than creating its own. `profiles.id` **is** the auth user id; `CloudAccess.accountIdFor` answers the gate and the identity in one lookup because they are one question. **And the app knows what it has not backed up (14.2.4–14.2.6)**: `synced_at`, not backfilled, with the worker draining a profile's backlog oldest-first so a ride that exhausts its retries is still in the queue rather than lost. **14.2.1a is applied and 14.1.6 is finally closed** — after nineteen sittings open, a signed-in tablet drained its backlog and three rides arrived attributed (332, 50 and 1185 samples, `v=1`, 47,890 bytes for the twenty-minute one), read back in the web app rather than in a query. **Four defects were found on the way and not one was catchable by a test**: the cloud's class library and the bundled one were different libraries, so no ride against any bundled class could ever have been backed up (14.2.9); one unacceptable row blocked every ride behind it for ever (14.2.7); nothing drained the backlog on launch (14.2.10); and the payload's `v` never travelled, because `encodeDefaults` is off in production and was on in the tests (14.4.3a). What is left is the other direction — and **Settings now says whether the rides are actually arriving (14.2.3)**, which is the item that would have caught all three of the defects in 14.0 the day they appeared. **14.10.4 is closed by the owner**: there is no community endpoint to fund — this build points at their household project through env vars — so `cloud.properties` stays empty for the stronger reason that the endpoint is *private*. Otherwise: **gated, not shut** — every call still goes through `CloudAccess`, and a profile with no account still makes no request at all, which is rule 1 doing its job now that there is something on the other end of it. **The endpoint is configurable from a clone now (14.10)** — checked-in `cloud.properties`, empty and fenced that way. **The payload format is changed (14.4)** while the cloud still held one row: columnar, versioned inside itself, 228 KB → 49 KB measured — 54 KB since provenance joined it, which is **14.4.7 closed**: `pm` is per sample, because a scalar on the row would have to pick a side in a ride the board dropped out of |

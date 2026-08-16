@@ -113,8 +113,11 @@ resistance band, and the app never presents a modelled watt as a measured one.
 
 **The overlay.** Translucent chips docked to a screen edge over Netflix or
 anything else, collapsing to a single pill, with a spoken coach that ducks under
-the film instead of shouting over it. This is the product's whole reason to
-exist and it works on the real tablet.
+the film instead of shouting over it. **Any of four edges since 11.1b.4** —
+dragged there by its handle mid-ride, and a dock down a side re-flows into a
+narrow column rather than turning the band on its end, which leaves subtitles
+*and* faces clear. This is the product's whole reason to exist and it works on
+the real tablet.
 
 **Classes.** 72 of them, **generated from a catalogue by a build that refuses to
 emit a session breaking a design rule** (`classlibrary/`), bundled in the APK,

@@ -6,6 +6,90 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 16 August 2026 (sixtieth sitting): the board's row, from the owner's own picture
+
+**The inbox was empty and the top of *What to do next* named the work**, which
+does not happen often: *"The first thing worth doing next is 24.3.19 — the
+leaderboard row from the owner's own picture — and it is the only item on this
+list that arrived with a design attached."* Four of its five parts were decided
+and unbuilt; **24.3.19a, b and c are built and watched, and d and e are still
+the owner's.**
+
+**What the picture asked for is a row: a face inside a progress ring with the
+level on it, the name, `FTP 190 W` under the name, and the output as the large
+number on the right.** Three of those the live board already had. What was new
+is the face and the FTP, and the question the picture does *not* answer is the
+one that mattered — **what does a ghost look like?**
+
+**The rule is that a ghost is not a person, so it gets no face and no level**,
+and it is 24.3.18a's honesty rule applied to a picture instead of to a number:
+give a generated target a face and the board claims somebody who does not
+exist. **The rider's own past rides fall on the same side and that is the same
+rule rather than an exception to it** — `GhostKind.isPerson` was already false
+for them, and 20.2.6a's own argument against faces on history was *"the same
+face repeated down a list, which is decoration"*. So `RaceIdentity` is nullable
+on every row that carries one and **null is the ordinary case**: on a typical
+board two rows of six are people.
+
+**20.2.6a is closed by that**, three sittings after it wrote the question down
+and declined to guess.
+
+**The cost was a row height, and the decision was to leave the card alone.**
+`RiderAvatar` will not draw a level ring below 56 dp — that is the one place
+the component declines to draw something it was handed, rather than shipping an
+unreadable badge — so a person's row is 64 dp against a ghost's 44. 24.3.18c
+measured this card on the AVD and wrote *six rows fit*; what it actually
+measured was a **height**, and six was only how it was counted. So the ceiling
+did not move: a board with faces on it shows fewer rows at once and scrolls the
+rest, which it already did past the sixth. The alternative was the card growing
+into *View in Overlay Mode*, which is exactly the defect 24.3.18d was caught by.
+
+**The FTP half is a rule being narrowed for the second time in two days, and it
+is written down rather than left in a diff.** 26.4.8 said *"not any
+leaderboard"* on 16 August; 24.3.19b was written the same day and argues the
+opposite. **What separates them is consent, not layout.** An FTP beside a
+housemate's name on the *household panel* publishes a measurement of somebody
+who was never asked; a leaderboard is the one social surface every row has
+opted into being ranked on, and `household_visible` **is** that opt-in (24.2.3).
+The enforcement is structural: `avatar` and `ftp_watts` are read in the same
+join that carries the switch, so a rider who leaves the panel leaves the board
+with their face and their FTP together, and neither can be reintroduced without
+the other. `RiderScore`'s rule 2 now names two screens and no more.
+
+**One defect, found by looking at the tablet and invisible in the diff.** The
+rider's own row is labelled `YOU` — `LiveStanding.YOU`, chosen deliberately so
+it can never collide with a name — and the face beneath it fell back to the
+**label's** initial. Robin's disc said **`Y`**, on a rider who is an `R` on the
+profile selector and in the dashboard greeting. It compiled and it tested green.
+`RaceIdentity` carries the profile's own name now, for the initial only, and the
+same trap was waiting under *"Alex's last ride"* — right by coincidence rather
+than by rule.
+
+**Measured on the tablet AVD with a real race rather than reasoned about.** The
+board excludes any ride without measured watts and an AVD can only produce
+simulated ones, so this needed setting up: a ride with 209 real samples was
+reassigned to Alex and marked `Measured` in `sqlite3`, and `com.pelonot.debug
+.RACE` (24.3.13a) let Robin's own modelled ride race it. Four rows — `○ 150`,
+**ALEX** with her face, ring, `LVL 3` and `FTP 190 W`, **YOU** with Robin's
+disc, `LVL 6` and `FTP 155 W`, and `○ CLASS TARGET`. 207 dp of card against a
+budget of about 315, *Pause ride* and *End ride* untouched, and the two faces
+swapped places mid-ride with nothing reflowing. **810 JVM tests, 0 failures.**
+
+**Phase 24 gains one item and four ticks — 46 of 51.** 24.3.19d and 24.3.19e are
+deliberately open and both have the owner's name on them: **d is whether the
+rank comes back**, which their picture has and their own argument of nine days
+earlier deleted, and e is what `12 MONTHS` and `30 DAYS` should be called.
+Phase 20 and Phase 26 are unchanged in count; what moved in both is prose that
+had gone stale — 20.2.6a's open question, and 26.4.8's *"not any leaderboard"*.
+
+**The seam this sitting found is that a label is not a name.** `YOU` is a
+correct label, chosen for a good reason, and everything that read it as a name
+was wrong in a way nothing could catch: the row was right, the ranking was
+right, the number was right, and one letter on one disc was a different rider.
+Same family as *absent is a claim* — the app has one string for a row and a
+different one for the person on it, and the moment those are conflated is the
+moment a surface starts describing the wrong thing quietly.
+
 ## 16 August 2026 (fifty-ninth sitting): the face the owner asked for, and the number they asked to see beside it
 
 **The inbox had two entries when this sitting started, a third arrived while

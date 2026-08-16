@@ -185,7 +185,7 @@ less of the screen and less of the attention.
 - [ ] **11.1b.3** **Resizable**, so a rider who wants three big numbers and a
       rider who wants the whole timeline can both have it. Persisted like the
       dock
-- [ ] **11.1b.4** **Dock to the left and right edges too**, not only top and
+- [x] **11.1b.4** **Dock to the left and right edges too**, not only top and
       bottom — **asked for directly by the owner, 31 July 2026**: "I would like
       a version of the HUD on the right and left too, should be able to drag it
       where you want." So this is four edges and one gesture, not two edges and
@@ -195,7 +195,36 @@ less of the screen and less of the attention.
       `HudDock` is a two-value enum with an `opposite()` and a `gravityFor()`
       either side of it; both extend to four cleanly, and the drag detector on
       the handle is currently `detectVerticalDragGestures`, which does not
-- [ ] **11.1b.4a** **Corners, once collapsed** — the owner's observation on
+
+      ***Done in the sixty-second sitting and watched on the tablet AVD on all
+      four edges, expanded and collapsed, with a class running.*** *Three things
+      the item did not anticipate, each of which is a rule rather than a detail.*
+
+      ***A vertical dock is a different window, not the same one rotated.***
+      *`WRAP_CONTENT` on the width would have worked and is the wrong answer:
+      the strip would then be as wide as whatever the tallest chip happened to
+      measure that minute, so the amount of film a rider loses would depend on
+      whether their class is prescribing a three-digit target. It is a constant,
+      `HudDock.VERTICAL_WIDTH_DP` = 244 — which is also what lets the timeline
+      bar inset itself by exactly the right amount rather than guessing.*
+
+      ***The timeline does not go to the opposite side.*** *`opposite()` was the
+      obvious extension and it is wrong for a vertical dock, because time runs
+      left to right: standing the bar on its end is a redesign of the one thing
+      on this HUD nobody has complained about. `timelineEdge()` is a second
+      function beside it — the far edge for a band, the **top** for a column,
+      because the bottom is where subtitles are — and the invariant a test holds
+      is only that it never shares an edge with the strip.*
+
+      ***The drag rule left the composable.*** *One axis and a per-callback
+      threshold does not survive contact with four edges: a slow drag never
+      crosses 12 px in a single `onDrag` and a fast one fires on whichever axis
+      happened to move first. `HudDock.dragTarget` is pure, measures the **whole
+      gesture**, and lets the **dominant axis** decide, so a drag that wanders
+      is read as where it mostly went. The threshold is 40 dp rather than 12 raw
+      pixels — which on this 240 dpi tablet was 8 dp, a gesture a rider trips
+      over reaching past the handlebars.* **10 JVM tests**
+- [x] **11.1b.4a** **Corners, once collapsed** — the owner's observation on
       seeing the compact strip: "in compact mode there are more options, bottom
       left, bottom middle, right bottom, right top." He is right, and it falls
       out of the redesign rather than being extra work. Collapsed, the HUD is
@@ -205,16 +234,74 @@ less of the screen and less of the attention.
       different position sets, which is a thing `HudDock` cannot currently
       express: it is one enum shared by both. Settle that before writing the
       drag handling for 11.1b.4
-- [ ] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
+
+      ***Settled in the sixty-second sitting, and the answer is that the two
+      states do not need different position sets after all — because the
+      expanded strip stopped wanting a full edge.*** *The vertical window wraps
+      its content and is centred on the side (see 11.1b.5 for why), so on a
+      vertical dock **both** states are already a floating object against one
+      edge rather than a band across it. What `HudDock` would still not express
+      is an **alignment along** an edge — bottom-left against bottom-centre —
+      and that is one more preference rather than a second enum: the edge and
+      the alignment are independent, they persist separately, and the alignment
+      is meaningless while the strip spans the edge it is on.*
+
+      **What is left of this item is that alignment, and it is deliberately not
+      built.** Collapsed on a *horizontal* dock the strip is still a full-width
+      band with a chip at one end, so the corner the owner asked for is a real
+      gap there and only there. It is one `Arrangement` and one stored value,
+      and it wants the owner's eye on where the default should sit rather than a
+      session's guess — **11.1b.4b**
+- [ ] **11.1b.4b** **An alignment along the edge, for the collapsed strip.**
+      What 11.1b.4a leaves: `HudDock` says *which edge*, and collapsed on a
+      horizontal dock the chip sits at the start of a 1280 dp band with the
+      controls at the far end. The owner asked for corners and the vertical
+      docks now give them for free; the horizontal ones do not. One `Arrangement`
+      and one preference — but the **default** is the owner's call and not a
+      session's, because it decides which corner of somebody's film is gone
+- [x] **11.1b.5** The layout has to genuinely re-flow for a vertical dock, not
       rotate: the timeline, the zone badge and the live numbers each need a tall
       arrangement. Extends 11.1.4, which only ever considered top/bottom. The
       chip redesign in 11.1b.1 makes this materially easier than it was — a
       column of chips is the same components in a `Column` — but the metrics
       chip holds four readouts in a `Row` and a 200 dp-wide dock will not take
       them side by side
-- [ ] **11.1b.6** Every one of these choices persists, and the HUD comes back
+
+      ***Done, and the item was right that the metrics chip is where the work
+      is.*** *Four readouts become **two rows of two**, keeping the pairing the
+      row already reads left to right — what you change on the top row, what it
+      produces underneath — so a rider who has moved the strip does not have to
+      re-learn where a number is. They are one list of four arranged either way
+      rather than two copies, because four readouts written out twice is four
+      places for a target band or a `--` to go quietly missing on one dock and
+      not the other.*
+
+      ***Two things are dropped rather than squeezed, and one is a measurement
+      the item did not have.*** *The **next-up preview** goes: a column has no
+      width to trade against a countdown that is never optional, and the
+      timeline bar still runs across the top edge saying the same thing more
+      quietly. The **zone name wraps** instead of ellipsising — `ACTIVE
+      RECOVERY` had become `ACTIVE RECO…`, and a column has the one thing the
+      band never had, which is height.*
+
+      ***And the vertical strip does not span the edge, which is the decision
+      that changed 11.1b.4a.*** *Built full-height first, and it put pause and
+      stop **400 px clear of the last chip** with nothing in between — two
+      objects rather than one instrument, which is 11.1b.7's own open worry
+      arriving from a different direction. Wrapped and centred on the side, the
+      controls sit under the numbers and the top and bottom of that edge go back
+      to the film as well as the middle of the screen.*
+- [x] **11.1b.6** Every one of these choices persists, and the HUD comes back
       where and how the rider left it. *Opacity and dock do; the rest of this
       waits on 11.1b.3 and 11.1b.4 existing*
+
+      ***Ticked in the sixty-second sitting for what exists.*** *Watched rather
+      than reasoned about: the strip was dragged from Top to Bottom to Right to
+      Left mid-ride, the app was restarted between two of those, and Settings'
+      **Position** row — four chips now, not two — read back `Left` at the end.
+      The write path is unchanged and was already right: `onDockChanged` →
+      `settingsRepository.setHudDock`, one owner of the preference.* **11.1b.3
+      is the only choice still not persisted, because it does not exist**
 - [x] **11.1b.7** **The class timeline moved to the opposite screen edge**, in
       an overlay window of its own. Splits the furniture into two thin bands
       instead of one tall block, and because nothing on it is interactive that
@@ -229,6 +316,15 @@ less of the screen and less of the attention.
       bike rather than by argument, and worth considering alongside 11.1b.4 —
       the answer may well differ for a vertical dock, where the opposite edge
       is a *column* and the timeline would have to run down it
+
+      ***The vertical half of that last sentence is answered by 11.1b.4 and the
+      answer is no.*** *The bar stays horizontal on every dock and takes the top
+      edge when the strip is down a side, insetting itself by the strip's width
+      so the two never meet in a corner — `HudDock.timelineEdge()`. Standing a
+      timeline on its end is a redesign of the one element on this HUD nobody
+      has complained about, and time running left to right is not a convention
+      this app gets to spend. **What is still open is the owner's half**: whether
+      the split reads as one instrument at all, which needs the bike*
 - [ ] **11.1b.8** **The strip still eats touches between the chips.** The window
       is full-width and the gaps are now invisible, so a rider tapping their
       film in the space between two chips gets nothing and cannot see why. It
