@@ -408,11 +408,13 @@ bike, and the one the 22.8 measurements were not taken in. It is the same shape
 as `pm clear` being the instrument for 20.4: **the empty states are the ones
 nobody sits in on purpose.**
 
-**Phase 22 moved from 44 of 54 to 48 of 60** — 22.9 is six new items, four of
-them ticked, with **22.9.2** (centring, the fallback nobody needed) and
-**22.9.5** (the guest and the never-ridden profile, still short and now measured
-rather than predicted) deliberately open. **Phase 29 is new at 0 of 16** and
-**Phase 21 gains 21.7 at 15 of 35**. Everything else is unchanged: **Phase 15
+**Phase 22 gains six items and four ticks — 50 of 56 by a count of the
+checkboxes in its own file**, with **22.9.2** (centring, the fallback nobody
+needed) and **22.9.5** (the guest and the never-ridden profile, still short and
+now measured rather than predicted) deliberately open. **Phase 29 is new at 0 of
+12** and **Phase 21 gains 21.7's three, at 17 of 35**. (Those three totals are
+`grep -c` on the phase files; earlier figures in this section were counted
+another way and should not be diffed against them.) Everything else is unchanged: **Phase 15
 (22 of 64)** is still the outlier, followed by **Phase 8 (16 of 53)**, **Phase 11
 (15 of 70)** and **Phase 17/18 (14 of 44)**. Phases 27 and 28 are 18/18 and 24/24
 and both are deliberately untouched — the owner's own weighting.
