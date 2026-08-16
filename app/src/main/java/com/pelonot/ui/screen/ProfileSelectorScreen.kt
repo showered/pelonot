@@ -1,6 +1,7 @@
 package com.pelonot.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -57,13 +60,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.identity.Avatar
-import com.pelonot.domain.identity.AvatarMark
+import com.pelonot.domain.identity.AvatarFace
 import com.pelonot.domain.identity.AvatarPaint
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.ui.components.RiderAvatar
 import com.pelonot.ui.components.RiderScore
-import com.pelonot.ui.components.icon
+import com.pelonot.ui.components.drawable
 import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -229,17 +232,20 @@ fun ProfileSelectorScreen(
                     profiles.forEach { user ->
                         ProfileTile(
                             name = user.name,
-                            // 26.1.1, the owner's own example. It read
-                            // `150 W FTP`: two pieces of jargon and the least
-                            // useful fact about a rider on a screen whose only
-                            // question is *which of you is it*. Nobody picks
-                            // their profile by their FTP, the number moves on
-                            // its own (Phase 7), and the FTP already has two
-                            // screens of its own. A name and a face is the
-                            // whole answer.
                             avatar = Avatar.parse(user.avatar, user.localUserId),
                             size = tileSize,
                             level = riderLevels[user.localUserId] ?: RiderLevel.of(RidingTotals()),
+                            // **26.1.1 undone here and nowhere else** (20.6.5,
+                            // 26.4.8). That item took `150 W FTP` off this tile
+                            // at the owner's request and every sentence of its
+                            // argument still holds; what the note of 16 August
+                            // adds is not about the picker's job but about the
+                            // rider's relationship with their own number —
+                            // *"I feel like FTP and lvl are both important"*,
+                            // and *"the goal should be FTP, not lvl"*. A number
+                            // the app moves by itself (Phase 7) and never shows
+                            // is a number nobody can argue with.
+                            ftpWatts = user.ftpWatts,
                             onClick = { onProfileSelected(user) },
                             onLongClick = { editing = user.localUserId }
                         )
@@ -359,6 +365,7 @@ private fun ProfileTile(
     avatar: Avatar,
     size: Dp,
     level: RiderLevel,
+    ftpWatts: Int,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -392,7 +399,17 @@ private fun ProfileTile(
             // Sized off the tile, which is itself sized off the screen
             // (20.1.2): a fixed disc would leave a small letter marooned in a
             // large circle, which is the fault that rule exists for.
-            RiderAvatar(name = name, avatar = avatar, size = size * 0.44f)
+            //
+            // **The level rides on the face** (20.6.4) rather than sitting in a
+            // row of its own under the name, which is the owner's *"lvl should
+            // be part of the avatar"* and also what buys the row the FTP goes
+            // in: the tile is the same height it was.
+            RiderAvatar(
+                name = name,
+                avatar = avatar,
+                size = size * 0.44f,
+                level = level
+            )
 
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
@@ -405,8 +422,19 @@ private fun ProfileTile(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(Modifier.size(MaterialTheme.spacing.small))
-            RiderScore(level = level)
+            Text(
+                // **`FTP 150 W`, not `150 W FTP`.** The rejected form led with
+                // the number, which made it a headline on a tile whose headline
+                // is the rider's name; label first reads as a fact *about* them
+                // and is scanned past by anyone who did not come for it. Quiet
+                // on purpose — the eye still lands on the face, then the name,
+                // and this is third (20.6.5).
+                text = "FTP $ftpWatts W",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
         }
     }
 }
@@ -512,8 +540,8 @@ private fun ProfileEditDialog(
         Avatar.parse(profile.avatar, profile.localUserId)
     }
     var paint by rememberSaveable(profile.localUserId) { mutableStateOf(current.paint) }
-    var mark by rememberSaveable(profile.localUserId) { mutableStateOf(current.mark) }
-    val chosen = Avatar(paint, mark)
+    var face by rememberSaveable(profile.localUserId) { mutableStateOf(current.face) }
+    val chosen = Avatar(paint, face)
 
     if (confirmingDelete) {
         AlertDialog(
@@ -560,9 +588,9 @@ private fun ProfileEditDialog(
                 Spacer(Modifier.size(MaterialTheme.spacing.medium))
                 AvatarPicker(
                     paint = paint,
-                    mark = mark,
+                    face = face,
                     onPaint = { paint = it },
-                    onMark = { mark = it }
+                    onFace = { face = it }
                 )
 
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
@@ -594,19 +622,25 @@ private fun ProfileEditDialog(
 }
 
 /**
- * Choosing a face (20.2.1, 20.2.3).
+ * Choosing a face (20.2.1, 20.2.3, 20.6.1).
  *
- * **A colour and, if the rider wants one, a mark** — two short rows rather than
- * a grid of every combination, because eight colours times seven faces is
- * fifty-six tiles and a decision nobody asked for. Phase 26's rule is about
- * saying less, and it applies to controls as much as to sentences (26.3): this
- * is a *pick*, so it is allowed more than three answers, but the ceiling is
- * still how many things are told apart at a glance rather than how many exist.
+ * **A colour and, if the rider wants one, a face** — two rows rather than a
+ * grid of every combination, because eight colours times twenty faces is a
+ * hundred and sixty tiles and a decision nobody asked for. Phase 26's rule is
+ * about saying less and it applies to controls as much as to sentences (26.3):
+ * this is a *pick*, so it is allowed more than three answers, but the ceiling
+ * is how many things are told apart at a glance rather than how many exist.
  *
- * **The rider's own initial is the first option in the mark row and it is
+ * **Twenty faces at the owner's own choice** (20.6.1), and they are drawn
+ * people rather than the six Material icons this dialog used to offer — *"the
+ * ones we have are not good"*. Each swatch shows the face on the colour that is
+ * currently chosen, so the row is a preview of the outcome rather than a
+ * catalogue: changing the colour re-tints all twenty at once.
+ *
+ * **The rider's own initial is the first option in the face row and it is
  * selected by default.** It is not an absence dressed up as a choice: an
  * initial is unambiguous between two housemates with different names, and a
- * mark is what serves the household where two names start with the same letter
+ * face is what serves the household where two names start with the same letter
  * — the one case an initial genuinely cannot.
  *
  * Nothing here is a required step. A rider who never opens this dialog has a
@@ -617,9 +651,9 @@ private fun ProfileEditDialog(
 @Composable
 private fun AvatarPicker(
     paint: AvatarPaint,
-    mark: AvatarMark?,
+    face: AvatarFace?,
     onPaint: (AvatarPaint) -> Unit,
-    onMark: (AvatarMark?) -> Unit
+    onFace: (AvatarFace?) -> Unit
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -643,30 +677,37 @@ private fun AvatarPicker(
     ) {
         // The initial first, because it is what the rider already has.
         Swatch(
-            selected = mark == null,
-            fill = MaterialTheme.colorScheme.surfaceContainerHighest,
+            selected = face == null,
+            fill = AvatarPalette[paint.ordinal],
             label = "Your initial",
-            onClick = { onMark(null) }
+            size = FACE_SWATCH,
+            onClick = { onFace(null) }
         ) {
             Text(
                 text = "A",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.Black
             )
         }
-        AvatarMark.entries.forEach { option ->
+        AvatarFace.entries.forEach { option ->
             Swatch(
-                selected = option == mark,
-                fill = MaterialTheme.colorScheme.surfaceContainerHighest,
-                label = option.name,
-                onClick = { onMark(option) }
+                selected = option == face,
+                fill = AvatarPalette[paint.ordinal],
+                // The ids are seeds and mean nothing to a rider (`lark`,
+                // `dune`), so a screen reader is told the position instead:
+                // there is no honest name for a drawn stranger's face, and
+                // inventing one would name a person the app knows nothing
+                // about.
+                label = "Face ${option.ordinal + 1}",
+                size = FACE_SWATCH,
+                onClick = { onFace(option) }
             ) {
-                Icon(
-                    imageVector = option.icon,
+                Image(
+                    painter = painterResource(option.drawable),
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -697,11 +738,12 @@ private fun Swatch(
     fill: Color,
     label: String,
     onClick: () -> Unit,
+    size: Dp = 48.dp,
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(size)
             .clip(MaterialTheme.expressiveShapes.pill)
             .border(
                 width = if (selected) 3.dp else 1.dp,
@@ -723,7 +765,7 @@ private fun Swatch(
             modifier = Modifier
                 // Unselected fills to the outline, so only the chosen one
                 // changes shape and the row does not shimmer as it is scanned.
-                .size(if (selected) 38.dp else 48.dp)
+                .size(if (selected) size - SWATCH_INSET else size)
                 .clip(MaterialTheme.expressiveShapes.pill)
                 .background(fill),
             contentAlignment = Alignment.Center,
@@ -742,3 +784,16 @@ private const val NO_PROFILE = Int.MIN_VALUE
 private val TILE_GAP = 24.dp
 private val MIN_TILE = 150.dp
 private val MAX_TILE = 260.dp
+
+/**
+ * The face swatches are larger than the colour ones, and the reason is that
+ * they carry a drawing rather than a flat fill. At 48 dp — the colour row's
+ * size, and the touch target the rest of this screen is built to — a selected
+ * Open Peeps figure is inset to 38 dp and stops being a person you can tell
+ * from the one beside it, which is the entire basis on which the set was
+ * chosen (`avatars/README.md`).
+ */
+private val FACE_SWATCH = 64.dp
+
+/** How far the fill is inset when a swatch is the chosen one (20.2.3a). */
+private val SWATCH_INSET = 10.dp

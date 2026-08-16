@@ -20,7 +20,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
@@ -43,10 +46,19 @@ import com.pelonot.ui.theme.spacing
  *    it is the one word this badge is allowed (26.4.2) — the number's only
  *    honest claim is *has ridden more*, and any label richer than that is the
  *    reader being handed a meaning the number does not have.
- * 2. **Never beside the FTP as if they were the same kind of thing** (26.4.5).
+ * 2. **Never beside the FTP as if they were the same kind of thing** (26.4.5),
+ *    **and the owner has narrowed this one rather than lifted it** (26.4.8).
  *    The FTP is a measurement with two screens of its own; this is an
  *    accumulation. Putting them in one row invites the reading that a higher
- *    level is a fitter rider, which is the one thing it must never say.
+ *    level is a fitter rider, which is the one thing it must never say — and
+ *    the owner's own note is the best statement of why: *"someone could be lvl
+ *    20 but only 50 FTP, so not a very good rider"* (20.6.7). Since 20.6.5 the
+ *    **profile selector** draws both about one rider: the badge on the face,
+ *    the FTP as a caption under the name, in different sizes on different rows
+ *    with the name between them. That is the one screen, it is the shape the
+ *    rule was always about — a *row* presenting them as two readings of one
+ *    instrument — and nothing else may follow it. Not the greeting, not the
+ *    household panel, not a leaderboard, not the overlay.
  * 3. **Never coloured amber.** Amber is this app's off-target signal (11.8.3),
  *    and a rider's own identity must not wear the colour that means *you are
  *    wrong*. It is the brand's own container colour, which is what the rest of
@@ -74,7 +86,23 @@ import com.pelonot.ui.theme.spacing
 @Composable
 fun RiderScore(
     level: RiderLevel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * The size to draw at when this badge is riding on a rider's face
+     * (20.6.4), or null for the ordinary pill beside a name. It is the height
+     * the contents are scaled *from* rather than a fixed height imposed on
+     * them, so a rider who has turned the system font up gets a taller badge
+     * instead of a clipped one.
+     *
+     * **A parameter rather than a second component**, which is the whole point
+     * of this file: the profile tile now overlays the badge on the avatar and
+     * two other screens draw it beside the name, and a private copy in the
+     * selector is exactly how the avatar itself came to be on the power-zone
+     * palette. Everything the four rules say is true of both forms — same
+     * words, same colour, same track, same guest rule — and only the type
+     * scale and the padding follow the height.
+     */
+    compact: Dp? = null
 ) {
     val shape = MaterialTheme.expressiveShapes.pill
     val track = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.35f)
@@ -100,13 +128,21 @@ fun RiderScore(
                     size = Size(size.width * level.progress, trackPx)
                 )
             }
-            .defaultMinSize(minWidth = MIN_WIDTH)
+            // A compact badge keeps the *proportion* of the minimum width, so
+            // `LVL 8` and `LVL 12` are still one object down a row of tiles —
+            // the reason [MIN_WIDTH] exists — without a 64 dp pill hanging off
+            // the sides of a 66 dp face.
+            .defaultMinSize(minWidth = compact?.times(MIN_WIDTH_RATIO) ?: MIN_WIDTH)
             .semantics { contentDescription = describe(level) },
         contentAlignment = Alignment.Center
     ) {
         Row(
             modifier = Modifier.padding(
-                horizontal = MaterialTheme.spacing.medium,
+                horizontal = if (compact != null) {
+                    MaterialTheme.spacing.small
+                } else {
+                    MaterialTheme.spacing.medium
+                },
                 vertical = MaterialTheme.spacing.extraSmall
             ),
             verticalAlignment = Alignment.CenterVertically
@@ -114,6 +150,9 @@ fun RiderScore(
             Text(
                 text = "LVL",
                 style = MaterialTheme.typography.labelSmall,
+                fontSize = compact?.let { (it.value * LABEL_SCALE).sp } ?: TextUnit.Unspecified,
+                lineHeight = compact?.let { (it.value * LABEL_SCALE * 1.2f).sp }
+                    ?: TextUnit.Unspecified,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
             )
@@ -121,6 +160,9 @@ fun RiderScore(
             Text(
                 text = level.level.toString(),
                 style = MaterialTheme.typography.titleSmall,
+                fontSize = compact?.let { (it.value * NUMBER_SCALE).sp } ?: TextUnit.Unspecified,
+                lineHeight = compact?.let { (it.value * NUMBER_SCALE * 1.2f).sp }
+                    ?: TextUnit.Unspecified,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -152,5 +194,15 @@ private fun describe(level: RiderLevel): String {
  * differently-sized ones, which is what a badge in a list of them has to be.
  */
 private val MIN_WIDTH = 64.dp
+
+/**
+ * The same rule as [MIN_WIDTH], expressed against the height so a compact
+ * badge keeps its shape at whatever size the face it rides on happens to be.
+ */
+private const val MIN_WIDTH_RATIO = 2.4f
+
+/** The number, and then the word, as fractions of a compact badge's height. */
+private const val NUMBER_SCALE = 0.44f
+private const val LABEL_SCALE = 0.30f
 
 private val TRACK = 2.dp

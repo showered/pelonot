@@ -165,12 +165,9 @@ is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 standard heart-rate service rather than on a name, so the item is a measurement
 with the friend's watch rather than a feature).
 
-*Empty. The two entries of 16 August 2026 — **the avatars not being good enough**
-and **the level and the FTP belonging on the face** — are written up together at
-**20.6**, with the rule change the second one forces at **26.4.8**. The third
-note, which arrived while that write-up was being typed — **a rider could be
-level 20 on an FTP of 50** — is at **20.6.7**, and it is the sharpest thing
-anybody has said about `RiderLevel` since it was built.*
+### Leaderboard idea, and a possible resolution to the lvl/ftp thing
+
+Ok please see `leaderboard-idea.png`. Something like that for leaderboard please! And this could solve the lvl/ftp problem. Let's make `lvl` part of the avatar, like that. And then show FTP as appropriate on which ever screen requires it. Login screen, leaderboard screen, for sure, and maybe others too. Happy for you to use judgement.
 
 ---
 

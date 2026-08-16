@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * PLAN 20.2.1, 20.2.2, 20.2.3.
+ * PLAN 20.2.1, 20.2.2, 20.2.3, 20.6.1, 20.6.3.
  *
  * The cases worth pinning are the ones about **absence and about values this
  * build does not recognise**, because both reach the first screen anybody sees
@@ -16,19 +16,19 @@ class AvatarTest {
 
     @Test
     fun `a stored choice round-trips`() {
-        val chosen = Avatar(AvatarPaint.Rose, AvatarMark.Bolt)
+        val chosen = Avatar(AvatarPaint.Rose, AvatarFace.Lark)
         assertEquals(chosen, Avatar.parse(chosen.store(), localUserId = 1))
     }
 
     @Test
-    fun `a colour with no mark round-trips, and the mark stays absent`() {
+    fun `a colour with no face round-trips, and the face stays absent`() {
         val chosen = Avatar(AvatarPaint.Sky)
         assertEquals("sky", chosen.store())
         val read = Avatar.parse("sky", localUserId = 1)
         assertEquals(AvatarPaint.Sky, read.paint)
         // Null means *the rider's own initial*, which is a different thing from
-        // any mark in the set and must not be filled in with one.
-        assertNull(read.mark)
+        // any face in the set and must not be filled in with one.
+        assertNull(read.face)
     }
 
     @Test
@@ -48,10 +48,10 @@ class AvatarTest {
     }
 
     @Test
-    fun `the default never wears a mark`() {
-        // A mark is a thing the rider chose. Handing one out would make
+    fun `the default never wears a face`() {
+        // A face is a thing the rider chose. Handing one out would make
         // "chosen" and "not chosen" indistinguishable on screen.
-        (0..20).forEach { assertNull(Avatar.defaultFor(it).mark) }
+        (0..20).forEach { assertNull(Avatar.defaultFor(it).face) }
     }
 
     @Test
@@ -63,10 +63,23 @@ class AvatarTest {
     }
 
     @Test
-    fun `a known colour with an unknown mark keeps the colour`() {
+    fun `a known colour with an unknown face keeps the colour`() {
         val read = Avatar.parse("leaf:unicorn", localUserId = 5)
         assertEquals(AvatarPaint.Leaf, read.paint)
-        assertNull(read.mark)
+        assertNull(read.face)
+    }
+
+    @Test
+    fun `a retired icon mark degrades to the colour and the initial`() {
+        // 20.6.3. The six `AvatarMark` ids are gone, and the one profile on the
+        // test device that chose `rose:bolt` must become rose with an initial
+        // rather than a crash or a blank disc. Nothing is migrated: the column
+        // keeps the string the rider wrote.
+        listOf("bolt", "mountain", "paw", "note", "rocket", "coffee").forEach { retired ->
+            val read = Avatar.parse("rose:$retired", localUserId = 5)
+            assertEquals(AvatarPaint.Rose, read.paint)
+            assertNull(read.face)
+        }
     }
 
     @Test
@@ -81,21 +94,27 @@ class AvatarTest {
     @Test
     fun `ids are unique and stable words, because the column stores them`() {
         assertEquals(AvatarPaint.entries.size, AvatarPaint.entries.map { it.id }.toSet().size)
-        assertEquals(AvatarMark.entries.size, AvatarMark.entries.map { it.id }.toSet().size)
+        assertEquals(AvatarFace.entries.size, AvatarFace.entries.map { it.id }.toSet().size)
         // Renaming one silently re-colours every rider who chose it, so the
         // words are pinned here as well as in the KDoc.
         assertEquals(
             listOf("periwinkle", "turquoise", "leaf", "rose", "lilac", "sky", "sand", "slate"),
             AvatarPaint.entries.map { it.id }
         )
+        // The face ids are the seeds `avatars/fetch.sh` rendered from, so they
+        // are pinned in three places on purpose: here, the script, and the
+        // `res/drawable-nodpi/avatar_*.png` filenames.
         assertEquals(
-            listOf("bolt", "mountain", "paw", "note", "rocket", "coffee"),
-            AvatarMark.entries.map { it.id }
+            listOf(
+                "ash", "bay", "cove", "dune", "elm", "fern", "glen", "haze", "isle", "kite",
+                "lark", "moss", "nova", "opal", "pine", "quill", "reed", "sage", "tide", "vale"
+            ),
+            AvatarFace.entries.map { it.id }
         )
     }
 
     @Test
-    fun `a mark and no mark are different avatars`() {
-        assertNotEquals(Avatar(AvatarPaint.Rose), Avatar(AvatarPaint.Rose, AvatarMark.Paw))
+    fun `a face and no face are different avatars`() {
+        assertNotEquals(Avatar(AvatarPaint.Rose), Avatar(AvatarPaint.Rose, AvatarFace.Pine))
     }
 }

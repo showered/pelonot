@@ -16,3 +16,7 @@ local.properties
 /web/_session.json
 # The live auth config, saved as 15.7.6's rollback. Never committed.
 /supabase/_auth_config.json
+
+# Avatar candidate sheets — regenerate with avatars/browse.sh
+avatars/.candidates/
+avatars/candidates.html

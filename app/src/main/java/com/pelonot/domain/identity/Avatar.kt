@@ -9,10 +9,11 @@ package com.pelonot.domain.identity
  * database that cannot be exported, synced or backed up cheaply, and this app
  * already exports and syncs.
  *
- * **The set is checked in and drawn, not fetched** (20.2.1). The colours are
- * this project's own and the marks are Material icons already in the build, so
- * there is no licence question to answer and nothing to download — which
- * matters because the app starts a ride with no network and that is not
+ * **The set is checked in and drawn, not fetched** (20.2.1, 20.6.1). The
+ * colours are this project's own and the twenty faces are **Open Peeps by Pablo
+ * Stanley, CC0**, vendored into `res/drawable-nodpi` by `avatars/fetch.sh` — a
+ * script that runs by hand, once, and whose output is committed. Nothing in the
+ * app calls an API, because it starts a ride with no network and that is not
  * negotiable (19.4). The identicon route 20.2.1 offered as the alternative was
  * not taken: an identicon is a *hash*, so it cannot be chosen, and the whole
  * point of a face on a household bike is that the rider picked it.
@@ -26,16 +27,16 @@ package com.pelonot.domain.identity
  */
 data class Avatar(
     val paint: AvatarPaint,
-    /** The mark on the disc, or null for the rider's own initial. */
-    val mark: AvatarMark? = null
+    /** The face on the disc, or null for the rider's own initial. */
+    val face: AvatarFace? = null
 ) {
 
     /** The value written to `profiles.avatar`. See [parse] for the grammar. */
-    fun store(): String = if (mark == null) paint.id else "${paint.id}:${mark.id}"
+    fun store(): String = if (face == null) paint.id else "${paint.id}:${face.id}"
 
     companion object {
         /**
-         * The separator between a colour and a mark.
+         * The separator between a colour and a face.
          *
          * A future photograph avatar (20.2.4) is a **different scheme** and
          * must carry its own prefix rather than squeezing a filename in here;
@@ -83,13 +84,20 @@ data class Avatar(
             val paint = AvatarPaint.entries.firstOrNull { it.id == paintId }
                 ?: return defaultFor(localUserId)
 
-            val markId = raw.substringAfter(SEP, missingDelimiterValue = "")
-            if (markId.isEmpty()) return Avatar(paint)
+            val faceId = raw.substringAfter(SEP, missingDelimiterValue = "")
+            if (faceId.isEmpty()) return Avatar(paint)
 
-            // A known colour with an unknown mark keeps the colour: the rider
+            // A known colour with an unknown face keeps the colour: the rider
             // chose both, and throwing away the half we understand as well
             // would lose more than it protects.
-            return Avatar(paint, AvatarMark.entries.firstOrNull { it.id == markId })
+            //
+            // **This clause is cashed in for the first time by 20.6.3.** It was
+            // written for a *newer* app's value reaching an older build, and
+            // the six icon marks it now catches are the opposite case — a
+            // retired set being read by the build that retired it. A rider who
+            // chose `rose:bolt` becomes rose with their own initial, and their
+            // column is left exactly as they wrote it.
+            return Avatar(paint, AvatarFace.entries.firstOrNull { it.id == faceId })
         }
     }
 }
@@ -134,29 +142,61 @@ enum class AvatarPaint(val id: String) {
 }
 
 /**
- * The marks a rider can wear instead of their initial.
+ * The faces a rider can wear instead of their initial (20.6.1).
  *
- * **The initial is the default and stays the default** — it needs no choosing,
- * it is never ambiguous between two housemates with different names, and it is
- * what the screen has always drawn. A mark is for the rider who wants one, and
- * for the household where two people's names start with the same letter, which
- * is the case an initial genuinely cannot serve.
+ * **Twenty drawn people, and they replace six Material icons.** The owner's
+ * note on the set the fifty-eighth sitting built was *"the ones we have are not
+ * good"* — a judgement about how the first screen anybody sees actually looks,
+ * which is the one thing a session cannot take from a diff. The set is **Open
+ * Peeps by Pablo Stanley, CC0**, chosen from five CC0 candidates by rendering
+ * each on this app's own disc at **32 dp** as well as large: that is the
+ * household row and the dashboard greeting, and it is where the line-art sets
+ * collapse to a hairline. `avatars/README.md` has the comparison and the
+ * licence.
  *
- * Six, deliberately. This is a pick and not a judgement, so 26.3's argument
- * about ten answers where three will do does not apply with its full force —
- * but a grid of thirty is still a decision nobody asked for, and the honest
- * ceiling is *how many silhouettes are told apart at 30 dp from two metres*.
+ * **The initial is still the default and still first in the picker.** It needs
+ * no choosing, it is never ambiguous between two housemates with different
+ * names, and it is what a rider who has never opened the dialog already has.
+ * A face is for the rider who wants one — and for the household where two
+ * names start with the same letter, the one case an initial genuinely cannot
+ * serve.
  *
- * Kept free of anything this app already uses to mean something: **no heart**
- * (that is the heart-rate accent and a live metric), **no flame**, which on a
- * fitness screen reads as effort rather than as a person, and **no arrows** —
- * ▲▼ belongs to the governing metric saying *go harder* (11.7).
+ * **Twenty, at the owner's own choice**, and it is more than 26.3's instinct
+ * would allow because this is a *pick* rather than a judgement: the ceiling on
+ * a pick is how many are told apart at a glance, and twenty different haircuts
+ * are told apart where twenty shades of one colour are not.
+ *
+ * **The ids are the seeds that generated the images and they reach the
+ * database.** Deliberately neutral words rather than indices or people's names:
+ * this project debugs in `sqlite3` and `rose:lark` reads where `rose:f11` does
+ * not, while a seed that is somebody's name puts a name on a stranger's face.
+ * **Never rename or reorder one** — the column stores the id, and a rename
+ * silently re-faces every rider who chose it.
+ *
+ * **`AvatarMark` is gone rather than renamed** (20.6.3). The six icon ids stop
+ * being recognised, and [Avatar.parse]'s existing fallback is what makes that
+ * safe: a rider who chose `rose:bolt` becomes rose with their own initial.
+ * Nothing is migrated and no column is rewritten.
  */
-enum class AvatarMark(val id: String) {
-    Bolt("bolt"),
-    Mountain("mountain"),
-    Paw("paw"),
-    Note("note"),
-    Rocket("rocket"),
-    Coffee("coffee")
+enum class AvatarFace(val id: String) {
+    Ash("ash"),
+    Bay("bay"),
+    Cove("cove"),
+    Dune("dune"),
+    Elm("elm"),
+    Fern("fern"),
+    Glen("glen"),
+    Haze("haze"),
+    Isle("isle"),
+    Kite("kite"),
+    Lark("lark"),
+    Moss("moss"),
+    Nova("nova"),
+    Opal("opal"),
+    Pine("pine"),
+    Quill("quill"),
+    Reed("reed"),
+    Sage("sage"),
+    Tide("tide"),
+    Vale("vale")
 }
