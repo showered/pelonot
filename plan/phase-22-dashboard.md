@@ -1461,7 +1461,7 @@ ordinary case for a new bike and the case the screenshots in 22.8 were not taken
 in. Same shape as 20.4's lesson: the state that is empty is the state a
 developer never sits in.
 
-- [ ] **22.9.1 The trap, and it is the whole reason this section is not one
+- [x] **22.9.1 The trap, and it is the whole reason this section is not one
       line.** 22.8's fault was that eight cards took 993 dp to say what 600 dp
       of them said — *"the screen is not full, it is loose"*. **Filling this
       space by making the cards taller would put that back exactly**, and it is
@@ -1484,7 +1484,16 @@ developer never sits in.
       **Build it only as the fallback**, if 22.9.4 turns out to have nothing
       honest to put in the space
 
-- [ ] **22.9.3 The band to hit, stated so it can be argued with.** The owner
+      ***Not built, and the fallback was not needed*** — 22.9.4 had two honest
+      things to put in the space and the fold is filled without moving anything.
+      Left open rather than closed, because the guest and never-ridden states
+      (22.9.5) are still short, and centring is the one answer available to a
+      screen with genuinely nothing to add. **If it is ever built, build it for
+      those states only**: on a dashboard that changes height under the rider —
+      dismissing the nag is 96 dp — centring moves everything by half the
+      difference, and top-aligned only the thing below the change moves.
+
+- [x] **22.9.3 The band to hit, stated so it can be argued with.** The owner
       permits *"slightly over-utilise (with scrolling)"*, which sets a ceiling
       as well as a floor. The fold is **664 dp on the AVD and 672 dp on the
       bike** (`HARDWARE.md`, 22.2.5). The target is **the fold, filled, in the
@@ -1495,7 +1504,15 @@ developer never sits in.
       "too much" means is that the *primary action must never leave the fold*:
       whatever is added goes below the row that gets a rider onto the bike
 
-- [ ] **22.9.4 What goes in the space, ranked — and every candidate here is a
+      ***Measured, in five states, on the tablet AVD at 1280 × 720 dp against a
+      664 dp fold.*** One rider, one ride, the account offer showing: **383 dp →
+      645 dp**. A household of two with a nag: **637 dp**. The same without one:
+      **541 dp**. A guest: about **380 dp**, which is 22.9.5. **None of them
+      scrolls** — checked the way 22.8.9 asked, a 700 px swipe with the two
+      frames identical but for the clock. The primary action never leaves the
+      fold in any of them, because everything added went below it.
+
+- [x] **22.9.4 What goes in the space, ranked — and every candidate here is a
       fact this tablet already holds.** The rule 22.8.6 set stands: *a rethink
       is not a licence to fill it*, and the dashboard got to three summaries of
       the past by accretion once already. What has changed is that the owner
@@ -1526,6 +1543,37 @@ developer never sits in.
       5. **Achievements** (Phase 28, 22.8.8) — the owner's *"one for the
          backlog"*, and the slot is deliberately a hole
 
+      ***Candidates 1 and 2 are built and observed; 3, 4 and 5 are untouched
+      and should stay that way until they have something to say.***
+
+      **The offer card carries the class's own shape.** Same
+      `ClassProfileChart` the class screen draws, under the words and across
+      the whole card rather than beside them — time is the horizontal axis, so
+      wide-and-short is the aspect that reads, and beside the text it was 250 dp
+      of squashed recovery blocks that looked like a progress bar. The clock
+      labels are off: the line above already says `20 min`. **The profile is
+      derived beside the suggestion, from that suggestion's own id**
+      (`AppUiState.suggestionProfile`), never looked up again by the screen —
+      a card naming one class and drawing another is the worst failure
+      available here, because it looks like a working feature. Confirmed by
+      tapping through: the dashboard's drawing and the class screen's are the
+      same drawing of the same class.
+
+      **The rail carries the ride-days grid when there is nobody else on the
+      bike.** Extracted from *Your riding* into `ui/components/RideDaysCard.kt`
+      rather than copied, and `RidingScreen` now draws the shared one — the
+      recurring defect of this project is one rule written twice, and two grids
+      disagreeing about which days were ridden would be that on the first
+      screen anybody sees. It is the **understudy and never plays beside the
+      household** (22.9.1): both together is 990 dp.
+
+      **One defect the extraction exposed**, in a string a screen reader reads
+      aloud: *"1 days ridden in the last 17 weeks"*. That is 21.6.3's *"1
+      minutes 42 seconds"* again, and it survived because `domain` held **two
+      private copies** of `plural()`, so the third call site had none.
+      `Formatters.plural` is the one answer now, the two copies delegate to it,
+      and `FormattersTest` pins it — 795 JVM tests, 0 failures.
+
 - [ ] **22.9.5 The empty rail is a state, not a screen, and it needs naming.**
       A household of one draws no panel; a rider with no history draws no
       last-ride card and an empty day grid. **A day grid of seventeen grey
@@ -1536,7 +1584,7 @@ developer never sits in.
       profile is worth filling at all or is simply what a new profile looks
       like. **Do not answer it by drawing a card that says nothing** (22.2.3)
 
-- [ ] **22.9.6 Judge it in five states with each other as controls**, because
+- [x] **22.9.6 Judge it in five states with each other as controls**, because
       every measurement in 22.8 was taken in one of them and the note above is
       about the other four: a **guest**; a **new profile** with no rides; the
       **one-rider bike** measured in the table above; a rider with **history
@@ -1544,3 +1592,14 @@ developer never sits in.
       is 96 dp that comes and goes. `pm clear` is the instrument for the first
       two (20.4.3) and `household_visible` for the rail. And 22.2.5 is owed on
       all of it — the AVD has the geometry and not the furniture
+
+      ***Done, and two of the five were only reachable by seeding.*** The
+      tablet's one profile had a single three-minute ride on it, so the day grid
+      drew seventeen weeks of grey with one dot — honest, and useless as a
+      check that the drawing works. 45 rides across 15 weeks and a second
+      profile were seeded by hand for that reason, and the grid, the household
+      panel and a suggestion that is no longer a recovery class all came with
+      them. **The guest is the state that stays empty** and it is 22.9.5's:
+      no history to draw, no level badge (26.4's rule holding), and about 280 dp
+      of nothing under the cards. The never-ridden *profile* is the same layout
+      with a badge on it.
