@@ -55,10 +55,17 @@ import com.pelonot.ui.theme.spacing
  *    20 but only 50 FTP, so not a very good rider"* (20.6.7). Since 20.6.5 the
  *    **profile selector** draws both about one rider: the badge on the face,
  *    the FTP as a caption under the name, in different sizes on different rows
- *    with the name between them. That is the one screen, it is the shape the
- *    rule was always about — a *row* presenting them as two readings of one
- *    instrument — and nothing else may follow it. Not the greeting, not the
- *    household panel, not a leaderboard, not the overlay.
+ *    with the name between them. That is the shape the rule was always about —
+ *    a *row* presenting them as two readings of one instrument — and the tile
+ *    does not do it.
+ *
+ *    **The live leaderboard is the second and last screen** (24.3.19b), in the
+ *    same shape and for a different reason: an FTP beside a housemate's name
+ *    publishes a measurement of somebody who was never asked, and a board is
+ *    the one social surface every row has opted into being ranked on —
+ *    `household_visible` is that opt-in. **Nothing else may follow either.**
+ *    Not the greeting, not the household panel, not the static class board,
+ *    not the overlay.
  * 3. **Never coloured amber.** Amber is this app's off-target signal (11.8.3),
  *    and a rider's own identity must not wear the colour that means *you are
  *    wrong*. It is the brand's own container colour, which is what the rest of

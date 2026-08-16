@@ -6,6 +6,85 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 16 August 2026 (fifty-eighth sitting): the deploy turned out to be one word, and a rider got a face
+
+**The owner answered a question this plan had asked for three sittings, and the
+answer is `git push`.** 17.16.2 — *how the web app is deployed is written down
+nowhere* — has been open since 4 August, has delayed three fixes to the live
+site, and had accumulated a whole reconstructed `wrangler.jsonc` on the
+assumption that it was a command somebody had to run. Cloudflare is watching the
+repository. **It is in CLAUDE.md now**, beside the adb path, and in
+`web/README.md`, and `wrangler.jsonc` has been demoted from *the deploy* to *a
+fallback nobody uses*.
+
+**Measured rather than taken on the word.** Before the push
+`./web/check-deployed.sh` reported `link.js` and `link.html` drifted; after it,
+all seven files match — which is **15.6.14's pairing fix and 17.16.9's voice
+reaching the internet**, and closes item 1 of *What to do next* for the first
+time in three sittings.
+
+**One thing the answer does not explain, and it is written down as an open fact
+rather than guessed at.** `web/config.js` is git-ignored and untracked, so a
+push cannot be carrying it — and the host serves it anyway, `200`, still on the
+legacy JWT key form. Something on the hosting side supplies it. The consequence
+is concrete: **17.16.3 cannot be closed from this repository at all**, and
+whoever closes it needs the Cloudflare side rather than a commit.
+
+**What got built is Phase 20.2 — avatars — chosen because it is the unbuilt half
+of a phase whose other half is done, and it needs neither the owner, the bike
+nor a deploy.** 20.1's selector was rebuilt as a TV picker in the fortieth
+sitting; 20.2 had eight items and none of them ticked.
+
+**The palette was the finding, and it was live rather than cosmetic.** The
+selector drew its discs in `PowerZone2Endurance` through `PowerZone6Anaerobic`,
+and borrowing the zone ramp for identity is wrong twice. **One in five profiles
+was amber** — `PowerZone4Threshold` is the amber that means *off target*
+(11.8.3), and `RiderScore`'s third rule already says in those words that a
+rider's identity must not wear it. And the ramp is itself a claim: it runs cool
+through warm so intensity reads without the number, which is exactly why 21.2.1
+gave the heart-rate zones a *different* ramp instead of sharing this one. A face
+is not an intensity.
+
+**The reason it could go wrong at all is that the only avatar in the app lived
+inside one screen as a private `Box`.** That is this project's recurring defect
+— one rule written in one file — on the first screen anybody sees, and it is
+also why nothing else drew a face. `RiderAvatar` is the one component now, in
+`RiderScore`'s mould with its rules in its own KDoc, and it draws on the
+selector, the dashboard greeting and the household panel. **A guest gets none**,
+for `RiderScore` rule 4's argument exactly.
+
+**The column is not backfilled, and that is the whole of the decision.** Null
+means *never chosen* and `Avatar.defaultFor` answers from the row id, so every
+existing profile keeps the disc it already draws **and the app can still tell a
+rider who picked that colour from one who never looked**. Writing the derived
+value in would have changed nothing visible, which is precisely what makes it
+tempting. Third column with this argument after 12 → 13 and 20 → 21, and
+measured on the device rather than reasoned about: `rose:bolt` on the rider who
+opened the dialog, still `NULL` on the one who did not.
+
+**One defect was found by looking at the tablet and could not have been found
+any other way.** The selected swatch was a 3 dp ring drawn *on* the disc in the
+brand teal — perfectly legible on the mark row, where every swatch is dark grey,
+and **very nearly invisible on the colour row, because one of the eight colours
+is a turquoise.** The state a rider is in most often is the one where the
+selected swatch is the colour they already have, so this was the common case.
+The fill is inset when selected now, and the signal is the *separation*, which
+no hue can defeat.
+
+**And 20.4.10 went beside it — the last Title Case on the first-run path.**
+*Reach new milestones* and *Just stay fit*. **The case changed and the words did
+not, and the session that did it started by changing them and backed out**: a
+rewrite of a dialog the owner has already had opinions about is not a session's
+call, and each new name would have said exactly what the description beneath it
+already says. That redundancy is real and is now written down as a question
+rather than acted on.
+
+**Watched on the tablet AVD in five states** — the selector before and after a
+save, the picker mid-choice, a chosen rider's dashboard, a never-chosen rider's
+dashboard, and the guest's — on a device carrying 45 rides and two profiles, so
+the 21 → 22 migration ran over real data. **The row was read in `sqlite3` after
+the save rather than off a screenshot. 805 JVM tests, 0 failures.**
+
 ## 16 August 2026 (fifty-sixth sitting): three defects on the path a rider walks once, and every one of them invisible to anybody who had walked it before
 
 **The inbox was empty, the top of *What to do next* is owner-and-bike work for

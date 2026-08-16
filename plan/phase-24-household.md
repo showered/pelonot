@@ -1166,7 +1166,7 @@ right.
 and the fifth is the owner's own decision from nine days ago, which is why this
 item quotes it rather than quietly overruling it.
 
-- [ ] **24.3.19a** **The face, with the level on it** (20.6.8's ring). This is
+- [x] **24.3.19a** **The face, with the level on it** (20.6.8's ring). This is
       **20.2.6a arriving with an answer**: that item left faces off the board
       because a board carrying auto-generated ghosts (24.3.18) forces the
       question *what does a ghost look like* — give it a face and the board
@@ -1174,21 +1174,75 @@ item quotes it rather than quietly overruling it.
       and neither does this item.** The rule that does: a ghost is not a person,
       so it gets **no face and no level**, and the two classes of row are
       visibly different on purpose. That is arguably untidy and it is honest,
-      which is 24.3.18a's rule applied to a picture instead of a number
+      which is 24.3.18a's rule applied to a picture instead of a number.
 
-- [ ] **24.3.19b** **The FTP under the name.** This is where 20.6.5's objection
+      **Built, 16 August 2026.** `RaceIdentity` is the type and it is nullable
+      on every row that holds one — *null is the ordinary case*, because three
+      of 24.3.12's four kinds of row are the rider's own past rides and the
+      rest are numbers this app made up. The rider's own past rides get no face
+      either, and that is the *same* rule rather than an exception to it:
+      `GhostKind.isPerson` is already false for them, and a face repeated four
+      times down a board is what 20.2.6a called decoration.
+
+      **The card's ceiling did not move, and that is the decision worth
+      naming.** 24.3.18c measured this card on the AVD and wrote *six rows*;
+      what it actually measured was a **height**, and six was only how it was
+      counted. A person's row is 64 dp rather than 44 — `RiderAvatar` will not
+      draw a ring below 56 dp, which is that component declining to ship an
+      unreadable badge — so a board with faces on it shows fewer rows at once
+      and scrolls the rest, which it already did past the sixth. The
+      alternative was the card growing into *View in Overlay Mode*, which is
+      the defect 24.3.18d was already caught by.
+
+      **Measured on the tablet AVD, not reasoned about.** Robin riding *Zone 2
+      Steady* against Alex: four rows — `○ 150` (the ladder), **ALEX** with her
+      face, ring, `LVL 3` and `FTP 190 W`, **YOU** with Robin's disc, `LVL 6`
+      and `FTP 155 W`, and `○ CLASS TARGET`. 207 dp of card in a budget of
+      about 315, and *Pause ride* / *End ride* untouched. The board re-sorted
+      mid-ride and the two faces swapped places with nothing reflowing
+
+- [x] **24.3.19b** **The FTP under the name.** This is where 20.6.5's objection
       genuinely stops applying, and the reason is worth being precise about: an
       FTP beside a *housemate's* name on a presence card publishes a measurement
       of somebody who was never asked (which is why the household panel does not
       get one), but a leaderboard is a surface every row on it has agreed to be
       ranked on. **`household_visible` is already that consent** (24.2.3) and it
-      is one switch with one meaning. A ghost has no FTP and draws none
+      is one switch with one meaning. A ghost has no FTP and draws none.
 
-- [ ] **24.3.19c** **The output as the large number on the right**, which the
+      **Built, and the consent is enforced by where the columns come from.**
+      `avatar` and `ftp_watts` are read in the *same join* that already carries
+      `household_visible`, rather than by a second lookup keyed on the profile
+      id — so a rider who has left the household panel is off this board with
+      their face and their FTP, and it is not possible to reintroduce one
+      without reintroducing the other. **This narrows `RiderScore` rule 2 a
+      second time and 26.4.8 is where that is written down**, with the three
+      conditions it survives under; a rule relaxed quietly in a diff is a rule
+      that has stopped existing.
+
+      `FTP 190 W` and not `190 W FTP` (20.6.5's form), one caption line shared
+      with `FINISHED`, because a name plus two captions on a screen read at two
+      metres is a paragraph. **Absent rather than defaulted**: a zero in the
+      column draws nothing, since `150` is both `DEFAULT_FTP` and a real answer
+
+- [x] **24.3.19c** **The output as the large number on the right**, which the
       board already does — 24.3.17a made every row carry its own total rather
       than the gap to you, and 24.3.17b took the unit off it. Nothing to change;
       it is listed so that a session working from the picture does not
-      "restore" a `W` that was deliberately removed
+      "restore" a `W` that was deliberately removed. **Confirmed on the AVD
+      rather than assumed** — nothing was changed and nothing regressed
+
+- [x] **24.3.19f** **The seam this found, and it is a naming one.** The rider's
+      own row is labelled `YOU` — `LiveStanding.YOU`, chosen deliberately so it
+      can never collide with a name — and the face beneath it fell back to the
+      **label's** initial, so Robin's disc said `Y`. The same rider is an `R`
+      everywhere else in the app. It compiled, it tested green, and it was
+      visible the first time the board was looked at.
+
+      `RaceIdentity` carries the profile's own name now, for the initial only.
+      The same trap was sitting under *"Alex's last ride"*, which was right by
+      coincidence rather than by rule. The general form is the one this project
+      keeps meeting: **a label is not a name, and a row is not a person** —
+      which is the whole of 24.3.19a stated from the other end
 
 - [ ] **24.3.19d** **The rank stays off, and it is the owner's to put back.**
       The picture has `41` and `42` down its left edge and **24.3.17c deleted

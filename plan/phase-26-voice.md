@@ -442,11 +442,29 @@ have ridden* in one glyph.
       level must never say. What changes is *where* the app is allowed to draw
       both about the same rider, and the shape it must take when it does:
 
-      1. **One screen: the profile selector.** Not the dashboard greeting, not
-         the household panel, not any leaderboard, not the overlay. The owner's
-         own wording is the scope — *"perhaps just change what i said on the
-         profile selection screen"* — and a rule that survives on every other
-         surface is a rule; one relaxed wherever it is inconvenient is a habit.
+      1. **Two screens: the profile selector, and the live leaderboard.** Not
+         the dashboard greeting, not the household panel, not the static class
+         board, not the overlay. The owner's own wording is the scope —
+         *"perhaps just change what i said on the profile selection screen"* —
+         and a rule that survives on every other surface is a rule; one relaxed
+         wherever it is inconvenient is a habit.
+
+         **The second screen arrived a day later and is 24.3.19b**, from the
+         owner's own reference picture of Peloton's board, and it is written
+         here rather than left as two plan items quietly disagreeing: this
+         paragraph said *"not any leaderboard"* on 16 August and 24.3.19b was
+         written the same day. **What makes the leaderboard different from the
+         household panel is consent, not layout.** An FTP beside a housemate's
+         name on a *presence* card publishes a measurement of somebody who was
+         never asked; a leaderboard is a surface every row on it has opted into
+         being ranked on, and `household_visible` is that opt-in (24.2.3). The
+         enforcement is structural rather than remembered — the two columns are
+         read in the join that carries the switch.
+
+         **The static class board (`ClassLeaderboardCard`) is deliberately not
+         included.** It ranks on kilojoules and kJ/kg and has no face on it at
+         all; adding an FTP there would be the rule relaxing by habit, which is
+         what this condition exists to prevent.
       2. **Never on one line, and never the same weight.** The level is *on the
          face*, the FTP is a caption under the name — different sizes, different
          colours, different rows, with the name between them. The forbidden

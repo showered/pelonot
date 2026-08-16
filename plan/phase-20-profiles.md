@@ -238,7 +238,20 @@ right one — same device shape, same distance, same job.
       board claims a person who does not exist; leave it blank and the board has
       two classes of row, which is arguably honest and arguably just untidy.
       That is a design decision with the owner's existing open question sitting
-      on top of it, so it is written down rather than guessed at
+      on top of it, so it is written down rather than guessed at.
+
+      **The leaderboard half is closed, 16 August 2026, and the owner answered
+      it with a picture rather than a sentence** — 24.3.19a. The answer to
+      *what does a ghost look like* is **nothing**: no face and no level,
+      because a board that gives one to a number it made up claims a person who
+      does not exist. Two visibly different classes of row, which this item
+      called *arguably honest and arguably just untidy* and which the reference
+      settles in favour of honest. The rider's own past rides fall on the same
+      side, and that is this item's own *"the same face repeated down a list"*
+      argument reaching the board.
+
+      **The history half stands unbuilt on the reasoning above** and is the
+      whole of what is left here
 - [ ] **20.2.7** Avatar changes sync with the profile, once 14 and 15 work. A
       custom image is a blob and needs Supabase Storage rather than a column;
       decide deliberately whether it goes up at all before building it
