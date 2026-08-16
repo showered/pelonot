@@ -109,10 +109,10 @@ result still reaches no screen; it is 7.11's seed, recorded honestly.
 
 **And decoupling as built only ever argues for raising FTP, never lowering
 it.** It looks for *low* heart rate at threshold power — evidence the rider
-found threshold effort easy, i.e. FTP is set too low. There is no equivalent
-check for the opposite pattern (elevated heart rate, or high RPE, at an output
-that isn't improving) — see [PLAN 7.11](plan/phase-07-ftp.md) for why nothing
-today can move FTP down at all.
+found threshold effort easy, i.e. FTP is set too low. The opposite pattern is
+**not** checked here at all, and since 7.11 it does not need to be: the
+downward path is a separate object reading separate evidence. See *The downward
+path* below.
 
 ## What the rider sees
 
@@ -203,18 +203,101 @@ worth noting as its own gap if you want to re-trigger an old ride's dialog).
 The ride also needs `ftp_proposal_declined = 0` and to be at least 1200 rows
 in `workout_metrics`.
 
+## The downward path (7.11)
+
+Since 7.11 an FTP can go **down** by itself. It is a different object reading
+different evidence, and deliberately not this analyser with its sign flipped.
+
+Core logic: [`FtpReductionRule`](app/src/main/java/com/pelonot/domain/progress/FtpReduction.kt).
+Wired in: `PostRideViewModel.load` → `WorkoutRepository.ftpReduction`.
+Shown by: [`FtpReductionDialog`](app/src/main/java/com/pelonot/ui/screen/FtpReductionDialog.kt).
+
+### Why not one signed check
+
+A twenty-minute peak *is* direct evidence of what a rider can produce, so one
+strong ride can raise an FTP with nothing interpreting it. The mirror is not
+true: an off day, a cold coming on, poor sleep, heat, an unfamiliar class or
+simple under-fuelling all produce a disappointing twenty minutes with fitness
+untouched. And a peak *below* a rider's FTP is the ordinary result of a recovery
+spin — it happens constantly and means nothing on its own.
+
+### The gate, in order
+
+1. **The rider has an FTP**, and there is no breakthrough on the table. The two
+   cannot both be true of one rider's evidence, and the view model does not even
+   compute this one when `proposedFtp` is non-null.
+2. **The evidence window** starts at the later of the rider's last FTP change
+   (`ftp_history`) and the last proposal they answered (the newest ride with
+   `ftp_proposal_declined = 1`). Accepting, editing, or keeping all say *this
+   number is right now*.
+3. **Candidate rides** are this rider's finished rides with
+   `power_provenance = 'Measured'` that have a stored twenty-minute effort in
+   `workout_power_bests`, newest first, capped at `EVIDENCE_SCAN_LIMIT` (20).
+   The stored effort is used rather than a scan of `workout_metrics`, because
+   23.4 may have condensed the ride and the scan would return a wrong number
+   rather than nothing.
+4. **The rider must have been working** on each one — `riderWasWorking`:
+   - heart rate known: `avg_hr >= 0.80 × workouts.max_hr_bpm`, **and** the
+     rider's own answer, if given, is not *Comfortable*;
+   - heart rate unknown: the answer is *Everything I had*, and nothing weaker.
+
+   A ride with neither signal is **skipped**, not counted against.
+5. **All of the newest `MIN_EVIDENCE_RIDES` (3)** working rides must come in at
+   or below `currentFtp × 0.95`. One that beats it ends the run.
+
+### The number
+
+`max(peak₂₀ × 0.95)` over the three — the **best** the rider has actually ridden
+in the window, rounded to a whole watt. Not the mean, not the latest, and not a
+percentage step: whatever is offered has to be something they have done.
+
+### What the rider sees
+
+> **Your last 3 hard rides**
+>
+> All 3 came in under your FTP of 190 W, and you were working through every one
+> of them. These are watts the bike measured, not an estimate.
+>
+> Aug 14, 2026 &nbsp;&nbsp; 171 W
+> **Aug 11, 2026 &nbsp;&nbsp; 177 W**
+> Aug 7, 2026 &nbsp;&nbsp; 167 W
+>
+> `[Keep 190 W]` `[Lower to 177 W]`
+
+### Accept / keep
+
+Accept writes `FtpChangeSource.AutoReduction`, with `workout_id` set to the
+**strongest evidence ride** — not the ride that has just finished, which is
+usually a different one. Keep writes `ftp_proposal_declined` on the current
+ride, which is also step 2's cutoff, so the evidence restarts: three fresh hard
+rides before the question can be asked again. **The upward path has no such
+cooldown** (7.11.8).
+
+### Forcing it for testing
+
+Same problem as the breakthrough and one more: the emulator cannot produce a
+measured ride, and this one needs three of them, each at least twenty minutes.
+The recipe that worked on the tablet AVD is three rides inserted in `sqlite3`
+with `power_is_measured = 1`, `avg_hr` above 80% of `max_hr_bpm`, and a
+twenty-minute peak at or under 95% of the profile's FTP — then open *Your FTP*
+once, which runs the backfill that computes `workout_power_bests` from the
+samples, and then ride and end anything at all.
+
+
 ## Summary of things worth a UX pass
 
 - The dialog itself: generic `AlertDialog`, no provenance mark, states
   "improved" as fact, doesn't explain the 20-minute-peak method.
 - `biometricDecoupling` is computed from real inputs since 7.11.6 and still
-  reaches no screen — either wire it into the copy ("we noticed your heart rate
-  stayed low at threshold power — that's often a sign your FTP is set low") or
-  leave it as 7.11's seed, which is the current decision.
+  reaches no screen. It is no longer *7.11's seed* — 7.11 shipped without it,
+  on a rule that reads stored twenty-minute efforts rather than one ride's
+  samples — so the choice now is to wire it into the breakthrough copy ("we
+  noticed your heart rate stayed low at threshold power — that's often a sign
+  your FTP is set low") or to delete it.
 - No cooldown on decline — a rider hovering right at the 2% line could see the
-  same prompt ride after ride. Worth deciding if that's desired (7.10.5 already
-  covers the "asked too often becomes a reflex tap" risk for the *accept* side,
-  but says nothing about repeat prompts across rides).
+  same prompt ride after ride. **The downward path has one and this does not**,
+  which is now an asymmetry rather than an omission; PLAN 7.11.8 is where that
+  is written down.
 - No messaging anywhere explains *why* the dialog never appears for a rider on
   Hardware mode who rides under 20 minutes, or on Simulated mode at all — a
   rider could reasonably conclude the feature is broken.

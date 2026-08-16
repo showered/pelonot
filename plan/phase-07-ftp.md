@@ -303,7 +303,8 @@ from. **This has to be a trend across several rides, not a per-ride check**,
 which is a materially different computation from anything `PostWorkoutAnalyzer`
 does today — it operates on one ride's `metrics` and returns.
 
-- [ ] **7.11.1** Decide the evidence window and the bar. Candidate shape:
+- [x] **7.11.1** ***Done, and the shape it took is not the one this item
+      sketched.*** Decide the evidence window and the bar. Candidate shape:
       over the last *N* rides at Zone 4 or above (say, the last 5–8 such
       rides, not a calendar window — a rider who rides twice a week needs
       weeks of calendar time to accumulate the same evidence as one who rides
@@ -312,32 +313,190 @@ does today — it operates on one ride's `metrics` and returns.
       efforts produced has not risen to match. None of this is decidable from
       first principles — it needs the same kind of measurement 2.2a's
       calibration work did before it shipped, not a guessed threshold
-- [ ] **7.11.2** RPE alone should not be enough. A rider who rates every ride
-      9/10 is describing their effort, not their fitness, and 26.3.3 already
-      settled that RPE is a coarse three-answer scale for exactly this
-      reason — it is corroborating evidence for a power/heart-rate trend, not
-      a trigger by itself. **This inverts 27's own gate**: alerts (Phase 27)
-      require `PowerProvenance.Measured` before anything can be shown as a
-      *record*; a downward FTP proposal is the same kind of claim about a
-      rider's body and should be held to the same bar — no Simulated-mode
-      ride may contribute evidence either way
-- [ ] **7.11.3** Requires `maxHr` to be known at all — the same nullable gate
+
+      **`FtpReductionRule` is what was built, and the thing that made it
+      buildable is that the number it offers needs no new arithmetic at all.**
+      This item was written expecting a new estimator — *heart rate at a given
+      power has drifted up by some margin* — and every such margin is exactly
+      the guess it warns against. The rule inverts that. **The measurement is
+      the one the upward path already makes**, `P₂₀ × 0.95` on measured watts,
+      and what 7.11 adds is a rule about *when it is allowed to be believed*.
+      So a downward proposal is never a modelled number, never a percentage
+      step, and always something the rider has demonstrably ridden in the last
+      few weeks: it is the **best** twenty-minute effort across the window,
+      not the mean and not the latest.
+
+      **Three rides, all short, all worked at.** A ride only speaks when
+      something says the rider was trying — the owner's own two-signal
+      sentence — and one ride that met the number ends it. Rides in between at
+      which the rider was *not* working are **skipped rather than counted
+      against**: an easy spin is silent, not counter-evidence, and treating it
+      as either is wrong. The count is three where this item guessed five to
+      eight, and the reduction is not a relaxation: each of the three has
+      already had to be a measured twenty-minute effort at or above 80% of the
+      rider's maximum heart rate coming in more than 5% short, where the
+      candidate shape counted rides that had passed a far weaker test.
+
+      **Nothing had to be stored, which is the other reason this landed.**
+      `workout_power_bests` has held each measured ride's twenty minutes since
+      16.3.3a, computed at finalise — so the evidence was already on disk, in
+      the one form 23.4's trimmer cannot falsify. Recomputing it from
+      `workout_metrics` is precisely what 23.4.2 forbids: a condensed ride has
+      real rows in that table and the scan would return a number.
+
+      **What is still a guess is named rather than hidden**, and it is one
+      number: `MIN_MEANINGFUL_LOSS`, 5% against the upward path's 2%. See
+      **7.11.7** for what would settle it
+- [x] **7.11.2** ***Done.*** RPE alone should not be enough. A rider who rates
+      every ride 9/10 is describing their effort, not their fitness, and
+      26.3.3 already settled that RPE is a coarse three-answer scale for
+      exactly this reason — it is corroborating evidence for a power/heart-rate
+      trend, not a trigger by itself. **This inverts 27's own gate**: alerts
+      (Phase 27) require `PowerProvenance.Measured` before anything can be
+      shown as a *record*; a downward FTP proposal is the same kind of claim
+      about a rider's body and should be held to the same bar — no
+      Simulated-mode ride may contribute evidence either way.
+
+      **Both halves hold in the built rule and the second is enforced twice.**
+      `w.power_provenance = 'Measured'` is on the evidence query, and the join
+      to `workout_power_bests` is a second gate saying the same thing from the
+      other side — those rows are only ever written for a measured ride, so
+      *the existence of a row is itself the claim* (23.4.12). The RPE half is
+      structural rather than a threshold: a rating is **permission to read a
+      shortfall, never the shortfall itself**, so the ceiling on what a serial
+      *Everything I had* rater can achieve is nothing — the watts still have to
+      be short. And where a heart rate exists the measurement leads and the
+      rating can only *veto*: a rider who says *Comfortable* discards the ride
+      however high the trace went
+- [x] **7.11.3** ***Done, and the design question it hands to 7.11.1 is
+      answered.*** Requires `maxHr` to be known at all — the same nullable gate
       21.1 already respects (`max_hr_bpm` or `birth_date`, both optional). A
       rider with neither gets no heart-rate-based signal, same as they get no
       heart-rate zones today; the RPE-and-declining-power half could in
       principle stand alone, which is a design question for 7.11.1 to settle
-      rather than assume
-- [ ] **7.11.4** The dialog is the one thing that must not merely mirror
-      `FtpBreakthroughDialog` — see that dialog's own list of problems in
-      [AUTO_FTP.md](../AUTO_FTP.md). A downward proposal is more sensitive to
-      get wrong than an upward one (a rider told their fitness has *dropped*
-      on shaky evidence is a worse experience than one offered a number they
-      can simply decline), so this is the one to design carefully rather than
-      copy the existing dialog's shortcuts forward
-- [ ] **7.11.5** `FtpChangeSource` needs a new case — `AutoDecline` or similar,
-      distinct from `AutoBreakthrough` — so the trend chart (16.3.1, 7.10.1)
-      can draw a downward automatic change differently from a rider's own
-      manual edit, the same distinction 20.3.4 drew for `Estimated`
+      rather than assume.
+
+      **It stands alone, and only at the top of the scale.** A rider with no
+      maximum and no strap can still be asked, on *Everything I had* and
+      nothing weaker — which is the owner's *"really difficult"* word for word.
+      With a heart rate, *A good workout* is enough, because the measurement is
+      carrying the claim and the rating is only being asked not to contradict
+      it. A ride with neither signal is silent.
+
+      **And the maximum comes off the ride, not the rider** (21.4.2a).
+      `workouts.max_hr_bpm` is what that ride's zones were judged against, so a
+      rider who measures a real maximum in September does not silently re-read
+      August's evidence against it
+- [x] **7.11.4** ***Done and watched on the tablet AVD.*** The dialog is the
+      one thing that must not merely mirror `FtpBreakthroughDialog` — see that
+      dialog's own list of problems in [AUTO_FTP.md](../AUTO_FTP.md). A
+      downward proposal is more sensitive to get wrong than an upward one (a
+      rider told their fitness has *dropped* on shaky evidence is a worse
+      experience than one offered a number they can simply decline), so this is
+      the one to design carefully rather than copy the existing dialog's
+      shortcuts forward.
+
+      **The reason not to copy it is sharper than "that dialog is poor": its
+      shortcuts all point one way.** It states *"Your fitness has improved!"*
+      as fact, never names the twenty minutes it read or the provenance that
+      is the whole gate, and offers `Keep Current` against `Update FTP` — two
+      buttons neither of which names a number. A rider handed good news on thin
+      reasoning loses nothing. **Reverse the direction and every one of those
+      becomes a defect**, so `FtpReductionDialog` has three rules instead:
+
+      - **It shows its working** — the three rides on the face of it, with
+        their dates and what each measures, because the rider is the only
+        person who knows they were ill that week. Disagreeing with the evidence
+        has to be possible without first agreeing there is some.
+      - **It states nothing as a verdict.** No *"your fitness has dropped"*:
+        the claim is about the rides. A rider's FTP is a **setting that has
+        become wrong for them**, which is a smaller and truer thing to say
+        than that they have got worse.
+      - **Both buttons name their number** — `Keep 190 W` against `Lower to
+        177 W` — so neither can be tapped by reflex. That is 7.10.5's rule
+        about the accept side, applied to a change that is harder to notice
+        afterwards.
+
+      **Keeping is also the dismiss, and it is not merely closing a dialog.**
+      A tap outside must resolve to the safe direction, and the write it makes
+      restarts the evidence window — so the rider has to ride three fresh hard
+      rides before the question can be asked again. **That is the cooldown the
+      upward path has never had** and which AUTO_FTP.md names as a gap; it
+      matters far more here, because being told the same thing about your body
+      after every ride is the failure this feature most has to avoid
+- [x] **7.11.5** ***Done — and not the name this item offered.***
+      `FtpChangeSource` needs a new case, distinct from `AutoBreakthrough`, so
+      the trend chart (16.3.1, 7.10.1) can draw a downward automatic change
+      differently from a rider's own manual edit, the same distinction 20.3.4
+      drew for `Estimated`.
+
+      **It is `AutoReduction` and emphatically not `AutoDecline`.**
+      `declineFtpProposal` and `workouts.ftp_proposal_declined` already use
+      that word for the *rider saying no*, so a source called `AutoDecline`
+      sitting beside them would read as "the app declined" on every screen that
+      names a source. The event is the number going down; the name is about the
+      number.
+
+      **The enum did its job on the way in**: adding the case failed the build
+      in three places — Settings, *Your FTP* and the dashboard — which is
+      exactly the three screens that had to learn the new words. They say
+      *"measured from your recent rides"*, plural against a breakthrough's
+      *"measured from a ride"*, because that is the only place a rider ever
+      learns those are different amounts of evidence. It is also on the
+      **filled**-mark side of `isMeasured`, which is worth saying rather than
+      assuming: it is filled because it was measured, not because it was
+      welcome. And `AUTOMATIC_SOURCES` now decides which changes can be put
+      back (7.10.4) — what that list enumerates is *the times the app changed a
+      number about somebody without being asked*, and a downward change belongs
+      on it at least as much as an upward one
+
+- [ ] **7.11.7** **The one number in `FtpReductionRule` that is a guess, and
+      what would settle it.** 7.11.1 asked for the window and the bar to be
+      *measured* the way 2.2a's curve was, and three of the four constants
+      escaped that requirement rather than met it: `FTP_FROM_20_MIN` and
+      `WORKING_HR_FRACTION` are `PostWorkoutAnalyzer`'s own numbers, fenced
+      against drift by a test, and `MIN_EVIDENCE_RIDES` is a shape rather than
+      a threshold. **`MIN_MEANINGFUL_LOSS` is the exception.** 5% has to clear
+      the day-to-day spread of one rider's twenty-minute power, which is real,
+      is a few percent, and is *not* a fitness change — and nothing in this
+      project measures it.
+
+      **It is measurable from the data this app already keeps, and cheaply.**
+      `workout_power_bests` holds a twenty-minute figure for every measured
+      ride a rider has done; the spread of those within a stable period is the
+      number wanted, and one rider's own history answers it for that rider.
+      **The honest version is per rider rather than a constant**, which is the
+      same move 2.2a made for the power curve: a bar set from somebody else's
+      variability is a guess wearing a measurement's clothes. Until then the
+      constant is set conservatively in the direction of *not* making the
+      claim, which is the right direction to be wrong in.
+
+      **Do not "improve" this by lowering it** on the grounds the feature
+      rarely fires. Rarely firing is the design
+- [ ] **7.11.8** **The upward path still has no cooldown, and now the two
+      directions disagree about that.** 7.11.4 gave the downward proposal one —
+      answering it restarts the evidence — because being told the same thing
+      about your body after every ride is intolerable. The breakthrough has
+      none: `ftp_proposal_declined` is per ride, so a rider hovering at the 2%
+      line can be offered the same number ride after ride, which AUTO_FTP.md
+      has flagged since it was written. **The asymmetry is defensible and it is
+      not obviously right**: an offer of a bigger number is a much smaller
+      imposition than an offer of a smaller one. Left as an item rather than
+      quietly made symmetrical, because making the upward path harder to fire
+      is a change to a feature the owner has never once seen fire (20.3.5
+      promised it at signup)
+- [ ] **7.11.9** **A downward change wears amber, and nobody chose that.**
+      *Your FTP* and the dashboard colour a change by direction —
+      `primary` for a rise, `tertiary` for a fall — which was written when the
+      only falls were a rider's own edit or a revert. Now the **app** makes
+      them, and amber is this project's *off target* signal (11.8.3, and
+      `RiderScore`'s third rule forbids it on a rider's identity for exactly
+      this reason). A `-13` chip in amber beside a number the app just lowered
+      is at risk of reading as *you are wrong* about the rider rather than
+      about the number. It may well be fine — orange-for-down is a
+      conventional reading on a chart, and this is a delta on a change log
+      rather than a badge on a person — so it is **one look on the tablet**
+      rather than a change, and it belongs on 22.2.5's trip
 
 - [x] **7.11.6** **Two of the three FTP signals are dead code with a live fuse,
       and one KDoc claims otherwise.** Read in the fifty-second sitting while
