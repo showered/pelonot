@@ -6,6 +6,99 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 15 August 2026 (fifty-fourth sitting): the question was below the fold on the other screen, and the signal that fed it was never wired
+
+**The owner's inbox had one entry and it named a fault: *"Where it asks how your
+workout went shouldn't be lost below the fold. Work out a slightly better design
+please."* The measurement was taken before the write-up, and it moved the item
+off the screen the note names.** On the post-ride summary the question is
+**265 dp into a 664 dp viewport** with all three answers on screen — 22.4.6's
+own decision working. On **ride detail** it was roughly **2,000 dp down**, six
+500-px swipes, under four charts and both zone cards, with only *Export* below
+it. So the note is about the *record* rather than about the night, and the
+answer is not to redesign the summary's card but to ask the question in the same
+place on both screens.
+
+**The detail that makes it worth writing down is what the card was saying to
+nobody.** When the rider skipped the question on the night it reads *"You didn't
+answer for this one — you still can"*. An invitation two thousand dp below the
+fold is the exact failure 22.4.6 named one screen along, still standing on the
+screen a rider actually opens when they come back to a ride. It drifted for a
+reason the plan can name: 12.6.3 wrote down the list of things the two screens
+differ by, and **where the effort question lives was never on that list** —
+`RideChartsSection` landed on ride detail first (16.1) and the question was
+appended after it, which is exactly how the charts came to be missing from the
+summary in the first place.
+
+**One control now, and it had already drifted four ways.** `RpeCard` and
+`RpeEditor` were the same three buttons written out twice: a `Card` against a
+bare `Column`, two titles, a subtitle on one of them, and two private
+`EFFORT_BUTTON_HEIGHT` constants with a comment on one saying it matched the
+other. `ui/components/EffortQuestion.kt` is the third card both screens draw
+through one component, after `RideFigures` (12.2.2) and `RideChartsSection`
+(12.6.1). **The tense stays and is derived inside it** — tonight's ride asks
+*did that feel*, a ride from March asks *did it feel* — because the point of the
+extraction is that both sets of words live in one file.
+
+**The same fault was on the summary too, with worse consequences, and it took a
+guest ride to see it.** `GuestDestination` — *"Whose ride was this?"*, the
+profile buttons, *Keep as a guest ride*, *Discard* — was drawn **below** the
+charts, and a guest ride draws **no pinned action bar at all**. So for the one
+rider on that screen with a decision to make, both the decision and every way
+off the screen were about **1,300 dp** down. It is above the charts now, one
+place below the question: the question is one tap and stays, where every button
+on the destination card ends the screen. **And it took `loneCard()` with it** —
+the card was `fillMaxWidth()`, so 22.6 was being broken 1,300 dp below the fold
+where nobody could see a card band across 1,872 dp beside one capped at 760.
+
+**Watched on the tablet AVD in all three cases, with the previous build as the
+control and the database as the witness where a screenshot cannot help.** Ride
+detail: *How did it feel?* at **282 dp**, and tapping *A good workout* wrote
+`rpe_rating = 6` onto the row with the subtitle changing to *"Tap a different
+answer to change it"*. The guest summary: the card at **416 dp** and *Keep as a
+guest ride* at **541 dp**, with filing the ride against a profile from the moved
+card read back as `user_id = 1` in `sqlite3`. And the ordinary summary
+re-measured to prove nothing moved: *How did that feel?* at 256 dp with *Done*
+and *Discard* still pinned. **781 JVM tests, 0 failures.**
+
+**The rule it leaves behind is one line and it is at both call sites: the charts
+are the last thing on both screens.** Anything a rider can *act on* goes above
+them, because a chart is the tallest thing either screen draws and whatever
+follows one is below the fold by construction.
+
+**Then 7.11.6, carried forward for two sittings with a fuse on it, and the item
+deliberately did not make its own decision.** `PostWorkoutAnalyzer
+.suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class the rider had
+called easy, and `analyze` fed it straight into `proposedFtp` — a permanent edit
+to the rider's record off one subjective answer. It has never run: the one call
+site passed no `rpe`, because the parameter had a default. **So the whole of
+auto-FTP that has ever happened is the twenty-minute peak.**
+
+**Deleted rather than fenced, and the first of the three reasons settles it: a
+function whose only behaviour 7.11.2 forbids is not plumbing waiting to be
+connected.** Fencing it means keeping a guard against a caller who does not
+exist. Second, it is the **wrong shape** for what replaces it — 7.11's RPE half
+is a trend across several rides, where this reads one ride and returns, which is
+exactly why `detectBiometricDecoupling` is kept and this is not. Third, it could
+not have fired even if somebody wired it: the rider answers *How did that feel?*
+on the same screen that runs the analysis, so `rpe` is null at analysis time by
+construction. **And it is the sitting's own first change that makes this worth
+doing now rather than later** — the effort question was just moved somewhere
+riders will actually answer it.
+
+**`maxHr` losing its default is the general form of the defect rather than one
+instance of it.** A signal that is optional at the call site is a signal nobody
+notices is missing, which is how the decoupling check spent the project's whole
+history returning `false` before reaching its own logic. It is required now and
+`PostRideViewModel` passes the rider's resolved maximum — hoisted out of the
+chart builder two blocks below, which was already resolving it inline. **Nothing
+reads the result and the KDoc says so**: it is 7.11's downward-path seed
+recorded honestly rather than left as a constant. **777 JVM tests, 0 failures**,
+and `PerceivedEffort`'s KDoc — which stated the opposite as fact, that *"a hard
+class that felt easy still proposes an FTP bump exactly as before"* — is
+corrected on the record rather than quietly, because the false claim is more
+instructive than the fix.
+
 ## 15 August 2026 (fifty-third sitting): the phase that was one line per feature, built
 
 **The owner asked for the rest of the companion web app in one sitting —

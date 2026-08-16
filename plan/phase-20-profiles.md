@@ -432,15 +432,43 @@ it is the only one.
       default is (`MainActivity` declares no `windowSoftInputMode` today).
       **The check is a tap that works first time, on the AVD, with the keyboard
       up** — not a reading of the diff
-- [ ] **20.4.3** **What this pair says about the rest of the flow.** Neither
-      fault is visible to anybody who has driven this screen before, and both
-      were found in seconds by somebody who had not. That is an argument for
-      **watching the whole first-run path with fresh eyes at the AVD's real
-      size** rather than for fixing two controls: profile creation, the account
-      offer, the class library, Start Class, the countdown, the first ride, the
-      summary. The other two entries in this same note (22.7.5, 11.8) came from
-      the same sitting and the same rider, which is the evidence that the path
-      and not the screen is the unit
+- [x] **20.4.3** **What this pair says about the rest of the flow.** ***Done in
+      the fifty-sixth sitting — the whole path walked end to end on the tablet
+      AVD from `pm clear`, and it found three defects, every one of them
+      invisible to anybody who had driven the flow before.*** They are
+      **20.4.7** (the account offer's QR never arrived), **20.4.8** (the
+      notification permission asked 21 seconds into the first class) and
+      **20.4.9** (*Not now* un-answered by the next resume, which only became
+      visible once 20.4.8 was fixed). Two of the three are the *same shape* and
+      it is worth naming: **a one-shot trigger that fires before the thing it
+      needs exists, and never fires again** — a `LaunchedEffect` keyed on
+      something that will not change, and a permission asked from below the
+      gate that decides when it may be asked.
+
+      **What the walk confirmed rather than found**, because a walk that only
+      reports faults is not evidence the rest works: 20.4.2's keyboard fix (the
+      docked keyboard moves the field and *Continue* above it), 21.1.1b's year
+      picker, 20.4.4's two routes side by side with a live QR on it for the
+      first time, 19.1.6's first-run picker, 11.8.2's `NEW TO THIS?` passage on
+      the countdown, 11.6.16's countdown fitting, 12.7's effort question at
+      217 dp of a 664 dp viewport, and 26.4's badge reading `LVL 1` for a rider
+      whose only ride is three and a half minutes long — which is the
+      arithmetic working, not the claim failing: 70 points is a *typical* ride
+      and a stub is worth about 26.
+
+      **One thing that looked wrong and is not**, written down so nobody
+      "fixes" it: the flow offers pounds and miles because `UnitSystem
+      .fromLocale()` reads the AVD's `en-US`. On the bike it will be metric.
+
+      The original argument, kept because it is what made this worth doing:
+      neither fault in 20.4.1/20.4.2 was visible to anybody who had driven that
+      screen before, and both were found in seconds by somebody who had not.
+      That is an argument for **watching the whole first-run path with fresh
+      eyes at the AVD's real size** rather than for fixing two controls: profile
+      creation, the account offer, the class library, Start Class, the
+      countdown, the first ride, the summary. The other two entries in this same
+      note (22.7.5, 11.8) came from the same sitting and the same rider, which
+      is the evidence that the path and not the screen is the unit
 - [x] **20.4.4** **The account offer did not fit the panel, and the only visible
       control on it was a dead button.** ***Found by doing 20.4.3 — walking the
       whole first-run path with fresh eyes — and it is worse than either fault
@@ -534,6 +562,103 @@ it is the only one.
       (15.6.13) and two enabled handlers would race. Observed: back from *About*
       lands on *Name* with the name still in the field; back from the estimate
       lands on *About* with all three answers still set
+
+- [x] **20.4.7** **The account offer's QR never arrived, and the spinner had no
+      end.** ***Done and observed on the tablet AVD in the fifty-sixth sitting,
+      found by walking 20.4.3's path from `pm clear`.***
+
+      At the end of setup — the last screen between a rider and their first ride
+      — the left half of the offer drew a spinner saying *"Checking…"*, and it
+      was still spinning **minutes** later. No `device_link_begin` was ever
+      attempted: the `Log.w` in `DeviceLinkRepository` that reports a failed
+      mint never fired, because nothing ever asked.
+
+      **`AccountViewModel.startPairing` returns silently without a profile**,
+      and `ProfileAccountOfferStep` keyed its `LaunchedEffect` on
+      `pairingAvailable` alone. The profile is written to `profiles` a moment
+      before the step composes — `last_profile_id` was stamped at the same
+      second the offer appeared — so the emission that turned `pairingAvailable`
+      true could still carry no profile. And because nothing in the key ever
+      changed again, **nothing asked a second time**.
+
+      **`AccountScreen`'s own condition was right the whole time**, because it
+      includes `!isGuest`. The two were the same rule written twice with one
+      copy missing a clause, which is 12.7's two effort cards and 23.4.12's
+      seven leaderboard queries. So there is now **one** answer —
+      `AccountUiState.wantsPairingCode` — that both call sites key on, with
+      seven cases pinned by `AccountPairingTriggerTest`, and the rule stated in
+      its KDoc: **the profile is part of the trigger and not merely a
+      precondition.** A condition that cannot change value cannot re-run an
+      effect.
+
+      Two things fell out of it. The shared predicate also stops a code being
+      minted while the stored session is still loading, which the offer used not
+      to check. And the spinner has its own word now — *"Getting a code…"*
+      rather than the session check's *"Checking…"* — because `Idle` and
+      `Starting` draw identically, so a trigger that never fired looked exactly
+      like a request in flight. **Observed**: a QR, the code `XTAS RTQ9`, the
+      URL and a 4:57 countdown, on the screen that showed a spinner with no end
+- [x] **20.4.8** **The notification permission was asked 21 seconds into the
+      first class.** ***Done and observed on the tablet AVD across three
+      installs.***
+
+      `RequestRideNotificationPermission` was composed **below the countdown's
+      own `return`**, so the earliest it could possibly fire was after the class
+      had started. Measured: the platform dialog landing over the ride screen at
+      00:21 with the rider pedalling, covering the middle of the screen.
+
+      That is the fault **11.6.14** named for the overlay permission, and its
+      answer is the one to copy: the ten seconds a rider spends clipping in is
+      when a question can be asked. The call moves **above** the branch so it
+      composes in both phases from the same slot, keeping its `asked` flag
+      across the transition — which matters more than it looks, because the
+      platform shows this dialog **twice ever** and a second call site would
+      spend the rider's second refusal on the same ride.
+
+      **The count is held while it is up.** A permission dialog is drawn by
+      another process, so the countdown would otherwise run out behind it, which
+      is 11.6.14's *"coming back to 2 and then straight into a class"* wearing
+      a third costume.
+
+      **And the order is now deterministic, which is the part worth keeping.**
+      Deferring on `overlayPermissionNeeded` deferred on *no dialog being up* —
+      equally true of *not having looked yet* — so the platform's terse question
+      won the race and was asked in front of the app's own.
+      `RideUiState.overlayPermissionResolved` is the honest flag: asked and
+      answered, **or established as unnecessary**. Observed: the overlay
+      question first, the notification question second, both on *Get set*, with
+      the count still held twelve seconds later
+- [x] **20.4.9** **"Not now" was un-answered by the next resume.** ***Done and
+      observed on the tablet AVD*** — and it is 20.4.8's own fix that made it
+      visible, which is the argument for walking a path rather than a screen.
+
+      With both questions in the countdown, answering the platform's dialog
+      resumes the Activity, `OnResume` re-runs `refreshOverlayPermission`, and
+      the check knew only that the permission was still ungranted — **which is
+      exactly what *Not now* means**. So the overlay prompt came back thirty
+      seconds after it was declined, in the same countdown.
+
+      The re-ask exists for the rider who went to Android's settings and it
+      should: that trip is the one where the answer can have changed. What it
+      must not do is re-ask the rider who said no, which is **11.6.15**'s rule
+      arriving on the other control — a question answered once and asked for
+      ever. `overlayPromptDeclined` is per **ride**, not per process, and that
+      is the whole scope it needs: the view model is scoped to the ride's own
+      back-stack entry, so the next class asks again, which is right for a
+      permission that may have been granted in between
+- [ ] **20.4.10** **The pre-ride goal prompt is the last Title Case on the
+      path**, and it is the one screen Phase 26 audited without touching the
+      words on the buttons. *Reach New Milestones* and *Just Stay Fit* are
+      marketing capitals on a dialog whose every neighbour is sentence case —
+      *I ride now and then*, *A good workout*, *Keep as a guest ride*. 26.1.5
+      rewrote both **descriptions** on this very dialog at the owner's
+      instruction and left the names alone, which is how they survived.
+
+      Cheap and safe: `RideIntent.displayName` is read in exactly one place and
+      `id` is what persists, so nothing stored moves. Deliberately not done in
+      the sitting that found it — it is a change to the app's voice on a screen
+      the owner has already had opinions about (26.1.5, 26.1.6), and it belongs
+      beside those rather than smuggled in behind three defect fixes
 
 ---
 

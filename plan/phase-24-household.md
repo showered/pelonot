@@ -588,6 +588,15 @@ downgrade — it is why the feature can afford to be interesting.
         .Kind`** and changing it touches nothing else. That is worth saying
         plainly so the decision is not weighed as if it were expensive.
 
+      **Still open, and this is the reminder the owner asked for.** Seen again
+      in the fifty-sixth sitting while walking 20.4.3's first-run path, which
+      is the harshest audience it will ever have: on a brand-new rider's very
+      first class the board read `200` / `YOU` / `CLASS TARGET`, and **`200` is
+      a ghost named after its own watts** (24.3.18). So the durations are no
+      longer the only category error on the board — a row is now also a bare
+      number, sitting directly above a row of numbers, on the screen of
+      somebody who has just been told what a power zone is.
+
 - [x] **24.3.13** **A window, not a list — the row above you and the row
       below.** Verbatim: *"I'm expecting it to show the person above you, the
       person below you."* This is what makes 24.3.4's *"not a list"* and the
