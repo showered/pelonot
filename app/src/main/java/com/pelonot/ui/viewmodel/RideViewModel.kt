@@ -193,6 +193,9 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
 
     private var screenVisible = false
 
+    /** Set by *Not now*, so the return trip does not ask again (20.4.9). */
+    private var overlayPromptDeclined = false
+
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val workoutService = (binder as? WorkoutService.WorkoutBinder)?.getService() ?: return
@@ -368,7 +371,10 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             val granted = OverlayPermissionHelper.canDrawOverlays(getApplication())
             _uiState.update {
                 it.copy(
-                    overlayPermissionNeeded = wantsHud && !granted,
+                    // `overlayPromptDeclined` is the difference between "not
+                    // granted" and "not granted, and they have said so" — see
+                    // `dismissOverlayPrompt` (20.4.9).
+                    overlayPermissionNeeded = wantsHud && !granted && !overlayPromptDeclined,
                     awaitingOverlayGrant = false,
                     overlayPermissionResolved = true,
                     hudAvailable = wantsHud && granted
@@ -387,7 +393,25 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * *Not now* — and it stays answered for this ride (20.4.9).
+     *
+     * The re-ask on every return exists for the rider who went to Android's
+     * settings, and it was catching the rider who said no: **anything** that
+     * resumes the Activity re-runs the check, and the check knew only that the
+     * permission was still ungranted, which is exactly what *Not now* means.
+     * Watched on the tablet AVD as the prompt coming back thirty seconds after
+     * it was declined, because the platform's own notification dialog closing
+     * had resumed the Activity. Same family as 11.6.15: a question answered
+     * once and asked for ever.
+     *
+     * Per ride rather than per process, and that is the whole scope it needs —
+     * the view model is scoped to the ride's own back-stack entry, so the next
+     * class asks again, which is right for a permission the rider may have
+     * granted in the meantime.
+     */
     fun dismissOverlayPrompt() {
+        overlayPromptDeclined = true
         _uiState.update {
             it.copy(overlayPermissionNeeded = false, awaitingOverlayGrant = false)
         }
