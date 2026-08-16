@@ -333,13 +333,16 @@ fun HudOverlayMain(
             val column: @Composable () -> Unit = {
                 body(); positionCue(); volumePanel()
             }
-            Row(modifier = frame.fillMaxHeight()) {
+            Row(
+                modifier = frame,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (edgeFirst) {
                     edge()
                     handle()
-                    Column(Modifier.weight(1f).fillMaxHeight()) { column() }
+                    Column(Modifier.weight(1f)) { column() }
                 } else {
-                    Column(Modifier.weight(1f).fillMaxHeight()) { column() }
+                    Column(Modifier.weight(1f)) { column() }
                     handle()
                     edge()
                 }
@@ -565,10 +568,8 @@ private fun HudHandle(
     // object the moment it does not — which, collapsed, it does not.
     if (dock.isVertical) {
         Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(vertical = HUD_MARGIN, horizontal = 3.dp),
-            contentAlignment = Alignment.TopCenter
+            modifier = Modifier.padding(vertical = HUD_MARGIN, horizontal = 3.dp),
+            contentAlignment = Alignment.Center
         ) { pill() }
     } else {
         Box(
@@ -883,7 +884,6 @@ private fun HudExpandedVertical(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
             .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
@@ -928,12 +928,9 @@ private fun HudExpandedVertical(
             }
         }
 
-        // Pushed to the bottom of the column rather than following the numbers,
-        // so pause and stop are always in the same place however much the class
-        // above them is saying this minute. A control that moves is a control
-        // somebody reaches past their handlebars and misses.
-        Spacer(Modifier.weight(1f))
-
+        // Directly under the numbers rather than pinned to the foot of the
+        // side. Pinned, they sat 400 px clear of the last chip and the strip
+        // read as two objects instead of one instrument.
         Controls(
             isPaused = snapshot.isPaused,
             volumeOpen = volumeOpen,
@@ -1110,7 +1107,11 @@ private fun NowBlock(
                 style = MaterialTheme.typography.labelSmall,
                 color = accent,
                 fontWeight = FontWeight.Black,
-                maxLines = 1,
+                // A column has the one thing the band never had, which is
+                // height — so `ACTIVE RECOVERY` wraps rather than becoming
+                // `ACTIVE RECO…`. This is the zone's *name*, and a name is the
+                // thing on the strip least worth truncating.
+                maxLines = if (compact) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -1592,7 +1593,6 @@ private fun HudCollapsedVertical(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
             .padding(horizontal = HUD_MARGIN, vertical = MaterialTheme.spacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
@@ -1660,8 +1660,6 @@ private fun HudCollapsedVertical(
                 )
             }
         }
-
-        Spacer(Modifier.weight(1f))
 
         Controls(
             isPaused = snapshot.isPaused,

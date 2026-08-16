@@ -487,13 +487,19 @@ fun MetricReadout(
                 )
                 Spacer(Modifier.width(4.dp))
             }
-            Text(
+            // Shrunk rather than clipped, which is the same instrument the
+            // value row above it got in 24.3.16 and the same argument: a
+            // `softWrap = false` label in a tile narrower than the word draws
+            // `RESISTANC`, and a truncated word on a surface read from two
+            // metres is worse than a slightly smaller whole one. It bit the
+            // moment 11.1b.5 put two of these in a 76 dp cell; on a wide tile
+            // nothing changes, because the size only ever comes down.
+            ShrinkToFitText(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = MaterialTheme.typography.labelSmall.fontSize,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                softWrap = false
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f, fill = false)
             )
             if (alerting) {
                 Spacer(Modifier.width(5.dp))

@@ -348,7 +348,14 @@ class HudOverlayManager(private val context: Context) {
         layoutParams.gravity = gravityFor(dock)
         if (dock.isVertical) {
             layoutParams.width = verticalWidthPx
-            layoutParams.height = WindowManager.LayoutParams.MATCH_PARENT
+            // Wrapped rather than full height, and centred on the side by
+            // `gravityFor`. A column stretched down the whole edge put the
+            // controls 400 px below the last chip with nothing in between, so
+            // the strip read as two unrelated objects — the same complaint
+            // 11.1b.7 left open about the timeline. Keeping it to its content
+            // groups the instrument and hands back the top and bottom of that
+            // side as well as the middle of the screen.
+            layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT
         } else {
             layoutParams.width = WindowManager.LayoutParams.MATCH_PARENT
             layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT
