@@ -2,6 +2,8 @@ package com.pelonot.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,17 +56,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.identity.Avatar
+import com.pelonot.domain.identity.AvatarMark
+import com.pelonot.domain.identity.AvatarPaint
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingTotals
+import com.pelonot.ui.components.RiderAvatar
 import com.pelonot.ui.components.RiderScore
-import com.pelonot.ui.theme.PowerZone2Endurance
-import com.pelonot.ui.theme.PowerZone3Tempo
-import com.pelonot.ui.theme.PowerZone4Threshold
-import com.pelonot.ui.theme.PowerZone5VO2Max
-import com.pelonot.ui.theme.PowerZone6Anaerobic
+import com.pelonot.ui.components.icon
+import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
-import kotlin.math.absoluteValue
 
 /**
  * How much of the bottom edge fades out while there is more grid below it
@@ -71,14 +75,6 @@ import kotlin.math.absoluteValue
  */
 private val SCROLL_FADE = 48.dp
 
-/** Deterministic avatar colours, so a profile keeps the same one every launch. */
-private val AvatarColors = listOf(
-    PowerZone2Endurance,
-    PowerZone3Tempo,
-    PowerZone4Threshold,
-    PowerZone5VO2Max,
-    PowerZone6Anaerobic
-)
 
 /**
  * Who's riding — the first screen anyone sees (PLAN 20.1).
@@ -119,7 +115,7 @@ fun ProfileSelectorScreen(
      * on 7" — rather than as a measurement of the rider.
      */
     riderLevels: Map<Int, RiderLevel> = emptyMap(),
-    onRenameProfile: (UserEntity, String) -> Unit = { _, _ -> },
+    onSaveProfile: (UserEntity, String, Avatar) -> Unit = { _, _, _ -> },
     onDeleteProfile: (UserEntity) -> Unit = {}
 ) {
     var editing by rememberSaveable(stateSaver = UserIdSaver) {
@@ -130,9 +126,15 @@ fun ProfileSelectorScreen(
     if (editingProfile != null) {
         ProfileEditDialog(
             profile = editingProfile,
-            onRename = { name ->
+            onSave = { name, avatar ->
                 editing = null
-                onRenameProfile(editingProfile, name)
+                // **One tap of Save is one write.** Two calls here, each
+                // reading the profile and writing back a copy, is the defect
+                // that left a rider's new FTP on the floor for the life of the
+                // project (7.9): whichever coroutine read first put its stale
+                // value back on the way past. The name and the face travel
+                // together into a single read-modify-write.
+                onSaveProfile(editingProfile, name, avatar)
             },
             onDelete = {
                 editing = null
@@ -235,9 +237,7 @@ fun ProfileSelectorScreen(
                             // its own (Phase 7), and the FTP already has two
                             // screens of its own. A name and a face is the
                             // whole answer.
-                            accent = AvatarColors[
-                                user.localUserId.absoluteValue % AvatarColors.size
-                            ],
+                            avatar = Avatar.parse(user.avatar, user.localUserId),
                             size = tileSize,
                             level = riderLevels[user.localUserId] ?: RiderLevel.of(RidingTotals()),
                             onClick = { onProfileSelected(user) },
@@ -356,7 +356,7 @@ private fun tileSizeFor(available: Dp, height: Dp, tiles: Int): Dp {
 @Composable
 private fun ProfileTile(
     name: String,
-    accent: Color,
+    avatar: Avatar,
     size: Dp,
     level: RiderLevel,
     onClick: () -> Unit,
@@ -389,23 +389,10 @@ private fun ProfileTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            val avatar = size * 0.44f
-            Box(
-                modifier = Modifier
-                    .size(avatar)
-                    .background(accent, MaterialTheme.expressiveShapes.pill),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = name.take(1).uppercase(),
-                    // Scaled with the tile: a fixed style would leave a small
-                    // letter marooned in the middle of a large circle.
-                    fontSize = (avatar.value * 0.5f).sp,
-                    lineHeight = (avatar.value * 0.55f).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            }
+            // Sized off the tile, which is itself sized off the screen
+            // (20.1.2): a fixed disc would leave a small letter marooned in a
+            // large circle, which is the fault that rule exists for.
+            RiderAvatar(name = name, avatar = avatar, size = size * 0.44f)
 
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
@@ -511,12 +498,22 @@ private fun SecondaryTile(
 @Composable
 private fun ProfileEditDialog(
     profile: UserEntity,
-    onRename: (String) -> Unit,
+    onSave: (String, Avatar) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by rememberSaveable(profile.localUserId) { mutableStateOf(profile.name) }
     var confirmingDelete by rememberSaveable(profile.localUserId) { mutableStateOf(false) }
+
+    // The face the rider currently has — which for somebody who has never
+    // chosen is the one derived from their row id, so the picker opens showing
+    // what is actually on screen rather than nothing selected (20.2.3).
+    val current = remember(profile.avatar, profile.localUserId) {
+        Avatar.parse(profile.avatar, profile.localUserId)
+    }
+    var paint by rememberSaveable(profile.localUserId) { mutableStateOf(current.paint) }
+    var mark by rememberSaveable(profile.localUserId) { mutableStateOf(current.mark) }
+    val chosen = Avatar(paint, mark)
 
     if (confirmingDelete) {
         AlertDialog(
@@ -541,13 +538,33 @@ private fun ProfileEditDialog(
         title = { Text(profile.name) },
         text = {
             Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // The face is shown at the size it is *read* at rather than
+                    // the size the tile draws it: this is a preview of a choice
+                    // being made, and the tile is where it is looked at.
+                    RiderAvatar(
+                        name = name.ifBlank { profile.name },
+                        avatar = chosen,
+                        size = 56.dp
+                    )
+                    Spacer(Modifier.width(MaterialTheme.spacing.medium))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.size(MaterialTheme.spacing.medium))
+                AvatarPicker(
+                    paint = paint,
+                    mark = mark,
+                    onPaint = { paint = it },
+                    onMark = { mark = it }
                 )
+
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
                 Text(
                     text = "FTP and weight are in Settings.",
@@ -558,8 +575,13 @@ private fun ProfileEditDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onRename(name) },
-                enabled = name.isNotBlank() && name.trim() != profile.name
+                onClick = { onSave(name, chosen) },
+                // Save is live when *either* half has moved. Keying it on the
+                // name alone would have left a rider who changed only their
+                // face looking at a disabled button, which reads as the app
+                // having refused rather than as nothing having changed.
+                enabled = name.isNotBlank() &&
+                    (name.trim() != profile.name || chosen.store() != profile.avatar)
             ) { Text("Save") }
         },
         dismissButton = {
@@ -568,6 +590,127 @@ private fun ProfileEditDialog(
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         }
+    )
+}
+
+/**
+ * Choosing a face (20.2.1, 20.2.3).
+ *
+ * **A colour and, if the rider wants one, a mark** — two short rows rather than
+ * a grid of every combination, because eight colours times seven faces is
+ * fifty-six tiles and a decision nobody asked for. Phase 26's rule is about
+ * saying less, and it applies to controls as much as to sentences (26.3): this
+ * is a *pick*, so it is allowed more than three answers, but the ceiling is
+ * still how many things are told apart at a glance rather than how many exist.
+ *
+ * **The rider's own initial is the first option in the mark row and it is
+ * selected by default.** It is not an absence dressed up as a choice: an
+ * initial is unambiguous between two housemates with different names, and a
+ * mark is what serves the household where two names start with the same letter
+ * — the one case an initial genuinely cannot.
+ *
+ * Nothing here is a required step. A rider who never opens this dialog has a
+ * face already, derived from their row id, and the column stays null so the app
+ * can still tell that they never chose.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AvatarPicker(
+    paint: AvatarPaint,
+    mark: AvatarMark?,
+    onPaint: (AvatarPaint) -> Unit,
+    onMark: (AvatarMark?) -> Unit
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        AvatarPaint.entries.forEach { option ->
+            Swatch(
+                selected = option == paint,
+                fill = AvatarPalette[option.ordinal],
+                label = "Colour ${option.ordinal + 1}",
+                onClick = { onPaint(option) }
+            ) {}
+        }
+    }
+
+    Spacer(Modifier.size(MaterialTheme.spacing.small))
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    ) {
+        // The initial first, because it is what the rider already has.
+        Swatch(
+            selected = mark == null,
+            fill = MaterialTheme.colorScheme.surfaceContainerHighest,
+            label = "Your initial",
+            onClick = { onMark(null) }
+        ) {
+            Text(
+                text = "A",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        AvatarMark.entries.forEach { option ->
+            Swatch(
+                selected = option == mark,
+                fill = MaterialTheme.colorScheme.surfaceContainerHighest,
+                label = option.name,
+                onClick = { onMark(option) }
+            ) {
+                Icon(
+                    imageVector = option.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One option in the picker.
+ *
+ * The selection is a **ring around the swatch** rather than a tick on top of
+ * it: a tick over a colour hides part of the thing being chosen, and the ring
+ * reads at arm's length on a tablet where the dialog is being tapped with a
+ * thumb. 48 dp is the touch target the rest of this screen is built to
+ * (20.1.2's floor exists for the same reason).
+ */
+@Composable
+private fun Swatch(
+    selected: Boolean,
+    fill: Color,
+    label: String,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(MaterialTheme.expressiveShapes.pill)
+            .background(fill)
+            .border(
+                width = if (selected) 3.dp else 1.dp,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                shape = MaterialTheme.expressiveShapes.pill
+            )
+            .clickable(onClick = onClick)
+            .semantics {
+                contentDescription = label
+                this.selected = selected
+            },
+        contentAlignment = Alignment.Center,
+        content = { content() }
     )
 }
 

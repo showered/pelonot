@@ -134,7 +134,28 @@ data class UserEntity(
      * one dismissing the cloud offer must not silence it for the others.
      */
     @ColumnInfo(name = "account_offer_dismissed")
-    val accountOfferDismissed: Boolean = false
+    val accountOfferDismissed: Boolean = false,
+
+    /**
+     * The rider's chosen face, or null if they have never chosen (20.2.2).
+     *
+     * **A reference and never image bytes** — today one of a checked-in set of
+     * colours, optionally with a mark, encoded by `Avatar.store()`. The rule is
+     * the reason rather than the encoding: a database carrying photographs is a
+     * database that cannot be exported, synced or backed up cheaply, and this
+     * one is all three. When 20.2.4 brings a photo in from the gallery, what
+     * lands here is a relative path into app-private storage, not the image.
+     *
+     * **Null is *never chosen*, and it is not the same as the first colour.**
+     * `Avatar.defaultFor` answers for a null row from the profile's own id, so
+     * a household of three gets three faces without anybody being asked a
+     * question on the way to their first ride (20.2.3) — and a rider who
+     * deliberately picked that colour is still distinguishable from one who
+     * never looked. Same argument as [maxHrBpm] and `power_is_measured`:
+     * absent is a claim.
+     */
+    @ColumnInfo(name = "avatar")
+    val avatar: String? = null
 ) {
 
     /** True when this rider has an account, and therefore a cloud. */

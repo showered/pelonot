@@ -74,7 +74,11 @@ fun PelonotNavGraph(
     /** 8.3d — carry on riding the interrupted ride rather than filing it. */
     onResumeWorkout: (onResuming: (String) -> Unit) -> Unit = {},
     onDiscardRecoverableWorkout: () -> Unit = {},
-    onRenameProfile: (com.pelonot.data.local.entity.UserEntity, String) -> Unit = { _, _ -> },
+    onSaveProfile: (
+        com.pelonot.data.local.entity.UserEntity,
+        String,
+        com.pelonot.domain.identity.Avatar
+    ) -> Unit = { _, _, _ -> },
     onDeleteProfile: (com.pelonot.data.local.entity.UserEntity) -> Unit = {},
     /** "Not now" on the backup reminder (23.3.1) — moves the line, does not silence it. */
     onDismissBackupReminder: () -> Unit = {},
@@ -228,7 +232,7 @@ fun PelonotNavGraph(
                     navController.navigate(Destination.Dashboard.route)
                 },
                 onCreateProfile = { showProfileDialog = true },
-                onRenameProfile = onRenameProfile,
+                onSaveProfile = onSaveProfile,
                 onDeleteProfile = onDeleteProfile
             )
         }
@@ -247,6 +251,9 @@ fun PelonotNavGraph(
 
             MainDashboardScreen(
                 userName = uiState.selectedProfile?.name ?: "Guest",
+                riderAvatar = uiState.selectedProfile?.let {
+                    com.pelonot.domain.identity.Avatar.parse(it.avatar, it.localUserId)
+                },
                 ftp = uiState.selectedProfile?.ftpWatts
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 ftpTrend = uiState.ftpTrend,

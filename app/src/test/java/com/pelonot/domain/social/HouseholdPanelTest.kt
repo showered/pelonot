@@ -1,5 +1,6 @@
 package com.pelonot.domain.social
 
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingTotals
 import org.junit.Assert.assertEquals
@@ -18,6 +19,7 @@ class HouseholdPanelTest {
     private fun rider(id: Int, rides: Int) = HouseholdRider(
         localUserId = id,
         name = "Rider $id",
+        avatar = Avatar.defaultFor(id),
         rides = rides,
         outputKj = rides * 100.0,
         lastRideAt = 0L,

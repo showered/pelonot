@@ -61,8 +61,8 @@ class MainActivity : ComponentActivity() {
                             onRecoverWorkout = viewModel::recoverWorkout,
                             onResumeWorkout = viewModel::resumeWorkout,
                             onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout,
-                            onRenameProfile = { user, name ->
-                                viewModel.renameProfile(user.localUserId, name)
+                            onSaveProfile = { user, name, avatar ->
+                                viewModel.saveProfileIdentity(user.localUserId, name, avatar)
                             },
                             onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) },
                             onDismissBackupReminder = viewModel::snoozeBackupReminder,

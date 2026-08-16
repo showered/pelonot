@@ -551,12 +551,30 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 21 → 22: a rider's face (PLAN 20.2.2).
+     *
+     * One nullable column and **no backfill**, which is the whole of the
+     * decision rather than the easy option. Null means *this rider has never
+     * chosen*, and `Avatar.defaultFor` answers for them from their own row id —
+     * so every profile that already exists keeps exactly the disc it has been
+     * drawing, and the app can still tell a rider who picked that colour from a
+     * rider who never looked. Writing the derived value into the column here
+     * would collapse those two and take the second one's answer away for ever;
+     * it is 12 → 13's argument and 20 → 21's, on a third column.
+     */
+    val MIGRATION_21_22 = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `profiles` ADD COLUMN `avatar` TEXT")
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
         MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-        MIGRATION_20_21
+        MIGRATION_20_21, MIGRATION_21_22
     )
 }

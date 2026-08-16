@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.SupabaseSyncRepository
 import kotlinx.coroutines.runBlocking
@@ -142,7 +143,11 @@ class FtpHistoryTest {
         val rider = newRider(ftp = 200)
 
         now = 2_000
-        repository.updateName(rider.localUserId, "Renamed")
+        repository.updateIdentity(
+            rider.localUserId,
+            "Renamed",
+            Avatar.defaultFor(rider.localUserId)
+        )
         repository.updateWeight(rider.localUserId, 68.0)
         repository.setHouseholdVisible(rider.localUserId, false)
 

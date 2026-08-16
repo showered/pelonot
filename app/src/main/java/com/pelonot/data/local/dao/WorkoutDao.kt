@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 data class HouseholdRiderRow(
     val localUserId: Int,
     val name: String,
+    /** The stored `profiles.avatar`, or null for a rider who never chose (20.2.6). */
+    val avatar: String?,
     val rides: Int,
     val outputKj: Double,
     val lastRideAt: Long
@@ -918,6 +920,7 @@ interface WorkoutDao {
         """
         SELECT p.local_user_id AS localUserId,
                p.name AS name,
+               p.avatar AS avatar,
                COUNT(w.id) AS rides,
                COALESCE(SUM(w.total_output_kj), 0) AS outputKj,
                MAX(w.timestamp) AS lastRideAt

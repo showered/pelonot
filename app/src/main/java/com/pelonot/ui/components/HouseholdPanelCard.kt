@@ -85,11 +85,20 @@ fun HouseholdPanelCard(
                         .padding(top = MaterialTheme.spacing.medium),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // The level is *identity*, so it goes with the name rather
-                    // than with the figures at the other end of the row (26.4.4)
-                    // — and it is the one thing on this row that is not about
-                    // the last 30 days, which is why it must not be read as
-                    // part of the sequence beside it.
+                    // The face and the level are both *identity*, so they go
+                    // with the name rather than with the figures at the other
+                    // end of the row (26.4.4, 20.2.6) — and both are the things
+                    // on this row that are not about the last 30 days, which is
+                    // why they must not be read as part of the sequence beside
+                    // them. The avatar is 32 dp: it is what makes a housemate
+                    // findable at a glance without the row growing, since
+                    // `RiderScore` beside it is already taller than the text.
+                    RiderAvatar(
+                        name = rider.name,
+                        avatar = rider.avatar,
+                        size = AVATAR_INLINE
+                    )
+                    Spacer(Modifier.width(MaterialTheme.spacing.small))
                     RiderScore(level = rider.level)
                     Spacer(Modifier.width(MaterialTheme.spacing.medium))
 

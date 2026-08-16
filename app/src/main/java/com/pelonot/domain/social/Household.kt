@@ -1,5 +1,6 @@
 package com.pelonot.domain.social
 
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.progress.RiderLevel
 import java.util.Calendar
 import java.util.TimeZone
@@ -22,6 +23,15 @@ import java.util.TimeZone
 data class HouseholdRider(
     val localUserId: Int,
     val name: String,
+    /**
+     * Their face (20.2.6).
+     *
+     * Resolved here rather than left as a nullable column for the call site to
+     * parse, because `Avatar.parse` needs the row id as well and two of those
+     * two-argument calls in two files is how the selector's colour rule came to
+     * live in one screen in the first place.
+     */
+    val avatar: Avatar,
     val rides: Int,
     val outputKj: Double,
     val lastRideAt: Long,

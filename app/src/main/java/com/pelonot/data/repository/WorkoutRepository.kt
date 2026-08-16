@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.ClassRival
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.social.RaceCompetitor
 import com.pelonot.domain.progress.LastRide
@@ -959,6 +960,7 @@ class WorkoutRepository(
             HouseholdRider(
                 localUserId = row.localUserId,
                 name = row.name,
+                avatar = Avatar.parse(row.avatar, row.localUserId),
                 rides = row.rides,
                 outputKj = row.outputKj,
                 lastRideAt = row.lastRideAt,

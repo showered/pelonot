@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pelonot.data.local.entity.FtpChangeSource
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.NewProfile
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
@@ -472,9 +473,18 @@ class AppViewModel(
         viewModelScope.launch { settingsRepository.setLastProfileId(userId) }
     }
 
-    /** Renames a rider from the profile selector (20.1.5). */
-    fun renameProfile(userId: Int, name: String) {
-        viewModelScope.launch { userRepository.updateName(userId, name) }
+    /**
+     * Renames a rider and sets their face, from the profile selector (20.1.5,
+     * 20.2.3).
+     *
+     * **One call, because one tap of Save is one write.** Firing a rename and
+     * an avatar change separately is precisely 7.9's defect — two coroutines
+     * doing read-modify-write on one row, the second carrying a stale copy of
+     * the field the first had just changed — and the reason it is worth naming
+     * here is that the two look like independent edits from the dialog's side.
+     */
+    fun saveProfileIdentity(userId: Int, name: String, avatar: Avatar) {
+        viewModelScope.launch { userRepository.updateIdentity(userId, name, avatar) }
     }
 
     /**

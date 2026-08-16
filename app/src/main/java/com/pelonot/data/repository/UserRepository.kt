@@ -8,6 +8,7 @@ import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.domain.identity.Avatar
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -159,16 +160,23 @@ class UserRepository(
     }
 
     /**
-     * Renames a profile (20.1.5).
+     * A rider's name and face, saved together (20.1.5, 20.2.3).
      *
-     * The one field Settings cannot change — it edits FTP and weight — and the
-     * one most likely to have been typed in a hurry on a bike.
+     * The name is the one field Settings cannot change — it edits FTP and
+     * weight — and the one most likely to have been typed in a hurry on a bike.
+     * The face joined it rather than getting a setter of its own for the reason
+     * in the body.
      */
-    suspend fun updateName(userId: Int, name: String) {
+    suspend fun updateIdentity(userId: Int, name: String, avatar: Avatar) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         val user = userDao.getUserById(userId) ?: return
-        save(user.copy(name = trimmed))
+        // **One read, one write, both fields.** Splitting this into a rename
+        // and an avatar save is 7.9 exactly: two coroutines read the same row
+        // and the later writer puts back a stale copy of whatever the earlier
+        // one changed, invisibly, with both screens showing the new values
+        // until the next launch.
+        save(user.copy(name = trimmed, avatar = avatar.store()))
     }
 
     /**

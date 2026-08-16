@@ -83,6 +83,9 @@ import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.HouseholdPanelCard
 import com.pelonot.ui.components.RideDaysCard
 import com.pelonot.ui.components.RiderScore
+import com.pelonot.domain.identity.Avatar
+import com.pelonot.ui.components.RiderAvatar
+import com.pelonot.ui.components.AVATAR_GREETING
 import com.pelonot.ui.theme.spacing
 
 /**
@@ -101,6 +104,12 @@ import com.pelonot.ui.theme.spacing
 @Composable
 fun MainDashboardScreen(
     userName: String,
+    /**
+     * The rider's chosen face (20.2.6), or **null for a guest** — same claim as
+     * the level below it and for the same reason: a guest's rides are filed
+     * against nobody, so there is no profile to be the face of.
+     */
+    riderAvatar: Avatar?,
     /**
      * How much this rider has ever ridden, as one dimensionless number (26.4).
      *
@@ -202,6 +211,7 @@ fun MainDashboardScreen(
                 // ── 1️⃣ The greeting, and the two doors ─────────────────
                 GreetingHeader(
                     userName = userName,
+                    riderAvatar = riderAvatar,
                     riderLevel = riderLevel,
                     onHistory = onHistory,
                     onSettings = onSettings
@@ -405,6 +415,7 @@ private fun greetingFor(hour: Int): String = when (hour) {
 @Composable
 private fun GreetingHeader(
     userName: String,
+    riderAvatar: Avatar?,
     riderLevel: RiderLevel?,
     onHistory: () -> Unit,
     onSettings: () -> Unit
@@ -431,6 +442,23 @@ private fun GreetingHeader(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // **A guest gets no face**, for `RiderScore`'s fourth reason
+            // exactly (26.4): a guest's rides are filed against nobody, so
+            // there is no profile to be the face *of*, and drawing one would
+            // promise an identity that does not exist. Absent is a claim.
+            //
+            // It costs no height — the greeting is one line of headline either
+            // way — and what it buys on a household bike is the check nobody
+            // performs deliberately: this is the screen where a rider finds out
+            // they are about to ride as their housemate.
+            if (riderAvatar != null) {
+                RiderAvatar(
+                    name = userName,
+                    avatar = riderAvatar,
+                    size = AVATAR_GREETING
+                )
+                Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
+            }
             Text(
                 text = buildAnnotatedString {
                     append("$greeting ")

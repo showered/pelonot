@@ -6,6 +6,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -1369,6 +1370,55 @@ class MigrationTest {
             // The number the ride was judged against, untouched.
             assertEquals(180, row?.maxHrBpm)
             assertNull("and nobody wrote down where it came from", row?.maxHrSource)
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * 21 → 22: an existing rider gains somewhere to keep a face and is not
+     * given one (20.2.2).
+     *
+     * A third null with a third meaning, and this one is the most tempting to
+     * fill in of the three: the derived default is *already* what the profile
+     * selector draws, so writing it into the column here would change nothing
+     * visible and would look like tidying up. It would take something away.
+     * Null means *this rider has never chosen*, and once every row says
+     * `periwinkle` the app can no longer tell a rider who picked that colour
+     * from a rider who never looked — so a future change to the default rule,
+     * or a screen that wants to nudge somebody into choosing, has lost its one
+     * distinguishing fact. Absent is a claim.
+     */
+    @Test
+    fun migrate21To22_leavesAnExistingRiderWithNoChosenFace() {
+        helper.createDatabase(TEST_DB, 21).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed, max_hr_bpm)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0, 190)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 22, true, AppMigrations.MIGRATION_21_22)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val row = runBlocking { migrated.userDao().getUserById(1) }
+            assertEquals("the rider is otherwise untouched", "Test Rider", row?.name)
+            assertNull("and has never chosen a face", row?.avatar)
+            // What the screen draws for them, which is the same disc it drew
+            // before the upgrade — derived, not stored.
+            assertEquals(Avatar.defaultFor(1), Avatar.parse(row?.avatar, 1))
         } finally {
             migrated.close()
         }

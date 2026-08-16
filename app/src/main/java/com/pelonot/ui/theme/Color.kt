@@ -136,6 +136,41 @@ val HeartRateZone3Tempo = Color(0xFFFFD600)
 val HeartRateZone4Threshold = Color(0xFFFF6D00)
 val HeartRateZone5Maximum = Color(0xFFFF1744)
 
+// --- Avatar colours (20.2.1) ---
+/**
+ * The eight colours a rider's face can be — **and this palette is deliberately
+ * none of the ones above it.**
+ *
+ * The profile selector used to draw its discs in `PowerZone2Endurance` through
+ * `PowerZone6Anaerobic`, and borrowing the zone ramp for identity was wrong in
+ * two ways that were both live. **One in five profiles was amber** — the colour
+ * this app uses for *off target* (11.8.3), which `RiderScore`'s third rule
+ * already forbids on a rider's own badge for exactly this reason. And the ramp
+ * itself is a claim: it runs cool through warm so that intensity reads without
+ * the number, which is precisely why the heart-rate zones were given a
+ * *different* ramp rather than sharing this one (21.2.1). A face is not an
+ * intensity, and it must not be drawn in the alphabet the app uses for one.
+ *
+ * So: no zone colour, no live-metric accent (those mean *a number changing
+ * right now*), and **nothing amber or saturated orange**. All eight are light
+ * enough to carry black text and a black mark, because the disc is filled and
+ * the initial sits on top of it.
+ *
+ * Order matches `AvatarPaint`, which is what the database stores. Adding one is
+ * safe; **reordering is not** — the default face is derived from the row id, so
+ * a reorder silently repaints every rider who never chose.
+ */
+val AvatarPalette = listOf(
+    Color(0xFF8C9EFF), // Periwinkle
+    Color(0xFF4DD0E1), // Turquoise
+    Color(0xFFAED581), // Leaf
+    Color(0xFFF06292), // Rose
+    Color(0xFFCE93D8), // Lilac
+    Color(0xFF64B5F6), // Sky
+    Color(0xFFE6C9A8), // Sand
+    Color(0xFFB0BEC5)  // Slate
+)
+
 /** Gradients for hero surfaces, kept as pairs so they stay two-stop and calm. */
 object PelonotGradients {
     val TealFlow = listOf(Color(0xFF00695C), Color(0xFF00897B))
