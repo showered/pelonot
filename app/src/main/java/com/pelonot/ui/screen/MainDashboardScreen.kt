@@ -1041,9 +1041,13 @@ private fun ProgressSection(
             // it instead. A household of one is the ordinary case for a new
             // bike, and it was the state in which this screen was 42% empty.
             //
-            // When both exist the grid goes under the glance cards rather than
-            // under the household, because it is the rider's own and belongs on
-            // the rider's own side of the screen.
+            // **The grid is the rail's understudy and never plays beside it.**
+            // Drawing both was tried and measured: the day grid is 273 dp, so
+            // adding it under the glance cards took the screen to about 990 dp
+            // — the exact figure 22.8 was written to fix, undone by the change
+            // answering the note that came after it. The grid is one tap away
+            // on *Your riding* either way, and a rail with the household in it
+            // is not a rail that needs filling.
             if (household == null && days == null) {
                 // Nothing to put in a rail — a rider who has neither ridden nor
                 // anybody else on the bike. The cards go abreast rather than
@@ -1063,9 +1067,6 @@ private fun ProgressSection(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
                     ) {
                         own.forEach { ownCard(it, Modifier.fillMaxWidth()) }
-                        if (household != null && days != null) {
-                            RideDaysCard(days, daySquare = DASHBOARD_DAY_SQUARE, onClick = onRiding)
-                        }
                     }
                     if (household != null) {
                         HouseholdPanelCard(
