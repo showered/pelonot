@@ -15,6 +15,23 @@ package com.pelonot.domain.model
  * user doesn't need to see behind the curtain on this one."* The `k` is still
  * exactly what it was; it is simply not the thing the rider is being asked
  * about, which is whether they feel like working hard today.
+ *
+ * **[displayName] is sentence case, and the words changed with it** (20.4.10).
+ * *Reach New Milestones* and *Just Stay Fit* were the last Title Case on the
+ * first-run path, on a dialog whose every neighbour is sentence case — *I ride
+ * now and then*, *A good workout*, *Keep as a guest ride*. 26.1.5 rewrote both
+ * **descriptions** here at the owner's instruction and left the names alone,
+ * which is how marketing capitals survived an audit of this very screen.
+ *
+ * **The case changed and the words did not**, which is the whole scope. The
+ * tempting extra step is to rewrite them — *Push a bit harder*, *Keep it
+ * steady* — and it is wrong twice over: it is a change to a dialog the owner
+ * has already had opinions about, made without asking, and each new name would
+ * then say what the [description] under it already says. The redundancy that
+ * *is* worth a look is the owner's to judge, not a session's.
+ *
+ * Nothing stored moves: [id] is what persists and `intent_modifier` is the
+ * number, so this is capital letters on a screen and nothing else.
  */
 enum class RideIntent(
     /** Stable identifier — safe to persist and to put in an Intent extra. */
@@ -25,13 +42,13 @@ enum class RideIntent(
 ) {
     ReachNewMilestones(
         id = "reach_new_milestones",
-        displayName = "Reach New Milestones",
+        displayName = "Reach new milestones",
         description = "A bit harder than your zones ask for",
         multiplier = 1.05
     ),
     JustStayFit(
         id = "just_stay_fit",
-        displayName = "Just Stay Fit",
+        displayName = "Just stay fit",
         description = "A bit easier, for an effort you can hold",
         multiplier = 0.95
     );
