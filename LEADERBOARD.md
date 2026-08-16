@@ -1,7 +1,7 @@
 # The live leaderboard — racing while you ride
 
 A plain-English description of what got built for PLAN.md
-**24.3.10–24.3.13**. `plan/phase-24-household.md` has the reasoning behind
+**24.3.10–24.3.19**. `plan/phase-24-household.md` has the reasoning behind
 each decision; this is what it *does*.
 
 It replaces the single-rival ghost described in [RIVALS.md](RIVALS.md), which
@@ -13,9 +13,9 @@ still exists behind a build flag.
 
 Start a class somebody has ridden before — you, or anybody else on the bike —
 and a leaderboard appears on the ride screen. It ranks everybody live, at this
-point in the class, on the score Peloton uses: **total kilojoules**. You see
-three rows: the person above you, you, and the person below you. As you pass
-people and are passed, the three rows change.
+point in the class, on the score Peloton uses: **total kilojoules**. You see a
+window onto it rather than all of it — up to six rows around your own, with the
+rest a scroll away. As you pass people and are passed, the rows change.
 
 Nobody picks anybody. You start the class and the race is there.
 
@@ -23,13 +23,17 @@ Nobody picks anybody. You start the class and the race is there.
 
 ## Who is on it
 
-Four kinds of row, and they are four different questions rather than four
-formats:
+Kinds of row, and they are different questions rather than different formats:
 
 - **Your best** — your best ride of this class, ever.
-- **12 months** — your best of the last twelve months.
-- **30 days** — your best of the last thirty days.
-- **Anybody else on this bike** — their best, by name.
+- **Your best this year** — your best of the last twelve months.
+- **Your recent best** — your best of the last thirty days.
+- **Anybody else on this bike** — their best, by name, and their last ride
+  beside it, because a best is a monument and a last ride is news.
+- **Targets nobody rode** — *Class target* (the class ridden at the middle of
+  every band it asks for), *Just past your best*, *Your usual*, and a round
+  number that rises as you do. These carry a `○` and are never mistaken for
+  people. See *A row that is a person* below for the other half of that.
 
 The two windows are the interesting part, and they are the owner's own idea:
 *"Not only can it include your own PB as a 'ghost' to chase on the leaderboard,
@@ -63,32 +67,59 @@ Top right of the ride screen, in the column that used to hold the rest of the
 class:
 
 ```
-KILO              23
-30 DAYS           21
-YOU               20
+○ 150                     22
+(face) ALEX               20
+       FTP 190 W
+(face) YOU                20
+       FTP 155 W
+○ CLASS TARGET            11
 ```
 
-- **A name and a number, and nothing else.** No positions, no units, no
-  header. The owner cut all three at once, and the argument for the biggest
-  cut is about what this board actually is: most of the rows are your own
-  past rides, so calling you *4th of 6* describes a field that is mostly one
-  person.
+- **No positions, no units, no header.** The owner cut all three at once, and
+  the argument for the biggest cut is about what this board actually is: most
+  of the rows are your own past rides, so calling you *4th of 6* describes a
+  field that is mostly one person.
 - **Every row is its own total**, including yours. The first version gave the
   other rows the gap to you — `+12` — which is one subtraction away from the
   two totals it came from, and only means anything to somebody holding their
   own number in their head at 90 rpm. Four totals in a column are compared by
   eye.
-- **Three rows always**, even when you are first or last — the window slides
-  rather than shrinking. A card that changed height as you were passed would
-  be unreadable at 90 rpm. What that costs is the one thing the header used to
-  say: you cannot tell whether there are two more below you or twenty. That is
-  accepted rather than solved — only the rows next to you were ever something
-  you could act on.
+- **The window slides rather than shrinking**, even when you are first or last.
+  A card that changed height as you were passed would be unreadable at 90 rpm.
+  What that costs is the one thing the header used to say: you cannot tell
+  whether there are two more below you or twenty. That is accepted rather than
+  solved — only the rows next to you were ever something you could act on.
 - **The card bounces when you move.** Passing somebody is two rows quietly
   swapping otherwise, now that no number announces it.
 - **Nothing is coloured for winning or losing.** Being behind a stronger
   housemate is not a mistake and the ride screen's red is the colour of an
   error. The board is in the output colour, because the score is kilojoules.
+
+---
+
+## A row that is a person
+
+The owner sent a picture of Peloton's own board — *"something like that for
+leaderboard please!"* — and this is what came of it. **A row that is a person**
+carries their face inside a ring, the ring is how far they are through their
+current level, the level itself sits on the bottom of it, and their FTP is a
+quiet caption under their name. Their total is still the large number on the
+right.
+
+**A row this app invented gets none of that**, and neither do your own past
+rides. Give a made-up target a face and the board is claiming somebody who does
+not exist; put your own face on four rows and it is decoration. So the board
+has two visibly different kinds of row, on purpose, and that is honest rather
+than untidy.
+
+**Showing a housemate's FTP is allowed here and nowhere else social.** On the
+household panel it would publish a measurement of somebody who was never asked;
+a leaderboard is the one surface every row on it has opted into being ranked
+on, and the household opt-out is exactly that opt-in — turn it off and your
+face, your level and your FTP all leave together.
+
+**A person's row is taller, so fewer fit at once.** The card is the same height
+it always was and the rest scrolls, which it already did past the sixth row.
 
 ---
 
@@ -155,14 +186,22 @@ first" — an empty comparison is a message about the people who are not on it.
 
 ## What is settled and what is open
 
-**Settled:** the score is kilojoules, the board is cumulative, three rows, no
-positions and no units, and the rival picker is gone.
+**Settled:** the score is kilojoules, the board is cumulative, six rows and a
+scroll, no positions and no units, a face and a level and an FTP on the rows
+that are people and on nothing else, and the rival picker is gone.
 
-**Open, and it is the owner's own:** what the rows that are *not* people
-should be called. *12 months* and *30 days* are placeholders — the owner's
-verdict on the first was *"no good at all"* — and they matter more now that
-the rank is gone, because the name is the only identity a row has. Every other
-row on the board is a person and those two are durations.
+**Open, and it is the owner's own:** whether the **rank** comes back. Their
+reference picture has `41` and `42` down its left edge and it was deleted nine
+days earlier on their own argument. Peloton's board is thousands of strangers;
+this one is a household plus your own history, so *4th of 6* where four of the
+six are you is a category error rather than an overstatement. Written down
+rather than acted on in either direction (PLAN.md 24.3.19d).
+
+**Open, and also the owner's:** what to call the rows that are windows onto
+your own history. *Your best this year* and *Your recent best* replaced *12
+months* and *30 days*, which the owner called *"no good at all"*, and they
+matter more now — with the rank gone the name is the only identity a row has,
+and they are the two rows that can never carry a face.
 
 **Open:** racing by **distance** instead of output. The data already works that
 way — a race is one cumulative series against another, and distance is the same
