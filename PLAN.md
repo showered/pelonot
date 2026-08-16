@@ -165,10 +165,12 @@ is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 standard heart-rate service rather than on a name, so the item is a measurement
 with the friend's watch rather than a feature).
 
-*Empty. Nothing new arrived during the fifty-eighth sitting. The owner did
-answer a standing question in-session rather than here — **how the web app is
-deployed is `git push`** (17.16.2) — which is not an inbox entry but is the
-same kind of fact: something only one person's terminal knew.*
+*Empty. The two entries of 16 August 2026 — **the avatars not being good enough**
+and **the level and the FTP belonging on the face** — are written up together at
+**20.6**, with the rule change the second one forces at **26.4.8**. The third
+note, which arrived while that write-up was being typed — **a rider could be
+level 20 on an FTP of 50** — is at **20.6.7**, and it is the sharpest thing
+anybody has said about `RiderLevel` since it was built.*
 
 ---
 

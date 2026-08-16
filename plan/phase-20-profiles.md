@@ -851,3 +851,216 @@ it is the only one.
       There is a cheaper version — make the *Back* on this step the answer, and
       it already is — so this may be a real improvement or may be clutter, and
       the owner's eye is the right judge. **20.3.4 is the item it argues with.**
+
+---
+
+### 20.6 The face itself, and what is written on it — the owner's two notes, 16 August 2026
+
+**Both notes arrived the day after 20.2 shipped, and that is the useful fact
+about them.** The fifty-eighth sitting built a rider a face out of eight colours
+and six Material icons, watched it on the tablet AVD in five states, and wrote
+down at 20.2.1 that the licence question had been *answered by not creating
+one*. The owner looked at it and said the set is not good. That is not a defect
+report and nothing in it was broken — it is a judgement about how the first
+screen anybody sees actually looks, which is the one thing a session cannot
+take from a diff and the owner can take in a glance.
+
+**The owner's words, first note:**
+
+> *"Download a free set of avatars online somewhere and use those. User should
+> pick one when signing up. The ones we have are not good."*
+
+**And the second:**
+
+> *"lvl should be part of the avatar (overlaid somehow). FTP score should be
+> displayed under the avatar. Well i understand there are repercussions across
+> the app. Perhaps just change what i said on the profile selection screen. I
+> don't know! Happy to go with what you think. I feel like FTP and lvl are both
+> important."*
+
+**The second note is unusual in this plan and worth naming as such: it asks for
+something two written rules forbid, it says so itself, and it hands the
+judgement over.** 26.1.1 removed `150 W FTP` from the profile tile *at this
+owner's request* and their verdict was "SO much better"; `RiderScore`'s second
+rule says the level is never drawn beside the FTP. The note does not overlook
+either — *"i understand there are repercussions"* — it proposes the narrowest
+version (one screen) and then asks what this side thinks. **What this side
+thinks is written at 20.6.4 and 20.6.5**, and the honest summary is that the
+level-on-the-face half is straightforwardly good and the FTP half is a real
+reversal that is worth making on exactly one screen and nowhere else.
+
+**Two decisions were taken to the owner before anything was written**, because
+both are taste rather than reasoning and the note is itself a complaint about
+taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
+**twenty faces**.
+
+- [ ] **20.6.1** **A downloaded set of faces, vendored — Open Peeps, CC0.**
+      20.2.1's rule stands unchanged and is what picked the set: whatever is
+      used has to be genuinely open (CC0, SIL OFL or MIT), credited in the repo,
+      and **vendored rather than fetched at runtime**, because the app starts a
+      ride with no network and that is not negotiable (19.4).
+
+      **Five CC0 candidates were rendered on the app's own disc at both sizes
+      that matter and looked at** — Open Peeps, Lorelei, Pixel Art, Notionists
+      and Thumbs — with the small column at **32 dp**, which is the household
+      row and the dashboard greeting. That column is the whole of the decision:
+      the line-art sets (Notionists, Lorelei) are the most attractive at 104 dp
+      and the palest at 32, where they collapse to a hairline and a hair
+      silhouette. Open Peeps is flat bold colour with a hard outline and is the
+      only one of the five still legible as *a particular person* small. Thumbs
+      is more legible still and is not a person; Pixel Art reads as a game
+      character, which is a whole-app style choice rather than an avatar choice.
+
+      **The owner chose Open Peeps and twenty of them.** Twenty is more than
+      26.3's instinct would allow for a *judgement* and this is a *pick* — the
+      ceiling on a pick is how many are told apart at a glance, not how few
+      questions the screen asks, and twenty different haircuts are told apart
+      where twenty shades of one colour are not.
+
+      **What must survive the download:** the images go in the repository, the
+      licence and the attribution go in a file beside them, and nothing in the
+      app calls an API. The DiceBear HTTP API is how they were *fetched once*,
+      by a script that is checked in so the set can be regenerated — it is not a
+      runtime dependency and must never become one
+
+- [ ] **20.6.2** **Pick one when signing up, which reverses 20.2.3's deliberate
+      decision — and the owner is the one who may.** That item put the picker on
+      the press-and-hold dialog and left profile creation alone, on the grounds
+      that the whole of 20.4 is about that path being too long for somebody
+      meeting the app for the first time. It also wrote down the condition for
+      moving it: *"If it ever moves into creation it belongs at the end, not the
+      start, and it needs the owner's eye rather than a session's."* This note
+      is that eye.
+
+      **So it goes at the end and it stays skippable.** A face is the one
+      question on that path a rider can answer without knowing anything — it is
+      not the weight, the birth year or the FTP — and it is the only one that is
+      *fun*, which is an argument for it being last rather than an argument
+      against it being there. The default remains derived from the row id
+      (20.2.2), so a rider who taps straight past still has a face and the
+      column still says *never chose*
+
+- [ ] **20.6.3** **What happens to a rider who already chose `rose:bolt`.**
+      `AvatarMark` is retired by 20.6.1, not renamed: the six icon marks stop
+      being offered and the ids stop being recognised. `Avatar.parse` already
+      handles this exactly as it should — a known colour with an unknown mark
+      keeps the colour and falls back to the initial — so the one profile on the
+      test device that chose a bolt becomes *rose with an initial* rather than a
+      crash or a blank disc. **That is the graceful-degradation clause in
+      `Avatar`'s KDoc being cashed in for the first time**, and it is worth
+      noting that it was written for a *newer* app's value being read by an
+      older one and is doing the opposite job here. Nothing is migrated: the
+      column keeps the string it has
+
+- [ ] **20.6.4** **The level, overlaid on the face — and this half needs no
+      argument.** *"lvl should be part of the avatar (overlaid somehow)."* A
+      level badge sitting on the corner of a face is what every game the owner
+      is thinking of does, and it says the thing `RiderScore` exists to say:
+      this is **who somebody is**, not a measurement of them. It also buys back
+      a row on the tile, which is where the FTP goes.
+
+      **It stays one component**, which is the whole point of `RiderScore` and
+      of `RiderAvatar` — a second badge drawn by the selector is how the avatar
+      came to be on the power-zone palette in the first place. So `RiderAvatar`
+      gains the level as an optional parameter and `RiderScore` gains a compact
+      form, and **all four of `RiderScore`'s rules survive**: it still says
+      `LVL` and a number, it is still never amber, and a guest still gets
+      neither face nor badge.
+
+      **It is not drawn at 32 dp**, and that is a rule rather than an accident:
+      the household row and the dashboard greeting keep the pill *beside* the
+      name, because a badge shrunk onto a 32 dp disc is two illegible things
+      instead of one legible one. The caller decides by not passing a level
+
+- [ ] **20.6.5** **The FTP under the avatar — the reversal, on one screen, and
+      the reasoning is the item.** This is 26.1.1 undone where 26.1.1 was made,
+      and it is worth being plain about that rather than filing it as a tweak.
+
+      **What 26.1.1's argument actually was:** the screen's only question is
+      *which of you is it*, nobody picks their profile by their FTP, the number
+      moves on its own (Phase 7), and `150 W FTP` is two pieces of jargon on a
+      tile. Every one of those sentences is still true.
+
+      **What the note adds that the argument did not have:** *"I feel like FTP
+      and lvl are both important."* That is not a claim about the picker's job —
+      it is a claim about the rider's relationship with their own number, and it
+      is the same instinct that produced 26.4 (a level shown consistently) and
+      Phase 28 (achievements the rider owns). A number the app moves by itself
+      and never shows is a number the rider cannot argue with.
+
+      **So it is drawn, once, quietly, and the placement carries the whole
+      distinction.** Under the name rather than beside it, in the caption style
+      the tile already uses for a secondary fact, so the eye still lands on the
+      face and the name first and the FTP is read *second, by somebody who
+      wanted it*. `150 W FTP` — number first, label last — is what was rejected
+      and is not what goes back: `FTP 150 W` reads as a fact about the rider,
+      where the old form read as a headline.
+
+      **And it goes nowhere else — which the third note widened and then the
+      surfaces themselves narrowed back.** *"Reintroduce FTP score somewhere
+      close to avatar/name in locations where appropriate"* is an instruction to
+      look at all of them rather than one, so all of them were looked at:
+
+      - **The profile selector** — the FTP is genuinely absent beside a name
+        here, this is the screen 26.1.1 took it off, and it is the rider's own
+        number on their own tile. **Yes.**
+      - **The dashboard greeting** — the dashboard already draws the FTP, big,
+        in `FtpGlanceCard`, with its trend line and a route into *Your FTP*.
+        Putting it beside the greeting too is the same number twice on one
+        screen, and the greeting row is the one row in this app where a level
+        badge and an FTP would genuinely share a line. **No, and it is not a
+        refusal — the number is already there.**
+      - **The household panel and any leaderboard** — these are *other people's*
+        numbers. An FTP beside a housemate's name turns a presence card into a
+        fitness ranking, which is 24.2's competition-nobody-entered arriving by
+        the back door, and it is a measurement of a person published to the rest
+        of the house without them being asked. **No.**
+      - **The overlay** — 18.6. **No.**
+
+      So the scope the owner first proposed and the scope the surfaces support
+      are the same one, arrived at from both ends. See **26.4.8**, which is
+      where the rule change is written down rather than left implicit in a diff
+
+- [ ] **20.6.7** **"Someone could be lvl 20 but only 50 FTP, so not a very good
+      rider. The goal should be FTP, not lvl."** ***The owner's third note, and
+      it is the sharpest thing said about `RiderLevel` since it was built.***
+      It is also, read carefully, **not a complaint about the level being
+      wrong** — it is the observation that the level does not measure what the
+      owner wants the app to be pointing at.
+
+      **The level is already built to say exactly that**, and this note is worth
+      keeping beside the rule rather than treated as a contradiction of it.
+      `RiderScore`'s own KDoc: the number's only honest claim is *has ridden
+      more*, never *is fitter*. A rider at level 20 on an FTP of 50 is a rider
+      who has ridden a great deal and is not strong, and the badge is telling
+      the truth about them. **The note's real content is that the app is
+      currently loudest about the accumulation and quietest about the ability**,
+      on the one screen where a rider is looking at themselves.
+
+      **What follows for this sitting is small and deliberate:** the level does
+      not change, is not rescaled, and is not recoloured. The FTP appears beside
+      it on the tile (20.6.5), which is precisely the correction the note asks
+      for — *"for now can we at least reintroduce FTP score"*.
+
+      **What follows later is the owner's, and they said so:** *"Maybe i should
+      go away and design something and then come back to you on this."* **That
+      is an open item with their name on it, in the same family as 24.3.12a**,
+      and a session that finds it still open should say so rather than invent a
+      progression system. Two things worth handing them when they come back:
+
+      1. **Phase 28 is the other half of this thought** and is deliberately
+         unbuilt at their own weighting of *"one for the backlog"*. Achievements
+         are things a rider *owns*; a level is a thing the app *says*. A design
+         that makes ability visible probably lives there rather than in a
+         bigger number.
+      2. **7.11 is the honest version of "the goal should be FTP"** — auto-FTP
+         that can go **down** as well as up. An FTP that only ever rises is an
+         accumulation wearing a measurement's clothes, which is the exact
+         criticism this note makes of the level
+
+- [ ] **20.6.6** **What is deliberately not decided here: a photograph.**
+      20.2.4 and 20.2.5 (the camera, the gallery, and the EXIF stripping that
+      must travel with them) are untouched by these notes and stay open. A
+      vendored set answers *"the ones we have are not good"* completely and a
+      photograph is a different feature with a privacy surface on it — the note
+      asked for a downloaded set, in those words, and got one

@@ -429,3 +429,35 @@ have ridden* in one glyph.
       the honest note is that the first feature to need it should add the
       column, and should add it as *the level at the moment it changed* rather
       than as a cache of the current one
+- [ ] **26.4.8** **Rule 2 is narrowed by the owner, and this is where that is
+      written down.** *"Never beside the FTP as if they were the same kind of
+      thing"* was decided at 26.4.5 and held; the owner's note of 16 August 2026
+      asks for the level on the rider's face and the FTP under it, on the
+      profile selector, and says in the same breath that they know it has
+      repercussions (20.6, and the build is 20.6.4 and 20.6.5).
+
+      **The rule is not deleted, because the reason for it has not changed.** A
+      row containing `LVL 7` and `150 W` side by side still invites the reading
+      that a higher level is a fitter rider, and that is still the one thing the
+      level must never say. What changes is *where* the app is allowed to draw
+      both about the same rider, and the shape it must take when it does:
+
+      1. **One screen: the profile selector.** Not the dashboard greeting, not
+         the household panel, not any leaderboard, not the overlay. The owner's
+         own wording is the scope — *"perhaps just change what i said on the
+         profile selection screen"* — and a rule that survives on every other
+         surface is a rule; one relaxed wherever it is inconvenient is a habit.
+      2. **Never on one line, and never the same weight.** The level is *on the
+         face*, the FTP is a caption under the name — different sizes, different
+         colours, different rows, with the name between them. The forbidden
+         thing was always the row that presents them as two readings of one
+         instrument, and the tile does not do that.
+      3. **The badge does not change to accommodate it.** No unit creeps onto
+         the level, no "fitness" appears beside it, and it is still not amber.
+         `RiderScore`'s rules 1, 3 and 4 are untouched.
+
+      **The honest note is that this is a judgement made under an explicit
+      delegation** — *"Happy to go with what you think"* — so it is the owner's
+      to reverse on sight, exactly as 26.4.4's placement is. **What would settle
+      it is one look at the tablet**, which is also what settled 26.1.1 in the
+      other direction
