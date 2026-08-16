@@ -18,6 +18,7 @@ import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.domain.suggest.ClassToRide
 import com.pelonot.domain.suggest.RiderRides
@@ -106,6 +107,22 @@ data class AppUiState(
      * and is the one who needs it most.
      */
     val suggestion: ClassSuggestion? = null,
+    /**
+     * The shape of that same class — blocks, at their zone, across its length
+     * (22.9.4).
+     *
+     * **Derived beside [suggestion] and from its own id**, never looked up
+     * again by the screen that draws it. A profile fetched a second time is a
+     * second answer to *which class is this*, and the failure it produces is
+     * the worst kind: a card naming one class and drawing the shape of
+     * another, which looks like a working feature. Same family as 20.4.7's two
+     * pairing triggers and 12.7's two effort cards.
+     *
+     * Null when the library has not loaded, and empty-blocked when the class's
+     * `intervals_json` would not decode — `ClassProfileChart` draws nothing for
+     * either, which is the honest answer rather than a placeholder.
+     */
+    val suggestionProfile: ClassProfile? = null,
     /**
      * How much riding a backup would be protecting (PLAN 23.3.1). Only *due*
      * once ten rides have gone by unprotected, and the dashboard draws nothing
@@ -333,6 +350,18 @@ class AppViewModel(
         dashboard,
         rideStatus
     ) { settings, profiles, classes, dashboard, (recoverable, active) ->
+        // Computed here rather than in a flow of its own because it is a
+        // function of two things the state already carries — the library and
+        // the rider's rides — and a third flow that re-derives one of them is a
+        // second answer to the same question.
+        val suggested = ClassToRide.suggest(
+            library = classes.map { it.toSuggestable() },
+            rides = dashboard.riderRides,
+            // Read once, at the moment the state is built. The rule's only use
+            // of the clock is "did they ride hard in the last day", and that
+            // must not change under a rider looking at the card.
+            nowMs = System.currentTimeMillis()
+        )
         AppUiState(
             settings = settings,
             profiles = profiles,
@@ -343,18 +372,14 @@ class AppViewModel(
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,
             riderLevels = dashboard.riderLevels,
-            // Computed here rather than in a flow of its own because it is a
-            // function of two things the state already carries — the library and
-            // the rider's rides — and a third flow that re-derives one of them
-            // is a second answer to the same question.
-            suggestion = ClassToRide.suggest(
-                library = classes.map { it.toSuggestable() },
-                rides = dashboard.riderRides,
-                // Read once, at the moment the state is built. The rule's only
-                // use of the clock is "did they ride hard in the last day", and
-                // that must not change under a rider looking at the card.
-                nowMs = System.currentTimeMillis()
-            ),
+            suggestion = suggested,
+            // The shape of the class the line above named, resolved from that
+            // suggestion's own id so the two can never describe different
+            // classes (22.9.4).
+            suggestionProfile = suggested?.let { s ->
+                classes.firstOrNull { it.id == s.classId }
+                    ?.let { ClassProfile.of(it.intervals) }
+            },
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active

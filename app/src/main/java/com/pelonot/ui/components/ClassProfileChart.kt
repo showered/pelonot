@@ -48,7 +48,17 @@ import com.pelonot.ui.theme.spacing
 fun ClassProfileChart(
     profile: ClassProfile,
     modifier: Modifier = Modifier,
-    height: Dp = 132.dp
+    height: Dp = 132.dp,
+    /**
+     * The three clock labels under the drawing (22.9.4).
+     *
+     * On the class detail screen they are the axis and belong there. On the
+     * dashboard's *Ride this* card the same drawing is a **glance** beside a
+     * line that already says `30 min`, and three more times under it is the
+     * screen answering one question twice — which is Phase 26's rule and also
+     * 22.9.1's, since a label row is height that adds no information.
+     */
+    showClock: Boolean = true
 ) {
     if (profile.blocks.isEmpty()) return
 
@@ -81,13 +91,15 @@ fun ClassProfileChart(
             }
         }
 
-        Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
-        Row(Modifier.fillMaxWidth()) {
-            ClockLabel(Formatters.duration(0))
-            Spacer(Modifier.weight(1f))
-            ClockLabel(Formatters.duration(profile.totalSec / 2))
-            Spacer(Modifier.weight(1f))
-            ClockLabel(Formatters.duration(profile.totalSec))
+        if (showClock) {
+            Spacer(Modifier.size(MaterialTheme.spacing.extraSmall))
+            Row(Modifier.fillMaxWidth()) {
+                ClockLabel(Formatters.duration(0))
+                Spacer(Modifier.weight(1f))
+                ClockLabel(Formatters.duration(profile.totalSec / 2))
+                Spacer(Modifier.weight(1f))
+                ClockLabel(Formatters.duration(profile.totalSec))
+            }
         }
     }
 }

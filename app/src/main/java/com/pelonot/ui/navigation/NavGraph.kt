@@ -265,6 +265,7 @@ fun PelonotNavGraph(
                 },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
                 suggestion = uiState.suggestion,
+                suggestionProfile = uiState.suggestionProfile,
                 classCount = uiState.classes.size.takeIf { it > 0 },
                 // The class's own screen, which is where the library lands too
                 // (22.7.2). One tap fewer than browsing, and not one fewer than

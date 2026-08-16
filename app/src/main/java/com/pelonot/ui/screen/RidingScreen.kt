@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,20 +31,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingWeek
+import com.pelonot.ui.components.AxisText
+import com.pelonot.ui.components.RideDaysCard
+import com.pelonot.ui.components.RidingTrendCard
+import com.pelonot.ui.components.monthLabel
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -230,7 +228,7 @@ private fun WeeklyVolumeCard(history: RidingHistory, modifier: Modifier = Modifi
     val minutesPeak = maxOf(history.busiestFinishedMinutes, 1)
     val outputPeak = maxOf(history.busiestFinishedOutputKj, 1.0)
 
-    TrendCard(
+    RidingTrendCard(
         modifier = modifier,
         title = "Every week",
         summary = "${history.totalRides} rides across " +
@@ -336,128 +334,6 @@ private fun BarRow(
  * the size of an effort. Intensity is **minutes**, not output — a rider on an
  * easy week has not had a fainter day, they have had a shorter one.
  */
-@Composable
-private fun RideDaysCard(history: RidingHistory, modifier: Modifier = Modifier) {
-    val peak = maxOf(history.busiestDayMinutes, 1)
-    val ridden = history.weeks.flatMap { it.days }.count { it?.ridden == true }
-    val accent = MaterialTheme.colorScheme.primary
-    // A day that happened and had no riding in it is a **visible** tile; a day
-    // that has not happened is nothing at all. If those two read the same the
-    // distinction is only in the source, and the rest of the week looks like
-    // days the rider missed.
-    val empty = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-
-    TrendCard(
-        modifier = modifier,
-        title = "Ride days",
-        summary = "$ridden days ridden in the last ${history.weeks.size} weeks" +
-            if (history.streakDays >= 2) ", ${history.streakDays} of them in a row." else "."
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            history.weeks.forEach { week ->
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    week.days.forEach { day ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .clip(MaterialTheme.expressiveShapes.small)
-                                .background(
-                                    when {
-                                        // Not yet happened: nothing at all, so
-                                        // the rest of this week is not drawn as
-                                        // days off.
-                                        day == null -> Color.Transparent
-                                        !day.ridden -> empty
-                                        else -> accent.copy(
-                                            alpha = (MIN_DAY_ALPHA +
-                                                (1f - MIN_DAY_ALPHA) *
-                                                (day.minutes.toFloat() / peak)).coerceIn(0f, 1f)
-                                        )
-                                    }
-                                )
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.size(MaterialTheme.spacing.small))
-        Row(Modifier.fillMaxWidth()) {
-            AxisText(monthLabel(history.weeks.first().startMs))
-            Spacer(Modifier.weight(1f))
-            AxisText("today")
-        }
-    }
-}
-
-/**
- * The card the two live in.
- *
- * The same shape as the ride detail screen's `ChartCard` and for the same
- * reason (16.1.8, 16.2.4): one answer to "what does a chart look like here",
- * and a sentence carrying the meaning for a rider who cannot see the drawing.
- */
-@Composable
-private fun TrendCard(
-    title: String,
-    summary: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.expressiveShapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
-    ) {
-        Column(Modifier.padding(MaterialTheme.spacing.large)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.semantics { heading() }
-            )
-            Spacer(Modifier.size(MaterialTheme.spacing.medium))
-
-            Box(Modifier.semantics { contentDescription = summary }) {
-                Column(Modifier.fillMaxWidth()) { content() }
-            }
-
-            Spacer(Modifier.size(MaterialTheme.spacing.small))
-            Text(
-                text = summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clearAndSetSemantics { }
-            )
-        }
-    }
-}
-
-@Composable
-private fun AxisText(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-private fun monthLabel(epochMs: Long): String =
-    SimpleDateFormat("MMM", Locale.getDefault()).format(Date(epochMs))
-
-/** Faint enough to read as "a little", solid enough to read as "a day that happened". */
-private const val MIN_DAY_ALPHA = 0.35f
-
 private val BAR_HEIGHT = 90.dp
 
 /** Below this the two trend cards' charts get too narrow to read; they stack. */

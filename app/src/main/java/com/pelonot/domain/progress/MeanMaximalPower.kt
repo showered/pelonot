@@ -1,5 +1,6 @@
 package com.pelonot.domain.progress
 
+import com.pelonot.core.Formatters
 /**
  * One second of a ride's power, for the personal-best arithmetic (PLAN 16.3.3).
  *
@@ -108,8 +109,10 @@ object MeanMaximalPower {
         else -> plural(windowSec / 3_600, "hour")
     }
 
-    private fun plural(count: Int, unit: String) =
-        "$count $unit${if (count == 1) "" else "s"}"
+    // One answer to count-and-unit agreement, in `Formatters` (22.9.4). This
+    // was one of three copies of it, and a fourth call site that had none is
+    // how "1 days ridden" reached a screen.
+    private fun plural(count: Int, unit: String) = Formatters.plural(count, unit)
 }
 
 /** One personal best, and the ride it came from (16.3.3). */

@@ -15,6 +15,20 @@ import java.util.Locale
  */
 object Formatters {
 
+    /**
+     * `1 day`, `2 days` — a count and its unit, agreeing.
+     *
+     * **Here because this app has now got it wrong twice with the rule written
+     * three times.** 21.6.3 found *"1 minutes 42 seconds"* on a card that had
+     * been on screen for four sittings, and 22.9.4 found *"1 days ridden in the
+     * last 17 weeks"* the moment the same card reached a rider with one ride —
+     * both in strings a screen reader reads aloud. Two private copies of this
+     * function already existed in `domain`, which is why the third call site
+     * did not get one.
+     */
+    fun plural(count: Int, unit: String): String =
+        if (count == 1) "$count $unit" else "$count ${unit}s"
+
     /** `mm:ss`, or `h:mm:ss` once the duration passes an hour. */
     fun duration(totalSeconds: Int): String {
         val seconds = totalSeconds.coerceAtLeast(0)

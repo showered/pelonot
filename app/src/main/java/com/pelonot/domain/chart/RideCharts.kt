@@ -1,5 +1,6 @@
 package com.pelonot.domain.chart
 
+import com.pelonot.core.Formatters
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.Interval
@@ -919,8 +920,8 @@ object RideChartSummaries {
         }
     }
 
-    private fun plural(count: Int, unit: String): String =
-        if (count == 1) "$count $unit" else "$count ${unit}s"
+    // See `Formatters.plural` (22.9.4) — one answer, three former copies.
+    private fun plural(count: Int, unit: String): String = Formatters.plural(count, unit)
 }
 
 internal const val CADENCE_BAND_RPM = 10

@@ -95,4 +95,19 @@ class FormattersTest {
         assertEquals("40.00 km", Formatters.distance(40.0, UnitSystem.METRIC))
         assertEquals("45:00", Formatters.duration(2700))
     }
+
+    /**
+     * The defect this exists to stop, twice now: *"1 minutes 42 seconds"* on
+     * the ride detail card (21.6.3) and *"1 days ridden in the last 17 weeks"*
+     * on the dashboard's ride-days grid the first time a rider with one ride
+     * saw it (22.9.4). Both are read aloud by a screen reader as well as
+     * printed.
+     */
+    @Test
+    fun aCountAndItsUnitAgree() {
+        assertEquals("0 days", Formatters.plural(0, "day"))
+        assertEquals("1 day", Formatters.plural(1, "day"))
+        assertEquals("2 days", Formatters.plural(2, "day"))
+        assertEquals("17 weeks", Formatters.plural(17, "week"))
+    }
 }

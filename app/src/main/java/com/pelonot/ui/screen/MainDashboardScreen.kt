@@ -76,9 +76,12 @@ import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.loneCard
 import com.pelonot.data.repository.DashboardStats
+import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.suggest.ClassSuggestion
+import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.HouseholdPanelCard
+import com.pelonot.ui.components.RideDaysCard
 import com.pelonot.ui.components.RiderScore
 import com.pelonot.ui.theme.spacing
 
@@ -137,6 +140,12 @@ fun MainDashboardScreen(
      * class — a rider who has ridden nothing still gets one.
      */
     suggestion: ClassSuggestion? = null,
+    /**
+     * The shape of that class (22.9.4) — derived beside the suggestion from its
+     * own id, never looked up here, so the card cannot name one class and draw
+     * another.
+     */
+    suggestionProfile: ClassProfile? = null,
     /** How many classes there are to browse, for the door beside the offer. */
     classCount: Int? = null,
     /** Opens the suggested class's own screen — never starts a ride (22.7.2). */
@@ -229,18 +238,10 @@ fun MainDashboardScreen(
                     if (suggestion != null) {
                         SuggestedClassCard(
                             suggestion = suggestion,
+                            profile = suggestionProfile,
                             onClick = { onRideSuggestion(suggestion.classId) },
                             modifier = Modifier
                                 .weight(2f)
-                                .fillMaxHeight()
-                        )
-                        SecondaryActionCard(
-                            title = "All Classes",
-                            subtitle = classCount?.let { "$it to choose from" } ?: "Browse them all",
-                            icon = Icons.AutoMirrored.Filled.List,
-                            onClick = onBeginClass,
-                            modifier = Modifier
-                                .weight(1f)
                                 .fillMaxHeight()
                         )
                     } else {
@@ -257,15 +258,39 @@ fun MainDashboardScreen(
                                 .fillMaxHeight()
                         )
                     }
-                    SecondaryActionCard(
-                        title = "Just Ride",
-                        subtitle = "No plan — pedal",
-                        icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                        onClick = onJustRide,
+                    // **The two doors stack rather than stand beside it**
+                    // (22.9.1). The offer card is taller now that it carries the
+                    // class's own shape, and a row equalises heights — so left
+                    // abreast, *All Classes* and *Just Ride* would have grown to
+                    // 180 dp each to hold two words and an icon, which is
+                    // exactly the 152-dp-card-for-43-dp-of-text that 22.8.2 was
+                    // written to delete. Stacked, the same height carries two
+                    // cards instead of one and neither of them gains any air.
+                    Column(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight()
-                    )
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                    ) {
+                        SecondaryActionCard(
+                            title = "All Classes",
+                            subtitle = classCount?.let { "$it to choose from" } ?: "Browse them all",
+                            icon = Icons.AutoMirrored.Filled.List,
+                            onClick = onBeginClass,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        )
+                        SecondaryActionCard(
+                            title = "Just Ride",
+                            subtitle = "No plan — pedal",
+                            icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                            onClick = onJustRide,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        )
+                    }
                 }
 
                 // ── 2️⃣a The account offer or the backup reminder ────────
@@ -627,10 +652,21 @@ private fun PrimaryActionCard(
  * Every phrase here is an observation about this rider's own history, drawn
  * from `ClassSuggestion.Reason` so that what is *said* and what was *decided*
  * cannot drift apart.
+ *
+ * **And the card shows the ride rather than a dumbbell** (22.9.4). Where the
+ * right-hand half of it held a 40 dp gym glyph — a decoration that said nothing
+ * about this class and nothing this rider could act on — it now carries the
+ * class's own shape: its blocks, at their zone, across its length, in the same
+ * component the class detail screen draws (22.7.2). It is the one candidate in
+ * 22.9.4 that **works from ride zero**, which matters because the emptiest
+ * dashboard in the app belongs to the rider who has never ridden, and the
+ * question they cannot answer is precisely *what is this class like*.
  */
 @Composable
 private fun SuggestedClassCard(
     suggestion: ClassSuggestion,
+    /** The shape of this same class, resolved from its own id (22.9.4). */
+    profile: ClassProfile?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -659,42 +695,69 @@ private fun SuggestedClassCard(
         ),
         onClick = onClick
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(MaterialTheme.spacing.large),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(MaterialTheme.spacing.large)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Ride this",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-                Text(
-                    text = suggestion.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Ride this",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = suggestion.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (profile == null || profile.blocks.isEmpty()) {
+                    // No shape to draw — a class whose intervals would not
+                    // decode, or a library still loading. The glyph is what the
+                    // card carried before and it keeps the card from being a
+                    // half-empty rectangle in the only state that has nothing
+                    // to show.
+                    Icon(
+                        imageVector = Icons.Default.FitnessCenter,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+
+            if (profile != null && profile.blocks.isNotEmpty()) {
+                // **Under the words, across the whole card, not beside them.**
+                // Time is the horizontal axis, so the wide-and-short aspect is
+                // the one that reads — the same argument 22.7.2 made for giving
+                // this drawing the full panel on the class screen, at a third
+                // of the size. Beside the text it was 250 dp of squashed
+                // recovery blocks and looked like a progress bar.
+                //
+                // The clock labels stay off: the line above already says how
+                // long the class is, and three more times under it is one
+                // question answered twice (Phase 26).
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                ClassProfileChart(
+                    profile = profile,
+                    height = 72.dp,
+                    showClock = false
                 )
             }
-            Icon(
-                imageVector = Icons.Default.FitnessCenter,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(40.dp)
-            )
         }
     }
 }
@@ -702,6 +765,19 @@ private fun SuggestedClassCard(
 // =========================================================================
 // Secondary Action Card
 // =========================================================================
+/**
+ * A door, in the shape the rest of this screen uses for a row of one thing.
+ *
+ * **Icon beside the words rather than above them** (22.9.1). Stacked above, the
+ * card's shortest honest height is about 136 dp — a 32 dp glyph, a title and a
+ * caption in a column — and two of those stacked set the whole action row to
+ * 296 dp, which stretched the offer card beside them into a field of teal with
+ * its shape marooned at the bottom. **That is the exact fault 22.8.2 named**,
+ * reached from the opposite direction: not a card given too much room, but a
+ * card *demanding* it. Sideways it is about 92 dp, which is the same shape and
+ * nearly the same height as the FTP and last-ride cards below, so the screen
+ * has one idiom for *a card that is one line of meaning* instead of two.
+ */
 @Composable
 private fun SecondaryActionCard(
     title: String,
@@ -721,11 +797,11 @@ private fun SecondaryActionCard(
         ),
         onClick = onClick
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(MaterialTheme.spacing.large),
-            horizontalAlignment = Alignment.Start
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
@@ -733,21 +809,23 @@ private fun SecondaryActionCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -947,34 +1025,63 @@ private fun ProgressSection(
         } ?: Unit
     }
 
+    // Whether the day grid has anything to say. A rider who has never ridden
+    // gets seventeen weeks of grey squares, which is an honest nothing drawn
+    // large — 22.2.3's rule, and 22.9.5 is where the state it leaves is argued
+    // out rather than filled with a card that says nothing.
+    val days = riding.takeIf { stats.hasRidden && it.weeks.isNotEmpty() }
+
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val abreast = maxWidth >= CARDS_ABREAST_BREAKPOINT
-        if (household != null && abreast) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
-                ) {
-                    own.forEach { ownCard(it, Modifier.fillMaxWidth()) }
+        if (abreast) {
+            // **Two columns, and the rail is never empty** (22.9.4). The
+            // household holds it when there is one — 18.2's order is kept by
+            // left-before-right, the rider's own training first — and when
+            // there is nobody else on the bike the rider's *own* riding holds
+            // it instead. A household of one is the ordinary case for a new
+            // bike, and it was the state in which this screen was 42% empty.
+            //
+            // When both exist the grid goes under the glance cards rather than
+            // under the household, because it is the rider's own and belongs on
+            // the rider's own side of the screen.
+            if (household == null && days == null) {
+                // Nothing to put in a rail — a rider who has neither ridden nor
+                // anybody else on the bike. The cards go abreast rather than
+                // down half the panel, which is 22.8.4's branch unchanged, and
+                // the emptiness left under them is 22.9.5's open question
+                // rather than a card invented to fill it.
+                WideGrid(items = own, minCellWidth = 320.dp, equalHeightRows = true) { card ->
+                    ownCard(card, Modifier.fillMaxWidth())
                 }
-                HouseholdPanelCard(
-                    riders = household,
-                    youId = youId,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        } else if (household == null && abreast) {
-            // **Nobody else on the bike, so the cards go abreast rather than
-            // down the left-hand side** — a household of one is the ordinary
-            // case for a new rider, and three cards stacked in half a panel is
-            // the empty rail all over again. `WideGrid` is the token for a set
-            // of things that are *looked at* (22.4), and no cell takes the
-            // panel, which is the other half of the owner's rule.
-            WideGrid(items = own, minCellWidth = 320.dp, equalHeightRows = true) { card ->
-                ownCard(card, Modifier.fillMaxWidth())
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                    ) {
+                        own.forEach { ownCard(it, Modifier.fillMaxWidth()) }
+                        if (household != null && days != null) {
+                            RideDaysCard(days, daySquare = DASHBOARD_DAY_SQUARE, onClick = onRiding)
+                        }
+                    }
+                    if (household != null) {
+                        HouseholdPanelCard(
+                            riders = household,
+                            youId = youId,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        RideDaysCard(
+                            days!!,
+                            modifier = Modifier.weight(1f),
+                            daySquare = DASHBOARD_DAY_SQUARE,
+                            onClick = onRiding
+                        )
+                    }
+                }
             }
         } else {
             // Too narrow for two of anything: one column, and the panel — if
@@ -1357,3 +1464,17 @@ private fun FtpSparkline(trend: FtpTrend, color: Color, modifier: Modifier = Mod
  * guess per surface.
  */
 private val CARDS_ABREAST_BREAKPOINT = 900.dp
+
+/**
+ * How big one day is in the dashboard's copy of the ride-days grid (22.9.4).
+ *
+ * *Your riding* sizes a day off the card's width, because there the grid is
+ * what the screen is for and it may have all of it. Here the grid is in a rail
+ * beside a column of glance cards and has to end where that column ends: at 22
+ * dp a day, seven of them and their gaps come to 172 dp, which puts the card
+ * within a few dp of the three cards opposite. **Sized off the height it may
+ * occupy, not off the width it is given** — the same figure taken from the
+ * width draws 77 dp squares and a grid 540 dp tall, which is how the first
+ * build of this went off the bottom of the screen it exists to fill.
+ */
+private val DASHBOARD_DAY_SQUARE = 22.dp
