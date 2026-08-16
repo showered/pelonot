@@ -216,6 +216,18 @@ object FtpReductionRule {
     const val EVIDENCE_WINDOW_SEC = 20 * 60
 
     /**
+     * How many rides back the search for working ones goes.
+     *
+     * A bound on the work rather than a rule about fitness, and it is here
+     * beside the rules so that it is visible rather than buried in a query. The
+     * consequence is real and worth stating: a rider whose last three hard
+     * rides sit more than twenty rides back gets no proposal from them. That is
+     * the right answer anyway — twenty rides of not working since is a change
+     * in what somebody is doing, not a decline they are in the middle of.
+     */
+    const val EVIDENCE_SCAN_LIMIT = 20
+
+    /**
      * A proposal, or null when the evidence does not reach the bar.
      *
      * [rides] is **newest first** and is expected to be already limited to what

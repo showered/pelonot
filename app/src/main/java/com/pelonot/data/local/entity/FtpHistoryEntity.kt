@@ -49,11 +49,33 @@ enum class FtpChangeSource {
     /** A twenty-minute peak the app measured and the rider accepted (7.1–7.3). */
     AutoBreakthrough,
 
+    /**
+     * The app measured a run of hard rides coming in short and the rider
+     * accepted the lower number (7.11.5, `FtpReductionRule`).
+     *
+     * **Its own case rather than [AutoBreakthrough] with a smaller number**, and
+     * for the reason the whole enum exists: the trend chart has to be able to
+     * draw a change the app made *downwards* differently from one a rider made
+     * themselves, and 20.3.4 already settled that "the app worked it out" and
+     * "the rider said so" are not interchangeable. It is also different evidence
+     * from a breakthrough — one ride's peak against three rides' shortfall — and
+     * a history that cannot tell those apart cannot answer *why did my FTP move*
+     * honestly.
+     *
+     * **Not `AutoDecline`, which 7.11.5 offered.** `declineFtpProposal` and
+     * `workouts.ftp_proposal_declined` already use that word for the rider
+     * saying *no*, and a source called `AutoDecline` sitting beside them would
+     * read as "the app declined" on every screen that names it. The event here
+     * is the number going down, so the name is about the number.
+     */
+    AutoReduction,
+
     /** A ramp or 20-minute test the app ran on purpose (19.2.3). */
     GuidedTest,
 
     /**
-     * The rider put back the value an [AutoBreakthrough] had replaced (7.10.4).
+     * The rider put back the value an automatic change had replaced (7.10.4) —
+     * an [AutoBreakthrough] or, since 7.11.5, an [AutoReduction].
      *
      * A claim rather than evidence, like [ManualEdit] — the rider is saying the
      * app's measurement does not describe them — but a *different* claim, and

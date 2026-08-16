@@ -1404,6 +1404,7 @@ private fun FtpTrendLine(trend: FtpTrend) {
     val who = when (FtpChangeSource.fromName(change.source)) {
         FtpChangeSource.ManualEdit -> "you set it"
         FtpChangeSource.AutoBreakthrough -> "measured from a ride"
+        FtpChangeSource.AutoReduction -> "measured from your recent rides"
         FtpChangeSource.GuidedTest -> "an FTP test"
         FtpChangeSource.PulledFromCloud -> "another device"
         FtpChangeSource.AutoBreakthroughReverted -> "you put it back"

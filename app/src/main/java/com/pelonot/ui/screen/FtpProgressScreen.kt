@@ -429,8 +429,7 @@ private fun ChangeList(
                 // type another.
                 onRevert = onRevert.takeIf {
                     index == 0 &&
-                        FtpChangeSource.fromName(change.source) ==
-                        FtpChangeSource.AutoBreakthrough
+                        FtpChangeSource.fromName(change.source) in AUTOMATIC_SOURCES
                 }
             )
         }
@@ -530,19 +529,39 @@ private fun ChangeRow(
 /**
  * Whether the app measured this value or the rider stated it.
  *
- * `AutoBreakthrough` and `GuidedTest` are both the app reading watts off a ride
- * — and since 7.10.7 only ever a ride whose power was measured all the way
- * through, so a simulated ride cannot produce one. Everything else is a claim,
- * including `PulledFromCloud`: another device's arithmetic is not this bike's
- * measurement, and `Unknown` is by definition not evidence of anything.
+ * `AutoBreakthrough`, `AutoReduction` and `GuidedTest` are all the app reading
+ * watts off a ride — and since 7.10.7 only ever a ride whose power was measured
+ * all the way through, so a simulated ride cannot produce one. **A downward
+ * change is on this side of the line too**, and that is worth saying rather than
+ * assuming: it is filled because it was measured, not because it was welcome.
+ * Everything else is a claim, including `PulledFromCloud`: another device's
+ * arithmetic is not this bike's measurement, and `Unknown` is by definition not
+ * evidence of anything.
  */
+/**
+ * The two changes the app made by itself, which are the two it can offer to put
+ * back (7.10.4, 7.11.5).
+ *
+ * A rider's own edit needs no undo from the app — they can type another. What
+ * this list is really enumerating is *the times the app changed a number about
+ * somebody without being asked*, and a downward change belongs on it at least
+ * as much as an upward one.
+ */
+private val AUTOMATIC_SOURCES = setOf(
+    FtpChangeSource.AutoBreakthrough,
+    FtpChangeSource.AutoReduction
+)
+
 private val FtpChangeSource.isMeasured: Boolean
-    get() = this == FtpChangeSource.AutoBreakthrough || this == FtpChangeSource.GuidedTest
+    get() = this == FtpChangeSource.AutoBreakthrough ||
+        this == FtpChangeSource.AutoReduction ||
+        this == FtpChangeSource.GuidedTest
 
 /** The same words the dashboard card and Settings use, so one event reads the same everywhere. */
 private fun FtpChangeSource.describe(): String? = when (this) {
     FtpChangeSource.ManualEdit -> "you set it"
     FtpChangeSource.AutoBreakthrough -> "measured from a ride"
+    FtpChangeSource.AutoReduction -> "measured from your recent rides"
     FtpChangeSource.GuidedTest -> "an FTP test"
     FtpChangeSource.PulledFromCloud -> "another device"
     FtpChangeSource.ProfileCreated -> "when you made this profile"

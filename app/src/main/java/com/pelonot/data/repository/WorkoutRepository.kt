@@ -26,6 +26,9 @@ import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.social.RaceCompetitor
 import com.pelonot.domain.social.RaceIdentity
+import com.pelonot.domain.progress.FtpEvidenceRide
+import com.pelonot.domain.progress.FtpReduction
+import com.pelonot.domain.progress.FtpReductionRule
 import com.pelonot.domain.progress.LastRide
 import com.pelonot.domain.progress.LastRideStanding
 import com.pelonot.domain.progress.MeanMaximalPower
@@ -662,6 +665,52 @@ class WorkoutRepository(
         // Last, and after the rows: a marker written before them would claim a
         // scan that a crash in between had not finished.
         workoutDao.markPowerBestsScanned(workoutId, System.currentTimeMillis())
+    }
+
+    /**
+     * Whether the rider's recent hard rides say their FTP is set too high
+     * (PLAN 7.11).
+     *
+     * The rule itself is pure and lives in [FtpReductionRule]; this is only the
+     * two decisions that need the database. **What counts as recent** is the
+     * later of [ftpSettledAt] — the last time the rider's number moved, which
+     * `UserRepository.lastFtpChangeAt` answers — and the last proposal they
+     * answered. Either one says *this number is right now*, so the evidence
+     * starts again from it. That is the cooldown the upward path has never had,
+     * and it matters more here: being told your fitness has dropped, ride after
+     * ride, off the same three rides, is the failure this feature has to avoid
+     * most.
+     *
+     * **And what a ride is allowed to be**: measured watts all the way through,
+     * with a stored twenty-minute effort. Both come out of the query rather
+     * than being re-derived, for 23.4.2's reason — a condensed ride would
+     * answer a sample scan with a number, and the number would be wrong.
+     */
+    suspend fun ftpReduction(
+        userId: Int,
+        currentFtp: Int,
+        ftpSettledAt: Long
+    ): FtpReduction? {
+        if (currentFtp <= 0) return null
+
+        val since = maxOf(ftpSettledAt, workoutDao.lastDeclinedProposalAt(userId) ?: 0L)
+        val rides = workoutDao.ftpEvidenceRides(
+            userId = userId,
+            windowSec = FtpReductionRule.EVIDENCE_WINDOW_SEC,
+            sinceMs = since,
+            limit = FtpReductionRule.EVIDENCE_SCAN_LIMIT
+        ).map { row ->
+            FtpEvidenceRide(
+                workoutId = row.workoutId,
+                recordedAt = row.recordedAt,
+                peak20MinWatts = row.peak20MinWatts,
+                avgHr = row.avgHr,
+                rideMaxHrBpm = row.rideMaxHrBpm,
+                rpeRating = row.rpeRating
+            )
+        }
+
+        return FtpReductionRule.evaluate(rides, currentFtp)
     }
 
     /** The rider's own best earlier ride of this class (16.3.4). */

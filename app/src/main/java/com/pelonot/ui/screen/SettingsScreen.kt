@@ -551,6 +551,10 @@ private fun FtpLastChanged(entry: FtpHistoryEntity?, previousWatts: Int?) {
     val who = when (FtpChangeSource.fromName(entry.source)) {
         FtpChangeSource.ManualEdit -> "you set it"
         FtpChangeSource.AutoBreakthrough -> "the app measured it from a ride"
+        // Plural on purpose (7.11.5): a breakthrough is one ride's peak and a
+        // reduction is three rides' shortfall, and the copy is the only place a
+        // rider ever learns those are different amounts of evidence.
+        FtpChangeSource.AutoReduction -> "the app measured it from your recent rides"
         FtpChangeSource.GuidedTest -> "an FTP test"
         FtpChangeSource.PulledFromCloud -> "another device"
         FtpChangeSource.AutoBreakthroughReverted -> "you put back the app's change"

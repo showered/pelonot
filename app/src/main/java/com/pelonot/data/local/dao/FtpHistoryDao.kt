@@ -48,4 +48,16 @@ interface FtpHistoryDao {
 
     @Query("SELECT COUNT(*) FROM ftp_history WHERE local_user_id = :userId")
     suspend fun countForUser(userId: Int): Int
+
+    /**
+     * When this rider's FTP last moved, or null for one it never has (7.11).
+     *
+     * The downward proposal reads it as the start of its evidence window:
+     * accepting a number, typing one, or having one arrive from another device
+     * all say *this is right now*, and rides from before that have already been
+     * answered. Every profile has at least one row from the moment it was made,
+     * so in practice this is never null for a rider who exists.
+     */
+    @Query("SELECT MAX(changed_at) FROM ftp_history WHERE local_user_id = :userId")
+    suspend fun lastChangeAt(userId: Int): Long?
 }

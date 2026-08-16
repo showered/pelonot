@@ -31,6 +31,18 @@ class UserRepository(
 
     suspend fun ftpHistory(userId: Int): List<FtpHistoryEntity> = ftpHistoryDao.forUser(userId)
 
+    /**
+     * When this rider's FTP last moved — 0 for one that never has (7.11).
+     *
+     * The downward proposal starts its evidence window here: every way the
+     * number moves is the question being settled, whether the rider typed it,
+     * accepted a measurement or another device sent one. Zero rather than null
+     * because a rider with no history has nothing to have answered, and the
+     * caller wants a floor rather than a special case.
+     */
+    suspend fun lastFtpChangeAt(userId: Int): Long =
+        ftpHistoryDao.lastChangeAt(userId) ?: 0L
+
     fun observeUser(userId: Int): Flow<UserEntity?> = userDao.getUserByIdFlow(userId)
 
     suspend fun getUser(userId: Int): UserEntity? = userDao.getUserById(userId)

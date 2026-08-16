@@ -60,6 +60,24 @@ data class MeasuredRideRow(
     val classTitle: String?
 )
 
+/**
+ * One ride that can speak about whether a rider's FTP is set too high (7.11).
+ *
+ * Every column is something the ride wrote down at the time. `max_hr_bpm` is
+ * the maximum *that ride* was judged against rather than the rider's today
+ * (21.4.2a), and the twenty-minute effort is a stored one rather than a scan of
+ * `workout_metrics`, because 23.4's trimmer would answer that scan off a fifth
+ * of the seconds and be believed.
+ */
+data class FtpEvidenceRow(
+    val workoutId: String,
+    val recordedAt: Long,
+    val peak20MinWatts: Double,
+    val avgHr: Double?,
+    val rideMaxHrBpm: Int?,
+    val rpeRating: Int?
+)
+
 /** The rider's own best earlier ride of a class (16.3.4). */
 data class PreviousBestRow(
     val workoutId: String,
@@ -706,6 +724,71 @@ interface WorkoutDao {
     /** This ride's samples have been walked for mean-maximal efforts. */
     @Query("UPDATE workouts SET power_bests_at = :at WHERE id = :workoutId")
     suspend fun markPowerBestsScanned(workoutId: String, at: Long)
+
+    /**
+     * The rides that can say whether this rider's FTP is set too high (7.11).
+     *
+     * **The join to `workout_power_bests` is the whole point.** A downward
+     * proposal needs each ride's twenty-minute effort, and recomputing one from
+     * `workout_metrics` is exactly what 23.4.2 forbids: a condensed ride still
+     * has real rows in that table — the lowest and highest watt of every ten
+     * seconds — so the scan would return a number rather than nothing. These
+     * rows were computed at finalise while the seconds still existed, and
+     * `workout_power_bests`' own KDoc says it: **the existence of a row is
+     * itself the claim** that the ride was measured and was scanned in time.
+     *
+     * `power_provenance = 'Measured'` is stated anyway, and belt-and-braces is
+     * deliberate here rather than sloppy — 7.11.2 holds a downward claim about
+     * a rider's body to Phase 27's bar, and this is the one gate that stops a
+     * simulated ride ever reaching it.
+     *
+     * [sinceMs] is the cooldown the upward path has never had (AUTO_FTP.md
+     * names its absence as a gap). It is the last moment the rider settled the
+     * question — their FTP moving, or their answering a proposal — and evidence
+     * from before it has already been answered.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.timestamp AS recordedAt,
+               b.watts AS peak20MinWatts,
+               w.avg_hr AS avgHr,
+               w.max_hr_bpm AS rideMaxHrBpm,
+               w.rpe_rating AS rpeRating
+        FROM workouts w
+        JOIN workout_power_bests b
+          ON b.workout_id = w.id AND b.window_sec = :windowSec
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.power_provenance = 'Measured'
+          AND w.timestamp > :sinceMs
+        ORDER BY w.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun ftpEvidenceRides(
+        userId: Int,
+        windowSec: Int,
+        sinceMs: Long,
+        limit: Int
+    ): List<FtpEvidenceRow>
+
+    /**
+     * When this rider last answered an FTP proposal, or 0 if they never have.
+     *
+     * `ftp_proposal_declined` is per ride (7.10.5), and the ride's own timestamp
+     * is therefore the moment. It covers a declined *breakthrough* as well as a
+     * declined reduction, and that conflation is deliberate: both are the rider
+     * saying *this number is right*, and the direction they said it in does not
+     * make the older evidence any fresher.
+     */
+    @Query(
+        """
+        SELECT MAX(timestamp) FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND ftp_proposal_declined = 1
+        """
+    )
+    suspend fun lastDeclinedProposalAt(userId: Int): Long?
 
     /**
      * Writes where a ride's watts came from onto the ride (23.4.12).
