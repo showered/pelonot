@@ -160,6 +160,28 @@ fun RideScreen(
     // already on the bike, and 8.3d's whole argument is that the ride never
     // really stopped.
     var countdownCleared by rememberSaveable { mutableStateOf(resumeWorkoutId != null) }
+
+    // 11.1a.6, and **20.4.8 is why it is here rather than below the countdown's
+    // own `return`**. The ongoing ride notification is the route back into a
+    // class the Activity has been destroyed under, and on API 33+ it is never
+    // posted until this is asked for — but composed on the far side of the gate,
+    // the earliest it could fire was after the class had started, and it was
+    // watched landing over the ride screen 21 seconds into a first class with
+    // the rider pedalling. Above the branch it composes in both phases from the
+    // same slot, so it keeps its `asked` flag across the transition and cannot
+    // spend the rider's second refusal on the same ride.
+    //
+    // Deferred until the overlay question is **settled** — not merely until no
+    // dialog is up, which is also true of not having asked yet, and is how the
+    // platform's terse question came to be asked in front of the app's own.
+    var askingForNotifications by remember { mutableStateOf(false) }
+    RequestRideNotificationPermission(
+        deferred = !state.overlayPermissionResolved ||
+            state.overlayPermissionNeeded ||
+            state.awaitingOverlayGrant,
+        onAsking = { askingForNotifications = it }
+    )
+
     if (!countdownCleared) {
         // 11.6.14. The overlay permission is asked for *inside* the countdown
         // rather than by `startRide` on the far side of it. The owner's note is
@@ -186,8 +208,13 @@ fun RideScreen(
             // The count stops while the question is outstanding — through the
             // dialog *and* through the trip out of the app to answer it.
             // Coming back to "2" and then straight into a class is the same
-            // defect wearing the other costume.
-            paused = state.overlayPermissionNeeded || state.awaitingOverlayGrant,
+            // defect wearing the other costume, and the platform's own
+            // notification dialog (20.4.8) earns the hold for the same reason:
+            // it is drawn by another process and the count would otherwise run
+            // out behind it.
+            paused = state.overlayPermissionNeeded ||
+                state.awaitingOverlayGrant ||
+                askingForNotifications,
             // 11.8.2. Only for a rider with no finished rides, and only where
             // there is a class calling zones at all — a free ride prescribes
             // nothing, so explaining the prescription would be answering a
@@ -259,13 +286,6 @@ fun RideScreen(
             onNever = viewModel::disableHud
         )
     }
-
-    // 11.1a.6. The ongoing ride notification is the route back into a class the
-    // Activity has been destroyed under, and on API 33+ it is never posted
-    // until this is asked for. Asked here rather than at launch because a rider
-    // who has never started a ride has nothing to say yes to, and held back
-    // while the overlay prompt is up so the two do not stack.
-    RequestRideNotificationPermission(deferred = state.overlayPermissionNeeded)
 
     // 11.1a.2: the other half of the door. Sending the task to the back returns
     // the rider to whatever they were watching, and the HUD comes back with it

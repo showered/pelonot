@@ -59,6 +59,18 @@ data class RideUiState(
      */
     val awaitingOverlayGrant: Boolean = false,
     /**
+     * Whether the overlay question has been *settled* — asked and answered, or
+     * established as unnecessary (20.4.8).
+     *
+     * Not the same as [overlayPermissionNeeded] being false, and the difference
+     * is the whole point: false is also what it says in the moment before
+     * anything has looked. The notification permission waits on this rather
+     * than on the flag, because "no dialog is up" is true of *not having asked
+     * yet*, and the platform's terse question winning that race puts it in
+     * front of the app's own.
+     */
+    val overlayPermissionResolved: Boolean = false,
+    /**
      * Whether leaving this screen would actually produce a HUD (11.1a.2).
      * Offering "back to the HUD" when the overlay is off or ungranted would
      * drop the rider onto their home screen with nothing.
@@ -358,6 +370,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     overlayPermissionNeeded = wantsHud && !granted,
                     awaitingOverlayGrant = false,
+                    overlayPermissionResolved = true,
                     hudAvailable = wantsHud && granted
                 )
             }
