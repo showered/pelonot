@@ -676,11 +676,20 @@ private fun AvatarPicker(
 /**
  * One option in the picker.
  *
- * The selection is a **ring around the swatch** rather than a tick on top of
- * it: a tick over a colour hides part of the thing being chosen, and the ring
- * reads at arm's length on a tablet where the dialog is being tapped with a
- * thumb. 48 dp is the touch target the rest of this screen is built to
- * (20.1.2's floor exists for the same reason).
+ * **The selection is a ring with a gap inside it, and the gap is the whole
+ * fix.** The first version drew the ring as a border *on* the disc, in the
+ * brand teal — which was legible on the mark row, where every swatch is a dark
+ * grey, and very nearly invisible on the colour row, because one of the eight
+ * colours *is* a turquoise and a teal ring on it reads as an edge rather than
+ * as a choice. Watched on the tablet AVD and it is the state a rider is in most
+ * often: the swatch they are looking at is the one they already have. Insetting
+ * the fill lets the dialog's own surface show between the ring and the colour,
+ * so the signal is the **separation** rather than a hue that some of the
+ * options can defeat.
+ *
+ * A tick on top was the other candidate and is worse here: it hides part of the
+ * thing being chosen. 48 dp is the touch target the rest of this screen is
+ * built to — 20.1.2's tile floor exists for the same reason, a thumb on a bike.
  */
 @Composable
 private fun Swatch(
@@ -694,7 +703,6 @@ private fun Swatch(
         modifier = Modifier
             .size(48.dp)
             .clip(MaterialTheme.expressiveShapes.pill)
-            .background(fill)
             .border(
                 width = if (selected) 3.dp else 1.dp,
                 color = if (selected) {
@@ -709,9 +717,19 @@ private fun Swatch(
                 contentDescription = label
                 this.selected = selected
             },
-        contentAlignment = Alignment.Center,
-        content = { content() }
-    )
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                // Unselected fills to the outline, so only the chosen one
+                // changes shape and the row does not shimmer as it is scanned.
+                .size(if (selected) 38.dp else 48.dp)
+                .clip(MaterialTheme.expressiveShapes.pill)
+                .background(fill),
+            contentAlignment = Alignment.Center,
+            content = { content() }
+        )
+    }
 }
 
 /** `rememberSaveable` needs a saver for a nullable Int. */
