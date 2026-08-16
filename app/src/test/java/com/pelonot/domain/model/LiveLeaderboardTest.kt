@@ -1,6 +1,10 @@
 package com.pelonot.domain.model
 
+import com.pelonot.domain.identity.Avatar
+import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.social.GhostKind
+import com.pelonot.domain.social.RaceIdentity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -276,5 +280,91 @@ class LiveLeaderboardTest {
 
         // Ava's 600 set the old floor; the plan's 120 is what is left.
         assertEquals(120.0, narrowed.pacer!!.floor, 0.001)
+    }
+
+    // ── Who a row is, and who it is not (24.3.19a) ──────────────────
+    //
+    // The rule the owner's reference picture forced an answer to: **a ghost is
+    // not a person, so it gets no face and no level.** Everything here is that
+    // one sentence read from each of the four directions a row can come from.
+
+    private fun identity(id: Int, ftp: Int? = 215) = RaceIdentity(
+        localUserId = id,
+        avatar = Avatar.defaultFor(id),
+        level = RiderLevel.of(RidingTotals(rides = 40, durationSec = 40 * 1800L, outputKj = 8000.0)),
+        ftpWatts = ftp
+    )
+
+    @Test
+    fun `a housemate carries their face onto the row and a generated target does not`() {
+        val standings = LiveLeaderboard(
+            ghosts = listOf(
+                ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human)
+                    .copy(identity = identity(2)),
+                ghost("Class target", perSecond = 0.8, seconds = 600, kind = GhostKind.Prescribed)
+            )
+        ).standingsAt(300, yourValue = 200.0)!!
+
+        val ava = standings.all.first { it.name == "Ava" }
+        val target = standings.all.first { it.name == "Class target" }
+
+        assertEquals(2, ava.identity!!.localUserId)
+        assertEquals(215, ava.identity!!.ftpWatts)
+        assertNull(target.identity)
+    }
+
+    /**
+     * The rider's own past rides are the second half of the rule and it is the
+     * same half — `Your best` is not a person, and a face repeated four times
+     * down a board is decoration (20.2.6a).
+     */
+    @Test
+    fun `the rider's own past rides get no face`() {
+        val standings = LiveLeaderboard(
+            ghosts = listOf(
+                ghost("Your best", perSecond = 0.9, seconds = 600, kind = GhostKind.YourBest)
+            ),
+            you = identity(1)
+        ).standingsAt(300, yourValue = 200.0)!!
+
+        assertNull(standings.all.first { it.name == "Your best" }.identity)
+        assertEquals(1, standings.all.first { it.isYou }.identity!!.localUserId)
+    }
+
+    /**
+     * `RiderScore` rule 4 reaching the board. A guest ride is filed against
+     * nobody, so a guest can never leave level 1 and gets no badge anywhere —
+     * they still race, and their row is still a name and a number.
+     */
+    @Test
+    fun `a guest's own row carries no identity`() {
+        val standings = LiveLeaderboard(
+            ghosts = listOf(ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human))
+        ).standingsAt(300, yourValue = 200.0)!!
+
+        assertNull(standings.all.first { it.isYou }.identity)
+    }
+
+    /**
+     * The measured-power gate takes real rides off the board (24.3.7a) and the
+     * rider's own row is not a ride — losing their face there would be a second
+     * consequence nobody argued for.
+     */
+    @Test
+    fun `narrowing the board to generated targets keeps the rider's own face`() {
+        val narrowed = LiveLeaderboard(
+            ghosts = listOf(
+                ghost("Ava", perSecond = 1.0, seconds = 600, kind = GhostKind.Human)
+                    .copy(identity = identity(2)),
+                ghost("Class target", perSecond = 0.8, seconds = 600, kind = GhostKind.Prescribed)
+            ),
+            you = identity(1)
+        ).generatedOnly()
+
+        assertEquals(1, narrowed.you!!.localUserId)
+        val standings = narrowed.standingsAt(300, yourValue = 200.0)!!
+        // Ava went with the gate, and with her the only other face.
+        assertTrue(standings.all.none { it.name == "Ava" })
+        assertEquals(1, standings.all.count { it.identity != null })
     }
 }

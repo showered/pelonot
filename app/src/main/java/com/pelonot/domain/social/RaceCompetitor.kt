@@ -21,7 +21,18 @@ data class RaceCompetitor(
     val name: String,
     val kind: Kind,
     /** The ride's own final total, for ordering the field before it is loaded. */
-    val outputKj: Double
+    val outputKj: Double,
+    /**
+     * Who this row is, when it is a person (24.3.19a).
+     *
+     * Null on every row whose [kind] is not a housemate, and that is the rule
+     * rather than missing data — see [RaceIdentity]. It is carried beside
+     * [kind] rather than derived from it because the two answer different
+     * questions: the kind says *what class of row is this*, the identity says
+     * *whose face goes on it*, and a housemate whose profile has been deleted
+     * is a person with no identity to draw.
+     */
+    val identity: RaceIdentity? = null
 ) {
     /**
      * Which of 24.3.12's four kinds of row this is.

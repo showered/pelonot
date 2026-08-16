@@ -25,6 +25,7 @@ import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.social.RaceCompetitor
+import com.pelonot.domain.social.RaceIdentity
 import com.pelonot.domain.progress.LastRide
 import com.pelonot.domain.progress.LastRideStanding
 import com.pelonot.domain.progress.MeanMaximalPower
@@ -775,6 +776,11 @@ class WorkoutRepository(
             }
         }.orEmpty()
 
+        // 24.3.19a. Read once for the whole board rather than a query a head:
+        // a household of four otherwise costs four round trips to draw four
+        // rings. Only the rows that are *people* look anything up in it.
+        val levels = riderLevels()
+
         val housemates = workoutDao.householdRivals(
             classId = classId,
             excludingWorkoutId = excludingWorkoutId,
@@ -786,7 +792,8 @@ class WorkoutRepository(
                 workoutId = it.workoutId,
                 name = it.name,
                 kind = RaceCompetitor.Kind.Housemate,
-                outputKj = it.outputKj
+                outputKj = it.outputKj,
+                identity = raceIdentity(it.localUserId, it.avatar, it.ftpWatts, levels)
             )
         }
 
@@ -803,12 +810,66 @@ class WorkoutRepository(
                 workoutId = it.workoutId,
                 name = "${it.name}'s last ride",
                 kind = RaceCompetitor.Kind.HousemateLatest,
-                outputKj = it.outputKj
+                outputKj = it.outputKj,
+                identity = raceIdentity(it.localUserId, it.avatar, it.ftpWatts, levels)
             )
         }
 
         return RaceCompetitor.oneRowPerRide(yours + housemates + latest).take(MAX_RACE_FIELD)
     }
+
+    /**
+     * Every profile's level, read once (24.3.19a).
+     *
+     * The one-shot twin of [observeRiderLevels], and it shares that function's
+     * rule about an absence: a profile with no finished ride is **not in the
+     * map**, and the caller decides what that draws. On the board it is level 1,
+     * because a housemate can only be on it by having ridden — an absence there
+     * means the two reads landed either side of a delete.
+     */
+    /**
+     * One rider's level, read once (24.3.19a).
+     *
+     * Level 1 rather than null for a profile with no finished ride, because
+     * this is only ever asked about a *named* rider — and their level before
+     * their first ride is a real answer, exactly as it is on the dashboard.
+     * The guest case is the caller's and is answered by not asking.
+     */
+    suspend fun riderLevel(userId: Int): RiderLevel =
+        riderLevels()[userId] ?: RiderLevel.of(RidingTotals())
+
+    private suspend fun riderLevels(): Map<Int, RiderLevel> =
+        workoutDao.riderTotals().associate { row ->
+            row.localUserId to RiderLevel.of(
+                RidingTotals(
+                    rides = row.rides,
+                    durationSec = row.durationSec,
+                    outputKj = row.outputKj
+                )
+            )
+        }
+
+    /**
+     * One housemate's row, assembled out of the columns the join already
+     * carried and the levels read beside it (24.3.19a, 24.3.19b).
+     */
+    private fun raceIdentity(
+        localUserId: Int,
+        avatar: String?,
+        ftpWatts: Int,
+        levels: Map<Int, RiderLevel>
+    ) = RaceIdentity(
+        localUserId = localUserId,
+        // Null in the column means *never chosen* and `defaultFor` answers from
+        // the row id — never backfilled, so the board draws the same disc the
+        // household panel does for the same rider (20.2.2).
+        avatar = Avatar.parse(avatar, localUserId),
+        level = levels[localUserId] ?: RiderLevel.of(RidingTotals()),
+        // Zero is what a profile written before the column meant anything reads
+        // as, and there is no honest FTP to draw for it. Absent rather than
+        // 150 — see `RaceIdentity.ftpWatts`.
+        ftpWatts = ftpWatts.takeIf { it > 0 }
+    )
 
     /**
      * Every measured total this rider has recorded on one class, for *your

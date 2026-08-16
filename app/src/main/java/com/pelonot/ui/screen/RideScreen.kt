@@ -105,6 +105,7 @@ import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
+import com.pelonot.ui.components.RiderAvatar
 import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.UpcomingIntervals
 import com.pelonot.ui.components.ZoneGlyph
@@ -1031,6 +1032,12 @@ private fun LiveLeaderboardCard(
         // stacked on top of six rows is that seventh row by another name. Seen
         // doing exactly that: the moment fired and pushed *End ride* off the
         // bottom of the screen.
+        //
+        // **The ceiling is a height and six is only how it was counted**
+        // (24.3.19a). Since a row that is a person is 64 dp rather than 44, a
+        // board with faces on it shows fewer rows at once and scrolls the rest,
+        // which is what it already did past the sixth. What must not happen is
+        // the card growing, and this is where that is held.
         val rows = if (passedOwnRide != null) {
             LiveLeaderboard.WINDOW - 1
         } else {
@@ -1106,6 +1113,28 @@ private fun PassedYourBest(row: LiveStanding, modifier: Modifier = Modifier) {
  */
 private val LEADERBOARD_ROW_HEIGHT = 44.dp
 
+/**
+ * A row that is a **person**, which is taller (24.3.19a).
+ *
+ * The face has to carry the level ring, and `RiderAvatar` will not draw one
+ * below 56 dp — a ring at 32 dp is a hairline and the tab under it is
+ * unreadable, which is the one place that component silently declines to draw
+ * something it was handed. So the face is 56 dp and the row is what fits it.
+ *
+ * **The card's ceiling stayed where 24.3.18c measured it**, and that is the
+ * decision worth naming: the budget was always a *height* — the card starts
+ * below the zone ladder and *View in Overlay Mode* caps it — and it is only the
+ * arithmetic that ever counted six. So a board with people on it shows fewer
+ * rows at once and scrolls the rest, exactly as it already did past the sixth,
+ * rather than the card growing into the button below it. Two people on a
+ * household board is the ordinary case, so most boards lose one row and not
+ * four.
+ */
+private val LEADERBOARD_PERSON_ROW_HEIGHT = 64.dp
+
+/** The face on a person's row — the smallest that may carry a level ring. */
+private val LEADERBOARD_FACE = 56.dp
+
 @Composable
 private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
     val units = MaterialTheme.units
@@ -1128,12 +1157,32 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
         else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
     }
 
+    // 24.3.19a. The face, the ring and the level — and only on the rows that
+    // are somebody. Three of the four kinds of row are the rider's own past
+    // rides and the rest are numbers this app made up; giving either a face
+    // would put a person on the board who does not exist, and a face repeated
+    // four times down a board is what 20.2.6a called decoration. The two
+    // classes of row look different on purpose.
+    val identity = row.identity
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(LEADERBOARD_ROW_HEIGHT),
+            .height(
+                if (identity != null) LEADERBOARD_PERSON_ROW_HEIGHT else LEADERBOARD_ROW_HEIGHT
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (identity != null) {
+            RiderAvatar(
+                name = row.name,
+                avatar = identity.avatar,
+                size = LEADERBOARD_FACE,
+                level = identity.level
+            )
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+        }
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 // 24.3.18a's visible half. A generated target carries a mark so
@@ -1154,12 +1203,24 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             // forward. On its own line rather than appended to the name,
             // because a name is as long as somebody's name is and this must
             // not be the thing that gets ellipsed away.
-            if (row.finished) {
+            //
+            // **24.3.19b puts the FTP on that same line**, and it is one line
+            // rather than two because the row is 64 dp and a name plus two
+            // captions is a paragraph on a screen read at two metres. `FTP 215
+            // W`, not `215 W FTP` — 20.6.5's form, label first, so it reads as
+            // a fact *about* the rider rather than as a headline competing with
+            // their name.
+            val caption = listOfNotNull(
+                identity?.ftpWatts?.let { "FTP $it W" },
+                if (row.finished) "FINISHED" else null
+            )
+            if (caption.isNotEmpty()) {
                 Text(
-                    text = "FINISHED",
+                    text = caption.joinToString("  ·  "),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

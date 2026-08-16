@@ -3,6 +3,7 @@ package com.pelonot.domain.model
 import com.pelonot.core.Formatters
 import com.pelonot.domain.social.GhostKind
 import com.pelonot.domain.social.GhostRider
+import com.pelonot.domain.social.RaceIdentity
 
 /**
  * Everyone this ride is racing, ranked at the second it is asked about (PLAN
@@ -37,7 +38,20 @@ data class LiveLeaderboard(
      * there should always be a target ahead of you"* cannot be satisfied by a
      * fixed total, since a rider who beats it is back to an empty sky.
      */
-    val pacer: Pacer? = null
+    val pacer: Pacer? = null,
+    /**
+     * The rider's own face, level and FTP, or null (24.3.19a).
+     *
+     * On [LiveLeaderboard] rather than on a `Ghost` because the rider's row is
+     * not a competitor — [standingsAt] builds it from [LiveStanding.YOU] each
+     * second, so there is nowhere else for it to live.
+     *
+     * **Null for a guest**, which is `RiderScore` rule 4 reaching the board: a
+     * guest ride is filed against nobody, so a guest can never leave level 1
+     * and a badge promising a ladder that does not exist is worse than no
+     * badge. They still race, and their row is still a name and a number.
+     */
+    val you: RaceIdentity? = null
 ) {
 
     /** One competitor, reduced to a name and a cumulative series. */
@@ -45,7 +59,14 @@ data class LiveLeaderboard(
         val name: String,
         val trace: RivalTrace,
         /** What this row is (24.3.18a). [GhostKind.Human] for a real ride. */
-        val kind: GhostKind = GhostKind.Human
+        val kind: GhostKind = GhostKind.Human,
+        /**
+         * Whose row this is, for the rows that are somebody (24.3.19a).
+         *
+         * Null on every generated target and on the rider's own past rides —
+         * see [RaceIdentity] for why those two absences are the same rule.
+         */
+        val identity: RaceIdentity? = null
     )
 
     /**
@@ -156,7 +177,15 @@ data class LiveLeaderboard(
         if (isEmpty) return null
 
         val field = buildList {
-            add(Placing(LiveStanding.YOU, yourValue, isYou = true, finished = false))
+            add(
+                Placing(
+                    LiveStanding.YOU,
+                    yourValue,
+                    isYou = true,
+                    finished = false,
+                    identity = you
+                )
+            )
             ghosts.forEach { ghost ->
                 // 24.3.6, and it is the rule this feature keeps having to
                 // restate: a rival's ride ends when it ends. Past their last
@@ -170,7 +199,8 @@ data class LiveLeaderboard(
                         value = at ?: ghost.trace.finalValue,
                         isYou = false,
                         finished = at == null,
-                        kind = ghost.kind
+                        kind = ghost.kind,
+                        identity = ghost.identity
                     )
                 )
             }
@@ -224,7 +254,8 @@ data class LiveLeaderboard(
                 isYou = placing.isYou,
                 finished = placing.finished,
                 gapToYou = placing.value - yourValue,
-                kind = placing.kind
+                kind = placing.kind,
+                identity = placing.identity
             )
         }
 
@@ -243,7 +274,8 @@ data class LiveLeaderboard(
         val value: Double,
         val isYou: Boolean,
         val finished: Boolean,
-        val kind: GhostKind = GhostKind.Human
+        val kind: GhostKind = GhostKind.Human,
+        val identity: RaceIdentity? = null
     )
 
     companion object {
@@ -375,7 +407,18 @@ data class LiveStanding(
      * invented. A rider must never come away thinking a housemate did 300 kJ
      * when 300 was a number this app made up.
      */
-    val kind: GhostKind = GhostKind.Human
+    val kind: GhostKind = GhostKind.Human,
+    /**
+     * The face, the level and the FTP this row draws, or null (24.3.19).
+     *
+     * **Null is by far the ordinary case and is not missing data.** Only a
+     * person carries one: the rider themselves and a housemate. Three of the
+     * four kinds of row are the rider's own past rides and the rest are
+     * generated targets, and 24.3.19a's rule is that a ghost gets no face and
+     * no level because a board that gives it one claims a person who does not
+     * exist.
+     */
+    val identity: RaceIdentity? = null
 ) {
     /** Whether this row was generated rather than ridden. */
     val isGhost: Boolean get() = kind.isGhost

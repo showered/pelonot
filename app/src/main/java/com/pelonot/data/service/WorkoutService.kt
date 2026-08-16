@@ -46,6 +46,8 @@ import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.social.RacePassTracker
+import com.pelonot.domain.social.RaceIdentity
+import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
@@ -646,7 +648,8 @@ class WorkoutService : Service() {
                 LiveLeaderboard.Ghost(
                     name = competitor.name.ifBlank { "Rider" },
                     trace = trace,
-                    kind = competitor.kind.ghostKind
+                    kind = competitor.kind.ghostKind,
+                    identity = competitor.identity
                 )
             }
         }
@@ -667,6 +670,7 @@ class WorkoutService : Service() {
 
         val built = LiveLeaderboard(
             ghosts = field,
+            you = youIdentity(youId),
             // The ladder's floor is the best thing already on the board, so
             // the first rung is above the field rather than above nothing.
             pacer = field.maxOfOrNull { it.trace.finalSecond }
@@ -693,6 +697,33 @@ class WorkoutService : Service() {
                 "(${generated.size} generated, ${if (raceDiscredited) "modelled" else "measured"}): " +
                 raceBoard?.ghosts.orEmpty()
                     .joinToString { "${it.name} ${it.trace.finalValue.toInt()}" }
+        )
+    }
+
+    /**
+     * The rider's own face, level and FTP for their row on the board
+     * (24.3.19a, 24.3.19b).
+     *
+     * **Null for a guest**, and that is the whole of the branch: a guest has no
+     * profile, so there is nothing to read and nothing they could ever level
+     * up. `RiderScore` rule 4 and `AppUiState.levelFor` say the same thing on
+     * every other surface and this is that rule reaching the ride screen.
+     *
+     * The FTP comes from the **session** rather than the profile, because a
+     * ride is ridden at the FTP it was started at (7.8) and accepting a
+     * breakthrough mid-ride must not silently redraw the row the rider is
+     * looking at.
+     */
+    private suspend fun youIdentity(youId: Int?): RaceIdentity? {
+        val id = youId ?: return null
+        val profile = runCatching { userRepository.getUser(id) }
+            .onFailure { Log.w(TAG, "Could not read profile $id for the board", it) }
+            .getOrNull() ?: return null
+        return RaceIdentity(
+            localUserId = id,
+            avatar = Avatar.parse(profile.avatar, id),
+            level = workoutRepository.riderLevel(id),
+            ftpWatts = _currentSession.value?.ftpWatts?.takeIf { it > 0 } ?: profile.ftpWatts
         )
     }
 

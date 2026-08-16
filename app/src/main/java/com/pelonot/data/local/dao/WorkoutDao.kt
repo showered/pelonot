@@ -72,7 +72,18 @@ data class HouseholdRivalRow(
     val name: String,
     val workoutId: String,
     val outputKj: Double,
-    val durationSec: Int
+    val durationSec: Int,
+    /**
+     * The two identity columns the live board's row draws (24.3.19a, 24.3.19b).
+     *
+     * They come off `profiles` in the same join that is already there, rather
+     * than from a second read keyed by [localUserId], because the join is what
+     * carries `household_visible` — and that switch **is** the consent for both
+     * of them (24.2.3). Reading them separately would let a rider who is off the
+     * household panel keep a face and an FTP on the board.
+     */
+    val avatar: String?,
+    val ftpWatts: Int
 )
 
 /**
@@ -89,7 +100,10 @@ data class HouseholdLatestRow(
     val workoutId: String,
     val outputKj: Double,
     val durationSec: Int,
-    val lastRideAt: Long
+    val lastRideAt: Long,
+    /** See [HouseholdRivalRow.avatar] — the same two columns off the same join. */
+    val avatar: String?,
+    val ftpWatts: Int
 )
 
 /**
@@ -527,7 +541,9 @@ interface WorkoutDao {
                p.name AS name,
                w.id AS workoutId,
                MAX(w.total_output_kj) AS outputKj,
-               w.duration_sec AS durationSec
+               w.duration_sec AS durationSec,
+               p.avatar AS avatar,
+               p.ftp_watts AS ftpWatts
         FROM workouts w
         JOIN profiles p ON p.local_user_id = w.user_id
         WHERE w.class_id = :classId
@@ -571,7 +587,9 @@ interface WorkoutDao {
                w.id AS workoutId,
                w.total_output_kj AS outputKj,
                w.duration_sec AS durationSec,
-               MAX(w.timestamp) AS lastRideAt
+               MAX(w.timestamp) AS lastRideAt,
+               p.avatar AS avatar,
+               p.ftp_watts AS ftpWatts
         FROM workouts w
         JOIN profiles p ON p.local_user_id = w.user_id
         WHERE w.class_id = :classId
@@ -961,6 +979,32 @@ interface WorkoutDao {
         """
     )
     fun observeRiderTotals(): Flow<List<RiderTotalsRow>>
+
+    /**
+     * The same totals, read once (24.3.19a).
+     *
+     * The live board is assembled at ride start and then never touches the
+     * database again — the tick reads arrays — so it wants an answer rather
+     * than a subscription. **A level that moved mid-ride would be wrong
+     * anyway**: the ride that is going to move it is the one being ridden, and
+     * a housemate's face changing level while somebody else pedals is a
+     * distraction on the screen 11.6.8 exists to keep still.
+     *
+     * The query is [observeRiderTotals]'s, deliberately not a second rule about
+     * what counts towards a level.
+     */
+    @Query(
+        """
+        SELECT user_id AS localUserId,
+               COUNT(*) AS rides,
+               COALESCE(SUM(duration_sec), 0) AS durationSec,
+               COALESCE(SUM(total_output_kj), 0) AS outputKj
+        FROM workouts
+        WHERE is_complete = 1 AND user_id IS NOT NULL
+        GROUP BY user_id
+        """
+    )
+    suspend fun riderTotals(): List<RiderTotalsRow>
 
     /**
      * A change signal for the household panel, not a number anyone displays.
