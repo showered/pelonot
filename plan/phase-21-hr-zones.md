@@ -730,7 +730,7 @@ those two is information nobody has to be asked for.
 
 Three things this could feed, in increasing order of how much they can hurt:
 
-- [ ] **21.6.1** **Prefill the effort answer rather than replace it** (26.3).
+- [x] **21.6.1** **Prefill the effort answer rather than replace it** (26.3).
       An endurance class ridden mostly in HR zones 4–5 was hard; a threshold
       class ridden in zone 2 was easy. Prefilling costs nothing if it is wrong
       and saves a tap when it is right. **It must stay a prefill**: the rider's
@@ -739,6 +739,101 @@ Three things this could feed, in increasing order of how much they can hurt:
       the rider's record behind them*. A prefilled answer must also be
       distinguishable from one the rider gave, or the column stops meaning what
       it says
+
+      ***Done in the sixty-seventh sitting, and the item's own last sentence is
+      what decided the shape.*** "Distinguishable from one the rider gave" is a
+      requirement a genuine prefill can only meet by adding a column — some
+      `rpe_source` beside `rpe_rating` saying who put it there — and the moment
+      that column exists, every reader of `rpe_rating` has to remember to ask.
+      **So the prefill is not filled in.** `SuggestedEffort` returns one of the
+      three `PerceivedEffort` values, `EffortQuestion` draws an **outline**
+      around that button, and the column stays null until a thumb lands on one.
+      The distinction is then structural rather than recorded: the app's guess
+      lives on a screen and the rider's answer lives on disk, and there is no
+      state in which they can be confused, because the app has never written
+      one.
+
+      **What that costs is the tap, and it was not the expensive thing.** 26.3
+      is the item this serves and the owner's words there are *"it causes me
+      anxiety, wondering if I'm selecting the right option"* — which is a
+      **decision**, not a gesture. A suggestion answers that; a shorter list
+      only shortened it. And the rider who walks away without looking is the
+      case a real prefill gets wrong for free: nobody would ever know that the
+      3 in their column was the app's.
+
+      **The heart is read absolutely, and that is a departure from 21.6.3 worth
+      naming.** `EffortAgainstPlan` asks *was this harder than the class asked*,
+      which is a question about the **gap**. The three buttons ask *how hard was
+      it*, which is a question about the **ride**. The two come apart on exactly
+      the ride you would expect — twenty minutes of recovery spin ridden at
+      tempo is a large gap and still not *everything I had* — so this reads the
+      heart's own distribution and never the prescription. **The owner's two
+      examples are both stated that way as well**: *"an endurance class ridden
+      mostly in HR zones 4–5 was hard; a threshold class ridden in zone 2 was
+      easy."* Both discriminate on the heart. The class is context in the
+      sentence and never the measurement, which is also why this says something
+      about a free ride where 21.6.3 cannot.
+
+      **The two outer answers need evidence and the middle one is what is
+      left.** *Everything I had* wants half the heard ride at H4 or above and
+      *Comfortable* wants virtually nothing above H3 with three quarters of it
+      below H2; everything between is *A good workout*, which is the answer that
+      costs least when it is wrong. The `Maximal` bar is deliberately high
+      because of 21.6.4: cardiac drift alone carries a long steady effort into
+      H4 for its last third, and *"nothing left at the end"* is not the thing to
+      say about that ride. It is tested as its own case.
+
+      **The four ways to say nothing are `EffortAgainstPlan`'s own two
+      constants, now shared rather than copied** — no strap, no maximum heart
+      rate (21.2.4), under ten minutes heard, under half the ride covered. *When
+      a strap's evidence is worth believing* is one question and two answers to
+      it would drift apart the first time either moved, so `MIN_HEART_SECONDS`
+      and `MIN_COVERAGE` are `internal` now with a KDoc saying who else reads
+      them.
+
+      **It is deliberately not gated on the maximum being measured**, which
+      21.6.2 does require. The difference is what the number touches: an FTP is
+      written into the record and every zone in the app derives from it, where
+      this is a mark on a button the rider is looking at and about to overrule
+      if it is wrong. *Two guesses wearing one number* is a problem when nobody
+      can see either. Robin, the AVD's fixture, has no measured maximum and a
+      Tanaka estimate of 181 — so every case below was watched on the estimated
+      path, which is the common one.
+
+      ***Watched on the tablet AVD in five cases***, on four hand-built 20-minute
+      rides for Robin with only the heart changed. The rides were inserted with
+      `sqlite3` through CLAUDE.md's pull-edit-push recipe and **deleted again
+      afterwards**, so the tablet is exactly as the sixty-sixth sitting left it
+      — 55 workouts, Robin's photograph untouched. The recipe, for the next
+      sitting that needs one: 1,201 rows of `workout_metrics` per ride with
+      `heart_rate` a function of the second, `power_provenance = 'Measured'`,
+      `class_id` NULL.
+
+      - **H4/H5 throughout:** *Your heart rate suggests one*, with the outline
+        on **Everything I had**.
+      - **H1/H2 throughout:** the outline on **Comfortable**.
+      - **H3 with a fifth of it at H4:** the outline on **A good workout** — the
+        middle answer arrived at by neither gate firing rather than by a rule of
+        its own.
+      - **A strap that heard 5:00 of 20:00, all of it H4:** **no mark at all**,
+        and the subtitle falls back to *"You didn't answer for this one — you
+        still can"*. This is the case worth having watched: without the coverage
+        gate the card would have marked *Everything I had* off a quarter of a
+        ride, which is 21.4.1's caption arriving as a verdict.
+      - **Tapping a different answer:** *Comfortable* fills, the outline on
+        *Everything I had* **disappears**, and the subtitle changes to *"Tap a
+        different answer to change it"*. That rule lives in `EffortQuestion`
+        rather than in either caller, because an app still pointing at a
+        different button from the one a rider chose is arguing with them about
+        their own ride.
+
+      **One line under the question, and only ever one.** The mark's caption —
+      *"Your heart rate suggests one"* — replaces the screen's own subtitle
+      where both would apply, because two lines under a three-word question is
+      the density Phase 26 exists to refuse. On the post-ride summary, which
+      carries no subtitle at all today, it is the only one that ever appears.
+
+      **874 JVM tests, 0 failures**, up from 864. `assembleDebug` passes.
 - [ ] **21.6.2** **Feed the FTP proposal** (7.x). This is the one with teeth,
       because an FTP is written into the rider's permanent record and every
       zone in the app is derived from it. Two hard prerequisites before any of
