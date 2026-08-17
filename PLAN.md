@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fifty-eight entries have passed through it.** In order: standing and seated
+**Fifty-nine entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -163,11 +163,13 @@ no form, while **Apple Health has no Android path at all** and the honest route
 is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 (**21.7** — likely already working, because `BleHeartRateManager` filters on the
 standard heart-rate service rather than on a name, so the item is a measurement
-with the friend's watch rather than a feature).
+with the friend's watch rather than a feature), and **the compact overlay on a
+vertical dock** (**11.1b.11**, the first report on 11.1b.4 from somebody who has
+watched a film behind it — and the note names the fix as well as the fault).
 
-### HUD
-
-Compact mode when on left/right needs some work. Should be much more compact width-wise. i.e. the play/pause/end buttons should be aligned vertically.
+*Empty. The entry of 17 August 2026 — the compact HUD being too wide on a
+vertical dock — is written up at **11.1b.11**, with **11.1b.11a** for the
+question a narrower strip forces about what it can still hold.*
 
 ---
 

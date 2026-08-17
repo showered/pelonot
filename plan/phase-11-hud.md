@@ -416,6 +416,48 @@ less of the screen and less of the attention.
       2 dp of transparent height stays so the strip does not jump when the alert
       thickens it to 6.*
 
+- [ ] **11.1b.11** **Collapsed down a side, the strip is far wider than it needs
+      to be — the owner's note, 17 August 2026.** Verbatim: *"Compact mode when
+      on left/right needs some work. Should be much more compact width-wise. i.e.
+      the play/pause/end buttons should be aligned vertically."* Written the
+      morning after 11.1b.4 landed, which makes it the first report on that
+      feature from the only person who has watched a film behind it.
+
+      **It is right, and the cause is one constant doing two jobs.**
+      `HudDock.VERTICAL_WIDTH_DP` is 244 dp and the window is that wide in
+      **both** states, because the previous sitting fixed the width for a good
+      reason — a wrapped width would make the film a rider loses depend on
+      whether this block prescribes a three-digit target — and then applied that
+      one number to a state the reason does not cover. Collapsed, the widest
+      thing on the strip is the transport row: three 52 dp buttons side by side
+      is 172 dp, and *that* is what has been setting the width of a strip whose
+      whole purpose is to give the screen back.
+
+      **The owner has named the fix as well as the fault**, and the two halves
+      go together: stack the controls and the width is set by one button rather
+      than three, so a second constant for the collapsed state is a genuinely
+      narrower strip rather than a tighter squeeze on the same layout. It stays
+      a **constant** for 11.1b.4's own reason — nothing about this argues for
+      `WRAP_CONTENT`, which is the answer that would put the strip's width back
+      in the hands of whatever number is on it.
+
+      Three things it touches beyond the layout. The window has to be resized on
+      **collapse**, not only on a dock change, which is the one place the manager
+      currently assumes those are the same event. The **timeline bar insets
+      itself by the strip's width** (11.1b.7), so it has to inset by whichever
+      width is live or it will step aside from a strip that is no longer there.
+      And the two states now differ in width by more than a hundred dp, so
+      **expanding is a jump** unless something is done about it — worth looking
+      at rather than assuming, because the strip is the thing a rider glances at
+      while pedalling
+- [ ] **11.1b.11a** **What the collapsed column shows is a separate question
+      from how wide it is, and it is not answered here.** A narrow strip cannot
+      hold `188` and `BPM` side by side four times over, so if the width goes far
+      enough the readouts have to stack their units or lose them. **The unit is
+      not the thing to drop** — Phase 26 puts the ride surfaces in the small set
+      of places a unit belongs, because that is where a measurement is actually
+      being read. Written down so that a later squeeze does not quietly take one
+
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
 - [ ] **11.2.1a** The resistance band disappears on some Zone 1 intervals for a low-FTP rider: the unloaded curve at 85 rpm already produces more watts than the whole zone allows. That is arguably *true* and worth saying out loud ("you cannot ride this easy at this cadence") rather than saying nothing. Blocked behind **2.2a** (see 2.2a.10) — until this bike is on its own curve it is as likely to be a modelling artefact as a real contradiction, and 2.2.4 has now answered that the shipped curve is 66% out at the median, which makes the artefact reading the likelier of the two.
