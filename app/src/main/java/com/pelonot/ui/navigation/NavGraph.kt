@@ -317,6 +317,7 @@ fun PelonotNavGraph(
         composable(Destination.Riding.route) {
             RidingScreen(
                 history = uiState.ridingHistory,
+                intensity = uiState.ridingIntensity,
                 onBack = navController::popBackStack
             )
         }

@@ -36,12 +36,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pelonot.domain.progress.RidingHistory
+import com.pelonot.domain.progress.RidingIntensity
+import com.pelonot.domain.progress.RidingIntensitySummary
 import com.pelonot.domain.progress.RidingWeek
 import com.pelonot.ui.components.AxisText
+import com.pelonot.ui.components.ChartCard
 import com.pelonot.ui.components.RideDaysCard
 import com.pelonot.ui.components.RidingTrendCard
+import com.pelonot.ui.components.TimeInZoneBar
 import com.pelonot.ui.components.monthLabel
 import com.pelonot.ui.theme.expressiveShapes
+import com.pelonot.ui.theme.loneCard
 import com.pelonot.ui.theme.readableText
 import com.pelonot.ui.theme.spacing
 import kotlin.math.roundToInt
@@ -76,6 +81,7 @@ import kotlin.math.roundToInt
 @Composable
 fun RidingScreen(
     history: RidingHistory,
+    intensity: RidingIntensity,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -146,6 +152,20 @@ fun RidingScreen(
                         RideDaysCard(history, Modifier.fillMaxWidth())
                     }
                 }
+            }
+
+            // The third question, under the two it completes (21.4.3). Nothing
+            // is drawn for a window with no riding in it: the sentence at the
+            // top of this screen has already said *0 rides in the last 30 days*
+            // and a card repeating it in a second voice is Phase 26's failure
+            // case, not a state.
+            if (intensity.ridesInWindow > 0) {
+                Spacer(Modifier.size(MaterialTheme.spacing.large))
+                // 22.6: one card with nothing beside it is capped, because a
+                // single card stretched across 1,280 dp of tablet does not look
+                // good — and unlike the pair above, this one has no partner to
+                // share the row with.
+                RidingIntensityCard(intensity, Modifier.loneCard())
             }
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
@@ -323,6 +343,45 @@ private fun BarRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * How hard the last thirty days were (21.4.3).
+ *
+ * **The third question this screen answers, and the first one that can change
+ * what a rider does next.** The bars above say how much and the squares say how
+ * often; a month of the same volume is a different month depending on whether it
+ * was ridden easy or ridden at threshold, and until now nothing in the app said
+ * which.
+ *
+ * The same stacked bar ride detail draws for one ride, over a window of them —
+ * deliberately the same component and the same colours, because a rider who has
+ * learned to read one has learned to read the other, and two drawings of one
+ * scale is how two screens come to disagree about what Z4 looks like.
+ *
+ * **The title is the plain words and the caption is the precise ones.** *Easy
+ * and hard* is what the card is for; `Z1–Z2` and `Z4 and above` are in the
+ * sentence, where Phase 26 allows the jargon because a chart caption is
+ * somewhere a measurement is genuinely being read. And there is no target
+ * anywhere on it (21.4.4): the well-known 80-20 would turn every one of these
+ * sentences into a mark out of ten.
+ */
+@Composable
+private fun RidingIntensityCard(
+    intensity: RidingIntensity,
+    modifier: Modifier = Modifier
+) = ChartCard(
+    title = "Easy and hard",
+    caption = RidingIntensitySummary.caption(intensity),
+    summary = RidingIntensitySummary.mix(intensity),
+    modifier = modifier
+) {
+    // A window with rides in it but nothing countable draws no bar at all: the
+    // sentence says why, and an empty pill would be a chart of nothing that
+    // still looks like a chart of something.
+    if (intensity.hasAnything) {
+        TimeInZoneBar(timeInZone = intensity.timeInZone)
     }
 }
 

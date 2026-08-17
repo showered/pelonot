@@ -12,10 +12,16 @@ import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.local.entity.WorkoutPowerBestEntity
 import com.pelonot.data.local.dao.PreviousBestRow
+import com.pelonot.data.local.dao.RidePowerSecondsRow
+import com.pelonot.data.local.dao.RideZoneSourceRow
 import com.pelonot.data.local.dao.SyncBacklog
 import com.pelonot.data.service.RideInProgress
+import com.pelonot.domain.chart.RideDistributions
+import com.pelonot.domain.chart.TimeInZone
+import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.MetricSample
+import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +48,7 @@ import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingHistoryBuilder
+import com.pelonot.domain.progress.RidingIntensity
 import com.pelonot.domain.social.StreakCalculator
 import com.pelonot.domain.suggest.ClassRideCount
 import com.pelonot.domain.suggest.RecentRide
@@ -1012,6 +1019,96 @@ class WorkoutRepository(
     }
 
     /**
+     * How hard the last thirty days were, as seconds in each power zone
+     * (21.4.3).
+     *
+     * Two queries rather than one join, and the split is the design. The first
+     * is observed and reads `workouts` only, so the screen redraws when a ride
+     * *finishes* rather than a few times a minute while one is being ridden; the
+     * second reads `workout_metrics` once, for the handful of rides the first
+     * one found. Joining them would have made the whole thing an observer of the
+     * sample table, which is the busiest table in the app.
+     *
+     * Three rules decide where each ride's seconds come from, and all three are
+     * written down elsewhere in this plan:
+     *
+     * - **A condensed ride is read from its stored summary and never recounted**
+     *   (23.4.2). Its rows are still there and a scan of them returns a wrong
+     *   number rather than nothing, which is the worst of the two failures.
+     * - **A ride is counted against the FTP it was ridden at** (7.8), never
+     *   today's. A ride with no FTP on the row is *not counted*: falling back to
+     *   the rider's current number would put a month of zones on a denominator
+     *   that has moved, and unlike ride detail there is no room to say so per
+     *   ride.
+     * - **A ride nobody can count is absent and said**, not quietly dropped —
+     *   `RidingIntensity.ridesUncounted`, which is 21.4.1's coverage caption a
+     *   level up.
+     */
+    fun observeRidingIntensity(
+        userId: Int,
+        days: Int = RECENT_WINDOW_DAYS,
+        now: () -> Long = { System.currentTimeMillis() }
+    ): Flow<RidingIntensity> {
+        // A day wider than the window, because the window's own edge is a local
+        // midnight and this one is a subtraction: the day arithmetic belongs to
+        // `RidingHistoryBuilder`, and SQL only has to avoid throwing away a ride
+        // it is about to be asked about.
+        val since = now() - (days + 1) * DAY_MS
+        return workoutDao.observeRideZoneSources(userId, since).map { rows ->
+            val at = now()
+            val inWindow = rows.filter {
+                RidingHistoryBuilder.isInWindow(it.timestamp, days, at)
+            }
+            // Only the rides whose samples are still the honest source get
+            // asked for; a condensed ride would return real rows and a wrong
+            // total (23.4.2).
+            val fromSamples = inWindow.filter { it.metricsDetailSec == null }
+            val secondsByRide = if (fromSamples.isEmpty()) {
+                emptyMap()
+            } else {
+                workoutDao.powerSecondsForRides(
+                    workoutIds = fromSamples.map { it.id },
+                    pedallingRpm = AutoPausePolicy.PEDALLING_RPM
+                ).groupBy { it.workoutId }
+            }
+
+            RidingIntensity.of(
+                days = days,
+                rides = inWindow.map { ride -> ride.timeInZone(secondsByRide[ride.id]) }
+            )
+        }
+    }
+
+    /**
+     * One ride's contribution, or null when it has none to make.
+     *
+     * The null cases are the item: no FTP to divide by, a trimmed ride whose
+     * summary predates the column or fails to decode, and a ride with no samples
+     * behind it at all — which on a development tablet is a hand-seeded fixture
+     * and on a rider's is a ride that recorded nothing.
+     */
+    private fun RideZoneSourceRow.timeInZone(
+        seconds: List<RidePowerSecondsRow>?
+    ): TimeInZone? {
+        if (metricsDetailSec != null) {
+            return RideDistributions.decode(distributionsJson)?.timeInZone()
+        }
+        val ftp = ftpWatts?.takeIf { it > 0 } ?: return null
+        if (seconds.isNullOrEmpty()) return null
+
+        val byZone = mutableMapOf<PowerZone, Int>()
+        seconds.forEach { row ->
+            if (row.riddenSeconds <= 0) return@forEach
+            val zone = PowerZone.forPower(row.watts.toDouble(), ftp.toDouble())
+            byZone[zone] = (byZone[zone] ?: 0) + row.riddenSeconds
+        }
+        return TimeInZone(
+            secondsByZone = byZone,
+            secondsStopped = seconds.sumOf { it.stoppedSeconds }
+        )
+    }
+
+    /**
      * Every profile's riding level, keyed by profile (26.4.1).
      *
      * One flow for the whole tablet rather than one per rider: the dashboard
@@ -1124,6 +1221,7 @@ class WorkoutRepository(
 
         private const val DURATION_TOLERANCE = 0.10
         private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
+        private const val DAY_MS = 24L * 60 * 60 * 1000
 
         /**
          * The live leaderboard's two rolling windows (24.3.12).

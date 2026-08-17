@@ -17,6 +17,7 @@ import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingHistory
+import com.pelonot.domain.progress.RidingIntensity
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.chart.ClassProfile
@@ -92,6 +93,16 @@ data class AppUiState(
     val ftpTrend: FtpTrend = FtpTrend(),
     /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
     val ridingHistory: RidingHistory = RidingHistory(),
+    /**
+     * How hard the last 30 days were (21.4.3), for the third card on the same
+     * screen.
+     *
+     * Beside [ridingHistory] rather than inside it, because the two are built
+     * from different tables: the history is three columns off `workouts` and
+     * this one has to reach the per-second record. Keeping them apart is what
+     * lets the cheap one stay cheap.
+     */
+    val ridingIntensity: RidingIntensity = RidingIntensity(),
     /**
      * Every profile's level (26.4), keyed by profile.
      *
@@ -250,6 +261,19 @@ class AppViewModel(
             }
         }
 
+    /**
+     * The selected rider's last 30 days by zone (21.4.3).
+     *
+     * A guest gets an empty one for [ridingHistory]'s reason: a guest's rides
+     * are filed against nobody, so there is no month of theirs to divide up.
+     */
+    private val ridingIntensity = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            if (profileId == null) flowOf(RidingIntensity())
+            else workoutRepository.observeRidingIntensity(profileId)
+        }
+
     /** The selected rider's weeks (16.3.2, 16.3.5), for the same card-then-screen pair. */
     private val ridingHistory = settingsRepository.settings
         .map { it.lastProfileId }
@@ -299,13 +323,17 @@ class AppViewModel(
      */
     private val riding = combine(
         ridingHistory,
+        ridingIntensity,
         riderRides,
         workoutRepository.observeRiderLevels()
-    ) { history, rides, levels -> RiderState(history, rides, levels) }
+    ) { history, intensity, rides, levels ->
+        RiderState(history, intensity, rides, levels)
+    }
 
     /** [riding]'s three flows, named rather than nested in a `Pair` (see [DashboardState]). */
     private data class RiderState(
         val ridingHistory: RidingHistory,
+        val ridingIntensity: RidingIntensity,
         val riderRides: RiderRides,
         /**
          * Every profile's level (26.4), keyed by profile — **one map for three
@@ -324,7 +352,16 @@ class AppViewModel(
         backupReminder,
         riding
     ) { stats, household, ftp, backup, rider ->
-        DashboardState(stats, household, ftp, backup, rider.ridingHistory, rider.riderRides, rider.riderLevels)
+        DashboardState(
+            stats,
+            household,
+            ftp,
+            backup,
+            rider.ridingHistory,
+            rider.ridingIntensity,
+            rider.riderRides,
+            rider.riderLevels
+        )
     }
 
     /**
@@ -340,6 +377,7 @@ class AppViewModel(
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory,
+        val ridingIntensity: RidingIntensity,
         val riderRides: RiderRides,
         val riderLevels: Map<Int, RiderLevel>
     )
@@ -372,6 +410,7 @@ class AppViewModel(
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,
+            ridingIntensity = dashboard.ridingIntensity,
             riderLevels = dashboard.riderLevels,
             suggestion = suggested,
             // The shape of the class the line above named, resolved from that

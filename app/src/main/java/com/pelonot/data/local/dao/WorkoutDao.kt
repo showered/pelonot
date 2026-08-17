@@ -1168,6 +1168,54 @@ interface WorkoutDao {
     )
     fun observeRideRecords(userId: Int, sinceMs: Long): Flow<List<RideRecordRow>>
 
+    /**
+     * The rides a window's time in zone could be built from (21.4.3).
+     *
+     * **A `Flow` that mentions `workouts` and nothing else, on purpose.** The
+     * seconds themselves come from [powerSecondsForRides] below, which is a
+     * one-shot query rather than an observed one — a `Flow` over
+     * `workout_metrics` re-emits on every batch of samples a ride writes, so
+     * observing it would re-count a month of riding a few times a minute for the
+     * whole of every ride. Here the rule that usually bites (a `Flow` only
+     * re-emits when a table its query *mentions* is written) is the one being
+     * used: this redraws when a ride finishes, which is exactly when the answer
+     * changes.
+     */
+    @Query(
+        """
+        SELECT id, timestamp, ftp_watts, metrics_detail_sec, distributions_json
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND timestamp >= :sinceMs
+        ORDER BY timestamp
+        """
+    )
+    fun observeRideZoneSources(userId: Int, sinceMs: Long): Flow<List<RideZoneSourceRow>>
+
+    /**
+     * Seconds by whole watt, per ride, split by whether the cranks were turning.
+     *
+     * See [RidePowerSecondsRow] for why the grouping is in SQL and the zone
+     * boundaries are not. [pedallingRpm] is passed in rather than written here
+     * for the same reason: `AutoPausePolicy` owns what counts as pedalling, and
+     * a second copy of that threshold is a second answer to *was the rider
+     * riding*.
+     */
+    @Query(
+        """
+        SELECT workout_id,
+               CAST(ROUND(power) AS INTEGER) AS watts,
+               SUM(CASE WHEN cadence >= :pedallingRpm THEN 1 ELSE 0 END) AS ridden_seconds,
+               SUM(CASE WHEN cadence < :pedallingRpm THEN 1 ELSE 0 END) AS stopped_seconds
+        FROM workout_metrics
+        WHERE workout_id IN (:workoutIds)
+        GROUP BY workout_id, CAST(ROUND(power) AS INTEGER)
+        """
+    )
+    suspend fun powerSecondsForRides(
+        workoutIds: List<String>,
+        pedallingRpm: Double
+    ): List<RidePowerSecondsRow>
+
     @Query(
         """
         SELECT * FROM workouts

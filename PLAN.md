@@ -165,12 +165,9 @@ is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 standard heart-rate service rather than on a name, so the item is a measurement
 with the friend's watch rather than a feature).
 
-*Empty. The five entries of 16 August 2026 are written up together at **20.6** —
-the avatars not being good enough, the level and the FTP belonging on the face,
-the level not being what the app should point at (**20.6.7**, an open item with
-the owner's name on it), who the set should look like, and the reference picture
-(**20.6.8** for the ring, **20.6.9** for where the FTP goes, and **24.3.19** for
-the board's own row). The rule change the second forces is at **26.4.8**.*
+### HUD
+
+Compact mode when on left/right needs some work. Should be much more compact width-wise. i.e. the play/pause/end buttons should be aligned vertically.
 
 ---
 

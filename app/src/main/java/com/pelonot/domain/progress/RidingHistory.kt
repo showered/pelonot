@@ -233,11 +233,7 @@ object RidingHistoryBuilder {
     ): RidingWindow {
         if (days <= 0) return RidingWindow(days.coerceAtLeast(0), 0, 0, 0.0)
 
-        val today = startOfDay(now, timeZone)
-        val from = addDays(today, -(days - 1), timeZone)
-        // A ride timestamped later today is still today's — the future is only
-        // excluded a whole day at a time, the same rule the calendar uses.
-        val inWindow = rides.filter { startOfDay(it.atEpochMs, timeZone) in from..today }
+        val inWindow = rides.filter { isInWindow(it.atEpochMs, days, now, timeZone) }
 
         return RidingWindow(
             days = days,
@@ -246,6 +242,29 @@ object RidingHistoryBuilder {
             outputKj = inWindow.sumOf { it.outputKj },
             lastRideDayMs = inWindow.maxOfOrNull { startOfDay(it.atEpochMs, timeZone) }
         )
+    }
+
+    /**
+     * Whether one ride falls inside the same window [window] counts over.
+     *
+     * Public and shared rather than repeated, because a second reader of *the
+     * last 30 days* arrived with 21.4.3 and two implementations of a day
+     * boundary is how one card comes to say **9 rides** while the card under it
+     * draws eight of them. Everything awkward about this is in here once: the
+     * window is whole days, it is inclusive of today, and a ride timestamped
+     * later today is still today's — the future is excluded a whole day at a
+     * time, the same rule the calendar uses.
+     */
+    fun isInWindow(
+        atEpochMs: Long,
+        days: Int,
+        now: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Boolean {
+        if (days <= 0) return false
+        val today = startOfDay(now, timeZone)
+        val from = addDays(today, -(days - 1), timeZone)
+        return startOfDay(atEpochMs, timeZone) in from..today
     }
 
     private fun startOfDay(epochMs: Long, timeZone: TimeZone): Long =
