@@ -17,6 +17,8 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.MaxHeartRate
+import com.pelonot.domain.model.PerceivedEffort
+import com.pelonot.domain.progress.SuggestedEffort
 import com.pelonot.domain.progress.FtpReduction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -92,6 +94,17 @@ data class PostRideUiState(
      * reading is concerned.
      */
     val displayTitle: String get() = classTitle ?: "Just Ride"
+
+    /**
+     * Which answer this ride's heart rate points at (21.6.1), or null.
+     *
+     * The same derivation as ride detail's, off the same charts, because the
+     * owner's question about these two screens was whether they are the same
+     * ride — and a suggestion that differed between them would be two rides
+     * again in the one place a rider is looking at both answers at once.
+     */
+    val suggestedEffort: PerceivedEffort?
+        get() = charts?.let { SuggestedEffort.of(it.timeInHeartRateZone) }
 }
 
 /**

@@ -129,10 +129,16 @@ data class EffortAgainstPlan(
          */
         private const val TOLERANCE = 0.20
 
-        /** Ten minutes of heart rate before a whole-ride claim means anything. */
-        private const val MIN_HEART_SECONDS = 10 * 60
+        /**
+         * Ten minutes of heart rate before a whole-ride claim means anything.
+         *
+         * Shared with `SuggestedEffort` (21.6.1) rather than copied, because
+         * *when a strap's evidence is worth believing* is one question and two
+         * answers to it would drift apart the first time either moved.
+         */
+        internal const val MIN_HEART_SECONDS = 10 * 60
 
         /** And it has to cover at least half of what the ride recorded. */
-        private const val MIN_COVERAGE = 0.5
+        internal const val MIN_COVERAGE = 0.5
     }
 }

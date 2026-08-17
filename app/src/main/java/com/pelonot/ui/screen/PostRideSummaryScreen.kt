@@ -237,7 +237,8 @@ fun PostRideSummaryScreen(
                                 selected = state.rpe,
                                 onSelect = viewModel::setRpe,
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                                isTonight = true
+                                isTonight = true,
+                                suggested = state.suggestedEffort
                             )
                             board?.let {
                                 ClassLeaderboardCard(it, Modifier.weight(1f).fillMaxHeight())
@@ -255,7 +256,8 @@ fun PostRideSummaryScreen(
                                 selected = state.rpe,
                                 onSelect = viewModel::setRpe,
                                 modifier = Modifier.loneCard(),
-                                isTonight = true
+                                isTonight = true,
+                                suggested = state.suggestedEffort
                             )
                             board?.let { ClassLeaderboardCard(it, Modifier.fillMaxWidth()) }
                         }

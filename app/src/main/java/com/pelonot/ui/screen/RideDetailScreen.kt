@@ -308,7 +308,8 @@ fun RideDetailScreen(
             EffortQuestion(
                 selected = workout.rpeRating,
                 onSelect = viewModel::setRpe,
-                modifier = Modifier.loneCard()
+                modifier = Modifier.loneCard(),
+                suggested = state.suggestedEffort
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))

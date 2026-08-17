@@ -13,6 +13,8 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.ChartSample
 import com.pelonot.domain.chart.RideChartBuilder
 import com.pelonot.domain.chart.RideCharts
+import com.pelonot.domain.model.PerceivedEffort
+import com.pelonot.domain.progress.SuggestedEffort
 import com.pelonot.ui.components.RideGhost
 import com.pelonot.ui.components.RideRival
 import com.pelonot.domain.export.ExportFormat
@@ -64,6 +66,17 @@ data class RideDetailUiState(
 
     /** A guest ride, which is the one kind with an open question on it. */
     val isUnclaimed: Boolean get() = workout != null && workout.userId == null
+
+    /**
+     * Which answer this ride's heart rate points at (21.6.1), or null.
+     *
+     * Derived rather than loaded — it reads the heart-rate zones the charts
+     * already counted, so it costs a sum over five entries and arrives with
+     * them. `EffortQuestion` drops it the moment the rider has answered, and
+     * that rule lives there rather than here because both screens need it.
+     */
+    val suggestedEffort: PerceivedEffort?
+        get() = charts?.let { SuggestedEffort.of(it.timeInHeartRateZone) }
 }
 
 /**
