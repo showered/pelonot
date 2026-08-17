@@ -307,12 +307,25 @@ has simply never been written down.
       secret**, deliberately — the cloud credentials are optional by design
       (14.10.3) and a clone without them must still build and run offline, so
       the day this workflow needs a secret is the day offline-first broke.
-      And **not `connectedDebugAndroidTest`**: it needs an emulator, and this
-      project's instrumented suite is order-dependent (a test asserting
-      `WorkoutService` is `Idle` only holds while nothing earlier in the run
-      finished a ride), so a red run would mean "re-run it" often enough to
-      train everyone to ignore the whole thing. 8.8b is the same complaint
-      about the same suite
+      And **not `connectedDebugAndroidTest`** — *and this paragraph's reason has
+      since been measured and found wrong, which is worth leaving visible rather
+      than editing away.* It said the instrumented suite is order-dependent (a
+      test asserting `WorkoutService` is `Idle` only holds while nothing earlier
+      in the run finished a ride), so a red run would mean "re-run it" often
+      enough to train everyone to ignore the whole thing. **8.15.1 reproduced
+      that exact trigger and the suite passed** — 131 tests, 0 failures, with a
+      probe class confirmed running first and `WorkoutServiceTest` last — because
+      both causes had been fixed by other items without anybody coming back here.
+      So the claim in this paragraph was **withholding coverage on a stale
+      reason**, which makes it the most expensive of the stale claims this
+      project keeps finding.
+
+      **The conclusion survives on a different argument** (8.15.2):
+      `WorkoutServiceTest` waits on a fixed `TIMEOUT_MS = 15_000` calibrated to a
+      local hardware-accelerated AVD, and a cold cloud emulator without KVM is
+      precisely where those waits go red — so adding the emulator would
+      manufacture the flakiness this refusal was about. 8.8b's **timeout** flake
+      is the related-but-separate item and is unreproduced rather than fixed
 - [x] **19.1.6** **The first run explains nothing.** A new rider is dropped
       straight onto the profile picker; profile creation asks for an FTP with
       **200 prefilled** and no way to find a real one (19.2.3 is the guided test

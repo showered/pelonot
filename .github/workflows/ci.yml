@@ -1,8 +1,13 @@
 # PLAN 19.1.4. What a maintainer would otherwise run by hand: the build a fresh
 # clone gets, and the JVM tests. Deliberately *not* `connectedDebugAndroidTest`
-# — it needs an emulator, and this project's instrumented suite is
-# order-dependent (see CLAUDE.md), so red runs there would train everyone to
-# ignore it.
+# — and the reason has changed, so it is written out rather than left pointing at
+# a claim that is no longer true. The old reason was that the instrumented suite
+# is order-dependent; 8.15.1 measured that and it is fixed. The reason now is
+# `WorkoutServiceTest`'s fixed 15-second waits, which were calibrated against a
+# local hardware-accelerated AVD: a cloud emulator boots cold and usually without
+# KVM, so those waits are exactly where a green suite would start going red —
+# which would *manufacture* the flakiness this refusal was always about rather
+# than inherit it. 8.15.2 has the conditions for changing this, in order.
 name: CI
 
 on:

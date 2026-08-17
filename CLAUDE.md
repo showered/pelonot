@@ -54,12 +54,26 @@ deployed copy is still on the legacy JWT key while the repo has moved to
 has established what supplies it; that is written here as an open fact rather
 than a guess.
 
-**`connectedDebugAndroidTest` can fail on ordering, not on code.**
-`WorkoutService` is one instance per test process, so a test asserting the
-service is `Idle` only holds while nothing earlier in the run has finished a
-ride. Adding a test class whose package sorts ahead of `data.service` was enough
-to fail two of them. Before believing a red run, re-run the failing class on its
-own.
+**`WorkoutService` is one instance per test process, and that is a live hazard
+for any test you add — but the suite is no longer order-dependent, and this
+bullet used to say it was.** The shape of the trap is permanent: a test asserting
+the service is `Idle` only holds while nothing earlier in the run has finished a
+ride, and adding a class whose package sorts ahead of `data.service` was once
+enough to fail two of them. **Both causes are fixed** —
+`stoppingWithoutStartingIsHarmless` asserts against the state *before* the call
+rather than against `Idle`, and 2.4.6 removed the preference race — and 8.15.1
+**measured** it rather than reasoning about it: the documented trigger was
+reproduced with a probe class in `com.pelonot.data.aaa` that finishes a ride and
+deliberately leaves the service in `Completed`, and the suite ran **131 tests, 0
+failures** with the probe confirmed first and `WorkoutServiceTest` last. Ten of
+the twelve classes use in-memory databases and cannot see each other at all.
+
+So: **write a new test as though the service is dirty** (assert against a
+captured *before*, never against `Idle`), and note that `WorkoutServiceTest`
+alone runs against the app's **real** database. Re-running a failing class on its
+own is still the cheapest way to tell a real failure from an interaction, but a
+red run is now evidence rather than noise. 8.8b's separate **timeout** flake is a
+different thing and is unreproduced rather than fixed — ten clean runs.
 
 **Turn the AVD's hardware keyboard off, or a whole class of defect is
 invisible.** With `hw.keyboard=yes` (the default in `Pelonot_Tablet.avd/

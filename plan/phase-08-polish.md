@@ -314,3 +314,87 @@
       `MetricReadout` is the one to watch: it has now had the same class of
       truncation fault three times (24.3.16, 11.1b.5, 11.1b.11) and each fix was
       correct
+
+### 8.15 The instrumented suite's order-dependence, measured — 17 August 2026
+
+- [x] **8.15.1** ***Measured and it is fixed. The claim was stale, and it was
+      gating a feature.*** Three documents said the instrumented suite is
+      order-dependent — `CLAUDE.md`'s trap list, **19.1.4**, and item 6 of
+      `STATUS.md`'s ranked list — and one of them was using it as the reason CI
+      runs the JVM tests only: *"a red run would mean 're-run it' often enough to
+      train everyone to ignore the whole thing."* That made this the most
+      expensive stale claim on the project, because unlike the others it was not
+      merely describing something wrongly, it was **withholding coverage**.
+
+      **Read structurally first, which is the cheap half.** Ten of the twelve
+      instrumented classes build their own `Room.inMemoryDatabaseBuilder`, so
+      they cannot see each other at all. `MigrationTest` uses
+      `MigrationTestHelper` against a database named `migration-test`, not the
+      live one. `DatabaseBackupTest` opens the shared database but writes only
+      into `cacheDir` and **deliberately stops before `restoreFrom`**, which is
+      the one call that would overwrite the live file — its own KDoc says so.
+      That leaves **`WorkoutServiceTest` as the entire surface**: one
+      process-global `WorkoutService` and the app's real database.
+
+      **And the assertion the claim was about has already been fixed, by
+      whoever met it.** `stoppingWithoutStartingIsHarmless` no longer asserts
+      `Idle`; it captures the state *before* the call and asserts the call
+      changed nothing, and its KDoc spells out why — *"it is only `Idle` while no
+      test in this run has yet finished a ride… which made this assertion a
+      statement about test **ordering** rather than about the service."* The
+      other half was 2.4.6's preference race, fixed after 8.8b was written and
+      described in the test's own `setup()`.
+
+      **Then measured rather than concluded, because reading is not evidence.**
+      Two runs on the tablet AVD. The first was the suite as it stands: **130
+      tests, 0 failures.** The second **reproduced the documented trigger
+      exactly** — a throwaway class in `com.pelonot.data.aaa`, which sorts ahead
+      of every other package in the suite, that starts a ride, finishes it,
+      discards its own row and **deliberately leaves the process-global service
+      in `Completed`**, asserting that it did so, because a probe that fails to
+      create the leak proves nothing. **131 tests, 0 failures**, and the
+      execution order confirmed out of the results XML rather than assumed: the
+      probe ran **first of thirteen classes** and `WorkoutServiceTest` ran
+      **last**, after it. The probe was then deleted.
+
+      **So the suite is order-independent for the trigger that was written
+      down**, and the three documents are corrected. What is *not* claimed: this
+      is one trigger measured, not a proof over all orders, and 8.8b's separate
+      **timeout** flake is untouched — it has now not reproduced across the
+      forty-fourth sitting's eight runs and these two, which is ten, and 8.8b's
+      own rule that a flake which does not reproduce is not a flake that is
+      fixed still stands.
+
+- [ ] **8.15.2** **So should CI run it now? — written up as a decision, with a
+      recommendation, because the old reason is gone and the answer is not
+      automatically yes.** The database, the service and the migrations are
+      tested only on somebody's machine, which is a real gap: 19.1.4's green
+      tick covers `assembleDebug` and 864 JVM tests and **nothing about SQLite,
+      the foreign key, elapsed time or a migration** — and all four of those have
+      been broken in this project's history while compiling fine, which is the
+      sentence `WorkoutServiceTest`'s own KDoc opens with.
+
+      **The recommendation is still no, and it is a better reason than the one it
+      replaces.** `WorkoutServiceTest` waits on `TIMEOUT_MS = 15_000` — a fixed
+      fifteen seconds, for a ride to accumulate elapsed time, for a metric batch
+      to reach Room, for a finalise to land. Those were calibrated against a
+      **local, hardware-accelerated AVD**. A cloud runner's emulator has no KVM
+      unless the runner is chosen for it, boots cold on every job, and is
+      exactly where a fifteen-second wait on a coroutine finishing a database
+      write goes red — so adding the emulator would **manufacture** the
+      flakiness the workflow refused, rather than inherit it. The old reason was
+      wrong; the conclusion happens to survive.
+
+      **What would change the answer, in order.** Make the waits generous or
+      adaptive rather than a single constant tuned to one machine — a fixed
+      timeout in a test is the same class of thing as a layout whose correctness
+      depends on which digits are showing (11.1b.11). Then run the suite on the
+      runner **repeatedly** before making it a gate, because 8.8b's flake is
+      unreproduced rather than fixed and ten clean local runs say nothing about
+      a cold cloud emulator. **And it must be a gate or it must not exist**: a
+      non-blocking CI job is item 6's own complaint wearing a different hat, a
+      red mark nobody is required to read.
+
+      **This is the owner's to overrule and it is cheap to.** One job in
+      `ci.yml`, and the argument above is about a constant rather than about
+      anything structural

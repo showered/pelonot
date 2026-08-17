@@ -431,9 +431,31 @@ race has to exclude.
    a 66%-wrong guess was being shown with the same authority as two measured
    numbers. The code is kept because 11.7.3 says when it comes back — a bike
    riding its own calibrated curve (2.2a).
-6. **`WorkoutServiceTest` is flaky about one run in three (8.8b)**, and the
-   instrumented suite is order-dependent, which is why CI runs only the JVM
-   tests. A red run you are trained to re-run is a suite nobody reads.
+6. **The instrumented suite is *not* order-dependent, and this item said it was
+   for four sittings while using it as the reason CI runs only the JVM tests
+   (8.15.1).** That makes it the most expensive stale claim this page has
+   carried: the others described something wrongly, and this one was
+   **withholding coverage**. Both causes had been fixed by other items —
+   `stoppingWithoutStartingIsHarmless` asserts against a captured *before*
+   rather than against `Idle`, and 2.4.6 removed the preference race — and
+   nobody came back to cross it off. **Measured rather than reasoned about**:
+   the documented trigger was reproduced with a probe class in
+   `com.pelonot.data.aaa` that finishes a ride and deliberately leaves the
+   process-global service in `Completed`, and the suite ran **131 tests, 0
+   failures** with the probe confirmed first out of the results XML and
+   `WorkoutServiceTest` last. Ten of the twelve classes use in-memory databases
+   and cannot see each other at all.
+
+   **What is genuinely still true is narrower and still matters.**
+   `WorkoutServiceTest` is flaky on a *timeout* about one run in three (8.8b),
+   and that is unreproduced rather than fixed — ten clean runs now, which 8.8b's
+   own rule says is evidence and not proof. **And CI still does not run the
+   suite**, so the database, the service and the migrations are tested only on
+   somebody's machine. The reason is now 8.15.2's rather than this one's: the
+   suite's fixed 15-second waits were calibrated to a local
+   hardware-accelerated AVD, and a cold cloud emulator without KVM is exactly
+   where they would go red — which would manufacture the flakiness the refusal
+   was about. That is the owner's to overrule and it is one job in `ci.yml`.
 7. **A written rule that nothing checks describes the library nobody built.**
    `classlibrary/` R10 has always said a title names the shape and the demand,
    *"not the category and the length"*, and ended with the words **not

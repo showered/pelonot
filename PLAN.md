@@ -465,6 +465,32 @@ failing against its own violation. **What it deliberately does not claim is
 26.4.9a**: a text scan cannot know which branch a literal is in, and one that
 said it could would pass for the wrong reason.
 
+**And the claim that was withholding CI's coverage is stale (8.15.1), which is
+the fourth of these this project has found and the first that was costing
+something.** Three documents said the instrumented suite is order-dependent, and
+`ci.yml`'s own comment used it as the reason CI runs the JVM tests only. **Both
+causes had been fixed by other items and nobody came back to cross it off**:
+`stoppingWithoutStartingIsHarmless` asserts against a captured *before* rather
+than against `Idle`, and 2.4.6 removed the preference race. **Measured rather
+than read** — the documented trigger was reproduced with a probe class in
+`com.pelonot.data.aaa` finishing a ride and deliberately leaving the service in
+`Completed`, and the suite ran **131 tests, 0 failures** with the probe confirmed
+**first** out of the results XML and `WorkoutServiceTest` **last**. Ten of the
+twelve classes use in-memory databases and cannot see each other at all.
+`CLAUDE.md`, 19.1.4, `ci.yml` and `STATUS.md` item 6 are all corrected, and
+19.1.4's paragraph is left visible with its wrong reason rather than edited away.
+
+**8.15.2 is the decision that replaces it and it is the owner's to overrule
+cheaply.** The recommendation is still not to run the suite in CI, on a better
+argument: `WorkoutServiceTest` waits on a fixed `TIMEOUT_MS = 15_000` calibrated
+to a local hardware-accelerated AVD, and a cold cloud emulator without KVM is
+precisely where those go red — so adding it would **manufacture** the flakiness
+the refusal was always about rather than inherit it. The old reason was wrong and
+the conclusion happens to survive. What would change it, in order: make the waits
+adaptive rather than one constant tuned to one machine, then run it on the runner
+repeatedly before making it a gate — and **it must be a gate or not exist**,
+because a non-blocking job is item 6's own complaint in a different hat.
+
 **The honest gap it named is now a decision rather than a gap** (8.14.1). This
 project has **no Compose UI test infrastructure at all** — twelve instrumented
 tests and every one of them Room — so every rule about how a screen *draws* is
@@ -658,9 +684,11 @@ bucket and could ride in the profile payload the day that migration happens.
    evidence that a stranger cloning this gets a build. The workflow had been
    correct and unreachable for eighteen sittings, which is this sitting's third
    finding of the same shape. **What is not covered is the instrumented
-   suite**, deliberately, and item 6 of `STATUS.md`'s ranked list is why: the
-   database, the service and the migrations are tested only on somebody's
-   machine. That is now the most valuable unblocked thing on this list.
+   suite**, and the reason item 6 of `STATUS.md`'s ranked list gave for that
+   turned out to be **stale, and it was withholding coverage** — see 8.15.1
+   immediately below. The database, the service and the migrations are still
+   tested only on somebody's machine, and 8.15.2 is the decision about whether
+   CI should change that.
 2. **15.7.7 — the mailer is the thing in the way, and it is the owner's.**
    Two confirmation emails an hour through a sender meant for testing is not a
    flow anybody can finish, let alone test repeatedly, and it is what
