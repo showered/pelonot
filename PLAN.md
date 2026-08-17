@@ -331,8 +331,64 @@ and `12` stays inside the disc unclipped. **The fixture was removed afterwards**
 and the device is back to its documented state: Jo at level 1, Robin still
 wearing `photo:avatar-1-1786964382388.jpg`.
 
-**864 JVM tests, 0 failures**, up from 858. **Phase 26 gains five items and four
-ticks — 18 of 24.**
+**864 JVM tests, 0 failures**, up from 858.
+
+**Then the owner answered three questions and one of the answers changed what
+this sitting could do.** The rank stays off the live leaderboard, so **24.3.19d
+closes as decided** after nine days and 26.4.9b's conditional closes with it.
+There will be no Compose UI test infrastructure, and the argument is good enough
+to be written down as **8.14.1** rather than as a shrug: almost every defect this
+project has found came from looking at the tablet, and a Compose test would have
+caught **none** of them, because each was a legibility fault on a real display at
+a real density. And the third was CI — the owner had already merged `setup` into
+`main` and pushed.
+
+**So CI ran for the first time in the project's history, and it is green
+(19.1.4).** Written in the twenty-eighth sitting and unrun for eighteen of them,
+not because anything was wrong with it but because `ci.yml` triggers on push to
+`main` and every commit was going to `setup`: **a workflow correct in every line
+and reachable by nothing.** `assembleDebug`, then 864 tests, 0 failures, on a
+clean Ubuntu clone with **no `local.properties`** — which *tests* the
+offline-first decision (14.10.3) rather than restating it, and is the first
+external evidence that a stranger cloning this gets a build.
+
+**And that put the sitting's third stale claim at the top of the list, which is
+the most expensive one this project has found (8.15.1).** `ci.yml`'s own comment
+said CI runs the JVM tests only because the instrumented suite is
+order-dependent; `CLAUDE.md`, 19.1.4 and `STATUS.md` item 6 all said the same.
+**It is not, and both causes had been fixed by other items with nobody coming
+back to cross it off** — `stoppingWithoutStartingIsHarmless` asserts against a
+captured *before* rather than against `Idle`, and 2.4.6 removed the preference
+race. The difference from the other three stale claims is that this one was not
+describing something wrongly, it was **withholding coverage**.
+
+**Read structurally, then measured, because reading is not evidence.** Ten of the
+twelve instrumented classes build their own in-memory database, `MigrationTest`
+uses one named `migration-test`, and `DatabaseBackupTest` deliberately stops
+before `restoreFrom` — which leaves `WorkoutServiceTest` as the whole surface.
+Then the documented trigger was **reproduced**: a throwaway class in
+`com.pelonot.data.aaa` that finishes a ride, discards its own row and **asserts
+it left the process-global service in `Completed`**, because a probe that fails to
+create the leak proves nothing. **131 tests, 0 failures**, with the order
+confirmed out of the results XML rather than assumed — probe **first** of
+thirteen classes, `WorkoutServiceTest` **last**. The probe was deleted and the
+fixtures were restored, since the suite uninstalls the app.
+
+**8.15.2 replaces the stale reason and the conclusion survives on a better
+argument.** Still no emulator in CI — but because `WorkoutServiceTest` waits on a
+fixed `TIMEOUT_MS = 15_000` calibrated to a local hardware-accelerated AVD, and a
+cold cloud runner without KVM is exactly where that goes red, so adding it would
+**manufacture** the flakiness the refusal was about rather than inherit it. The
+conditions for changing it are written in order, and it is the owner's to overrule
+for the price of one job.
+
+**Counted rather than carried forward, with `grep -c '^- \[x\]'` against each
+phase file:** **Phase 26 is 19 of 24** (five new items, five ticks — 26.4.9b
+closed with 24.3.19d), **Phase 8 is 39 of 56** (three new items, two ticks — 8.15.2
+is deliberately open), **Phase 19 is 11 of 23** and **Phase 24 is 47 of 51**.
+**19.1.4 was the first entry on *What to do next*.** *(The older figures for
+Phases 8 and 19 in the paragraph below were among the ones counting boxes the
+wrong way round; these four are measured.)*
 
 ### The sitting before — 17 August 2026 (sixty-fourth sitting): a rule that was only a hope, and a face that is a photograph
 
@@ -612,18 +668,21 @@ needs the friend with the Apple Watch** and nothing else. And **29.2.2 needs an
 iPhone once** — one exported `.tcx` carried into the Health app, which is the
 whole of what "Apple Health support" honestly means here.
 
-**Phase 26 gains five items and four ticks — 18 of 24**, counted rather than
-carried forward. Phase 2 is 49 of 55 and Phase 20 is 42 of 52, both from the
-sitting before. Phase 21 is 18 of 36 and Phase 11 is 61 of 73, both unchanged.
-**Phase 7 is 31 of 36** with three deliberately-open items, **Phase 24 is 46 of
-51** with **24.3.19d** and **24.3.19e** open and both the owner's — and
-**26.4.9b now leans on the first of those**. *(The figures below are carried
+**Four phases were counted this sitting rather than carried forward: Phase 26 is
+19 of 24, Phase 8 is 39 of 56, Phase 19 is 11 of 23 and Phase 24 is 47 of 51**
+(**24.3.19e** is the only one of 24's four open items that is the owner's now
+that 24.3.19d is closed). Phase 2 is 49 of 55 and Phase 20 is 42 of 52, both from
+the sitting before. Phase 21 is 18 of 36 and Phase 11 is 61 of 73, both
+unchanged. **Phase 7 is 31 of 36** with three deliberately-open items. *(The
+figures below are carried
 forward from earlier sittings and do not all agree on whether they count boxes
 ticked or boxes left — worth re-measuring rather than trusting.)*
-Everything else is unchanged: **Phase 15 (22 of 64)** is still the outlier,
-followed by **Phase 8 (16 of 53)** and **Phase 21 (17 of 35)** — *and Phase 11's
-old figure of 15 of 70 was one of the ones counting the wrong way round; it was
-55 ticked of 70 before this sitting.* Phase 17/18 is 31 of 44 and Phase 22 is 50
+Everything else is unchanged: **Phase 15 (22 of 64)** is still the outlier —
+*and its old companions in that sentence were both counting the wrong way round.
+Phase 8 was carried as "16 of 53" and is **39 ticked of 56**, measured this
+sitting; Phase 21's "17 of 35" is the same error as Phase 11's old "15 of 70",
+which was really 55 ticked of 70.* So the outlier list is **Phase 15 alone**,
+followed by Phase 19 at 11 of 23. Phase 17/18 is 31 of 44 and Phase 22 is 50
 of 56. Phases 27, 28 and 29
 are 0/18, 0/24 and 0/12 and all three are deliberately untouched — the owner's
 own weighting on the first two, and the bike's Android version gating the third.
