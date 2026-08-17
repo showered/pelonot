@@ -268,7 +268,8 @@ has simply never been written down.
       a newer version of Pelonot…)&gt;. *It stops at the verdict on purpose:
       `restoreFrom` closes the shared database and overwrites the live file, and
       the half worth testing is over before then.*
-- [ ] **19.1.4** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
+- [x] **19.1.4** ***Green, 17 August 2026 — the first CI run in the project's
+      history.*** **CI**: GitHub Actions running `assembleDebug` and `testDebugUnitTest` on every PR. An open-source project taking contributions without this is asking maintainers to be the build server
 
       *Written — `.github/workflows/ci.yml`, JDK 17, the Gradle wrapper,
       `assembleDebug` then `testDebugUnitTest`, with the HTML test report kept
@@ -276,6 +277,31 @@ has simply never been written down.
       than only that one broke. **The box stays unticked until a run is green
       on GitHub**, which is the house rule and not a formality here: a workflow
       that parses is not a workflow that builds.*
+
+      ***And it was not a formality.*** The workflow was written in the
+      twenty-eighth sitting and sat unrun for **eighteen sittings**, not because
+      anything was wrong with it but because `ci.yml` triggers on push to `main`
+      and on `pull_request`, and every commit was going to `setup`. **A workflow
+      correct in every line and reachable by nothing** — which is the same shape
+      as this sitting's other two findings, a rule that held only because of
+      where the work happened to be.
+
+      **The owner cleared it themselves**: they merged `setup` into `main` and
+      pushed, so the run fired on `2aae22f` — and it went green on the first
+      attempt. Both steps passed: `assembleDebug`, then `testDebugUnitTest` at
+      **864 tests, 0 failures**, on a clean Ubuntu clone with **no
+      `local.properties`**. That last part is the decision below being *tested*
+      rather than merely intended: the cloud credentials are optional by design
+      (14.10.3), and a green run without them is the first external evidence
+      that a stranger cloning this repository gets a build.
+      [Run 32034283616](https://github.com/showered/pelonot/actions/runs/32034283616).
+
+      **What is still not covered, and it is the honest half.** The instrumented
+      suite does not run here and that is deliberate (see below). Item 6 of
+      `STATUS.md`'s ranked list is the reason, so **the green tick above covers
+      the JVM tests and the build, and nothing about the database, the service or
+      the migrations** — all of which are tested, and all of which are tested
+      only on somebody's machine.
 
       Two decisions in it worth keeping. **No `local.properties` and no
       secret**, deliberately — the cloud credentials are optional by design

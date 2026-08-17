@@ -651,12 +651,16 @@ bucket and could ride in the profile payload the day that migration happens.
    account, `pm clear`, a new profile, sign in. **The same trip closes 15.3.2's
    box and would confirm `RideFacts` in the cloud** the way 23.4.14 was confirmed
    — `metrics_payload->>'w'` on a real row.
-1. **19.1.4 — CI, and it needs a pull request rather than a push.** Written in
-   the twenty-eighth sitting and never yet green, because `ci.yml` triggers on
-   `push` to **main** and on `pull_request`, and all the work is on `setup`.
-   One PR from `setup` to `main` runs it and ticks the item. It is still the
-   cheapest thing in this plan and it is the owner's call, since `main` holds a
-   single initial commit and that PR is effectively the whole project.
+1. ~~**19.1.4 — CI.**~~ **Green, and it is off this list.** The owner merged
+   `setup` into `main` and pushed, the run fired on `2aae22f`, and it passed on
+   the first attempt: `assembleDebug` then **864 tests, 0 failures**, on a clean
+   Ubuntu clone with **no `local.properties`** — which is the first external
+   evidence that a stranger cloning this gets a build. The workflow had been
+   correct and unreachable for eighteen sittings, which is this sitting's third
+   finding of the same shape. **What is not covered is the instrumented
+   suite**, deliberately, and item 6 of `STATUS.md`'s ranked list is why: the
+   database, the service and the migrations are tested only on somebody's
+   machine. That is now the most valuable unblocked thing on this list.
 2. **15.7.7 — the mailer is the thing in the way, and it is the owner's.**
    Two confirmation emails an hour through a sender meant for testing is not a
    flow anybody can finish, let alone test repeatedly, and it is what
