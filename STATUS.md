@@ -338,9 +338,10 @@ for.
 ### Nice to have, and honestly labelled as such
 
 Most of Phase 17 beyond what is hosted, most of Phase 18 beyond the leaderboard,
-the rest of avatars (20.2.6a–20.2.8 — the built-in set and a photograph from
-the gallery are both done and drawn on three screens; what is left is the
-camera, the leaderboard and the cloud), the Material Expressive cosmetic backlog (~30 items in 8.11), a
+the rest of avatars (20.2.6a–20.2.8 — the built-in set is done and drawn on
+three screens; a rider's own photograph moved to the companion web app
+(20.7) on 18 August 2026, so what is left is that upload, the leaderboard and
+the rest of the cloud), the Material Expressive cosmetic backlog (~30 items in 8.11), a
 custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
 (19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
 is the standing argument for why, and it has been right so far.

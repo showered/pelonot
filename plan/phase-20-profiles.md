@@ -1429,7 +1429,7 @@ was written before any of this was built, for the same reason. What the note
 adds is that the web app is not merely *also* a place to do it; it is the
 **only** one.
 
-- [ ] **20.7.1** **Take the photograph out of the Android app.** The picker's
+- [x] **20.7.1** **Take the photograph out of the Android app.** The picker's
       door, the launcher behind it and the import that turns a gallery Uri into
       a stored square all go. **What stays is the whole of the drawing half** —
       the `photo:` scheme, `AvatarPhoto`'s name fence (20.2.4a), `RiderAvatar`'s
@@ -1440,6 +1440,25 @@ adds is that the web app is not merely *also* a place to do it; it is the
       column can already hold `photo:` today, on any tablet where somebody used
       the feature in the week it existed, so a build that drops the drawing half
       would draw a blank disc for them rather than a face
+
+      ***Built and watched on the tablet AVD, 18 August 2026.*** `AvatarPicker`
+      no longer has a `PhotoSwatch` or an `onPickPhoto` parameter —
+      `ProfileSelectorScreen`'s `pickPicture` launcher and its `importing` /
+      `importFailed` state are gone with it — and `AvatarPhotoStore.import`
+      and its three private helpers (`decodeSquare`, `uprighted`,
+      `centreSquare`, `freshNameFor`) are deleted; `fileFor`, `exists`,
+      `decode` and `forgetUnreferenced` stand. `AvatarPhotoStoreTest`'s five
+      import-and-EXIF assertions are gone with the code they tested — the
+      property they held is 20.7.3's now — and two tests replace them,
+      writing a JPEG straight to where the store expects one rather than
+      through an `import` that no longer exists. **Watched: Robin's press-
+      and-hold dialog still opens wearing her photograph, both rows below it
+      correctly unselected because a photograph is not one of their answers,
+      and profile creation's face step is unchanged** — it never offered a
+      photograph in the first place (20.2.4d). Nothing was saved, so the
+      device fixture is untouched. **864 JVM tests, 0 failures** — the same
+      count, because the deleted assertions were instrumented, not JVM.
+      `assembleDebug` passes
 
 - [ ] **20.7.2** **The note's stated reason names the one option this app
       deliberately never built — and the argument transfers, which is why the

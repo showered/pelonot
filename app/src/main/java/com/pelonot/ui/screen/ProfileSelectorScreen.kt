@@ -1,8 +1,5 @@
 package com.pelonot.ui.screen
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,7 +39,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,7 +73,6 @@ import com.pelonot.ui.components.drawable
 import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
-import kotlinx.coroutines.launch
 
 /**
  * How much of the bottom edge fades out while there is more grid below it
@@ -553,38 +548,17 @@ private fun ProfileEditDialog(
     // is the one place this dialog knows something `Avatar.parse` cannot: parse
     // is pure and never touches a filesystem, so the column can still name a
     // picture that a database import (12.4.4) left behind. Without this the
-    // swatch would be drawn *selected and blank* — a chosen thing that is not
-    // there — and saving would write the dead name back. Opening as unchosen
-    // means the rider sees the invitation to pick one, and the first Save
+    // face row would draw as though the rider were wearing something that is
+    // not there, and saving would write the dead name back. The first Save
     // clears the column.
+    //
+    // Nothing on this screen can *set* one any more (20.7.1) — that is the web
+    // app's now — so what is left here is a rider taking one off by choosing a
+    // drawn face, which `onDropPhoto` below is.
     var photo by rememberSaveable(profile.localUserId, stateSaver = AvatarPhotoSaver) {
         mutableStateOf(current.photo?.takeIf { ServiceLocator.avatarPhotoStore.exists(it) })
     }
     val chosen = Avatar(paint, face, photo)
-
-    // 20.2.4. The system picture picker, which on API 33+ is the photo picker
-    // and below it — the bike's Android 11 included — falls back to
-    // `ACTION_OPEN_DOCUMENT`. Either way it needs **no storage permission**:
-    // the rider chooses the file in another app and this one is handed a single
-    // Uri for it, which is the whole reason this is not a permission prompt.
-    val scope = rememberCoroutineScope()
-    var importing by remember { mutableStateOf(false) }
-    var importFailed by remember { mutableStateOf(false) }
-    val pickPicture = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { source ->
-        // Null is *the rider backed out*, which is not a failure and must not
-        // be reported as one.
-        if (source == null) return@rememberLauncherForActivityResult
-        importing = true
-        importFailed = false
-        scope.launch {
-            val imported = ServiceLocator.avatarPhotoStore
-                .import(source, profile.localUserId)
-            importing = false
-            if (imported == null) importFailed = true else photo = imported
-        }
-    }
 
     if (confirmingDelete) {
         AlertDialog(
@@ -636,34 +610,14 @@ private fun ProfileEditDialog(
                     onFace = { face = it },
                     name = name.ifBlank { profile.name },
                     photo = photo,
-                    onPickPhoto = {
-                        pickPicture.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
-                            )
-                        )
-                    },
                     onDropPhoto = { photo = null }
                 )
 
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
-                // Only ever one of these three lines, and the first two are
-                // states a rider is in for a second or two. Silence on a failed
-                // import would be indistinguishable from a picture that simply
-                // did not change, which is 12.4.3's rule about the export said
-                // about something smaller.
                 Text(
-                    text = when {
-                        importing -> "Getting that picture ready…"
-                        importFailed -> "That picture could not be read. Try another one."
-                        else -> "FTP and weight are in Settings."
-                    },
+                    text = "FTP and weight are in Settings.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (importFailed) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },

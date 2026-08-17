@@ -6,6 +6,102 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 17 August 2026 (sixty-fourth sitting): a rule that was only a hope, and a face that is a photograph
+
+**The inbox was empty**, so both picks were made on merit. The first is small
+and the second is not, and they turned out to be the same kind of thing: a
+claim this project had written down and never checked.
+
+**2.2a.8 was picked because `CLAUDE.md` already said it existed.** The scope
+argument at the head of 2.2a is the entire safety case for calibrating at all
+— the curve governs a fiction and a suggestion, never a recorded number — and
+both `CLAUDE.md` and `CloudAccessFenceTest`'s own KDoc refer to *"the
+`PowerModel` consumer fence"* as a thing that is there. It was not. The rule
+held because a handful of call sites happened not to have grown, which is a
+hope rather than a rule, and it is the difference the item itself names.
+
+**The first thing the fence did was contradict the sentence that asked for
+it.** Two documents said `PowerModel` has *"exactly two consumers"*; there are
+three. `SerialSensorSource` models watts as well, and it had been doing so for
+the life of the project. Both documents were written by reasoning about the
+design rather than by scanning for the call — the same shape as every stale
+claim this plan keeps turning up, this time about its own safety case.
+
+**The third consumer is not a breach, and working out why is what set the
+fence's shape.** `SerialSensorSource` is the rooted-tablet fallback on a board
+that does not report power, so it is `SimulatedSensorSource`'s twin rather than
+a new kind of thing — and **what makes both safe is that they flag
+`powerIsMeasured = false`, not that they are few.** So an allowlist alone would
+have been a headcount, and a headcount is not the rule. There are four checks:
+a fourth consumer, a modelled watt labelled measured, the *measured* source
+falling back to the model, and a third writer of the process-global
+`PowerModel.curve`. **Each was watched failing against its own violation**,
+because a fence nobody has seen fail is a fence nobody has tested.
+
+**The second pick was 20.2.4 and 20.2.5 — a photograph as a rider's face.** It
+is the largest rider-facing item left that needs neither the bike, the owner,
+the mailer nor a decision, and 20.6.6 had explicitly left it open when the
+vendored set went in. **The privacy half is the feature and not a step in it:**
+`AvatarPhotoStore` reads the orientation tag, decodes the pixels and writes a
+**new** JPEG, so the GPS coordinates of somebody's living room, the camera's
+model and the moment the shutter fired are gone by construction rather than by
+deletion. A copy with tags removed would be one forgotten tag away from being
+wrong, silently, on the one thing this app handles that a rider did not
+knowingly type in — and the avatar is destined for the cloud (20.2.7).
+
+**Two rules came out of the file and the column being different places.** The
+scheme is `photo:<file>`, which `Avatar`'s KDoc reserved back at 20.2.2 — *a
+reference and never bytes* — and the **colour survives beside it**, because a
+database imported onto another tablet (12.4.4) names pictures that did not
+travel and the disc then has to fall back to something. And the name is
+**checked rather than trusted**: it reaches a `File(directory, name)` out of a
+column this project edits in `sqlite3` constantly, so `AvatarPhoto.of` accepts
+only the shape this app itself writes and anything else degrades exactly as an
+unknown colour does.
+
+**Housekeeping is one sweep at launch rather than three deletes, and the third
+is the one that would have been missed.** A file is left behind by replacing a
+picture, by cancelling the dialog after choosing one, and by removing a profile
+— and that last happens inside `UserRepository.delete`, which knows nothing
+about files and should not. `forgetUnreferenced` takes what every profile is
+wearing and deletes the rest. Nothing is deleted at the moment of *choosing*,
+because the rider is still in a dialog with a Cancel button on it.
+
+**Profile creation deliberately does not offer it**, and the reason is
+structural rather than aesthetic: there is no row id yet, so a picture chosen
+there could not be filed against anybody, and a rider who walked away would
+leave an orphan for ever — which is what 15.8.1's *nothing half-made* exists to
+prevent. 20.4 having spent four items shortening that path is the second
+reason. **The camera is a written-up refusal** (20.2.4e): `HARDWARE.md` records
+no camera on the bike and nothing that answers `ACTION_IMAGE_CAPTURE`, so a
+camera entry there is a button that does nothing.
+
+**One defect came out of looking at the tablet rather than the diff**, and it
+is this project's usual kind. Deleting the file by hand left the *dialog*
+drawing the photograph swatch **selected and blank** — a chosen thing that is
+not there — and saving would have written the dead name straight back. The
+dialog now opens a vanished photograph as *no photograph*, which is the one
+thing it knows that `Avatar.parse` cannot: parse is pure and never touches a
+filesystem.
+
+**Measured on the device rather than assumed.** The source JPEG carries
+APP1/Exif and APP13 segments; the file the real flow wrote carries **neither**,
+at 512 × 512 and 6,378 bytes. A replace leaves two files and the next launch
+leaves one. A hand-made orphan and another rider's file are both collected and
+the referenced one is not. And a deleted file draws the rider's initial with
+nothing on screen suggesting a fault. **858 JVM tests and 130 instrumented
+tests, 0 failures** — up from 850, and the instrumented run was bracketed by a
+backup and restore of the seeded fixtures, which it wipes.
+
+**Two judgements are written down as reversible on sight** (20.2.4f), because
+both are the kind a look settles faster than more reasoning: a photograph that
+goes missing falls back to the rider's *derived* colour rather than the last
+one they chose, and the colour row stays live while a photograph is on, where
+its effect is hidden behind the picture.
+
+**Phase 2 gains a tick — 49 of 55 — and Phase 20 gains seven items and seven
+ticks, 42 of 52.**
+
 ## 17 August 2026 (sixty-third sitting): where a month went, and a strip that got out of the way
 
 **The inbox had an entry in it when this sitting started, written by the owner

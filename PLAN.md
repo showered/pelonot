@@ -236,7 +236,112 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 17 August 2026 (sixty-fifth sitting): a word that cost a face, and the same rule that was only a hope
+### Latest session — 18 August 2026 (sixty-sixth sitting): the photograph moves to the web app
+
+**The inbox had an entry in it**, so the pick was made for this sitting rather
+than on merit, the way it was for the sixty-fifth. Verbatim: *"The peloton bike
+doesn't have a camera, so let's remove the ability to set a custom photo avatar
+in the app. Instead leave that functionality only for the web companion app. We
+will need to also then think about how we can compress and store those images.
+Hopefully there are free services we can utilise. Remember that any of these
+services -- domains, URLs, API keys, need to be configurable with environment
+variables / local properties -- it is an open source app after all."*
+
+**It is one instruction and four questions, and only the instruction was built
+this sitting.** Written up as **20.7**, ten items: the removal (20.7.1, built),
+the reason the note gives naming an option this app already refused on the same
+grounds (20.7.2), the privacy property that has to be rebuilt in a browser
+(20.7.3), where the bytes live and why no image service earns its keep
+(20.7.4), the configuration rule (20.7.5), what it costs the connectivity model
+(20.7.6), the ordering (20.7.7, 20.7.9) and the refusal at 17.4 it reverses
+(20.7.8). The other nine cross the cloud and are behind a migration only the
+owner can apply — 15.3.7's queue, same as 20.2.7 already was.
+
+**The note lands on an item this plan already had, and that keeps happening
+often enough to be worth naming again**: 20.2.8 — *"Change your avatar from the
+companion web app — much later, and strictly after 17 exists"* — was written
+before any of this was built, for the same reason. What the note adds is that
+the web app is not merely *also* a place to do it; after 20.7.1 it is the
+**only** one.
+
+**The note's own reason names the one door this app had already refused to
+build, and the argument transfers one step along.** 20.2.4e is a written-up
+refusal — no camera on the bike, nothing that answers
+`ACTION_IMAGE_CAPTURE` — and the gallery that *was* built inherits it: a bike
+tablet's gallery is whatever somebody side-loaded, which on this one is
+nothing, so the door the picker drew opened onto an empty room either way.
+**Unmeasured rather than assumed** — 20.7.2 asks for the picker to actually be
+opened on the tablet to see what `ACTION_OPEN_DOCUMENT` resolves to, and that
+is left for 22.2.5's trip rather than reasoned about here, because the removal
+does not wait on the answer.
+
+**What was taken out, and what stayed.** `AvatarPicker` loses its `PhotoSwatch`
+and the `onPickPhoto` parameter that hid the whole option from profile
+creation; `ProfileSelectorScreen` loses the `PickVisualMedia` launcher and the
+`importing`/`importFailed` state that reported it. `AvatarPhotoStore.import`
+and its three private helpers — orientation, upright, centre-square — are
+deleted entire, because nothing in this app can produce a photograph any more.
+**What stayed is the whole of the drawing half**: the `photo:` scheme,
+`AvatarPhoto`'s name fence, `RiderAvatar`'s decode-at-draw-size,
+`forgetUnreferenced`'s launch sweep. A rider's face arriving from the web is
+still a file on this tablet that something has to draw, validate and
+eventually collect — and the column can already hold `photo:` today, on any
+tablet where somebody used the removed feature in the week it existed, so
+dropping the drawing half would have drawn a blank disc for them rather than a
+face. **This is the same shape 8.15.1 named two sittings ago in reverse**:
+there, code that had stopped mattering was still being treated as load-bearing;
+here, code that stops being reachable from one direction is still load-bearing
+from the other, and the fix is to read which half the note actually asked for
+rather than delete the file.
+
+**`AvatarPhotoStoreTest`'s five EXIF assertions are gone with the code they
+tested, and the property they held has a new owner rather than no owner.** The
+re-encode-never-copy rule was this app's proof that a photograph loses its GPS
+coordinates, camera model and shutter timestamp by construction; **20.7.3
+writes down where that proof has to be remade** — in a browser, against
+`canvas`/`toBlob` rather than `Bitmap.compress` — and names the trap the naive
+port falls into: uploading the `File` straight from the input element is one
+line shorter than re-encoding first and ships a rider's living-room coordinates
+to a server. Two tests replace the five, writing a JPEG straight to where the
+store expects one rather than through an `import` that no longer exists, so
+`exists`, `decode` and `forgetUnreferenced` are still covered as the code that
+still runs.
+
+**Watched on the tablet AVD rather than trusted from the diff.** Robin's
+press-and-hold dialog still opens wearing `photo:avatar-1-1786964382388.jpg` —
+the file and the column are both untouched (20.7.10) — with both rows beneath
+it correctly showing nothing selected, because a photograph is no longer one of
+the answers either row can produce. Profile creation's face step is unchanged,
+which it should be: it never offered a photograph in the first place
+(20.2.4d). Nothing was saved during the check, so the fixture is exactly as the
+sixty-fifth sitting left it.
+
+**864 JVM tests, 0 failures — the same number**, because the five deleted
+assertions were instrumented rather than JVM. `assembleDebug` passes.
+
+**Two refusals get their reasoning reopened rather than reused, because the
+ground under both moved.** 17.4's *"the avatar is deliberately not an
+upload"* gave three reasons — store, moderate, resize — and 20.7.8 answers
+each: **store** and **resize** are cheap once the client has already
+re-encoded down to a few kilobytes for privacy (20.7.4, 20.7.3), and **moderate
+is the one the note does not mention and the one that still costs something**
+— 18.11.1 accepted an open sign-up against a blast radius that named display
+names, class ids and output, never a face, so extending avatars into that
+surface is the owner's decision to re-take rather than a session's to assume.
+And **20.7.6 names a real loss rather than papering over one**: after 20.7.1 an
+offline household has no route to a photographic face at all, because the
+connectivity model's first rule is that an account-less rider makes no request.
+The twenty drawn faces are the honest answer already in the plan — offline
+riders get a face, account holders can have their own photograph — and it is
+worth saying plainly that it was working differently for them yesterday.
+
+**Phase 20 gains ten items and one tick — 43 of 62, measured with the nested
+checkbox pattern rather than the top-level one alone**, because 20.2.4's own
+sub-items (20.2.4a–f) are indented and the plain `^- \[x\]` count this project
+has used before silently excludes them; worth remembering the next time a phase
+is recounted here.
+
+### The sitting before — 17 August 2026 (sixty-fifth sitting): a word that cost a face, and the same rule that was only a hope
 
 **The inbox had an entry in it**, so the pick was made for this sitting rather
 than on merit: *"lvl indicator in avatar. It's too big, too much padding. Should
@@ -396,103 +501,16 @@ is deliberately open), **Phase 19 is 11 of 23** and **Phase 24 is 47 of 51**.
 Phases 8 and 19 in the paragraph below were among the ones counting boxes the
 wrong way round; these four are measured.)*
 
-### The sitting before — 17 August 2026 (sixty-fourth sitting): a rule that was only a hope, and a face that is a photograph
-
-**The inbox was empty**, so both picks were made on merit. The first is small
-and the second is not, and they turned out to be the same kind of thing: a
-claim this project had written down and never checked.
-
-**2.2a.8 was picked because `CLAUDE.md` already said it existed.** The scope
-argument at the head of 2.2a is the entire safety case for calibrating at all
-— the curve governs a fiction and a suggestion, never a recorded number — and
-both `CLAUDE.md` and `CloudAccessFenceTest`'s own KDoc refer to *"the
-`PowerModel` consumer fence"* as a thing that is there. It was not. The rule
-held because a handful of call sites happened not to have grown, which is a
-hope rather than a rule, and it is the difference the item itself names.
-
-**The first thing the fence did was contradict the sentence that asked for
-it.** Two documents said `PowerModel` has *"exactly two consumers"*; there are
-three. `SerialSensorSource` models watts as well, and it had been doing so for
-the life of the project. Both documents were written by reasoning about the
-design rather than by scanning for the call — the same shape as every stale
-claim this plan keeps turning up, this time about its own safety case.
-
-**The third consumer is not a breach, and working out why is what set the
-fence's shape.** `SerialSensorSource` is the rooted-tablet fallback on a board
-that does not report power, so it is `SimulatedSensorSource`'s twin rather than
-a new kind of thing — and **what makes both safe is that they flag
-`powerIsMeasured = false`, not that they are few.** So an allowlist alone would
-have been a headcount, and a headcount is not the rule. There are four checks:
-a fourth consumer, a modelled watt labelled measured, the *measured* source
-falling back to the model, and a third writer of the process-global
-`PowerModel.curve`. **Each was watched failing against its own violation**,
-because a fence nobody has seen fail is a fence nobody has tested.
-
-**The second pick was 20.2.4 and 20.2.5 — a photograph as a rider's face.** It
-is the largest rider-facing item left that needs neither the bike, the owner,
-the mailer nor a decision, and 20.6.6 had explicitly left it open when the
-vendored set went in. **The privacy half is the feature and not a step in it:**
-`AvatarPhotoStore` reads the orientation tag, decodes the pixels and writes a
-**new** JPEG, so the GPS coordinates of somebody's living room, the camera's
-model and the moment the shutter fired are gone by construction rather than by
-deletion. A copy with tags removed would be one forgotten tag away from being
-wrong, silently, on the one thing this app handles that a rider did not
-knowingly type in — and the avatar is destined for the cloud (20.2.7).
-
-**Two rules came out of the file and the column being different places.** The
-scheme is `photo:<file>`, which `Avatar`'s KDoc reserved back at 20.2.2 — *a
-reference and never bytes* — and the **colour survives beside it**, because a
-database imported onto another tablet (12.4.4) names pictures that did not
-travel and the disc then has to fall back to something. And the name is
-**checked rather than trusted**: it reaches a `File(directory, name)` out of a
-column this project edits in `sqlite3` constantly, so `AvatarPhoto.of` accepts
-only the shape this app itself writes and anything else degrades exactly as an
-unknown colour does.
-
-**Housekeeping is one sweep at launch rather than three deletes, and the third
-is the one that would have been missed.** A file is left behind by replacing a
-picture, by cancelling the dialog after choosing one, and by removing a profile
-— and that last happens inside `UserRepository.delete`, which knows nothing
-about files and should not. `forgetUnreferenced` takes what every profile is
-wearing and deletes the rest. Nothing is deleted at the moment of *choosing*,
-because the rider is still in a dialog with a Cancel button on it.
-
-**Profile creation deliberately does not offer it**, and the reason is
-structural rather than aesthetic: there is no row id yet, so a picture chosen
-there could not be filed against anybody, and a rider who walked away would
-leave an orphan for ever — which is what 15.8.1's *nothing half-made* exists to
-prevent. 20.4 having spent four items shortening that path is the second
-reason. **The camera is a written-up refusal** (20.2.4e): `HARDWARE.md` records
-no camera on the bike and nothing that answers `ACTION_IMAGE_CAPTURE`, so a
-camera entry there is a button that does nothing.
-
-**One defect came out of looking at the tablet rather than the diff**, and it
-is this project's usual kind. Deleting the file by hand left the *dialog*
-drawing the photograph swatch **selected and blank** — a chosen thing that is
-not there — and saving would have written the dead name straight back. The
-dialog now opens a vanished photograph as *no photograph*, which is the one
-thing it knows that `Avatar.parse` cannot: parse is pure and never touches a
-filesystem.
-
-**Measured on the device rather than assumed.** The source JPEG carries
-APP1/Exif and APP13 segments; the file the real flow wrote carries **neither**,
-at 512 × 512 and 6,378 bytes. A replace leaves two files and the next launch
-leaves one. A hand-made orphan and another rider's file are both collected and
-the referenced one is not. And a deleted file draws the rider's initial with
-nothing on screen suggesting a fault. **858 JVM tests and 130 instrumented
-tests, 0 failures** — up from 850, and the instrumented run was bracketed by a
-backup and restore of the seeded fixtures, which it wipes.
-
-**Two judgements are written down as reversible on sight** (20.2.4f), because
-both are the kind a look settles faster than more reasoning: a photograph that
-goes missing falls back to the rider's *derived* colour rather than the last
-one they chose, and the colour row stays live while a photograph is on, where
-its effect is hidden behind the picture.
-
-**Phase 2 gains a tick — 49 of 55 — and Phase 20 gains seven items and seven
-ticks, 42 of 52.**
-
 ### What to do next, in order
+
+**This sitting's own work left nine items behind it, all at 20.7 and all
+behind the owner.** 20.7.1 is built — the photograph is out of the Android app
+— and what is left crosses the cloud: 20.7.4's bucket, 20.7.3's browser
+re-encode, 20.7.8's re-opened question about moderation now that a face is in
+the exposure 18.11.1 already accepted. None of it is a session's to start
+before 20.7.7's ordering (the colour-and-mark string travelling first, cheaply,
+ahead of the bytes) and 20.7.8's decision are settled, so it is named here
+rather than queued as work.
 
 **The owner's inbox is empty again and the top of this numbered list is still
 mostly not work**: 15.3.2 is built and unticked and item 0 is still its reason,
@@ -677,8 +695,11 @@ whole of what "Apple Health support" honestly means here.
 **Four phases were counted this sitting rather than carried forward: Phase 26 is
 19 of 24, Phase 8 is 39 of 56, Phase 19 is 11 of 23 and Phase 24 is 47 of 51**
 (**24.3.19e** is the only one of 24's four open items that is the owner's now
-that 24.3.19d is closed). Phase 2 is 49 of 55 and Phase 20 is 42 of 52, both from
-the sitting before. Phase 21 is 18 of 36 and Phase 11 is 61 of 73, both
+that 24.3.19d is closed). Phase 2 is 49 of 55, from the sitting before. **Phase
+20 is 43 of 62**, measured this sitting with the nested checkbox counted —
+the plain `^- \[x\]` count used elsewhere in this paragraph misses 20.2.4's own
+indented sub-items and undercounts every phase that has any. Phase 21 is 18 of
+36 and Phase 11 is 61 of 73, both
 unchanged. **Phase 7 is 31 of 36** with three deliberately-open items. *(The
 figures below are carried
 forward from earlier sittings and do not all agree on whether they count boxes

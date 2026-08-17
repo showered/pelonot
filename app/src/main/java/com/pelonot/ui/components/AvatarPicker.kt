@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddAPhoto
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +26,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.identity.AvatarFace
 import com.pelonot.domain.identity.AvatarPhoto
 import com.pelonot.domain.identity.AvatarPaint
@@ -63,6 +59,14 @@ import com.pelonot.ui.theme.spacing
  * face already, derived from their row id, and the column stays null so the app
  * can still tell that they never chose.
  *
+ * **A photograph is not one of the answers here, and that is 20.7.1.** It used
+ * to be the second swatch in the face row — a door into the system gallery —
+ * and the owner's note of 18 August 2026 took it out of this app: a bike has no
+ * camera and therefore no camera roll, so the door opened onto an empty room.
+ * Setting one belongs to the companion web app (20.2.8). A rider who already
+ * has one still wears it everywhere the app draws a face, and tapping anything
+ * in this row is still how they take it off.
+ *
  * **It lives here rather than inside a screen** (20.6.2). Two screens draw it
  * now — the selector's press-and-hold dialog and the last step of profile
  * creation — and a private copy in one of them is exactly how the avatar came
@@ -85,16 +89,17 @@ fun AvatarPicker(
      * preview above it says `S` is two answers to one question.
      */
     name: String = "",
-    /** The rider's photograph, if they have chosen one (20.2.4). */
-    photo: AvatarPhoto? = null,
     /**
-     * Opens the system picture picker — **and its absence is what hides the
-     * whole option**, which is how profile creation stays out of it.
+     * The rider's photograph, if they are wearing one.
      *
-     * Null means this screen does not offer a photograph. See the class KDoc
-     * for why the creation path is one of those screens.
+     * **Nothing here can set it** (20.7.1) — a photograph is chosen on the
+     * companion web app now, and this parameter exists because a rider who has
+     * one is not currently wearing any of the options below. It is what keeps
+     * the initial and the twenty faces all unselected while a picture is on the
+     * disc, so the row is honest about the fact that their face came from
+     * somewhere else.
      */
-    onPickPhoto: (() -> Unit)? = null,
+    photo: AvatarPhoto? = null,
     /**
      * Called by *this* component whenever a drawn face or the initial is
      * chosen, because a photograph and a face are one answer and the rider has
@@ -102,7 +107,7 @@ fun AvatarPicker(
      *
      * It lives here rather than in the caller's `onFace` handler so that the
      * two cannot come apart: forgetting to clear a face under a photograph is
-     * invisible — [Avatar.store] and [RiderAvatar] both prefer the photograph —
+     * invisible — `Avatar.store` and [RiderAvatar] both prefer the photograph —
      * but forgetting to clear the *photograph* would leave a rider tapping face
      * after face while their picture stays on the disc, which reads as the app
      * having stopped responding.
@@ -147,17 +152,6 @@ fun AvatarPicker(
                 color = Color.Black
             )
         }
-        if (onPickPhoto != null) {
-            // Second, not last. A photograph is the answer a rider who wants
-            // one has already decided on before they open this, and twenty
-            // faces between the question and its answer is a scroll for the one
-            // option nobody arrives here undecided about.
-            PhotoSwatch(
-                photo = photo,
-                fill = AvatarPalette[paint.ordinal],
-                onClick = onPickPhoto
-            )
-        }
         AvatarFace.entries.forEach { option ->
             Swatch(
                 selected = option == face && photo == null,
@@ -181,50 +175,6 @@ fun AvatarPicker(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-        }
-    }
-}
-
-/**
- * *Your own picture* — the swatch that opens the system picker (20.2.4).
- *
- * **It shows the rider's photograph once they have one**, so the row is a
- * preview of the outcome exactly as the twenty faces are, and tapping it again
- * is *change this picture* rather than a second way to arrive at the same place.
- * Before there is one it is a camera glyph, which is the only entry in either
- * row that is a **door** rather than a choice — the picture is chosen in another
- * app entirely.
- *
- * It is drawn selected whenever a photograph is set, and the two rows cannot
- * both be selected: [AvatarPicker] clears the photograph from every other
- * swatch in the row.
- */
-@Composable
-private fun PhotoSwatch(
-    photo: AvatarPhoto?,
-    fill: Color,
-    onClick: () -> Unit
-) {
-    Swatch(
-        selected = photo != null,
-        fill = fill,
-        // Said in words because this one is a door: a screen reader announcing
-        // "Face 21" would not tell a rider that tapping it leaves the app.
-        label = if (photo == null) "Use your own picture" else "Change your picture",
-        size = FACE_SWATCH,
-        onClick = onClick
-    ) {
-        if (photo != null) {
-            // Deliberately the same 32 dp path the household panel uses, so a
-            // photograph that will be unreadable at a glance is unreadable here
-            // too rather than flattering itself in the picker.
-            RiderAvatar(name = "", avatar = Avatar(AvatarPaint.Slate, photo = photo), size = FACE_SWATCH)
-        } else {
-            Icon(
-                imageVector = Icons.Outlined.AddAPhoto,
-                contentDescription = null,
-                tint = Color.Black
-            )
         }
     }
 }
