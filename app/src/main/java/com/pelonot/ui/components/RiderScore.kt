@@ -21,7 +21,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.domain.progress.RiderLevel
@@ -41,11 +40,25 @@ import com.pelonot.ui.theme.spacing
  * **Four rules, and the first three are the ones a future call site will be
  * tempted to break.**
  *
- * 1. **It says `LVL` and a number, and nothing else.** No unit, no watts, no
- *    "fitness", no adjective. `LVL` is the owner's own word from the note and
- *    it is the one word this badge is allowed (26.4.2) — the number's only
- *    honest claim is *has ridden more*, and any label richer than that is the
- *    reader being handed a meaning the number does not have.
+ * 1. **It says `LVL` and a number, and nothing else — and the compact form says
+ *    only the number** (26.4.9). No unit, no watts, no "fitness", no adjective.
+ *    `LVL` is the owner's own word from the note and it is the one word this
+ *    badge is allowed (26.4.2) — the number's only honest claim is *has ridden
+ *    more*, and any label richer than that is the reader being handed a meaning
+ *    the number does not have.
+ *
+ *    **Dropping the word on a face is this rule narrowed rather than broken**
+ *    (26.4.9a), because what the rule forbids is a label *richer* than the
+ *    claim and this is less. But the word was quietly doing a second job — it
+ *    said *what kind of number this is* — so a bare number needs that from
+ *    somewhere, and it has exactly three sources: the **ring** round the face
+ *    is the progress to the next level (20.6.8) and a number inside a progress
+ *    ring is the most recognised "level" there is; the **screen reader is
+ *    untouched** and still hears *"Riding level 8, earned by 41 rides"*; and on
+ *    both surfaces that draw a face the other number about that rider carries
+ *    its own unit (`FTP 155 W`), so the two cannot be swapped. **If any of the
+ *    three goes, the word comes back on that surface** — see 26.4.9b, which is
+ *    the case that would do it.
  * 2. **Never beside the FTP as if they were the same kind of thing** (26.4.5),
  *    **and the owner has narrowed this one rather than lifted it** (26.4.8).
  *    The FTP is a measurement with two screens of its own; this is an
@@ -106,9 +119,15 @@ fun RiderScore(
      * of this file: the profile tile now overlays the badge on the avatar and
      * two other screens draw it beside the name, and a private copy in the
      * selector is exactly how the avatar itself came to be on the power-zone
-     * palette. Everything the four rules say is true of both forms — same
-     * words, same colour, same track, same guest rule — and only the type
-     * scale and the padding follow the height.
+     * palette. Same colour, same track rule, same guest rule.
+     *
+     * **What differs is no longer only the type scale, and 26.4.9 is where that
+     * changed.** A compact badge draws the number alone, at [COMPACT_NUMBER]
+     * of this height, in a disc about as wide as it is tall. The word costs
+     * three-quarters of the width of the face it sits on to hold something set
+     * at 5.5 sp, which is 44 dp of somebody's collar for a label nobody can
+     * read — and dropping it lets the number get *larger* while the badge gets
+     * smaller, because the number is no longer the smaller half of a pair.
      */
     compact: Dp? = null
 ) {
@@ -142,44 +161,57 @@ fun RiderScore(
                     size = Size(size.width * level.progress, trackPx)
                 )
             }
-            // A compact badge keeps the *proportion* of the minimum width, so
-            // `LVL 8` and `LVL 12` are still one object down a row of tiles —
-            // the reason [MIN_WIDTH] exists — without a 64 dp pill hanging off
-            // the sides of a 66 dp face.
-            .defaultMinSize(minWidth = compact?.times(MIN_WIDTH_RATIO) ?: MIN_WIDTH)
+            // **A compact badge is a disc, not a scaled pill** (26.4.9). With
+            // the word gone the only thing inside is one or two digits, so a
+            // floor of one height is what makes a single digit round rather
+            // than a narrow slot — and `LVL 8` and `LVL 12` no longer needing
+            // to be the same object is exactly what [MIN_WIDTH] was for. Each
+            // badge is centred on its own face, so a two-digit level being
+            // wider than a one-digit level is symmetric about the same axis
+            // rather than a ragged column.
+            .defaultMinSize(minWidth = compact ?: MIN_WIDTH)
             .semantics { contentDescription = describe(level) },
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.padding(
-                horizontal = if (compact != null) {
-                    MaterialTheme.spacing.small
-                } else {
-                    MaterialTheme.spacing.medium
-                },
-                vertical = MaterialTheme.spacing.extraSmall
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (compact != null) {
             Text(
-                text = "LVL",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = compact?.let { (it.value * LABEL_SCALE).sp } ?: TextUnit.Unspecified,
-                lineHeight = compact?.let { (it.value * LABEL_SCALE * 1.2f).sp }
-                    ?: TextUnit.Unspecified,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
-            Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
-            Text(
+                // Rule 1 narrowed: the number alone, and larger than it was as
+                // half of a pair.
                 text = level.level.toString(),
                 style = MaterialTheme.typography.titleSmall,
-                fontSize = compact?.let { (it.value * NUMBER_SCALE).sp } ?: TextUnit.Unspecified,
-                lineHeight = compact?.let { (it.value * NUMBER_SCALE * 1.2f).sp }
-                    ?: TextUnit.Unspecified,
+                fontSize = (compact.value * COMPACT_NUMBER).sp,
+                lineHeight = (compact.value * COMPACT_NUMBER * 1.15f).sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                // Scaled with the badge rather than a spacing token: rule 2 of
+                // `RiderAvatar` is that everything on a face follows its size,
+                // and 4 dp of `extraSmall` is a quarter of the height budget on
+                // an 18 dp badge. This is the *"very little padding"* the
+                // owner's note asks for, and it is little at every size.
+                modifier = Modifier.padding(compact * COMPACT_PADDING)
             )
+        } else {
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = MaterialTheme.spacing.medium,
+                    vertical = MaterialTheme.spacing.extraSmall
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "LVL",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
+                Text(
+                    text = level.level.toString(),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
     }
 }
@@ -206,17 +238,30 @@ private fun describe(level: RiderLevel): String {
 /**
  * Wide enough that `LVL 8` and `LVL 12` are the same object rather than two
  * differently-sized ones, which is what a badge in a list of them has to be.
+ *
+ * **The pill's alone since 26.4.9.** The compact form's floor is its own
+ * height, because the only thing in it is a digit and the reason above does not
+ * apply to a badge centred on its own face.
  */
 private val MIN_WIDTH = 64.dp
 
 /**
- * The same rule as [MIN_WIDTH], expressed against the height so a compact
- * badge keeps its shape at whatever size the face it rides on happens to be.
+ * The number as a fraction of a compact badge's height (26.4.9).
+ *
+ * **Larger than the 0.44 it was**, and that is the trade the item is about
+ * rather than a side-effect: the badge shrank from 44 dp to about one height
+ * wide *and* the digit in it grew, because the digit is no longer sharing the
+ * width with a word set too small to read.
  */
-private const val MIN_WIDTH_RATIO = 2.4f
+private const val COMPACT_NUMBER = 0.58f
 
-/** The number, and then the word, as fractions of a compact badge's height. */
-private const val NUMBER_SCALE = 0.44f
-private const val LABEL_SCALE = 0.30f
+/**
+ * The compact badge's padding, as a fraction of its height.
+ *
+ * Small enough to be the owner's *"very little"* and not zero: a digit touching
+ * a pill's edge reads as a clipped one, which is the same misreading
+ * `ShrinkToFitText` exists to avoid on the overlay.
+ */
+private const val COMPACT_PADDING = 0.12f
 
 private val TRACK = 2.dp
