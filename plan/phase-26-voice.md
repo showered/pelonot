@@ -479,3 +479,82 @@ have ridden* in one glyph.
       to reverse on sight, exactly as 26.4.4's placement is. **What would settle
       it is one look at the tablet**, which is also what settled 26.1.1 in the
       other direction
+
+- [ ] **26.4.9** **The compact badge is too big, and the word is what makes it
+      that way — the owner's note, 17 August 2026.** *"It's too big, too much
+      padding. Should probably just be the number with very little padding
+      around it. It's obscuring too much of that avatar and looks bad."*
+
+      **The measurement, taken before the write-up, and it is worse than the
+      note claims.** On the tablet with a household of five the profile tile is
+      about 158 dp, so the face is 70 dp (`size * 0.44f`), the ring takes
+      3.9 dp of stroke and the disc inside it is **58 dp**. The badge's height
+      is `70 × 0.26` = 18 dp and its minimum width is `18 × 2.4` = **44 dp**.
+      So the pill is **three-quarters of the width of the face it sits on**,
+      centred on the bottom of it, which on an Open Peeps figure is the collar
+      and the shoulders — and the word it is that wide to hold is set at
+      `18 × 0.30` = **5.5 sp**, which is not readable at arm's length let alone
+      at two metres. It is paying 44 dp of somebody's face for a word nobody
+      can read.
+
+      **The fix is the owner's and it is the right one, and the trade is better
+      than a shrink.** Drop `LVL` from the compact form and the number stops
+      competing for width: the badge becomes a disc about as wide as it is
+      tall — 18 dp instead of 44, a **60% reduction** — *and the number inside
+      it can get larger* rather than smaller, because it is no longer the
+      smaller half of a pair. That is the part worth naming, because "make it
+      smaller" and "make the number bigger" sound like opposite instructions
+      and here they are the same one.
+
+      **This is Phase 26's own rule arriving at the one component built to
+      state it**, which is why it is written here rather than in Phase 20: the
+      badge's KDoc is the place *less is more* was made structural, and it has
+      been carrying a word it did not need on the one surface where the word
+      costs a face.
+
+- [ ] **26.4.9a** **Rule 1 is narrowed, not lifted, and this says where the
+      meaning goes instead.** `RiderScore`'s first rule is *"it says `LVL` and
+      a number, and nothing else"*, and the thing that rule was built to
+      forbid is a label **richer** than the number's honest claim — no unit, no
+      "fitness", no adjective. Dropping the word is the opposite move and the
+      rule's reason survives it intact. **But the word was doing a second job
+      nobody wrote down**: it was saying *what kind of number this is*, and a
+      bare number on a face has to get that from somewhere.
+
+      **It gets it from three places, and they are worth listing because if any
+      of them goes the badge is ambiguous again.** The **ring** round the face
+      is the progress to the next level (20.6.8), and a number inside a
+      progress ring is the most recognised "level" there is. The **screen
+      reader is untouched** — `describe` still says *"Riding level 8, earned by
+      41 rides"*, and rule 1 never applied to it. And on both surfaces that
+      draw it the **other** number about that rider carries its own unit: the
+      FTP is captioned `FTP 155 W` under the name on the profile selector and
+      on the leaderboard row (26.4.8), so the two cannot be swapped for each
+      other.
+
+      **The pill keeps the word**, and that is not inconsistency. The pill
+      beside a name on the dashboard greeting and the household panel has no
+      ring, no face and nothing else about that rider on the row — it has none
+      of the three things above, so it needs the word, and it has 64 dp of its
+      own space to spend on one. **The compact form's difference from the pill
+      is now a real one rather than a type scale**, which is the honest reading
+      of the `compact` parameter's KDoc: it said only the type scale and the
+      padding follow the height, and after this the wording does too.
+
+- [ ] **26.4.9b** **What this costs 24.3.19d, and it is the finding rather than
+      a caveat.** The rank is deliberately **off** the live leaderboard —
+      24.3.17c deleted it on the owner's own argument that most rows are the
+      rider's own targets, and 24.3.19d is the open question about putting it
+      back after the reference picture turned up with one down its left edge.
+
+      **A bare number on a face is safe on that board today precisely because
+      there is no rank on it.** Put a rank column back and every person's row
+      has two unlabelled small integers on it, one of them inside the face and
+      one beside it, and the reader has to work out which is which — on the one
+      surface where a small number in a ranked list *obviously* means position.
+      So this item does not decide 24.3.19d and does not want to; what it does
+      is **raise its price**, and the answer if the rank ever comes back is
+      that the compact badge takes its word back on that screen rather than
+      that the rank goes without one. Written down now because it is invisible
+      later: the two items are in different phases and nine days apart, and the
+      dependency runs from the smaller to the larger

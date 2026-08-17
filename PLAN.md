@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Fifty-nine entries have passed through it.** In order: standing and seated
+**Sixty entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -165,11 +165,15 @@ is the `.tcx` this app already writes), and **an Apple Watch as the strap**
 standard heart-rate service rather than on a name, so the item is a measurement
 with the friend's watch rather than a feature), and **the compact overlay on a
 vertical dock** (**11.1b.11**, the first report on 11.1b.4 from somebody who has
-watched a film behind it — and the note names the fix as well as the fault).
+watched a film behind it — and the note names the fix as well as the fault), and
+**the level badge obscuring the face it rides on** (**26.4.9** — the note names
+the fix, and the measurement makes its case for it: 44 dp of pill across a 58 dp
+disc, to hold a word set at 5.5 sp).
 
-*Empty. The entry of 17 August 2026 — the compact HUD being too wide on a
-vertical dock — is written up at **11.1b.11**, with **11.1b.11a** for the
-question a narrower strip forces about what it can still hold.*
+*Empty. The entry of 17 August 2026 — the level badge on the avatar being too
+big and too padded — is written up at **26.4.9**, with **26.4.9a** for the
+narrowing of rule 1 that dropping the word forces and **26.4.9b** for what it
+costs the open question at 24.3.19d.*
 
 ---
 
