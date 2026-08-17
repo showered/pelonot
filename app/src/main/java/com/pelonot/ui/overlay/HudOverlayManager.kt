@@ -133,8 +133,9 @@ class HudOverlayManager(private val context: Context) {
      * three-digit target this minute. A fixed width is also what lets the
      * timeline bar inset itself by exactly the right amount.
      */
-    private val verticalWidthPx =
-        (HudDock.VERTICAL_WIDTH_DP * context.resources.displayMetrics.density).toInt()
+    private fun verticalWidthPx(collapsed: Boolean): Int =
+        (HudDock.widthDp(HudDock.Left, collapsed) *
+            context.resources.displayMetrics.density).toInt()
 
     private val timelineParams = WindowManager.LayoutParams().apply {
         type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -234,7 +235,7 @@ class HudOverlayManager(private val context: Context) {
                         dock = currentDock,
                         collapsed = isCollapsed,
                         coachStyle = coachStyle,
-                        onToggleCollapsed = { _collapsed.value = !_collapsed.value },
+                        onToggleCollapsed = ::toggleCollapsed,
                         onDockChange = ::moveTo,
                         onOpenApp = onOpenApp,
                         // 11.6.10. Raise the flag, then bring the app forward:
@@ -276,6 +277,11 @@ class HudOverlayManager(private val context: Context) {
             setContent {
                 val snapshot by snapshotFlow.collectAsStateWithLifecycle()
                 val currentDock by _dock.collectAsStateWithLifecycle()
+                // The bar steps aside by the strip's own width, and since
+                // 11.1b.11 there are two of them — collected here so the
+                // timeline follows a collapse rather than making room for a
+                // strip that is no longer that wide.
+                val isCollapsed by _collapsed.collectAsStateWithLifecycle()
                 val opacity by ServiceLocator.settingsRepository.settings
                     .map { it.hudOpacity }
                     .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
@@ -284,6 +290,7 @@ class HudOverlayManager(private val context: Context) {
                     HudTimelineBar(
                         snapshot = snapshot,
                         dock = currentDock,
+                        collapsed = isCollapsed,
                         opacity = opacity
                     )
                 }
@@ -319,6 +326,27 @@ class HudOverlayManager(private val context: Context) {
         scope.launch { ServiceLocator.settingsRepository.setCoachVolume(fraction) }
     }
 
+    /**
+     * Collapses or expands the strip — and on a vertical dock, **resizes the
+     * window** (11.1b.11).
+     *
+     * The one place the manager used to assume that collapsing and re-docking
+     * were different kinds of event. They are not: down a side the two states
+     * are two different widths, so a collapse that only changes the composition
+     * leaves a 132 dp strip floating inside a 244 dp hole in the film.
+     */
+    private fun toggleCollapsed() {
+        val collapsed = !_collapsed.value
+        _collapsed.value = collapsed
+        if (!_dock.value.isVertical) return
+
+        applyDock(_dock.value, collapsed)
+        composeView?.let { view ->
+            runCatching { windowManager.updateViewLayout(view, layoutParams) }
+                .onFailure { Log.w(TAG, "Could not resize the HUD", it) }
+        }
+    }
+
     /** Snaps the HUD to the given screen edge. */
     fun moveTo(dock: HudDock) {
         if (_dock.value == dock) return
@@ -344,10 +372,13 @@ class HudOverlayManager(private val context: Context) {
      * [HudDock.VERTICAL_WIDTH_DP] wide, and going back to a horizontal edge has
      * to put both dimensions back or the strip stays a column pinned to the top.
      */
-    private fun applyDock(dock: HudDock) {
+    private fun applyDock(dock: HudDock, collapsed: Boolean = _collapsed.value) {
         layoutParams.gravity = gravityFor(dock)
         if (dock.isVertical) {
-            layoutParams.width = verticalWidthPx
+            // Two widths, not one (11.1b.11): collapsed, the strip's job is to
+            // give the screen back, and 244 dp of it was being held open by a
+            // row of transport buttons that now stacks.
+            layoutParams.width = verticalWidthPx(collapsed)
             // Wrapped rather than full height, and centred on the side by
             // `gravityFor`. A column stretched down the whole edge put the
             // controls 400 px below the last chip with nothing in between, so

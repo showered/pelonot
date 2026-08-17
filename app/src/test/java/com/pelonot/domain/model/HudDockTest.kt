@@ -115,4 +115,37 @@ class HudDockTest {
         assertEquals(HudDock.DEFAULT, HudDock.fromName("Sideways"))
         HudDock.entries.forEach { assertEquals(it, HudDock.fromName(it.name)) }
     }
+
+    /**
+     * Two widths down a side, one of them much narrower (11.1b.11).
+     *
+     * The rule is small and the thing it protects is not: the timeline bar
+     * insets itself by whatever this returns, so a width that did not follow the
+     * collapse would leave the bar making room for a strip that is no longer
+     * there.
+     */
+    @Test
+    fun `a collapsed vertical strip is much narrower, and a horizontal one has no width of its own`() {
+        listOf(HudDock.Left, HudDock.Right).forEach { dock ->
+            assertEquals(
+                HudDock.VERTICAL_WIDTH_DP,
+                HudDock.widthDp(dock, collapsed = false)
+            )
+            assertEquals(
+                HudDock.VERTICAL_COLLAPSED_WIDTH_DP,
+                HudDock.widthDp(dock, collapsed = true)
+            )
+        }
+        assertTrue(
+            "collapsing has to buy back real width, not a few dp",
+            HudDock.VERTICAL_COLLAPSED_WIDTH_DP < HudDock.VERTICAL_WIDTH_DP * 0.75
+        )
+
+        // A horizontal dock spans the edge, so it has no width to report and
+        // nothing insets itself from it.
+        listOf(HudDock.Top, HudDock.Bottom).forEach { dock ->
+            assertEquals(0, HudDock.widthDp(dock, collapsed = false))
+            assertEquals(0, HudDock.widthDp(dock, collapsed = true))
+        }
+    }
 }

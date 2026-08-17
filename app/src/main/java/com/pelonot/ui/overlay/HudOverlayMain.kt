@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -92,7 +93,9 @@ import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
+import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.VolumeSliders
+import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.rememberFlash
 import com.pelonot.ui.components.rememberPulse
@@ -411,6 +414,7 @@ fun HudTimelineBar(
     snapshot: RideSnapshot,
     modifier: Modifier = Modifier,
     dock: HudDock = HudDock.DEFAULT,
+    collapsed: Boolean = false,
     opacity: Float = HudOpacity.DEFAULT
 ) {
     val interval = snapshot.interval
@@ -431,7 +435,10 @@ fun HudTimelineBar(
         // than being drawn under it: a timeline whose first minutes are hidden
         // is worse than a slightly shorter one, and the width is a constant
         // precisely so this can be an inset rather than a guess.
-        val strip = HudDock.VERTICAL_WIDTH_DP.dp
+        // Whichever of the two vertical widths is live (11.1b.11). Insetting
+        // by the expanded one while the strip is collapsed would hand back a
+        // hundred dp of film to nothing at all.
+        val strip = HudDock.widthDp(dock, collapsed).dp
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -1325,9 +1332,20 @@ private fun Controls(
     onToggleVolume: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    /**
+     * Stacked rather than in a row — **the owner's words**, 11.1b.11: *"the
+     * play/pause/end buttons should be aligned vertically"*.
+     *
+     * True only for the collapsed vertical strip, and that is the whole of the
+     * argument: three 52 dp buttons side by side is 172 dp, and on a strip whose
+     * job is to give the screen back it was the buttons setting the width. The
+     * expanded column has 244 dp to spend and keeps the row, so the two states
+     * differ where they have a reason to.
+     */
+    stacked: Boolean = false
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+    val buttons: @Composable () -> Unit = {
         // Tonal rather than filled, and first in the row: it is the one control
         // here that is not about the ride, and it should not compete with pause
         // and stop for a glance.
@@ -1372,6 +1390,16 @@ private fun Controls(
             )
         }
         StopButton(onStop = onStop)
+    }
+
+    val gap = Arrangement.spacedBy(MaterialTheme.spacing.small)
+    if (stacked) {
+        Column(
+            verticalArrangement = gap,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) { buttons() }
+    } else {
+        Row(horizontalArrangement = gap) { buttons() }
     }
 }
 
@@ -1568,10 +1596,24 @@ private fun HudCollapsed(
  * Collapsed, down a side.
  *
  * The horizontal version is one pill and a row of buttons with the whole middle
- * of the band left as film. A column cannot spend width that way — it has 244
- * dp and the pill would be the entire strip — so the numbers stack into a short
- * chip at the top and the controls stay at the bottom where they are in every
- * other state. What the rider gets back is the rest of the side.
+ * of the band left as film. A column cannot spend width that way, so the numbers
+ * stack into a short chip at the top and the controls stay at the bottom where
+ * they are in every other state. What the rider gets back is the rest of the
+ * side.
+ *
+ * **And since 11.1b.11 it gets back most of the width too.** This state has its
+ * own window width — [HudDock.VERTICAL_COLLAPSED_WIDTH_DP], 132 dp against the
+ * expanded strip's 244 — which is only possible because the transport buttons
+ * stack here: in a row they are 172 dp on their own, and they were setting the
+ * width of the one state whose whole purpose is to be out of the way. The owner
+ * reported both halves of that in one sentence.
+ *
+ * What decides 132 rather than something smaller is the readouts, and the first
+ * build of this got that wrong: `143 BPM` on one line drew as `143 BP` with a
+ * lone `M` under it. **The unit was never a candidate for dropping**
+ * (11.1b.11a) — a ride surface is one of the few places Phase 26 says a unit
+ * belongs — so the pair stacks instead, which also takes the strip's width out
+ * of the hands of how many characters a unit happens to have.
  */
 @Composable
 private fun HudCollapsedVertical(
@@ -1602,11 +1644,25 @@ private fun HudCollapsedVertical(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
             ) {
-                Text(
+                // 132 dp is narrower than `03:14` at this weight — measured on
+                // the tablet, where the same clock had fitted a minute earlier
+                // reading `01:51`, because a `1` is half the width of a `3`. A
+                // clock whose wrapping depends on which digits the ride happens
+                // to be showing is exactly the class of defect `ShrinkToFitText`
+                // exists for, so it is sized against the widest string of *its
+                // own shape*: the type can step down once, at the hour, and
+                // never pulses as the seconds turn over.
+                ShrinkToFitText(
                     text = Formatters.duration(snapshot.elapsedSeconds),
-                    style = MaterialTheme.typography.headlineSmall,
+                    fontSize = MaterialTheme.typography.headlineSmall.fontSize,
                     fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    measureAgainst = if (snapshot.elapsedSeconds >= SECONDS_IN_HOUR) {
+                        "00:00:00"
+                    } else {
+                        "00:00"
+                    }
                 )
 
                 if (interval.hasClass) {
@@ -1623,22 +1679,26 @@ private fun HudCollapsedVertical(
                 CompactMetric(
                     if (live) reading.cadenceRpm.toInt().toString() else NO_READING,
                     "RPM",
-                    MetricCadenceCyan
+                    MetricCadenceCyan,
+                    stacked = true
                 )
                 CompactMetric(
                     if (live) reading.resistancePercent.toInt().toString() else NO_READING,
                     "%",
-                    MetricResistanceViolet
+                    MetricResistanceViolet,
+                    stacked = true
                 )
                 CompactMetric(
                     if (live) reading.powerWatts.toInt().toString() else NO_READING,
                     "W",
-                    MetricPowerCoral
+                    MetricPowerCoral,
+                    stacked = true
                 )
                 CompactMetric(
                     reading.heartRateBpm?.toString() ?: "--",
                     "BPM",
-                    MetricHeartRateGreen
+                    MetricHeartRateGreen,
+                    stacked = true
                 )
             }
         }
@@ -1667,27 +1727,65 @@ private fun HudCollapsedVertical(
             onToggleVolume = onToggleVolume,
             onPause = onPause,
             onResume = onResume,
-            onStop = onStop
+            onStop = onStop,
+            stacked = true
         )
     }
 }
 
+/**
+ * A live number and its unit, side by side — or stacked, where there is no width
+ * for both (11.1b.11).
+ *
+ * **Found by looking at the tablet rather than at the diff**, on the first build
+ * of the narrower collapsed strip: `143 BPM` drew as `143 BP` with a lone `M`
+ * underneath it. That is the same family as `RESISTANC` and `100 RP` before it —
+ * a readout measured against a width somebody else chose — and it is the third
+ * time in this component's history. The two answers this project allows are
+ * *smaller* and *wrapped*, never *cut*; here the honest one is neither, because
+ * the thing that does not fit is a **pair**, not a word.
+ *
+ * So the pair stacks. The unit keeps its own line, at full size, and the width
+ * of the strip stops depending on how many characters a unit happens to have —
+ * which also means a rider with larger system text does not reopen the same
+ * defect. **The unit is not dropped**, and 11.1b.11a is where that is written
+ * down: a ride surface is one of the few places Phase 26 says a unit belongs.
+ */
 @Composable
-private fun CompactMetric(value: String, unit: String, accent: Color) {
-    Row(verticalAlignment = Alignment.Bottom) {
+private fun CompactMetric(
+    value: String,
+    unit: String,
+    accent: Color,
+    stacked: Boolean = false
+) {
+    val number: @Composable () -> Unit = {
         Text(
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Black,
             color = accent
         )
-        Spacer(Modifier.width(3.dp))
+    }
+    val label: @Composable () -> Unit = {
         Text(
             text = unit,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 3.dp)
+            modifier = if (stacked) Modifier else Modifier.padding(bottom = 3.dp)
         )
+    }
+
+    if (stacked) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            number()
+            label()
+        }
+    } else {
+        Row(verticalAlignment = Alignment.Bottom) {
+            number()
+            Spacer(Modifier.width(3.dp))
+            label()
+        }
     }
 }
 
@@ -1732,6 +1830,9 @@ private const val POSITION_CALL_MS = 6_000L
 
 /** How far the chips sit in from the screen's own edges. */
 private val HUD_MARGIN = 12.dp
+
+/** So the collapsed clock can ask whether it has grown a third field. */
+private const val SECONDS_IN_HOUR = 3600
 
 /**
  * How far the handle has to travel before the strip changes edge (11.1b.4).

@@ -62,6 +62,33 @@ enum class HudDock(val displayName: String) {
          */
         const val VERTICAL_WIDTH_DP = 244
 
+        /**
+         * And how wide it is once it is collapsed (11.1b.11).
+         *
+         * **The owner's report on 11.1b.4, the morning after it landed:**
+         * *"Compact mode when on left/right needs some work. Should be much more
+         * compact width-wise."* [VERTICAL_WIDTH_DP] was one number doing two
+         * jobs — it is the width the *expanded* re-flow was designed against,
+         * and collapsed the widest thing on the strip was three 52 dp transport
+         * buttons in a row. Stacking them is the other half of the note and is
+         * what makes a second constant a genuinely narrower strip rather than a
+         * tighter squeeze on the same layout.
+         *
+         * Still a constant, for [VERTICAL_WIDTH_DP]'s reason: `WRAP_CONTENT`
+         * would hand the width of a rider's film back to whichever number the
+         * strip happens to be showing. This one is set by the metric readouts —
+         * a three-digit value beside its unit — and not by the buttons, which is
+         * the measurement that decides it rather than an aesthetic.
+         */
+        const val VERTICAL_COLLAPSED_WIDTH_DP = 132
+
+        /** Which of the two widths is live, given the state the strip is in. */
+        fun widthDp(dock: HudDock, collapsed: Boolean): Int = when {
+            !dock.isVertical -> 0
+            collapsed -> VERTICAL_COLLAPSED_WIDTH_DP
+            else -> VERTICAL_WIDTH_DP
+        }
+
         fun fromName(name: String?): HudDock =
             entries.firstOrNull { it.name == name } ?: DEFAULT
 
