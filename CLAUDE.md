@@ -394,14 +394,22 @@ Two consequences to know before you are surprised by them:
 - **Whether to calibrate at all is settled — yes — and the argument is written
   down at the head of PLAN.md 2.2a.** Do not re-open it; do not capture another
   manual sweep (2.2.5 is closed, superseded). The reason it is safe rests
-  entirely on scope: **`PowerModel` has exactly two consumers** —
-  `SimulatedSensorSource` and `RideSnapshot.resistanceTarget` (the prescribed
-  resistance band). A fiction and a suggestion — and since 11.7.3 the
-  suggestion **is not drawn anywhere**, because a curve 66% out at the median
-  was being shown beside two measured numbers with the same authority. The
-  property is kept for the day 2.2a lands. **If you are about to add a third,
-  stop**: anything that derives a *recorded* number from the curve breaks the
-  reason calibration is allowed to exist. PLAN.md 2.2a.8 makes this a test.
+  entirely on scope: **`PowerModel` has exactly three consumers** —
+  `SimulatedSensorSource`, `SerialSensorSource` and
+  `RideSnapshot.resistanceTarget` (the prescribed resistance band). *This
+  bullet said **two** until 2.2a.8 was built and counted them*; the third is
+  not a fourth kind of thing but the simulator's twin, the rooted-tablet
+  fallback on a board that does not report watts, and **what makes both safe is
+  that they flag `powerIsMeasured = false`, not that they are few.** Two
+  fictions and a suggestion — and since 11.7.3 the suggestion **is not drawn
+  anywhere**, because a curve 66% out at the median was being shown beside two
+  measured numbers with the same authority. The property is kept for the day
+  2.2a lands. **If you are about to add a fourth, stop**: anything that derives
+  a *recorded* number from the curve breaks the reason calibration is allowed
+  to exist. `PowerModelFenceTest` is that rule rather than this paragraph — a
+  new consumer, a modelled watt labelled measured, the measured source falling
+  back to the model, or a third writer of the global `PowerModel.curve` each
+  fail the build. PLAN.md 2.2a.8.
 - **A ride carries the FTP and the maximum heart rate it was judged against,
   and a reader must use the ride's, never the rider's.** This bullet used to say
   neither existed; both do (7.8, 21.4.2c), and the rule they leave behind is

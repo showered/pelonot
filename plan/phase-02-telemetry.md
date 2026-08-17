@@ -252,7 +252,7 @@ Settings section. The gates are exercised against the real 31 July sweep in
       full simulated ride left Settings reading "0 of 7 levels, from 0 measured
       seconds", and the calibration DataStore file was never even created*
 
-- [ ] **2.2a.8** **Fence the model with a test rather than a comment.** The
+- [x] **2.2a.8** **Fence the model with a test rather than a comment.** The
       scope argument above is the entire safety case for calibrating at all, and
       right now it holds only because two call sites happen not to have grown. A
       test that asserts `PowerModel` is reached from exactly the simulated source
@@ -260,6 +260,53 @@ Settings section. The gates are exercised against the real 31 July sweep in
       appears — is what stops some future feature quietly deriving a *recorded*
       number from an uncalibrated curve. It is cheap, and it is the difference
       between a rule and a hope
+
+      ***Done, and the first thing it did was contradict the sentence that
+      asked for it.*** `PowerModelFenceTest` counted the consumers and there
+      are **three**, not two: `SerialSensorSource` models watts as well.
+      Two documents said two — this item and `CLAUDE.md` — and both were
+      written by reasoning about the design rather than by scanning for the
+      call, which is the same shape as every stale claim this project keeps
+      turning up. Both now say three.
+
+      **The third is not a breach, and saying why is the interesting part.**
+      `SerialSensorSource` is the rooted-tablet fallback (2.1a) on a board that
+      does not report power, so it is `SimulatedSensorSource`'s twin rather than
+      a new kind of consumer — and **what makes both safe is that they flag
+      `powerIsMeasured = false`, not that they are few.** `PowerProvenance`
+      then calls their rides `Modelled`, and the FTP proposal (7.10.7) and the
+      household board (24.4.2) already refuse them. That reframing is what set
+      the fence's shape: an allowlist alone would have been a headcount, and a
+      headcount is not the rule.
+
+      **Four checks, and the allowlist carries a reason per entry** — because a
+      fourth entry has to supply one, and the reason is the claim that the
+      number is a fiction or a suggestion. It is asserted as a set equality in
+      both directions, so a *stale* entry fails too.
+
+      1. a fourth file deriving a watt or a resistance from the curve, by any
+         route including a `PowerCurve` held directly;
+      2. an allowed consumer writing `powerIsMeasured = true` — the one way a
+         modelled watt gets past every gate at once, since
+         `isTrustworthyAsMeasured` believes the column;
+      3. `PelotonSensorServiceSource` falling back to the model, which is the
+         same rule facing the other way: the honest answer to a gap in measured
+         power is a gap (2.4.4), not a plausible sample nobody can pick out
+         afterwards;
+      4. a third writer of `PowerModel.curve`, which is process-global mutable
+         state — today `WorkoutService` installs this bike's curve at ride start
+         and Settings restores the shipped one, and a third would make the curve
+         in force depend on who ran last.
+
+      ***Each check was watched failing against its own violation, not only
+      passing against the code as it stands*** — a fence nobody has seen fail is
+      a fence nobody has tested, and this project has shipped assertions that
+      could not fail before. **854 JVM tests, 0 failures**, up from 850.
+
+      Comments are stripped before scanning, for the reason
+      `CloudAccessFenceTest` gives about itself: the names a fence forbids are
+      exactly the ones its KDoc must say out loud, and a fence that punishes the
+      explanation teaches the next person to delete it rather than keep the rule
 - [ ] **2.2a.9** **Say what the resistance band is worth while the shipped curve
       is still in use.** Until a bike has calibrated itself, 11.2.1's band comes
       from coefficients known to be 66% out at the median, and it is drawn with
