@@ -1574,7 +1574,7 @@ developer never sits in.
       `Formatters.plural` is the one answer now, the two copies delegate to it,
       and `FormattersTest` pins it — 795 JVM tests, 0 failures.
 
-- [ ] **22.9.5 The empty rail is a state, not a screen, and it needs naming.**
+- [x] **22.9.5 The empty rail is a state, not a screen, and it needs naming.**
       A household of one draws no panel; a rider with no history draws no
       last-ride card and an empty day grid. **A day grid of seventeen grey
       squares is not "exciting and engaging"** — it is an honest nothing, drawn
@@ -1583,6 +1583,74 @@ developer never sits in.
       question this item holds open is whether the *last* gap on a brand new
       profile is worth filling at all or is simply what a new profile looks
       like. **Do not answer it by drawing a card that says nothing** (22.2.3)
+
+      ***Built in the sixty-seventh sitting, and the answer to the open question
+      is that it was worth filling — but only with the library.*** The item's
+      own rule is what decided it: do not draw a card that says nothing. Every
+      *card* this screen could add to a first-run rider is about the rider, and
+      a rider at ride zero has nothing in them. **What this tablet holds plenty
+      of at ride zero is 72 authored classes**, and 22.9.4's candidate 1 already
+      said so from the other end — the class's own shape is *"the one candidate
+      that works from ride zero"*. So the row below the fold's other content is
+      three more classes, and it is the same answer scaled rather than a new
+      idea.
+
+      **The row is a choice about *time*, and that is the part that took the
+      thinking.** Endurance sorted by length and cut at three is two lines of
+      code and it offers 15, 20 and 20 minutes — three answers to a question
+      nobody asked. `ClassToRide.startingPoints` takes one class per **distinct
+      length** and then picks the shortest, the longest and the middle, because
+      *how long have you got* is the only thing a rider with no history can
+      answer about themselves. On the real library that is **20, 45 and 60
+      minutes**: *Cadence Ladder*, *Base Ride*, *Long Base*. Two classes of the
+      same length side by side would ask a first-timer to choose on a
+      distinction they cannot make yet.
+
+      **The class the offer card is already naming is excluded.** One screen
+      saying *ride this* and *somewhere to start* about the same class is the
+      screen disagreeing with itself about what to do next, and it is the same
+      family as 22.9.4's rule that the shape is resolved from the suggestion's
+      own id — a surface that describes one class twice has to mean the same
+      thing both times.
+
+      **The gate is the same condition `ProgressSection` uses for its
+      honest-empty branch, and it has to be.** A never-ridden rider on a bike
+      with a household already has a full rail (22.9.4), and three more cards
+      under it puts the screen back over the fold — 22.8's note undone by the
+      answer to 22.9's, which is exactly the trap 22.9.1 named. So the row draws
+      only when there is nothing of the rider's own **and** nobody else on the
+      bike. `household` is now one expression read twice rather than the same
+      `takeIf` written in two places.
+
+      **The *"No rides recorded yet"* sentence moved out to the caller and is
+      now the fallback rather than the state.** It drew in precisely the state
+      this row draws in, so the two always appeared together: one line of prose
+      immediately above another, and only one of them is a door. It survives for
+      the one case where the app genuinely has nothing to put here — a fresh
+      install whose class seed has not landed — which is also the only state in
+      which the offer card above falls back to *Begin Class*.
+
+      ***Measured and watched on the tablet AVD at 1280 × 720 dp against a 664 dp
+      fold.*** Jo, a profile with no rides, with the household hidden by hand so
+      the rail was empty: **383 dp → about 552 dp with the backup nag showing**,
+      and it does not scroll. The guest is the same screen without a level badge
+      (26.4 rule 4 holding). **A rider with history is untouched** — Robin's
+      dashboard drew the household panel and no row, which is the gate working
+      rather than the feature being absent. And tapping *Base Ride* opened
+      *Base Ride*, whose class screen draws the same shape the dashboard card
+      did: the check 22.9.4 made for the offer card, repeated for these three.
+      The two `household_visible` edits were reversed afterwards and the tablet
+      is as the sixty-sixth sitting left it — 55 workouts, Robin's photograph,
+      everyone visible.
+
+      **What is still open is honest rather than hidden: about 110 dp.** With
+      the nag gone — which it will be for a real first-run rider, since it is
+      due on ten unprotected rides — the screen is nearer 490 dp of 664. That is
+      not 42% and it is not full either. **The remaining candidates are all
+      refusals with reasons** (22.9.4's 3, 4 and 5), and the one thing that
+      might genuinely belong there is **11.8** — what a power zone actually is —
+      which is unbuilt and whose own 11.8.4 recommends captions rather than a
+      slot. Taller cards are still forbidden (22.9.1).
 
 - [x] **22.9.6 Judge it in five states with each other as controls**, because
       every measurement in 22.8 was taken in one of them and the note above is
