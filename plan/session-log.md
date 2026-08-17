@@ -6,6 +6,97 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 17 August 2026 (sixty-second sitting): the overlay on four edges
+
+**The inbox was empty for a third sitting and the top of *What to do next* is
+still mostly not work**, so the pick was made on merit from the phases: **11.1b.4,
+the HUD docked to the left and right as well as the top and bottom.** It is the
+owner's own words from 31 July — *"I would like a version of the HUD on the right
+and left too, should be able to drag it where you want"* — it has sat unbuilt for
+seventeen days, it needs neither the bike nor a decision, and it is the largest
+rider-facing item left in that state. **11.1b.4, 11.1b.4a, 11.1b.5 and 11.1b.6
+are built and watched; 11.1b.4b is what is left and it is the owner's.**
+
+**Three things the item did not anticipate, and each is a rule rather than a
+detail.** The first is that **a vertical dock is a different window, not the
+same one rotated**: `WRAP_CONTENT` on the width would have worked and is the
+wrong answer, because the strip would then be as wide as whatever the tallest
+chip happened to measure that minute — the film a rider loses would depend on
+whether their class is prescribing a three-digit target this block. It is a
+constant, 244 dp, and that constant is also what lets the timeline bar inset
+itself by exactly the right amount instead of guessing.
+
+**The second is that the timeline does not go to the opposite side.**
+`opposite()` was the obvious extension and it is wrong, because **time runs left
+to right**: standing the bar on its end is a redesign of the one element on this
+HUD nobody has complained about. `timelineEdge()` is a second function beside it
+— the far edge for a band, the **top** for a column, because the bottom is where
+subtitles live — and the invariant a test holds is only that it never shares an
+edge with the strip.
+
+**The third is that the drag rule had to leave the composable.** One axis and a
+per-callback threshold does not survive four edges: a slow drag never crosses 12
+px inside a single `onDrag` and a fast one fires on whichever axis happened to
+move first, which are the same bug — a drag is a shape, not a sample.
+`HudDock.dragTarget` is pure, measures the **whole gesture**, and lets the
+**dominant axis** decide, so a drag that wanders is read as where it mostly went.
+The threshold moved to 40 dp from 12 raw pixels, which on this 240 dpi tablet was
+8 dp — a gesture a rider trips over reaching past the handlebars.
+
+**11.1b.5 asked for a re-flow rather than a rotation and the metrics chip is
+where that work was.** Four readouts become **two rows of two**, keeping the
+pairing the row already reads left to right — what you change on top, what it
+produces underneath — so a rider who has moved the strip does not re-learn where
+a number is. They are one list of four arranged either way rather than two
+copies, because four readouts written out twice is four places for a target band
+or a `--` to go quietly missing on one dock and not the other. Two things are
+dropped rather than squeezed: the **next-up preview**, because a column has no
+width to trade against a countdown that is never optional and the timeline still
+says the same thing more quietly; and nothing else.
+
+**The decision that changed the sitting was made by looking at it.** The vertical
+strip was built full-height first, exactly as "spans one whole edge" implies —
+and that put pause and stop **400 px clear of the last chip** with nothing in
+between. Two objects instead of one instrument, which is 11.1b.7's own open worry
+arriving from a different direction. Wrapped to its content and centred on the
+side, the controls sit under the numbers and the top and bottom of that edge go
+back to the film as well as the middle of the screen. **That is also what closed
+11.1b.4a**: the owner's corners are free on a vertical dock once the strip stops
+spanning the edge, so the two states do not need different position sets after
+all. What is left is an alignment *along* a horizontal edge, which is one
+`Arrangement` and one preference — and **11.1b.4b is deliberately unbuilt,
+because the default decides which corner of somebody's film is gone.**
+
+**One defect found by looking at the tablet was not this feature's at all.**
+`RESISTANCE` drew as `RESISTANC` the moment two readouts shared a 76 dp cell —
+the label row is `softWrap = false` with nothing to fall back on, which is
+**exactly the defect 24.3.16 fixed one row above it in the same tile** and never
+came back for. It is `ShrinkToFitText` now, so the word stays whole, and on a
+wide tile nothing changes because the size only ever comes down. It was latent on
+the ride screen the whole time. `ACTIVE RECOVERY` becoming `ACTIVE RECO…` is the
+same family and got the other answer — a column has height, so the zone's *name*
+wraps.
+
+**Watched on the tablet AVD on all four edges, expanded and collapsed, with a
+real class running rather than a still bike.** The strip was dragged Top →
+Bottom → Right → Left mid-ride, the app was restarted between two of those, and
+Settings' **Position** row — four chips now, not two — read back `Left` at the
+end, which is 11.1b.6. The volume panel stacks inside the column and *More
+settings* still reaches the in-ride sheet from a vertical dock. **841 JVM tests,
+0 failures**, 10 of them new and all on the pure drag rule.
+
+**Phase 11 gains one item and four ticks — 59 of 71 by a straight count of the
+boxes in its file.** *(The index's own per-phase figures do not all agree on
+whether they count boxes ticked or boxes left; this one is ticked-of-total, and
+it is measured rather than carried forward.)*
+
+**The seam this sitting found is that "spans one whole edge" was a rule about
+the middle of the screen wearing the clothes of a rule about the edge.** It is
+why the HUD is a band and not a card, and it is right — but read literally it
+made a vertical dock 1080 px tall to protect a middle that a 244 dp column was
+already leaving clear. Same family as *absent is a claim*: the reason and the
+implementation had drifted apart, and only one of them was ever the point.
+
 ## 16 August 2026 (sixty-first sitting): an FTP that can go down
 
 **The inbox was empty and the top of *What to do next* was mostly not work** —

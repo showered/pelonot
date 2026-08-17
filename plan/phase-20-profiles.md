@@ -189,14 +189,153 @@ right one — same device shape, same distance, same job.
       two colour systems" fault in this plan**: the ring colour was chosen
       against the dark grey it was first drawn on and then reused on a surface
       that could be the same hue
-- [ ] **20.2.4** **Set an avatar from the camera or the gallery on Android.**
+- [x] **20.2.4** **Set an avatar from the camera or the gallery on Android.**
       `PhotoPicker` on API 33+ and `ACTION_OPEN_DOCUMENT` below it, so the
       common path needs no storage permission at all. Downscale and re-encode
       on import — a 12 MP phone photo has no business being loaded to draw a
       64dp circle — and write it into app-private storage
-- [ ] **20.2.5** Strip EXIF on import, and honour the orientation tag before
+
+      ***The gallery is done and the camera is deliberately not*** — see the
+      end of this item, which is a refusal with a reason rather than a corner
+      that was missed. `ActivityResultContracts.PickVisualMedia` is the one
+      call and it picks the branch itself: the system photo picker where there
+      is one, `ACTION_OPEN_DOCUMENT` where there is not, which is the branch
+      **the bike will take** on Android 11. Neither needs a permission, and the
+      picker says so on its own face — *"Pelonot will only have access to the
+      photos you select"*.
+
+      **The scheme was reserved before it was built.** `Avatar`'s KDoc has said
+      since 20.2.2 that a photograph *"is a different scheme and must carry its
+      own prefix rather than squeezing a filename in"*, and that is what
+      `photo:<file>` is. `parse` reads that branch first, so it cannot be
+      mistaken for a colour, and `AvatarTest` pins the one thing that would
+      make the whole grammar silently wrong: **no `AvatarPaint` may be called
+      `photo`**.
+
+      **The colour survives beside the photograph, and that is the design
+      rather than a leftover field.** The column is in the database and the
+      pixels are in app-private storage, so the two can come apart — a database
+      exported and imported onto another tablet (12.4.4) names pictures that
+      did not travel with it. `Avatar.photo` is a third field rather than a
+      sealed type precisely so there is a colour to fall back *to*, and the
+      fallback is the ordinary *never chose* face rather than a broken image.
+      **Watched: the file was deleted by hand and Robin drew `R` on her derived
+      colour, with nothing on screen suggesting a fault.**
+
+      - [x] **20.2.4a The name is checked, not trusted, and this is a fence
+            rather than tidiness.** The value reaches a `File(directory, name)`
+            and it comes out of a column this project edits in `sqlite3`
+            constantly, so `../../databases/pelonot_database` is a string
+            somebody could put there and the app would then read and draw it.
+            `AvatarPhoto.of` accepts only the shape this app itself writes —
+            `avatar-<profile>-<when>.jpg` — and anything else is null, which
+            `Avatar.parse` treats exactly as it treats an unknown colour.
+            **Deliberately narrower than "a safe filename"**: a name that fails
+            it is a name nothing here created.
+
+      - [x] **20.2.4b Housekeeping is one sweep at launch, not three deletes.**
+            Three different things leave a file behind and each would otherwise
+            want its own cleanup — replacing a picture, cancelling the dialog
+            after choosing one, and removing a profile — and the third happens
+            inside `UserRepository.delete`, **which knows nothing about files
+            and should not**. `forgetUnreferenced` takes the names every
+            profile is currently wearing and deletes the rest, so the direction
+            is *what is wanted is kept* rather than *what looks stale goes*.
+            Nothing is deleted at the moment of choosing, because the rider is
+            still in a dialog with a Cancel button on it and throwing the old
+            picture away then would make Cancel a lie. **Watched: a replace
+            leaves two files and the next launch leaves one; a hand-made orphan
+            and another rider's file are both collected; the referenced one is
+            not.**
+
+      - [x] **20.2.4c The decode is at the size it is about to be drawn.** The
+            stored square is 512 px, which is comfortably over the largest face
+            the app draws (the profile tile derives 66–114 dp, 171 px at the
+            bike's 240 dpi) — but the same face appears on the selector, the
+            greeting and the household panel at three different sizes, and
+            512² at four bytes is a megabyte a row. `RiderAvatar` asks for the
+            pixels it needs. **It is also the one composable in the app that
+            reaches `ServiceLocator`**, and the rule that bends is worth
+            naming: the house rule is *no database access from composables*, a
+            file whose name the caller already holds is not the database, and
+            the size to decode at is known there and nowhere else. The
+            alternative is six view models each learning to decode a
+            photograph, which is the duplication `RiderAvatar` exists to
+            prevent.
+
+      - [x] **20.2.4d Profile creation does not offer it, and that is not an
+            oversight.** `AvatarPicker` is one component on two screens and the
+            photograph is behind an optional callback, so the creation path
+            passes none. Two reasons, and the first is structural: **there is
+            no row id yet**, so a photograph chosen there could not be filed
+            against anybody until the profile is written, and a rider who walks
+            away would leave an orphan for ever — which is exactly what
+            15.8.1's *"nothing half-made"* exists to prevent. The second is
+            20.4's: that path has had four items spent on shortening it, and
+            leaving the app for the gallery is the heaviest thing that could be
+            put on it. **The owner may want it there anyway** and it is one
+            argument away.
+
+      - [ ] **20.2.4e The camera is deliberately not built, and the reason is
+            the tablet rather than the work.** `HARDWARE.md` records no camera
+            on the bike and no app that answers `ACTION_IMAGE_CAPTURE`, so a
+            camera entry there is a button that does nothing — which this
+            project treats as worse than an absent one. It also needs a
+            `FileProvider`, which 12.4.3 deliberately avoided for the export
+            (*"no FileProvider is involved"*), and `libs.versions.toml` already
+            carries a note that this app took `zxing-core` alone because *"the
+            android artifact pulls in a camera and this app never scans"*. If
+            it is built, it is gated on `hasSystemFeature` **and** a resolvable
+            intent, so the bike shows one option and a phone shows two
+
+      - [ ] **20.2.4f Two judgements made in a session, both reversible on
+            sight, and neither worth more reasoning than a look.** First: **a
+            photograph that goes missing falls back to the rider's *derived*
+            colour, not the last one they chose** — `photo:<file>` does not
+            carry a paint, so Robin, who was rose before she chose a picture,
+            comes back turquoise. Storing `photo:<paint>:<file>` would keep it
+            and costs one more branch; it was not done because a rider wearing
+            a photograph is not currently answering the colour question, and
+            the state only appears at all when a database has been imported
+            without its files. Second: **the colour row stays live while a
+            photograph is chosen**, where its effect is hidden behind the
+            picture until the rider goes back to a face. Hiding the row was
+            tried in argument and rejected — it is *above* the face row, so it
+            would jump the whole dialog on a tap — and explaining it in a line
+            of prose is exactly the over-explaining Phase 26 forbids
+
+- [x] **20.2.5** Strip EXIF on import, and honour the orientation tag before
       discarding it. A gallery photo carries GPS coordinates, and this one will
       end up synced (15) and possibly visible to friends (17.5)
+
+      ***Done, and the way it is done is the whole item: it re-encodes and it
+      never copies.*** The orientation is read off its own stream, the pixels
+      are decoded, and a **new** JPEG is written from the bitmap —
+      `Bitmap.compress` emits no EXIF at all, so the coordinates, the camera's
+      make and model and the moment the shutter fired are gone **by
+      construction rather than by deletion.** A copy with tags removed would be
+      one forgotten tag away from being wrong, and it would be wrong silently
+      on the one thing this app handles that a rider did not knowingly type in.
+
+      **The order is load-bearing**: orientation read, then rotate, then take
+      the centre square. Cropping first would take the middle of a picture that
+      is not yet the right way up, and *honouring* the tag is the half of this
+      item that a plain "strip EXIF" would have lost — a portrait photograph
+      written out without it is a rider lying on their side.
+
+      ***Asserted rather than reasoned about***, in `AvatarPhotoStoreTest`
+      against a source carrying real GPS, make, model and `DateTimeOriginal`
+      tags plus `ORIENTATION_ROTATE_90`: none of the five survives, the red
+      edge has moved to where a 90° turn puts it, and `latLong` is null.
+      **And measured again on the device**, on the file the real flow wrote:
+      the source JPEG carries APP1/Exif and APP13 segments and the stored copy
+      carries neither, at 512 × 512 and 6,378 bytes.
+
+      *One thing worth recording because two versions of the assertion were
+      wrong before the third:* **`ExifInterface` answers `ORIENTATION_UNDEFINED`
+      for a file with no metadata at all**, through both `getAttribute` and
+      `getAttributeInt`, so *absent* is not observable through that API and the
+      honest assertion is that whatever is there does not turn the picture.
 - [x] **20.2.6** Avatars appear wherever a rider is named: the selector, the
       dashboard greeting, history, and any leaderboard. Not on the HUD (18.6)
 
@@ -1173,12 +1312,23 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
          accumulation wearing a measurement's clothes, which is the exact
          criticism this note makes of the level
 
-- [ ] **20.6.6** **What is deliberately not decided here: a photograph.**
+- [x] **20.6.6** **What is deliberately not decided here: a photograph.**
       20.2.4 and 20.2.5 (the camera, the gallery, and the EXIF stripping that
       must travel with them) are untouched by these notes and stay open. A
       vendored set answers *"the ones we have are not good"* completely and a
       photograph is a different feature with a privacy surface on it — the note
       asked for a downloaded set, in those words, and got one
+
+      ***Closed by 20.2.4 being built, and this item's own sentence is what
+      made it safe to build.*** The privacy surface it named is the whole of
+      20.2.5 and it was treated as the feature rather than as a step in it. The
+      vendored set is untouched and is still what the picker opens on: a
+      photograph is the second entry in the face row, not a replacement for the
+      twenty. **What the owner has not seen is a photograph on the tablet at
+      the sizes it actually lives at** — 32 dp on the household panel and 40 dp
+      beside the greeting, where any photograph is a coloured blob and a drawn
+      face is still a face. The picker shows it at 64 dp on purpose so that is
+      visible while choosing, and it belongs on 22.2.5's trip
 
 - [x] **20.6.8** **The level as a *ring* round the face, with a tab under it —
       the owner's reference picture, and it is better than what 20.6.4 built.**
