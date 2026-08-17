@@ -117,4 +117,58 @@ class AvatarTest {
     fun `a face and no face are different avatars`() {
         assertNotEquals(Avatar(AvatarPaint.Rose), Avatar(AvatarPaint.Rose, AvatarFace.Pine))
     }
+
+    // ---- The photograph scheme (20.2.4) ----
+
+    @Test
+    fun `a photograph round-trips and wins over a face`() {
+        val photo = AvatarPhoto.nameFor(localUserId = 2, atEpochMs = 1_700_000_000_000)
+        val chosen = Avatar(AvatarPaint.Rose, AvatarFace.Lark, photo)
+
+        // The face is still on the object and deliberately not in the column:
+        // a photograph is what the rider chose, and writing both would leave
+        // two answers on disk for the app to have to prefer between later.
+        assertEquals("photo:avatar-2-1700000000000.jpg", chosen.store())
+
+        val read = Avatar.parse(chosen.store(), localUserId = 2)
+        assertEquals(photo, read.photo)
+        assertNull(read.face)
+    }
+
+    @Test
+    fun `a photograph keeps the colour the rider would have had`() {
+        // The reason the colour survives beside the photograph at all: the file
+        // can be missing — a database imported onto another tablet (12.4.4)
+        // names pictures that did not travel — and the disc then falls back to
+        // exactly the face of somebody who never chose.
+        val stored = "photo:avatar-7-1700000000000.jpg"
+        assertEquals(Avatar.defaultFor(7).paint, Avatar.parse(stored, localUserId = 7).paint)
+    }
+
+    @Test
+    fun `a photograph name this app did not write is not a photograph`() {
+        // The fence, and it is the reason `AvatarPhoto.of` exists: this value
+        // reaches a `File(directory, name)`, and the column is one this project
+        // edits by hand in `sqlite3` constantly.
+        listOf(
+            "photo:../../databases/pelonot_database",
+            "photo:/etc/hosts",
+            "photo:avatar-2-1700000000000.jpg.exe",
+            "photo:avatar--1.jpg",
+            "photo:"
+        ).forEach { stored ->
+            val read = Avatar.parse(stored, localUserId = 4)
+            assertNull("$stored was accepted as a photograph", read.photo)
+            // And it degrades the way every unrecognised value does.
+            assertEquals(Avatar.defaultFor(4), read)
+        }
+    }
+
+    @Test
+    fun `no colour is named photo, because the prefix would silently win`() {
+        // `parse` reads the photograph branch first, so a paint with this id
+        // would make every rider who chose it read back as a picture nobody
+        // took. Pinned rather than trusted to the eight words above.
+        assertNull(AvatarPaint.entries.firstOrNull { it.id == "photo" })
+    }
 }

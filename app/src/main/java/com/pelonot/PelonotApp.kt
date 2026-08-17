@@ -39,6 +39,7 @@ class PelonotApp : Application() {
 
         backfillPowerProvenance()
         trimOldRides()
+        forgetUnusedAvatarPhotos()
 
         applyTelemetrySource()
         drainAnyBacklog()
@@ -97,6 +98,27 @@ class PelonotApp : Application() {
     private fun backfillPowerProvenance() {
         appScope.launch {
             runCatching { ServiceLocator.workoutRepository.backfillPowerProvenance() }
+        }
+    }
+
+    /**
+     * Deletes avatar photographs no profile is wearing (PLAN 20.2.4).
+     *
+     * One sweep rather than three deletes, and at launch rather than at the
+     * moment each file stops being wanted: a picture is left behind when it is
+     * replaced, when the rider chooses one and then cancels the dialog, and
+     * when a whole profile is removed — and the last of those happens in
+     * `UserRepository.delete`, which knows nothing about files and should not.
+     * The database is the list of what is wanted; everything else in the
+     * directory is not.
+     */
+    private fun forgetUnusedAvatarPhotos() {
+        appScope.launch {
+            runCatching {
+                ServiceLocator.avatarPhotoStore.forgetUnreferenced(
+                    ServiceLocator.userRepository.avatarPhotoNames()
+                )
+            }
         }
     }
 

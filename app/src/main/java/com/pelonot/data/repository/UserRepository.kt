@@ -10,6 +10,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.domain.identity.Avatar
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 /**
  * Rider profiles. Room is the source of truth; the cloud is a best-effort
@@ -192,9 +193,26 @@ class UserRepository(
     }
 
     /**
+     * Every photograph any profile is currently wearing (20.2.4).
+     *
+     * The list of what is *wanted*, for `AvatarPhotoStore.forgetUnreferenced`
+     * to keep and delete the rest. It reads the column through [Avatar.parse]
+     * rather than matching strings, so a value the store did not write — a
+     * colour, a face, or something typed into `sqlite3` — contributes nothing
+     * and takes nothing with it.
+     */
+    suspend fun avatarPhotoNames(): Set<String> = userDao.getAllUsers().first()
+        .mapNotNull { Avatar.parse(it.avatar, it.localUserId).photo?.fileName }
+        .toSet()
+
+    /**
      * Removes a profile. **Their rides survive**: `workouts.user_id` is
      * `ON DELETE SET NULL`, so the history becomes unattributed rather than
      * being destroyed. Whatever calls this has to say so.
+     *
+     * Their photograph is not deleted here and does not need to be: the sweep
+     * at launch takes every file no profile names, which is the same rule
+     * covering three different ways a file is left behind.
      */
     suspend fun delete(userId: Int) = userDao.deleteUser(userId)
 

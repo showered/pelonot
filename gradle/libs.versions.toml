@@ -10,6 +10,7 @@ lifecycle = "2.8.7"
 navigationCompose = "2.8.4"
 datastore = "1.1.1"
 graphicsShapes = "1.0.1"
+exifinterface = "1.3.7"
 
 room = "2.6.1"
 work = "2.9.1"
@@ -50,6 +51,9 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 # Rounded-polygon geometry and shape morphing — the mechanism behind Material 3
 # Expressive's shape language, usable without moving to the material3 alpha.
 androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
+# Reading a photograph's orientation tag before throwing the rest of its
+# metadata away (PLAN 20.2.5). A gallery photo carries GPS coordinates.
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 
 # Room
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

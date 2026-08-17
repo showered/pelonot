@@ -2,6 +2,7 @@ package com.pelonot.di
 
 import android.content.Context
 import com.pelonot.data.audio.VolumeController
+import com.pelonot.data.avatar.AvatarPhotoStore
 import com.pelonot.data.backup.DatabaseBackup
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.ClassTemplateSeeder
@@ -80,6 +81,14 @@ object ServiceLocator {
      * backup a rider has until accounts exist.
      */
     val databaseBackup: DatabaseBackup by lazy { DatabaseBackup(context, database) }
+
+    /**
+     * A rider's photograph, on its way in and on its way to being drawn
+     * (20.2.4). One owner because the import and the lookup have to agree about
+     * where the file is; a second copy of that directory name is the shape this
+     * project keeps finding at the bottom of its defects.
+     */
+    val avatarPhotoStore: AvatarPhotoStore by lazy { AvatarPhotoStore(context) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(context) }
 

@@ -11,15 +11,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +34,7 @@ import com.pelonot.R
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.identity.AvatarFace
 import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.di.ServiceLocator
 import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 
@@ -95,6 +100,8 @@ fun RiderAvatar(
      */
     level: RiderLevel? = null
 ) {
+    val photograph = rememberAvatarPhoto(avatar, size)
+
     // The ring and the tab are one decision: either the face carries its level
     // or it does not, and half of it is worse than neither.
     val ringed = level != null && size >= LEVEL_RING_FLOOR
@@ -150,7 +157,16 @@ fun RiderAvatar(
             contentAlignment = Alignment.Center
         ) {
             val face = avatar.face
-            if (face != null) {
+            if (photograph != null) {
+                Image(
+                    bitmap = photograph,
+                    contentDescription = null,
+                    // Already square (`AvatarPhotoStore` centre-crops on import),
+                    // so `Crop` here only ever absorbs a rounding pixel.
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (face != null) {
                 Image(
                     painter = painterResource(face.drawable),
                     contentDescription = null,
@@ -181,6 +197,34 @@ fun RiderAvatar(
             LevelBadge(level!!, size)
         }
     }
+}
+
+/**
+ * A rider's photograph at the size it is about to be drawn, or null (20.2.4).
+ *
+ * **Null covers two different things on purpose, and both end the same way.**
+ * The rider may have no photograph, or they may have one whose file is not
+ * there — a database exported and imported onto another tablet (12.4.4) names
+ * pictures that did not travel with it. Either way the disc falls back to the
+ * colour and initial [Avatar.parse] kept beside the photograph precisely so
+ * there would be something to fall back to. A broken-image glyph on the first
+ * screen anybody sees would be worse than a face they did not choose.
+ *
+ * **This is the one composable in the app that reaches [ServiceLocator]**, and
+ * the rule it bends is worth naming rather than leaving to be discovered. The
+ * house rule is *no database access from composables*; a file whose name the
+ * caller is already holding is not the database, and the size to decode it at
+ * is known **here** and nowhere else — [RiderAvatar] is drawn at 32, 40, 56,
+ * 112 and a derived 66–114 dp. The alternative is six view models each learning
+ * to decode a photograph, which is the duplication every other rule in this file
+ * exists to prevent.
+ */
+@Composable
+private fun rememberAvatarPhoto(avatar: Avatar, size: Dp): ImageBitmap? {
+    val photo = avatar.photo ?: return null
+    val store = remember { ServiceLocator.avatarPhotoStore }
+    val px = with(LocalDensity.current) { size.roundToPx() }
+    return remember(photo, px) { store.decode(photo, px)?.asImageBitmap() }
 }
 
 /**

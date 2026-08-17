@@ -167,6 +167,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.graphics.shapes)
+    implementation(libs.androidx.exifinterface)
 
     // Room
     implementation(libs.room.runtime)

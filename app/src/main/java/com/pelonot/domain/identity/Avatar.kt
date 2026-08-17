@@ -28,23 +28,49 @@ package com.pelonot.domain.identity
 data class Avatar(
     val paint: AvatarPaint,
     /** The face on the disc, or null for the rider's own initial. */
-    val face: AvatarFace? = null
+    val face: AvatarFace? = null,
+    /**
+     * A photograph of the rider, which wins over both of the above (20.2.4).
+     *
+     * **[paint] survives beside it rather than being replaced by it**, and that
+     * is the whole reason this is a third field instead of a sealed type: the
+     * file lives in app-private storage and the column lives in the database,
+     * so the two can come apart — a database exported and imported on another
+     * tablet (12.4.4) names a photograph that is not there. When it is missing
+     * the rider falls back to the colour and initial they would otherwise have
+     * had, which needs a colour to fall back *to*.
+     */
+    val photo: AvatarPhoto? = null
 ) {
 
     /** The value written to `profiles.avatar`. See [parse] for the grammar. */
-    fun store(): String = if (face == null) paint.id else "${paint.id}:${face.id}"
+    fun store(): String = when {
+        photo != null -> "$PHOTO_PREFIX${photo.fileName}"
+        face == null -> paint.id
+        else -> "${paint.id}$SEP${face.id}"
+    }
 
     companion object {
         /**
          * The separator between a colour and a face.
          *
-         * A future photograph avatar (20.2.4) is a **different scheme** and
-         * must carry its own prefix rather than squeezing a filename in here;
-         * the rule that keeps that safe is that [AvatarPaint] ids are a closed
-         * set, so anything unrecognised falls through to [defaultFor] instead
-         * of being mistaken for a colour.
+         * The photograph avatar (20.2.4) carries its own prefix rather than
+         * squeezing a filename in here; the rule that makes that safe is that
+         * [AvatarPaint] ids are a closed set, so anything unrecognised falls
+         * through to [defaultFor] instead of being mistaken for a colour.
          */
         private const val SEP = ':'
+
+        /**
+         * The photograph scheme's prefix — deliberately a word no colour is.
+         *
+         * `AvatarTest` asserts that, because the collision would be silent: a
+         * paint called `photo` would make every rider who chose it read back as
+         * a photograph nobody took, and the file lookup would then fail into
+         * the default. `parse` reads this branch **first**, so the prefix wins
+         * over the colour lookup rather than racing it.
+         */
+        internal const val PHOTO_PREFIX = "photo$SEP"
 
         /**
          * What a rider gets before they have chosen anything (20.2.3).
@@ -79,6 +105,16 @@ data class Avatar(
         fun parse(stored: String?, localUserId: Int): Avatar {
             val raw = stored?.trim().orEmpty()
             if (raw.isEmpty()) return defaultFor(localUserId)
+
+            if (raw.startsWith(PHOTO_PREFIX)) {
+                // The colour under a photograph is the one the rider would have
+                // had anyway, so a photograph that has gone missing degrades to
+                // exactly the face of somebody who never chose — not to a
+                // stranger's colour and not to a broken image.
+                val photo = AvatarPhoto.of(raw.removePrefix(PHOTO_PREFIX))
+                    ?: return defaultFor(localUserId)
+                return defaultFor(localUserId).copy(photo = photo)
+            }
 
             val paintId = raw.substringBefore(SEP)
             val paint = AvatarPaint.entries.firstOrNull { it.id == paintId }

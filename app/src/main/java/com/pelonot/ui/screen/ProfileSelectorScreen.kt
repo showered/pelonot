@@ -1,5 +1,8 @@
 package com.pelonot.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,9 +63,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.identity.AvatarFace
 import com.pelonot.domain.identity.AvatarPaint
+import com.pelonot.domain.identity.AvatarPhoto
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.ui.components.AvatarPicker
@@ -71,6 +77,7 @@ import com.pelonot.ui.components.drawable
 import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.spacing
+import kotlinx.coroutines.launch
 
 /**
  * How much of the bottom edge fades out while there is more grid below it
@@ -542,7 +549,42 @@ private fun ProfileEditDialog(
     }
     var paint by rememberSaveable(profile.localUserId) { mutableStateOf(current.paint) }
     var face by rememberSaveable(profile.localUserId) { mutableStateOf(current.face) }
-    val chosen = Avatar(paint, face)
+    // **A photograph whose file has gone opens as no photograph at all**, which
+    // is the one place this dialog knows something `Avatar.parse` cannot: parse
+    // is pure and never touches a filesystem, so the column can still name a
+    // picture that a database import (12.4.4) left behind. Without this the
+    // swatch would be drawn *selected and blank* — a chosen thing that is not
+    // there — and saving would write the dead name back. Opening as unchosen
+    // means the rider sees the invitation to pick one, and the first Save
+    // clears the column.
+    var photo by rememberSaveable(profile.localUserId, stateSaver = AvatarPhotoSaver) {
+        mutableStateOf(current.photo?.takeIf { ServiceLocator.avatarPhotoStore.exists(it) })
+    }
+    val chosen = Avatar(paint, face, photo)
+
+    // 20.2.4. The system picture picker, which on API 33+ is the photo picker
+    // and below it — the bike's Android 11 included — falls back to
+    // `ACTION_OPEN_DOCUMENT`. Either way it needs **no storage permission**:
+    // the rider chooses the file in another app and this one is handed a single
+    // Uri for it, which is the whole reason this is not a permission prompt.
+    val scope = rememberCoroutineScope()
+    var importing by remember { mutableStateOf(false) }
+    var importFailed by remember { mutableStateOf(false) }
+    val pickPicture = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { source ->
+        // Null is *the rider backed out*, which is not a failure and must not
+        // be reported as one.
+        if (source == null) return@rememberLauncherForActivityResult
+        importing = true
+        importFailed = false
+        scope.launch {
+            val imported = ServiceLocator.avatarPhotoStore
+                .import(source, profile.localUserId)
+            importing = false
+            if (imported == null) importFailed = true else photo = imported
+        }
+    }
 
     if (confirmingDelete) {
         AlertDialog(
@@ -592,14 +634,36 @@ private fun ProfileEditDialog(
                     face = face,
                     onPaint = { paint = it },
                     onFace = { face = it },
-                    name = name.ifBlank { profile.name }
+                    name = name.ifBlank { profile.name },
+                    photo = photo,
+                    onPickPhoto = {
+                        pickPicture.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    },
+                    onDropPhoto = { photo = null }
                 )
 
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
+                // Only ever one of these three lines, and the first two are
+                // states a rider is in for a second or two. Silence on a failed
+                // import would be indistinguishable from a picture that simply
+                // did not change, which is 12.4.3's rule about the export said
+                // about something smaller.
                 Text(
-                    text = "FTP and weight are in Settings.",
+                    text = when {
+                        importing -> "Getting that picture ready…"
+                        importFailed -> "That picture could not be read. Try another one."
+                        else -> "FTP and weight are in Settings."
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (importFailed) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         },
@@ -622,6 +686,21 @@ private fun ProfileEditDialog(
         }
     )
 }
+
+/**
+ * `rememberSaveable` needs a saver for a nullable [AvatarPhoto].
+ *
+ * It is saveable rather than merely remembered because the picker leaves the
+ * app: on a tablet short of memory this dialog's process can be rebuilt while
+ * the rider is in the gallery, and the picture they chose a moment earlier is
+ * already a file on disk by the time they come back. The empty string stands
+ * for *no photograph* — a real name never is one, since `AvatarPhoto.of`
+ * refuses anything that is not `avatar-<n>-<n>.jpg`.
+ */
+private val AvatarPhotoSaver = androidx.compose.runtime.saveable.Saver<AvatarPhoto?, String>(
+    save = { it?.fileName.orEmpty() },
+    restore = { AvatarPhoto.of(it) }
+)
 
 /** `rememberSaveable` needs a saver for a nullable Int. */
 private val UserIdSaver = androidx.compose.runtime.saveable.Saver<Int?, Int>(
