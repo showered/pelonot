@@ -369,6 +369,19 @@ Two consequences to know before you are surprised by them:
   The rule: **on the overlay and the ride screen, a word that does not fit gets
   smaller or wraps; it never gets cut.** A truncated word read at two metres is
   worse than a small whole one, and it compiles and tests green either way.
+  **Third time, and it added two rules of its own (11.1b.11).** When `143 BPM`
+  became `143 BP` with a lone `M` under it, neither answer above was right —
+  because **what did not fit was a *pair*, not a word**, and a pair gets a second
+  line: the unit goes under the value, and the strip's width stops depending on
+  how many characters a unit happens to have (which is also what stops a rider
+  with larger system text reopening it). **And never conclude a number fits
+  because you watched it fit**: the same clock wrapped at `03:14` a minute after
+  drawing `01:51`, since a `1` is half the width of a `3`. A layout whose
+  correctness depends on which digits the ride is showing passes every check not
+  made at the wrong minute — measure against the widest string of that field's
+  own shape. Note that `HudCollapsed` and `HudCollapsedVertical` are
+  near-identical composables forty lines apart, and this fix landed on the wrong
+  one first; the tablet caught it and a `grep` would not have.
 - **`PowerModel`'s coefficients are not merely unvalidated, they are measurably
   wrong.** Against 310 steady-state samples off the real board they score
   **RMSE 137 W, median absolute error 66%, R² 0.21** (`calibration/`). Never
