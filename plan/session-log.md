@@ -6,6 +6,110 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 17 August 2026 (sixty-third sitting): where a month went, and a strip that got out of the way
+
+**The inbox had an entry in it when this sitting started, written by the owner
+while the sitting's first piece of work was already in flight**, and it was
+handled the way the rule says: read, written up as numbered items with the
+reasoning kept, and emptied. It is **11.1b.11**, and it is the first report on
+11.1b.4 from the only person who has watched a film behind it — *"Compact mode
+when on left/right needs some work. Should be much more compact width-wise. i.e.
+the play/pause/end buttons should be aligned vertically."*
+
+**Two things were built. The first was picked on merit before the note arrived:
+21.4.3, where a rider's last thirty days actually went.** *Your riding* answers
+*how much* and *how often*, and the plan names the third question as *"the
+number that actually drives a training decision — how much easy riding did I do
+this month"*. It needed no bike, no decision and no migration, and it is the
+largest unbuilt item that was true of.
+
+**The item's own first word had gone stale, which is the seam this sitting
+found.** 21.4.3 says **weekly**, and it was written before 22.5 — the owner's
+note that a week is the wrong window for somebody who rides once of them. At
+that cadence a weekly intensity mix is *one ride's shape drawn as a trend*,
+which is precisely the defect 22.5.1 exists to have removed. So the card is the
+same rolling 30 days the top of that screen already reports, and
+`RidingHistoryBuilder.isInWindow` is now **one predicate** rather than two
+copies of a day boundary: a second reader of *the last 30 days* is exactly how
+one card comes to say *nine rides* while the card beneath it draws eight.
+
+**Three rules decide where each ride's seconds come from, and not one of them is
+new.** A condensed ride is read from the summary written before its seconds went
+(23.4.2) and never recounted — its rows are still there, so a scan returns a
+*wrong* number rather than nothing. A ride is counted against the FTP it was
+ridden at (7.8), and **a ride with no FTP on the row is not counted at all**:
+unlike ride detail there is no room to caveat one ride inside a month. And **a
+ride nobody can count stays in the denominator and is said out loud** — *from 6
+of 13 rides* — which is 21.4.1's coverage caption a level up.
+
+**The card observes and it does not prescribe**, which is 21.4.4 obeyed rather
+than quoted. There is a famous target here — polarised 80-20 — and putting it on
+the card would turn every honest sentence into a mark out of ten for a rider who
+never asked to be marked. *Easy* is Z1–Z2 and *hard* is Z4 and above, the second
+borrowed from `EffortAgainstPlan` so two features cannot come to mean different
+things by the same word.
+
+**The observed flow reads `workouts` and nothing else, and that is the design
+rather than an accident.** The seconds come from a one-shot query underneath it,
+because a `Flow` over `workout_metrics` re-emits on every batch of samples a
+ride writes — it would re-count a month several times a minute for the whole of
+every ride. The usual form of that rule is a trap (a flow that does *not*
+re-emit because its query never mentions the table that changed); here it is the
+lever.
+
+**Checked against the database rather than against the screenshot**, which is
+what the house rule asks for. The card said Z1 106 · Z2 74 · Z3 29 · Z4 3809 ·
+Z5 26 · Z6 28 · Z7 21; the same window counted by hand in `sqlite3` says 107 /
+74 / 28 / 3809 / 26 / 28 / 21. **Identical totals with two seconds sitting one
+band over** — the whole-watt rounding the query documents in its own KDoc, and
+the reason the boundaries are not written into the SQL is that a second copy of
+the Coggan table is the more expensive mistake. Then a real 5:52 ride was
+finished and the card moved to *7 of 14* on its own.
+
+**The owner's note was then written up and built, and the cause was one constant
+doing two jobs.** `VERTICAL_WIDTH_DP` is 244 dp and the window was that wide in
+**both** states: the previous sitting fixed the width for a good reason — a
+wrapped width would make the film a rider loses depend on whether this block
+prescribes a three-digit target — and then applied that number to a state the
+reason does not cover. Collapsed, the widest thing on the strip was **three 52
+dp transport buttons in a row**. The owner named the fix as well as the fault,
+and the two halves go together: stack the buttons and the width is set by one of
+them, so a second constant buys a genuinely narrower strip rather than a tighter
+squeeze on the same layout. It is 132 dp, and it is still a constant.
+
+**Two defects came out of looking at the tablet rather than at the diff, and
+both are the same defect this component has now had three times.** `143 BPM`
+drew as `143 BP` with a lone `M` underneath — and neither of this project's two
+allowed answers fitted, because **what did not fit was a *pair*, not a word**.
+So the pair stacks: the unit keeps its own line at full size, which also takes
+the strip's width out of the hands of how many characters a unit happens to have
+and stops a rider with larger system text reopening it. The unit was never a
+candidate for dropping (11.1b.11a). And the clock wrapped at `03:14` **having
+fitted a minute earlier at `01:51`, because a `1` is half the width of a `3`** —
+a layout whose correctness depends on which digits the ride is showing is the
+worst version of this, since it passes every check not made at the wrong minute.
+It is `ShrinkToFitText` measured against the widest string of its own shape, so
+the type steps down once at the hour and never pulses.
+
+**One mistake worth recording because it cost a build and a screenshot**: the
+first attempt at both of those fixes landed on `HudCollapsed`, the *horizontal*
+band, which is a near-identical composable forty lines above the one that needed
+them. The tablet is what caught it — the vertical strip was unchanged and the
+horizontal one had quietly grown a re-flow nobody asked for.
+
+**Watched on the tablet AVD with a ride running**, Right dock expanded → 244 dp,
+collapsed → 132, expanded again, with the horizontal band as the control and
+`Your riding` checked on two profiles as each other's. **850 JVM tests, 0
+failures**, up from 841.
+
+**Phase 21 gains three items and one tick — 18 of 36 — and Phase 11 gains two
+of each.** The two new Phase 21 items are both deliberate refusals: **21.4.5**
+is the same card on the dashboard, which 22.8 and 22.9 spent two whole items
+making room *away* from, and **21.4.6** is the heart's own version with the
+condition it has to meet first — a month drawn from the two rides somebody wore
+a strap for, captioned as a month, is the coverage trap at thirty times the
+scale.
+
 ## 17 August 2026 (sixty-second sitting): the overlay on four edges
 
 **The inbox was empty for a third sitting and the top of *What to do next* is

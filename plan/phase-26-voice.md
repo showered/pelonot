@@ -480,7 +480,7 @@ have ridden* in one glyph.
       it is one look at the tablet**, which is also what settled 26.1.1 in the
       other direction
 
-- [ ] **26.4.9** **The compact badge is too big, and the word is what makes it
+- [x] **26.4.9** **The compact badge is too big, and the word is what makes it
       that way — the owner's note, 17 August 2026.** *"It's too big, too much
       padding. Should probably just be the number with very little padding
       around it. It's obscuring too much of that avatar and looks bad."*
@@ -512,7 +512,7 @@ have ridden* in one glyph.
       been carrying a word it did not need on the one surface where the word
       costs a face.
 
-- [ ] **26.4.9a** **Rule 1 is narrowed, not lifted, and this says where the
+- [x] **26.4.9a** **Rule 1 is narrowed, not lifted, and this says where the
       meaning goes instead.** `RiderScore`'s first rule is *"it says `LVL` and
       a number, and nothing else"*, and the thing that rule was built to
       forbid is a label **richer** than the number's honest claim — no unit, no
@@ -558,3 +558,58 @@ have ridden* in one glyph.
       that the rank goes without one. Written down now because it is invisible
       later: the two items are in different phases and nine days apart, and the
       dependency runs from the smaller to the larger
+
+- [x] **26.4.10** **`RiderScore`'s four rules are held by their own KDoc and
+      nothing else, which is 2.2a.8 arriving at a second component.** The
+      previous sitting found that the *"`PowerModel` consumer fence"* two
+      documents referred to as existing did not exist, and that the rule had
+      held only because a handful of call sites happened not to have grown. This
+      is the same shape and it was found the same way — by building 26.4.9 and
+      noticing that **rule 2 is stated four times in prose and enforced by
+      nobody**: *"Nothing else may follow either. Not the greeting, not the
+      household panel, not the static class board, not the overlay."*
+
+      **A hope, in exactly the sense the last sitting named.** There are two
+      screens that may draw a level on a rider's face and five other call sites
+      of `RiderAvatar`, and what keeps the level off those five is that nobody
+      has passed the argument. One `level = rider.level` on the household
+      panel's row — a plausible, well-meant three-word diff — would publish a
+      level beside a housemate's FTP on a *presence* card, which is precisely
+      the reading 26.4.5 exists to forbid and the one thing this number must
+      never say.
+
+      **`RiderScoreFenceTest` is that rule structurally**, and it is a plain JVM
+      source scan rather than a Compose UI test on purpose: this project has no
+      Compose test infrastructure at all (twelve instrumented tests, every one
+      of them Room), and adding a whole test category to hold one component's
+      rules is a larger decision than the rules need. `PowerModelFenceTest` and
+      `CloudAccessFenceTest` already established the pattern.
+
+      **What it checks, and each is one of the four rules rather than a tidiness
+      preference.** The word `LVL` is spelled in **exactly one file** in the
+      whole of `src/main` — which is rule 1 and also the fence against the
+      private copy this component was extracted to prevent (a badge drawn in a
+      screen's own `Box` is how the avatar itself came to be on the power-zone
+      palette). Only an **allowlisted pair** of files may pass a `level` to
+      `RiderAvatar`, each entry carrying its reason, which is rule 2 — and the
+      three named counter-examples are checked from the other end as well, so
+      the household panel and the greeting failing is a *test* rather than a
+      convention. `RiderScore` itself reaches for no amber token, which is
+      rule 3. And rule 4 is the one that is behaviour rather than structure:
+      `AppUiState.levelFor` returns null for a guest and level 1 for a profile
+      that has never ridden, and **it had no test at all** — two absences that
+      must stay different claims, in the same family as nullable `heartRateBpm`.
+
+      **What the fence honestly cannot check is 26.4.9a**, and saying so is
+      better than a scan that pretends. That a *compact* badge draws no word is
+      a fact about which branch a string literal sits in, and a text scan that
+      claimed to know would be the kind of check that passes for the wrong
+      reason. What the fence gets instead is the count — one `LVL` in one file —
+      which catches the regression that actually happens (somebody adds the word
+      back somewhere) rather than the one that does not
+
+- [x] **26.4.10a** **Every check watched failing against its own violation**,
+      because 2.2a.8's own note is that *"a fence nobody has seen fail is a
+      fence nobody has tested"* — and this is the second time that sentence has
+      earned its place: a source scan that quietly matches nothing passes
+      cheerfully for ever
