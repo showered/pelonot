@@ -441,14 +441,19 @@ why the sittings before this one made their picks on merit from the phases.
 came out of building it.
 
 **The level badge no longer covers the face it rides on** (26.4.9), which was
-the owner's own note and their own fix. **Two things about it are worth their
-eye and neither is a change**: 26.4.9a's judgement that the *pill* beside a
-name keeps `LVL` while the badge on a face drops it — the two forms now differ
-in wording and not only in size, and the reason is written down rather than
-assumed — and **26.4.9b, which is deliberately left open and is theirs**: a
-bare number is unambiguous on the live leaderboard only while that board has no
-rank on it, so this **raises the price of 24.3.19d** rather than answering it.
-If the rank goes back, the compact badge takes its word back on that screen.
+the owner's own note and their own fix. **One judgement in it is still theirs to
+reverse on sight**: 26.4.9a's decision that the *pill* beside a name keeps `LVL`
+while the badge on a face drops it, so the two forms now differ in wording and
+not only in size. The reason is written down rather than assumed.
+
+**And the owner answered three things directly this sitting, which is why the
+list below is shorter than it was.** **24.3.19d is closed as decided** after
+nine days open — the rank stays off the live leaderboard, the argument of
+24.3.17c held, and nothing changed in the code, which is the point. That closes
+**26.4.9b**'s conditional too: a bare number on a face is unambiguous on that
+board *by a decision rather than by construction*, and the dependency is now
+recorded in both items rather than in neither. **8.14.1 is the second** — see
+below. **The third was CI**, and it is no longer a question at all.
 
 **A second component's rules are now held by something other than their own
 KDoc** (26.4.10), and it is the sitting before this one's lesson repeating:
@@ -460,14 +465,21 @@ failing against its own violation. **What it deliberately does not claim is
 26.4.9a**: a text scan cannot know which branch a literal is in, and one that
 said it could would pass for the wrong reason.
 
-**The honest gap it names is worth a decision one day, and it is not this
-sitting's to make.** This project has **no Compose UI test infrastructure at
-all** — twelve instrumented tests and every one of them Room — so every rule
-about how a screen *draws* is held by a session looking at the tablet AVD. That
-has worked, and it is the reason the house rule exists; but it means a fence can
-only ever check structure, and three of the four `RiderScore` rules had to be
-approximated as source scans. Adding the category is a larger call than any one
-component's rules justify, which is why it is written here rather than done.
+**The honest gap it named is now a decision rather than a gap** (8.14.1). This
+project has **no Compose UI test infrastructure at all** — twelve instrumented
+tests and every one of them Room — so every rule about how a screen *draws* is
+held by a session looking at the tablet AVD, and a fence can only check
+structure: three of `RiderScore`'s four rules were approximated as source scans
+and the fourth could not be checked at all. **The owner's answer is to leave it,
+and the argument is the part worth keeping**: almost every defect this project
+has found came from looking at the tablet — `Continue` under the keyboard,
+`RESISTANC`, `143 BP` with a lone `M`, the clock wrapping at `03:14` having
+fitted at `01:51`, this sitting's 5.5 sp label — and **a Compose UI test would
+have caught none of them**, because each was a legibility fault on a real display
+at a real density. 8.14.1 records what the decision costs and **the condition for
+re-opening it**, which is a screen-drawing defect reaching the owner *twice*
+through the same component after being fixed once. `MetricReadout` is the one to
+watch: three truncation faults, three correct fixes.
 
 **A rule that this project had twice written down as existing now exists**
 (2.2a.8). `PowerModelFenceTest` is the safety case for calibration held in

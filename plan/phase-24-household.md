@@ -1244,19 +1244,33 @@ item quotes it rather than quietly overruling it.
       keeps meeting: **a label is not a name, and a row is not a person** —
       which is the whole of 24.3.19a stated from the other end
 
-- [ ] **24.3.19d** **The rank stays off, and it is the owner's to put back.**
-      The picture has `41` and `42` down its left edge and **24.3.17c deleted
-      exactly that**, on the owner's own argument: *"most of the 'people' are
-      actually going to be targets rather than people"* — four of the row kinds
-      on this board are the rider's own past rides, so *4th of 6* where four of
-      the six are you is a category error rather than an overstatement.
+- [x] **24.3.19d** ***Settled by the owner, 17 August 2026: the rank stays
+      off.*** The picture has `41` and `42` down its left edge and **24.3.17c
+      deleted exactly that**, on the owner's own argument: *"most of the
+      'people' are actually going to be targets rather than people"* — four of
+      the row kinds on this board are the rider's own past rides, so *4th of 6*
+      where four of the six are you is a category error rather than an
+      overstatement.
 
       **Peloton's board is thousands of strangers and this one is a household
       plus your own history**, which is the whole difference. The argument has
-      not changed and the picture is not evidence against it — it is evidence of
-      what a different board looks like. **Written down as a question rather
-      than acted on in either direction**, because reversing a decision the
-      owner made with a stated reason needs them, not a session
+      not changed and the picture was never evidence against it — it is evidence
+      of what a different board looks like. It sat open for nine days as a
+      question rather than acted on in either direction, because reversing a
+      decision the owner made with a stated reason needs them.
+
+      **Asked and answered directly**, so the reason is theirs rather than
+      reconstructed: the argument held. The item closes as *decided*, not as
+      built — nothing changed in the code, and that is the point.
+
+      **What it also closes is 26.4.9b's conditional.** That item priced this
+      decision one sitting after it was raised: with `LVL` off the compact
+      badge, a rank column would have put **two unlabelled small integers on
+      every person's row**, on the one surface where a small number in a list
+      obviously means position. The rank staying off is what keeps a bare number
+      on a face unambiguous there, so the two decisions are now one — and the
+      dependency is recorded in both directions rather than in neither, which is
+      what 26.4.9b was written for
 
 - [ ] **24.3.19e** **What this does not decide: `12 MONTHS` and `30 DAYS`.**
       24.3.12a is still open with the owner's name on it, and 24.3.17c raised

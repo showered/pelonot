@@ -272,3 +272,45 @@
 > 11 is worth more than all of them: the app runs a class now, and the question
 > is whether the surface the rider actually spends forty minutes glancing at is
 > good enough. Charts and shimmer are for the two minutes either side of that.
+
+### 8.14 What holds a rule about how a screen draws — the owner's decision, 17 August 2026
+
+- [x] **8.14.1** ***Decided: nothing does, and the tablet AVD stays the
+      witness.*** Building 26.4.10 surfaced a real gap and it is worth having on
+      the record rather than rediscovered every few sittings: **this project has
+      no Compose UI test infrastructure at all.** Twelve instrumented tests and
+      every one of them Room. So every rule about how a screen *draws* is held by
+      a session installing the app and looking at it, and a build-time fence can
+      only ever check *structure* — three of `RiderScore`'s four rules had to be
+      approximated as source scans, and the fourth (26.4.9a, that a compact badge
+      draws no word) could not be checked at all.
+
+      **The owner was asked directly and the answer is to leave it**, with the
+      reasoning worth keeping because it is an argument rather than a shrug:
+      **the AVD has genuinely been the witness.** Almost every defect this
+      project has found came from looking at the tablet — 20.4.2's `Continue`
+      under the keyboard, `RESISTANC`, `143 BP` with a lone `M`, the clock
+      wrapping at `03:14` having fitted at `01:51`, the badge covering a face at
+      5.5 sp — and **a Compose UI test would have caught none of them.** Each was
+      a *legibility* fault on a real display at a real density, and a test
+      asserting a composable emits the string `143 BPM` passes while the strip
+      draws it on two lines. The house rule that `assembleDebug` passing proves
+      very little here is the same observation from the other end.
+
+      **What this decision costs, said plainly so it is not a surprise later.** A
+      regression in a component's *rules* — a level appearing on a presence card,
+      a unit creeping onto the badge — is caught by a source fence, which is why
+      those exist. A regression in how something *looks* is caught by a session
+      looking, and only if that session looks at the right screen at the right
+      minute. 11.1b.11's own lesson is that the wrong minute is a real hazard
+      (`01:51` fitted; `03:14` did not), and no fence in this repository would
+      have changed that.
+
+      **When it should be re-opened.** Not on a preference, and not because a
+      component grew rules — that is what the source fences are for. The
+      condition is a *screen-drawing* defect that reaches the owner **twice**
+      through the same component after being fixed once, because that is the
+      point at which "a session looked" has demonstrably stopped being enough.
+      `MetricReadout` is the one to watch: it has now had the same class of
+      truncation fault three times (24.3.16, 11.1b.5, 11.1b.11) and each fix was
+      correct

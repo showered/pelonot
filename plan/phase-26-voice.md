@@ -541,7 +541,7 @@ have ridden* in one glyph.
       of the `compact` parameter's KDoc: it said only the type scale and the
       padding follow the height, and after this the wording does too.
 
-- [ ] **26.4.9b** **What this costs 24.3.19d, and it is the finding rather than
+- [x] **26.4.9b** **What this costs 24.3.19d, and it is the finding rather than
       a caveat.** The rank is deliberately **off** the live leaderboard —
       24.3.17c deleted it on the owner's own argument that most rows are the
       rider's own targets, and 24.3.19d is the open question about putting it
@@ -552,12 +552,25 @@ have ridden* in one glyph.
       has two unlabelled small integers on it, one of them inside the face and
       one beside it, and the reader has to work out which is which — on the one
       surface where a small number in a ranked list *obviously* means position.
-      So this item does not decide 24.3.19d and does not want to; what it does
-      is **raise its price**, and the answer if the rank ever comes back is
-      that the compact badge takes its word back on that screen rather than
-      that the rank goes without one. Written down now because it is invisible
-      later: the two items are in different phases and nine days apart, and the
-      dependency runs from the smaller to the larger
+      So this item did not decide 24.3.19d and did not want to; what it did was
+      **raise its price**, and the answer if the rank ever came back was that
+      the compact badge takes its word back on that screen rather than that the
+      rank goes without one. Written down because it is invisible later: the two
+      items are in different phases and nine days apart, and the dependency runs
+      from the smaller to the larger.
+
+      ***Answered the same day it was written.*** The owner was asked directly
+      and **the rank stays off** — 24.3.19d is closed as *decided*, and its
+      write-up now carries this dependency from the other end too. So the
+      condition on the compact badge is not live: nothing takes the word back,
+      because nothing is putting a rank beside it.
+
+      **The item stays in the plan rather than being deleted, and the reason is
+      the point of it.** What it records is *why* a bare number is safe on that
+      board — that it is safe by a decision and not by construction. A future
+      sitting adding a rank column would be undoing two items at once and now has
+      to notice; deleting this paragraph is how it would come to notice only
+      afterwards
 
 - [x] **26.4.10** **`RiderScore`'s four rules are held by their own KDoc and
       nothing else, which is 2.2a.8 arriving at a second component.** The
