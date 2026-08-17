@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Sixty entries have passed through it.** In order: standing and seated
+**Sixty-one entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -168,12 +168,18 @@ vertical dock** (**11.1b.11**, the first report on 11.1b.4 from somebody who has
 watched a film behind it — and the note names the fix as well as the fault), and
 **the level badge obscuring the face it rides on** (**26.4.9** — the note names
 the fix, and the measurement makes its case for it: 44 dp of pill across a 58 dp
-disc, to hold a word set at 5.5 sp).
+disc, to hold a word set at 5.5 sp), and **the custom photo avatar belonging to
+the web app rather than the bike** (**20.7** — one instruction that a session can
+build and four questions that cross the cloud, and the note lands on **20.2.8**,
+an item this plan wrote before any of it was built).
 
-*Empty. The entry of 17 August 2026 — the level badge on the avatar being too
-big and too padded — is written up at **26.4.9**, with **26.4.9a** for the
-narrowing of rule 1 that dropping the word forces and **26.4.9b** for what it
-costs the open question at 24.3.19d.*
+*Empty. The entry of 18 August 2026 — the custom photo avatar belonging to the
+web app rather than the bike — is written up as **20.7**, ten items: the removal
+itself (20.7.1), the reason the note gives naming an option that was never built
+(20.7.2), the privacy property that has to be rebuilt in a browser (20.7.3),
+where the bytes live and why no image service is needed (20.7.4), the
+configuration rule (20.7.5), what it does to the connectivity model (20.7.6),
+the ordering (20.7.7, 20.7.9) and the refusal at 17.4 it reverses (20.7.8).*
 
 ---
 

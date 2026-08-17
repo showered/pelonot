@@ -509,6 +509,13 @@ been looked at with one shape of data has not been checked.
       in whatever unit its label says, which is the whole reason the label
       carries one
 
+      ***The refusal in the middle paragraph is the one the owner has now
+      reversed*** — 18 August 2026, and it is written up at **20.7**, with the
+      three reasons named here answered one by one at 20.7.8. *Store* and
+      *resize* turn out to be cheap (20.7.4, 20.7.3); **moderate is the one that
+      is not**, because 18.11.1 accepted an open sign-up against a blast radius
+      that did not include a photograph of anybody's face
+
 - [x] **17.5** Friends — request, accept, block. New `friendships` table with its own RLS; this is the first schema where a rider can see another rider's data and it deserves more care than the rest
 
       ***Closed as* not *to be built** — and it was already closed, in code,

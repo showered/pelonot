@@ -222,6 +222,14 @@ right one — same device shape, same distance, same job.
       **Watched: the file was deleted by hand and Robin drew `R` on her derived
       colour, with nothing on screen suggesting a fault.**
 
+      ***And then removed from the Android app, 18 August 2026, at the owner's
+      instruction — see 20.7.*** The box stays ticked because it records what
+      was built and observed, which is what this plan's boxes are for; what
+      20.7.1 takes out is the **choosing**, and the drawing half below (20.2.4a,
+      20.2.4b, 20.2.4c) is untouched and still carries a rider's face. 20.2.4d's
+      *"the owner may want it there anyway"* and 20.2.4e's camera are both
+      overtaken by the same note
+
       - [x] **20.2.4a The name is checked, not trusted, and this is a fence
             rather than tidiness.** The value reaches a `File(directory, name)`
             and it comes out of a column this project edits in `sqlite3`
@@ -407,6 +415,14 @@ right one — same device shape, same distance, same job.
 - [ ] **20.2.8** Change your avatar from the companion web app — **much later**,
       and strictly after 17 exists. Listed here so it is not re-invented as a
       separate feature when it is the same field
+
+      **Promoted by the owner's note of 18 August 2026 from *much later* to *the
+      only place it happens* — 20.7.** The design is written out there rather
+      than here, because what the note asks for is larger than this line: where
+      the bytes live (20.7.4), the privacy property that has to be rebuilt in a
+      browser (20.7.3), and the fetch that puts a photograph in the cloud tier
+      for good (20.7.6). This item is the one that turns out to have been right
+      about the *shape* — it is the same field, and it should not be re-invented
 
 ---
 
@@ -1385,3 +1401,189 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       The reference writes it `FTP: 215 W`. This app writes `FTP 150 W` — the
       colon is a word's worth of punctuation doing nothing, and Phase 26's rule
       is to say less. Noted rather than silently diverged from
+
+---
+
+### 20.7 The photograph belongs to the web app, not the bike — the owner's note, 18 August 2026
+
+Verbatim: *"The peloton bike doesn't have a camera, so let's remove the ability
+to set a custom photo avatar in the app. Instead leave that functionality only
+for the web companion app. We will need to also then think about how we can
+compress and store those images. Hopefully there are free services we can
+utilise. Remember that any of these services -- domains, URLs, API keys, need to
+be configurable with environment variables / local properties -- it is an open
+source app after all."*
+
+**It is one instruction and four questions**, and only the instruction can be
+built by a session on its own: the removal needs nobody. The rest is a design
+that has to cross the cloud, and the cloud half is behind a migration only the
+owner can apply (15.3.7's queue). The items below keep them apart deliberately,
+because the tempting mistake is to treat *"leave that functionality only for the
+web companion app"* as one job when it is a small deletion and a large feature
+sharing a sentence.
+
+**The note lands on an item this plan already had**, which has now happened
+often enough to be worth saying each time it does: **20.2.8** — *"Change your
+avatar from the companion web app — much later, and strictly after 17 exists"* —
+was written before any of this was built, for the same reason. What the note
+adds is that the web app is not merely *also* a place to do it; it is the
+**only** one.
+
+- [ ] **20.7.1** **Take the photograph out of the Android app.** The picker's
+      door, the launcher behind it and the import that turns a gallery Uri into
+      a stored square all go. **What stays is the whole of the drawing half** —
+      the `photo:` scheme, `AvatarPhoto`'s name fence (20.2.4a), `RiderAvatar`'s
+      decode-at-draw-size (20.2.4c) and `forgetUnreferenced`'s launch sweep
+      (20.2.4b) — because a rider's face arriving from the web is still a file
+      on this tablet that something has to draw, validate and eventually
+      collect. **This is not code kept "for later" against the house rule**: the
+      column can already hold `photo:` today, on any tablet where somebody used
+      the feature in the week it existed, so a build that drops the drawing half
+      would draw a blank disc for them rather than a face
+
+- [ ] **20.7.2** **The note's stated reason names the one option this app
+      deliberately never built — and the argument transfers, which is why the
+      instruction is right anyway.** There is no camera path: **20.2.4e** is a
+      written-up refusal on exactly the grounds the note gives, *"`HARDWARE.md`
+      records no camera on the bike and nothing that answers
+      `ACTION_IMAGE_CAPTURE`"*. What exists is the **gallery**, and one step
+      along the same argument disposes of it: a bike tablet's gallery is
+      whatever somebody side-loaded, which on this one is nothing — no camera
+      means no camera roll. So the door the app draws opens onto an empty room,
+      which is 20.2.4e's own standard (*a button that does nothing is worse than
+      an absent one*) arriving at the option that **was** built. **Unmeasured,
+      and it should be measured on 22.2.5's trip rather than reasoned about**:
+      whether the bike resolves `ACTION_OPEN_DOCUMENT` at all, and what it shows
+      if it does. The removal does not wait on the answer — it is the owner's
+      instruction either way — but if the picker turns out to open onto a
+      populated `Downloads`, that is worth knowing before the web half is
+      designed as the only route
+
+- [ ] **20.7.3** **20.2.5 stops being a property of this tablet and becomes a
+      property of somebody's network, and that is the largest single consequence
+      in the note.** Today the EXIF strip is unimprovable by construction: the
+      original file **never leaves the device**, the pixels are decoded and a
+      new JPEG is written, and `Bitmap.compress` emits no metadata at all. Move
+      the choosing to a browser and the same picture is now going **to a
+      server** — so the rule the web half has to be built to is that **the
+      original bytes are never uploaded**. Decode to a canvas, take the centre
+      square, `toBlob('image/jpeg')`, upload *that*. `toBlob` writes no EXIF for
+      the same reason `Bitmap.compress` does not, so the property survives —
+      **but it survives only if the upload is the re-encode**, and the naive
+      implementation (put the `File` from the input straight into `storage
+      .upload`) is one line shorter and ships the GPS coordinates of somebody's
+      living room to a host. **The orientation half needs checking rather than
+      assuming**: browsers apply `image-orientation: from-image` by default when
+      drawing, so a canvas re-encode is usually already upright — *usually* is
+      not the standard 20.2.5 was built to, and the assertion belongs in the web
+      app's own checks. `AvatarPhotoStoreTest`'s five import assertions are
+      deleted with the code they test (20.7.1); **this item is where the
+      property they held goes**, and it is worth more attention there than it
+      needed here
+
+- [ ] **20.7.4** **Where the bytes live: Supabase Storage, and no new service —
+      the arithmetic says the question the note asks does not need an answer.**
+      *"Hopefully there are free services we can utilise"* is the right instinct
+      and the cheapest free service is the one already configured. **Measured
+      rather than estimated**: the file the real flow wrote in the sixty-fourth
+      sitting is **512 × 512 and 6,378 bytes**. A household of four is 25 kB.
+      Every account this project will ever have is a rounding error against the
+      1 GB Supabase's free plan documents — *that figure is the one number here
+      nobody has checked on the dashboard, and it should be checked rather than
+      remembered*. **So there is nothing for an image CDN to do.** A transform
+      service resizes on the way out, and the client has already resized on the
+      way in (20.7.3) because it had to for privacy anyway; a second host would
+      buy a second account, a second key, a second thing every self-hoster must
+      configure and a second thing that can be down — against a saving of six
+      kilobytes per rider. **Private bucket, not public**, on 17.7's existing
+      rule that nothing is visible until a rider opts in: a public bucket puts
+      faces on the open internet at a URL nobody chose to publish, where a
+      signed URL is one call the bike already has a JWT for
+
+- [ ] **20.7.5** **The configuration rule the note ends on is already this
+      project's, and honouring it is mostly a matter of not adding a host.**
+      *"Domains, URLs, API keys, need to be configurable"* is `local.properties`
+      → `BuildConfig` on the Android side (a CLAUDE.md convention) and
+      `web/config.js` on the web side, and 14.10.4 and 17.8 are the items that
+      say why. **20.7.4's recommendation costs nothing new here**: Storage lives
+      under the project URL that is already configured on both surfaces, so a
+      self-hoster who has the app working has the avatars working. **The rule
+      bites the moment anything else is chosen** — a transform CDN or an
+      external bucket needs a base URL and a key on both surfaces plus a
+      documented way to run with neither, and *"it works on the owner's account"*
+      is precisely the failure this note is guarding against. **One live fact to
+      carry into any of that**: `web/config.js` is git-ignored, untracked, and
+      **the host serves it anyway** — nobody has established what supplies it
+      (CLAUDE.md records this as an open fact), so a new key added there is a key
+      that reaches the internet by a route this repository cannot see
+
+- [ ] **20.7.6** **A photograph set on the web has to be *fetched* by the bike,
+      and that puts it in the cloud tier for good.** This is the item that turns
+      the note into a change in what the app *is*: the connectivity model's
+      first rule is that a rider with no account makes **no request at all**, so
+      after 20.7.1 an offline household cannot have a photographic face by any
+      route — not a degraded one, none. **That is a real loss and it should be
+      stated rather than discovered**: it was working for them yesterday. The
+      answer the plan already has is 20.6's twenty drawn faces, which exist
+      precisely because they need no network and no permission, and the honest
+      summary is *offline riders get a face, account holders can have their own
+      photograph*. The fetch itself is `SupabaseSyncRepository`'s to own, at its
+      single choke point, with `CloudAccess` answering per profile — **not a new
+      SDK import**, and `CloudAccessFenceTest` will fail the build if it is one
+
+- [ ] **20.7.7** **The cheap half of a rider's face has still never crossed, and
+      building the expensive half first would leave the two surfaces disagreeing
+      about what somebody looks like.** The cloud `profiles` row carries `id`,
+      `name`, `ftp_watts`, `weight_kg` and nothing else (17.11, 15.3.7a). The
+      web app draws its own avatar — an initial on a colour derived from the
+      **account uuid** — and the bike derives its own from the **local row id**,
+      so one rider already has two different colours on the two surfaces and
+      17.4 records that as a consequence of `003`'s key choice rather than a
+      bug. **20.2.7 is the item that says the fix is nearly free**: the
+      colour-and-mark form is one short string, no bucket, no blob, and it could
+      ride in the profile payload the day 15.3.7's migration happens. So the
+      order that makes sense is **the string, then the bytes** — otherwise a
+      rider uploads a photograph on the web, sees it on the web, and the bike
+      shows the face they chose on the bike, with neither surface wrong and the
+      rider unable to tell which one they are editing
+
+- [ ] **20.7.8** **This reverses a refusal 17.4 made on purpose, and the three
+      reasons it gave are exactly the three questions the note asks.** 17.4's
+      words: the web avatar *"is deliberately not an upload… so nobody has to
+      store, moderate or resize a photograph, which is a surface a hobby project
+      should think twice about"*. **Store** and **resize** are answered above
+      (20.7.4, 20.7.3) and they are answered cheaply. **Moderate is the one the
+      note does not mention**, and it is not rhetorical here: 18.11.1 left public
+      sign-up **on**, deliberately and with the blast radius written out — *"a
+      stranger who registered would see leaderboard entries and ghost traces:
+      display names, class ids, durations, output"*. Add avatars and that list
+      grows **a photograph of somebody's face** in one direction and *a stranger's
+      chosen image drawn on the household's board* in the other. **The decision
+      to accept that risk was taken against a blast radius that did not include a
+      face**, so it is the owner's to re-take rather than a session's to assume,
+      and it is cheap to bound: a signed URL from a private bucket (20.7.4) is
+      already not a public face, and the household board could draw the initial
+      for accounts nobody in the household has ridden with
+
+- [ ] **20.7.9** **The order leaves a window in which nobody can set a
+      photograph anywhere, and taking it deliberately is the point.** The
+      removal is a session's work; the web half is behind an owner-only
+      migration, 20.7.7's ordering and 20.7.8's decision. Doing the removal first
+      is still right — the note is unambiguous, the door on the bike opens onto
+      an empty room (20.7.2), and leaving a misplaced feature in place until its
+      replacement is designed is how a note sits unactioned for a month. **What
+      the window costs is exactly one thing**: a rider who wants a photographic
+      face waits. Nothing on disk is lost (20.7.10) and the revert is one commit
+
+- [ ] **20.7.10** **The photographs already on a tablet are kept, drawn and
+      collected exactly as they are today.** Nothing migrates and nothing is
+      deleted: the column still says `photo:avatar-1-….jpg`, the file is still in
+      `files/avatars`, `RiderAvatar` still draws it. **What changes is only that
+      no new one can be chosen**, and that choosing a drawn face or the initial
+      still replaces it — `onDropPhoto` is untouched, so a rider who wants rid of
+      theirs has the same one tap they always had. This is also why 20.7.1 keeps
+      the launch sweep: that tap is what makes the file unreferenced, and
+      something still has to collect it. **The fixture on the test device is
+      Robin** (`photo:avatar-1-1786964382388.jpg`), and it is now the *only* way
+      to see this path work at all — worth leaving in place rather than tidying
+      away
