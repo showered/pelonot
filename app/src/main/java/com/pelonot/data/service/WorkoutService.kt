@@ -37,6 +37,7 @@ import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.coach.CoachInput
 import com.pelonot.domain.coach.CoachStyle
+import com.pelonot.domain.coach.RideCaption
 import com.pelonot.domain.coach.RideCoachPolicy
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassIntervalEngine
@@ -133,6 +134,19 @@ class WorkoutService : Service() {
     val rideSnapshot: StateFlow<RideSnapshot> = _rideSnapshot.asStateFlow()
 
     private val _coachStyle = MutableStateFlow(CoachStyle.DEFAULT)
+
+    /**
+     * What the coach last said, for the ride screen to draw (11.8.4).
+     *
+     * **Published here rather than on [rideSnapshot] on purpose**: the snapshot
+     * is what the HUD renders from, and 11.8.4's one non-negotiable is that
+     * moving text never reaches the overlay. A field on the snapshot would be
+     * one `Text` away from breaking that in a file forty lines from the strip's
+     * own composable, which is exactly how 11.1b.11's fix landed on the wrong
+     * one of two near-identical composables.
+     */
+    private val _rideCaption = MutableStateFlow<RideCaption?>(null)
+    val rideCaption: StateFlow<RideCaption?> = _rideCaption.asStateFlow()
 
     /** Set when a previous run was killed mid-ride; the UI offers to resume. */
     private val _recoverableWorkout = MutableStateFlow<WorkoutEntity?>(null)
@@ -295,6 +309,7 @@ class WorkoutService : Service() {
         pausedAtRealtimeMs = 0L
         metricsCalculator.reset()
         coachPolicy.reset()
+        _rideCaption.value = null
         telemetryStalled = false
         pendingMetrics.clear()
         calibrationSamples.clear()
@@ -441,6 +456,7 @@ class WorkoutService : Service() {
         pausedAtRealtimeMs = 0L
         metricsCalculator.restore(aggregates.totalOutputKj, aggregates.distanceKm)
         coachPolicy.reset()
+        _rideCaption.value = null
         telemetryStalled = false
         pendingMetrics.clear()
         calibrationSamples.clear()
@@ -1025,6 +1041,22 @@ class WorkoutService : Service() {
             )
         )
         coach?.deliver(alerts)
+
+        // 11.8.4. The same alerts, rendered for the eye — and expired by the
+        // ride's own clock rather than by a timer, so a caption cannot outlive
+        // a pause or be left on screen by a coroutine nobody cancelled.
+        //
+        // **`CoachStyle.Off` silences these too**, and it has to: that setting
+        // says *"no voice, no buzz, no movement — the countdown alone"*, and a
+        // sentence appearing under the numbers is movement. Captions are a
+        // second channel for the coach, not a way round having turned it off.
+        // Settings says so where a rider could otherwise turn a switch on and
+        // watch nothing happen.
+        if (_coachStyle.value != CoachStyle.Off) {
+            RideCaption.latest(alerts, elapsedSec)?.let { _rideCaption.value = it }
+        }
+        _rideCaption.value?.takeUnless { it.isVisibleAt(elapsedSec) }
+            ?.let { _rideCaption.value = null }
 
         return intervalState.isComplete
     }

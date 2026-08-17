@@ -408,6 +408,11 @@ class SettingsViewModel(
     /** Anything on the device may have moved it since this screen opened. */
     fun refreshVolume() = volumeController.refresh()
 
+    /** 11.8.4 — the coach's cues on the ride screen as well as out loud. */
+    fun setRideCaptionsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setRideCaptionsEnabled(enabled) }
+    }
+
     fun setHudEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setHudEnabled(enabled) }
     }

@@ -1458,7 +1458,7 @@ and no amount of getting 11.7 right produces it.
       reading as the primary one at two metres rather than as one of four
       equals. **Change one thing at a time** — this screen is read at speed by
       somebody out of breath and it has been over-decorated before
-- [ ] **11.8.4** **The subtitle space — written up as a decision, because the
+- [x] **11.8.4** **The subtitle space — written up as a decision, because the
       owner offered it as a possibly-bad idea and it deserves a real answer.**
 
       *The case for:* the app has a spoken coach (`RideCoach`) whose lines a
@@ -1485,6 +1485,79 @@ and no amount of getting 11.7 right produces it.
       on-the-ride-screen-only and never on the overlay is not negotiable (24.1.5
       survives here even though 24.3.16 overruled it for the board, because that
       overrule was about a *static* card and this is moving text)
+
+      ***Built in the sixty-seventh sitting, exactly as the recommendation
+      above describes it, and the recommendation is why it could be built at
+      all.*** Nothing here decides anything: `RideCoachPolicy` already chose
+      what to say and when, `RideCoach` already speaks it, and this is a second
+      output stage on the same decision. There is no source of text that exists
+      to fill the line, which is the difference between a caption track and the
+      slot the case-against was about.
+
+      **A caption is not a transcript, and that is a second property rather
+      than a reuse of `speech`.** The speech strings are written for a
+      synthesiser — the cadence one says *"80 to 90 R P M"*, spelled out so the
+      engine does not try to pronounce the abbreviation — and printing it would
+      put a spelling mistake on the ride screen in the one place a first-time
+      rider is looking for help. `RideAlert.caption` renders the same facts the
+      way the metric tiles do: *"Zone 4 · Lactate Threshold · 80–90 rpm"*. The
+      test asserts the two disagree on exactly that string and that every alert
+      which speaks also prints.
+
+      **The zone's *name* is on every interval caption**, which is 11.8's own
+      point arriving in the one channel that has room for it. `Z4` beside a
+      colour bar is what a rider cannot read; the word is what the number means.
+
+      **It is a band, not a line.** `RideCaptionBand` draws its height whether
+      or not there is anything in it, so a sentence arriving mid-block moves
+      nothing above it. That is not an oversight to be tidied later: this
+      screen's last two reports from the owner were both about things
+      overflowing it (11.6.16, 11.6.17), and a caption that pushed the layout
+      would move the three numbers a rider reads at two metres, twice a block.
+      36 dp of a 720 dp screen, spent only for a rider who asked for it.
+
+      **Quiet on purpose.** `onSurfaceVariant`, no background, no accent. The
+      accent colours on this screen mean *this is the instruction* (11.7), and a
+      caption repeating what the voice said is not a fifth thing competing for
+      that meaning. The fade carries the arrival instead.
+
+      **Expired by the ride's own clock rather than by a timer.**
+      `RideCaption.isVisibleAt` is asked once a second by the same tick that
+      raises it, so a caption cannot outlive a pause and cannot be left on
+      screen by a coroutine nobody cancelled. Six seconds — long enough to read
+      while breathing hard, short enough that the line is absent for most of a
+      block. And the *last* alert with something to say wins, because the tick a
+      block ends on can raise both the countdown warning and the change, and the
+      sentence a rider needs then is the block they are now in.
+
+      **Off by default, and the switch is under the coach's own volume rather
+      than under the overlay's settings.** The rider who wants this is the rider
+      who has just turned the coach down, or cannot hear it over a film, or is
+      deaf — so the switch should be where they already are. **`CoachStyle.Off`
+      silences captions too**, because that setting says *"no voice, no buzz, no
+      movement — the countdown alone"* and a sentence appearing under the
+      numbers is movement; captions are a second channel for the coach, not a
+      way round having turned it off. Settings says so in red under the toggle
+      when both are set, because **a switch that is on and does nothing reads
+      exactly like a broken feature** — the failure this project keeps naming.
+
+      **Nothing is published to the overlay, and the reason it is a separate
+      `StateFlow` rather than a field on `RideSnapshot` is that rule.** The
+      snapshot is what the HUD renders from; a caption on it would be one `Text`
+      away from breaking 24.1.5 in a file forty lines from the strip's own
+      composable, which is precisely how 11.1b.11's fix landed on the wrong one
+      of two near-identical composables.
+
+      ***Watched on the tablet AVD on a simulated ride of `Loosen the Legs`,
+      with coaching alerts on Silent*** — which is the AVD's default and is
+      worth noting, because it means the caption is doing the whole job with no
+      voice behind it, exactly the case the accessibility argument is about. At
+      00:05 the band reads *"Zone 1 · Active Recovery"* under the metric grid;
+      at 00:09 it is empty and **every element above it is at the same pixel**.
+      The `CoachStyle.Off` warning was watched appearing and disappearing with
+      the chip.
+
+      **891 JVM tests, 0 failures**, up from 882.
 - [x] **11.8.5** ***Held.*** Nothing 11.8.2 or 11.8.3 added reads anything but the local database. **Whatever lands, it must not need the cloud, an account or a
       network.** A rider being taught what a zone is has by definition just met
       the app, and rule 1 of the connectivity model says that rider makes no

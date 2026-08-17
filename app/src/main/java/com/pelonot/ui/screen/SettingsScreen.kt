@@ -264,8 +264,11 @@ fun SettingsScreen(
                 mediaVolume = state.mediaVolume,
                 coachVolume = state.settings.coachVolume,
                 error = state.volumeError,
+                captionsEnabled = state.settings.rideCaptionsEnabled,
+                coachStyle = state.settings.coachStyle,
                 onMediaVolumeChange = viewModel::setMediaVolume,
-                onCoachVolumeChange = viewModel::setCoachVolume
+                onCoachVolumeChange = viewModel::setCoachVolume,
+                onCaptionsChange = viewModel::setRideCaptionsEnabled
             )
 
             SensorSection(
@@ -424,8 +427,11 @@ fun RideSettingsSheet(
                 mediaVolume = state.mediaVolume,
                 coachVolume = state.settings.coachVolume,
                 error = state.volumeError,
+                captionsEnabled = state.settings.rideCaptionsEnabled,
+                coachStyle = state.settings.coachStyle,
                 onMediaVolumeChange = viewModel::setMediaVolume,
-                onCoachVolumeChange = viewModel::setCoachVolume
+                onCoachVolumeChange = viewModel::setCoachVolume,
+                onCaptionsChange = viewModel::setRideCaptionsEnabled
             )
 
             // Changing this mid-ride restarts the telemetry pipeline, which is
@@ -1419,8 +1425,12 @@ private fun VolumeSection(
     mediaVolume: Float,
     coachVolume: Float,
     error: String?,
+    captionsEnabled: Boolean,
+    /** Only so the toggle below can say when it would do nothing (11.8.4). */
+    coachStyle: CoachStyle,
     onMediaVolumeChange: (Float) -> Unit,
-    onCoachVolumeChange: (Float) -> Unit
+    onCoachVolumeChange: (Float) -> Unit,
+    onCaptionsChange: (Boolean) -> Unit
 ) {
     SettingsSection("Volume") {
         VolumeSliders(
@@ -1438,6 +1448,31 @@ private fun VolumeSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        // 11.8.4, and it is here rather than under the overlay's own settings
+        // for one reason: the rider who wants this is the rider who has just
+        // turned the coach down, or who cannot hear it over a film. The switch
+        // should be where they already are.
+        Spacer(Modifier.size(MaterialTheme.spacing.large))
+        SettingsToggle(
+            title = "Print the coach's cues on the ride screen",
+            description = "The same things it says out loud, along the bottom for " +
+                "a few seconds. Never on the overlay.",
+            checked = captionsEnabled,
+            onCheckedChange = onCaptionsChange
+        )
+        if (captionsEnabled && coachStyle == CoachStyle.Off) {
+            // A switch that is on and does nothing is the failure this project
+            // keeps naming: it reads exactly like a broken feature. Coaching
+            // alerts are *Off*, so there are no cues to print.
+            Spacer(Modifier.size(MaterialTheme.spacing.small))
+            Text(
+                text = "Coaching alerts are off, so there is nothing to print. " +
+                    "Choose Spoken or Silent above.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     }
 }
 

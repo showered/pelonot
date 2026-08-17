@@ -14,6 +14,21 @@ sealed interface RideAlert {
     /** What to say out loud, or null for a haptic-only nudge. */
     val speech: String?
 
+    /**
+     * The same thing on screen, or null when there is nothing to show (11.8.4).
+     *
+     * **A caption is not a transcript**, which is the whole reason this is a
+     * second property rather than a reuse of [speech]. That string is written
+     * for a synthesiser — *"80 to 90 R P M"*, spelled out so the engine does not
+     * say "rpm" as a word — and printing it would put a spelling mistake on the
+     * ride screen. Same trigger, same cadence, different rendering.
+     *
+     * Null wherever [speech] is null, and for the same reason: the countdown
+     * ticks buzz without saying anything, and a line that changed four times in
+     * five seconds is the moving text 11.8.4 argues against.
+     */
+    val caption: String?
+
     /** How hard to buzz. The rider is on a vibrating machine already. */
     val haptic: HapticStrength
 
@@ -55,6 +70,18 @@ sealed interface RideAlert {
                 } else {
                     ""
                 }
+        // Zone and name together, because the number alone is the thing a
+        // first-time rider cannot read (11.8) — and the rpm is written the way
+        // the metric tiles write it rather than the way the voice spells it.
+        override val caption: String
+            get() = (positionChange?.let { "${it.instruction} · " } ?: "") +
+                "Zone ${zone.number} · ${zone.displayName}" +
+                if (governedBy == GovernedBy.Cadence) {
+                    " · $cadenceMin–$cadenceMax rpm"
+                } else {
+                    ""
+                }
+
         override val haptic get() = HapticStrength.Firm
     }
 
@@ -71,12 +98,19 @@ sealed interface RideAlert {
             } else {
                 null
             }
+        override val caption: String?
+            get() = if (secondsRemaining == IntervalState.WARNING_SEC) {
+                "Zone ${nextZone.number} in five"
+            } else {
+                null
+            }
         override val haptic get() = HapticStrength.Light
     }
 
     /** A moment in the class worth calling out. */
     data class Cue(val cue: RideCue) : RideAlert {
         override val speech: String get() = cue.message
+        override val caption: String get() = cue.message
         override val haptic
             get() = if (cue == RideCue.FinalPush) HapticStrength.Firm else HapticStrength.Light
     }
@@ -84,12 +118,14 @@ sealed interface RideAlert {
     /** The rider has been away from the prescription long enough to mean it. */
     data class OffTarget(val advice: String) : RideAlert {
         override val speech: String get() = advice
+        override val caption: String get() = advice
         override val haptic get() = HapticStrength.Light
     }
 
     /** The class timer has run out. */
     data object ClassComplete : RideAlert {
         override val speech: String get() = "Class complete. Well ridden."
+        override val caption: String get() = "Class complete. Well ridden."
         override val haptic get() = HapticStrength.Firm
     }
 }

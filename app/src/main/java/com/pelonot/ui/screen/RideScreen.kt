@@ -71,6 +71,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -101,6 +102,7 @@ import com.pelonot.ui.components.CountdownBanner
 import com.pelonot.ui.components.IntervalTimeline
 import com.pelonot.ui.components.RidePositionCall
 import com.pelonot.ui.components.MetricIcons
+import com.pelonot.domain.coach.RideCaption
 import com.pelonot.ui.components.MetricReadout
 import com.pelonot.ui.components.NextUpPreview
 import com.pelonot.ui.components.PowerZoneScale
@@ -527,9 +529,67 @@ private fun RideContent(
                         )
                     }
                 }
+
+                // 11.8.4. Under everything, the width of the screen, the way a
+                // subtitle sits under a film — which is the shape the owner's
+                // own note asked for. It is a *band* rather than a line: the
+                // height is reserved whenever the rider has captions on, so a
+                // sentence arriving mid-block moves nothing above it.
+                if (state.captionsEnabled) {
+                    RideCaptionBand(caption = state.caption)
+                }
             }
         }
     }
+}
+
+/**
+ * The coach's last cue, printed (11.8.4).
+ *
+ * **It draws its own height whether or not there is anything in it**, which is
+ * the point of the composable and not an oversight. A caption that pushed the
+ * layout when it arrived would move the three numbers a rider is reading at two
+ * metres, twice a block, and this screen's last two reports from the owner were
+ * both about things overflowing it (11.6.16, 11.6.17).
+ *
+ * Quiet on purpose: `onSurfaceVariant` rather than an accent, and no
+ * background. The accent colours on this screen mean *this is the instruction*
+ * (11.7), and a caption repeating what the voice said is not a fifth thing
+ * competing for that meaning. The fade is what carries the arrival instead.
+ */
+@Composable
+private fun RideCaptionBand(caption: RideCaption?) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(CAPTION_BAND_HEIGHT),
+        contentAlignment = Alignment.Center
+    ) {
+        AnimatedVisibility(
+            visible = caption != null,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Text(
+                // Held while it fades out, so the sentence does not blank a
+                // frame before it disappears.
+                text = rememberLast(caption?.text).orEmpty(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/** The last non-null value seen, so a fade-out has something to draw. */
+@Composable
+private fun rememberLast(value: String?): String? {
+    val held = remember { mutableStateOf<String?>(null) }
+    if (value != null) held.value = value
+    return held.value
 }
 
 /**
@@ -1857,3 +1917,13 @@ private fun UpNextColumn(
 private val GOVERNING_TILE_OUTLINE = 2.dp
 
 private const val NO_READING = "--"
+
+/**
+ * One line of `titleMedium` and the air around it (11.8.4).
+ *
+ * 36 dp of a 720 dp screen, and it is only ever spent for a rider who asked for
+ * it. Bigger was tried in the head and rejected on the same argument the band
+ * itself is built on: a caption competing with the numbers is a caption that has
+ * stopped being a caption.
+ */
+private val CAPTION_BAND_HEIGHT = 36.dp

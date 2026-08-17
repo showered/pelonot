@@ -13,6 +13,7 @@ import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorStatus
 import com.pelonot.data.sensor.SensorUnavailableReason
 import com.pelonot.data.service.RideSnapshot
+import com.pelonot.domain.coach.RideCaption
 import com.pelonot.data.service.WorkoutService
 import com.pelonot.data.service.WorkoutSession
 import com.pelonot.data.service.WorkoutState
@@ -24,6 +25,7 @@ import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +49,24 @@ data class RideUiState(
      * never appeared".
      */
     val overlayPermissionNeeded: Boolean = false,
+    /**
+     * Whether the rider asked for the coach's cues on screen (11.8.4).
+     *
+     * Read by the screen as well as [caption] because the two answer different
+     * questions: this one decides whether the band **exists**, and it has to be
+     * askable while there is nothing to say. A band that appeared with its first
+     * sentence would move every number under it by a line, on a screen whose
+     * last two reports were both about things overflowing it.
+     */
+    val captionsEnabled: Boolean = false,
+    /**
+     * What the coach last said, or null (11.8.4).
+     *
+     * Null whenever the rider has captions off as well as when there is nothing
+     * to say, so a stale sentence cannot survive the switch being turned off
+     * mid-ride.
+     */
+    val caption: RideCaption? = null,
     /**
      * Set while the rider is away in Android's overlay settings answering it
      * (11.6.14).
@@ -212,6 +232,18 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             serviceJobs += viewModelScope.launch {
                 workoutService.workoutState.collect { state ->
                     _uiState.update { it.copy(workoutState = state) }
+                }
+            }
+            serviceJobs += viewModelScope.launch {
+                // 11.8.4, and the preference is applied here rather than at the
+                // draw: off means the state never carries one.
+                combine(
+                    workoutService.rideCaption,
+                    settingsRepository.settings
+                ) { caption, settings ->
+                    settings.rideCaptionsEnabled to caption?.takeIf { settings.rideCaptionsEnabled }
+                }.collect { (enabled, caption) ->
+                    _uiState.update { it.copy(captionsEnabled = enabled, caption = caption) }
                 }
             }
             serviceJobs += viewModelScope.launch {

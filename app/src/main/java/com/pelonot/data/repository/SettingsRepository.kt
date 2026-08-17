@@ -53,6 +53,21 @@ data class AppSettings(
      */
     val coachVolume: Float = DEFAULT_COACH_VOLUME,
 
+    /**
+     * Whether the coach's cues are also printed on the ride screen (11.8.4).
+     *
+     * **Off by default, and the reason is the screen rather than the feature.**
+     * A text line that changes during a ride is the most attention-taking thing
+     * that can be put in front of somebody at threshold, and this screen has
+     * been decluttered twice on the owner's own reports. A rider who wants it
+     * is a rider who has a reason — the tablet is muted, the film is loud, they
+     * cannot hear it — and that rider will find the switch immediately below
+     * the coach's own volume, where it deliberately sits.
+     *
+     * Never reaches the overlay whatever this says (24.1.5).
+     */
+    val rideCaptionsEnabled: Boolean = false,
+
     /** Whether the floating HUD is raised over other apps during a ride. */
     val hudEnabled: Boolean = true,
 
@@ -170,6 +185,7 @@ class SettingsRepository(context: Context) {
                 coachStyle = CoachStyle.fromName(prefs[Keys.COACH_STYLE]),
                 coachVolume = (prefs[Keys.COACH_VOLUME] ?: AppSettings.DEFAULT_COACH_VOLUME)
                     .coerceIn(0f, 1f),
+                rideCaptionsEnabled = prefs[Keys.RIDE_CAPTIONS] ?: false,
                 hudEnabled = prefs[Keys.HUD_ENABLED] ?: true,
                 hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK]),
                 hudOpacity = (prefs[Keys.HUD_OPACITY] ?: HudOpacity.DEFAULT).coerceIn(0f, 1f),
@@ -207,6 +223,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setCoachVolume(volume: Float) = edit {
         it[Keys.COACH_VOLUME] = volume.coerceIn(0f, 1f)
+    }
+
+    suspend fun setRideCaptionsEnabled(enabled: Boolean) = edit {
+        it[Keys.RIDE_CAPTIONS] = enabled
     }
 
     suspend fun setHudEnabled(enabled: Boolean) = edit { it[Keys.HUD_ENABLED] = enabled }
@@ -298,6 +318,7 @@ class SettingsRepository(context: Context) {
         val CLOUD_SYNC_ENABLED = booleanPreferencesKey("cloud_sync_enabled")
         val COACH_STYLE = stringPreferencesKey("coach_style")
         val COACH_VOLUME = floatPreferencesKey("coach_volume")
+        val RIDE_CAPTIONS = booleanPreferencesKey("ride_captions")
         val HUD_ENABLED = booleanPreferencesKey("hud_enabled")
         val HUD_DOCK = stringPreferencesKey("hud_dock")
         val HUD_OPACITY = floatPreferencesKey("hud_opacity")
