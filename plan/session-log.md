@@ -6,6 +6,115 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 16 August 2026 (sixty-first sitting): an FTP that can go down
+
+**The inbox was empty and the top of *What to do next* was mostly not work** —
+items 0 through 3 need the owner, the mailer or a real phone — so the pick was
+made on merit from further down: **7.11, auto-FTP that can go *down*.** It is
+an inbox item in the owner's own words, it is what *What to do next* itself
+names as one of the two honest answers to **20.6.7** (*"the goal should be FTP,
+not lvl"*), and it is the only large item left that needs neither the bike nor
+a decision. **7.11.1 through 7.11.5 are built and watched; three new items are
+open underneath them.**
+
+**The owner's note, verbatim:** *"Can it go down? It should go down. If your BPM
+is unusually high and/or you mark a workout as 'really difficult' and despite
+this your scores are going down, it should probably adjust downwards too?"* The
+answer was no, by construction rather than by omission: the breakthrough gate is
+`proposal >= currentFtp × 1.02`, a number above the current FTP by definition,
+so a computed peak *below* it failed the gate and produced nothing.
+
+**The item as written expected a new estimator, and every such estimator needs
+the calibration 7.11.1 warns against in its own last sentence.** *Heart rate at
+a given power has drifted up by some margin* — and the margin is exactly the
+guessed threshold the item forbids. **The rule inverts that, and inverting it is
+what made 7.11 buildable at all.** The number a downward proposal offers is the
+*same measurement the upward path already makes*, `P₂₀ × 0.95` on measured
+watts, so it is never modelled, never a percentage step, and always something
+the rider has demonstrably ridden. What 7.11 adds is a rule about **when that
+measurement is allowed to be believed**.
+
+**Three rides, all short, all worked at — and the corroboration is the owner's
+own sentence rather than a physiological threshold.** A twenty-minute peak below
+a rider's FTP is the ordinary result of a recovery spin; it happens constantly
+and says nothing. So a ride only speaks when something says the rider was
+trying: with a heart rate, the measurement leads and the rider's own answer can
+only *veto* — *Comfortable* discards the ride however high the trace went — and
+with no heart rate at all, only *Everything I had* counts, which is *"really
+difficult"* word for word. **A ride at which the rider was not working is
+skipped, not counted against**: an easy spin is silent, and treating silence as
+either evidence or counter-evidence is wrong.
+
+**And it needed no migration, which is the second reason it landed.**
+`workout_power_bests` has held each measured ride's twenty-minute effort since
+16.3.3a, computed at finalise — the evidence was already on disk in the one form
+23.4's trimmer cannot falsify. Recomputing it from `workout_metrics` is
+precisely what 23.4.2 forbids: **a condensed ride has real rows in that table**,
+so the scan would return a number rather than nothing, and the number would be
+wrong. Two instrumented tests pin that from both sides — a ride whose stored
+effort is missing contributes nothing though its samples remain, and a ride
+whose samples are gone still speaks through the effort it recorded.
+
+**7.11.5's suggested name is the one name that could not be used.**
+`AutoDecline` sits two identifiers away from `declineFtpProposal` and
+`workouts.ftp_proposal_declined`, both of which spend that word on *the rider
+saying no*, so it would read as "the app declined" on every screen naming a
+source. It is `AutoReduction`. Adding the case **failed the build in exactly the
+three places that had to learn new words** — Settings, *Your FTP* and the
+dashboard — which is 5.8's argument for a typed enum cashing itself in again.
+
+**The dialog is where most of the design went, and the reason not to copy
+`FtpBreakthroughDialog` is sharper than "that dialog is poor".** Its shortcuts
+all point one way: *"Your fitness has improved!"* as fact, no mention of the
+twenty minutes it read or the provenance that is the whole gate, and `Keep
+Current` against `Update FTP` — two buttons neither of which names a number. **A
+rider handed good news on thin reasoning loses nothing. Reverse the direction
+and every one of those is a defect.** So this one shows the three rides with
+their dates and what each measures, states nothing as a verdict — the claim is
+about the rides, and a rider's FTP is *a setting that has become wrong for
+them*, which is smaller and truer than saying they have got worse — and names
+the number on both buttons.
+
+**The cooldown is the part that matters most and the upward path has never had
+one.** Keeping the number is also the dismiss, because a tap outside must
+resolve to the safe direction, and the write it makes restarts the evidence
+window: three fresh hard rides before the question can be asked again. Being
+told the same thing about your body after every ride is the failure this feature
+most has to avoid. **7.11.8 is the asymmetry that leaves**, written down rather
+than quietly made symmetrical.
+
+**Watched on the tablet AVD with a negative control, which is the half worth
+having.** The live gate excludes every ride an AVD can produce, so three
+measured 21-minute rides were built for Alex in `sqlite3` — and then **the app
+computed their twenty-minute efforts itself**, off real samples, through the
+backfill *Your FTP* already runs: 176, 186, 180 W. The dialog offered `Lower to
+177 W` against `Keep 190 W`, and accepting wrote 177 as `AutoReduction` tied to
+**ftp-down-2** — the strongest evidence ride, *not* the ride that had just
+finished, which is the trap the accept path is written against. Then the control:
+a second ride, the same three rides still on disk, **and no dialog**. Reverting
+wrote `AutoBreakthroughReverted`, drew a hollow mark where the reduction's is
+filled, and kept all three rows. **831 JVM tests and 9 new instrumented tests, 0
+failures.**
+
+**Phase 7 gains three items and five ticks — 31 of 36.** The three are
+deliberately open and one of them is the honest limit: **7.11.7** is the single
+constant still guessed, 5% against the upward path's 2%, with the measurement
+that would settle it — the spread of one rider's own twenty-minute efforts,
+which `workout_power_bests` can answer **per rider**, the same move 2.2a made
+for the power curve. **7.11.9** is one look rather than a change: a `-13` chip
+in amber on a change the app itself made, on a screen where amber means *off
+target*.
+
+**The seam this sitting found is that the two directions are not one feature
+with a sign.** They read different evidence, over different spans, at different
+bars, with different consequences for being wrong — and the moment they were
+treated as one thing, every honest property of the upward path (one ride is
+enough, no cooldown needed, the copy may celebrate) became a defect pointed at
+somebody's body. Same family as *absent is a claim*: the symmetry is in the
+arithmetic and nowhere else.
+
+---
+
 ## 16 August 2026 (sixtieth sitting): the board's row, from the owner's own picture
 
 **The inbox was empty and the top of *What to do next* named the work**, which

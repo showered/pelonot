@@ -584,10 +584,79 @@ asks less about the person, which is a rare combination and worth taking.
       the same card, and a screen reader announces both. Repeating it inside the
       sentence is Phase 26's* less is more *broken for a claim already on the
       screen.*
-- [ ] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
+- [x] **21.4.3** Weekly time-in-zone as a trend (16.3). This is the number that
       actually drives a training decision — "how much easy riding did I do this
       month" — and it is the honest answer to what the dashboard's progress
       section is reaching for (22.1)
+
+      ***Done in the sixty-third sitting, as one card on *Your riding* —* Easy
+      and hard *— and the item's own first word is the thing that had gone
+      stale.* **"Weekly" was written before 22.5**, *the owner's note that a week
+      is the wrong window for somebody who rides once of them; at that cadence a
+      weekly intensity mix is one ride's shape drawn as a trend, which is the
+      defect 22.5.1 exists to have removed. It is the same rolling 30 days the
+      card at the top of the screen already reports, and*
+      `RidingHistoryBuilder.isInWindow` *is one predicate now rather than two, so
+      the two cards cannot disagree about which rides are in it.*
+
+      ***It is power's zones and not the heart's, which is worth stating because
+      this item sits in a heart-rate phase.*** *Every ride has power and a
+      minority have a strap, so a 30-day heart summary would be 21.4.1's coverage
+      trap at thirty times the scale — a shape drawn from the two rides somebody
+      happened to wear a strap for, presented as a month. **21.4.6** is the
+      heart's version and the condition it has to meet.*
+
+      ***Three rules decide where a ride's seconds come from, and none of them is
+      new.*** *A condensed ride is read from* `distributions_json` *and never
+      recounted (23.4.2) — its rows are still there, so a scan returns a wrong
+      number rather than nothing. A ride is counted against the FTP it was
+      **ridden at** (7.8), and a ride with no FTP on the row is **not counted**
+      rather than divided by today's number: unlike ride detail there is no room
+      to caveat one ride inside a month. And a ride nobody can count stays in the
+      denominator and is said out loud —* "from 6 of 13 rides" *— which is
+      21.4.1's coverage caption a level up.*
+
+      ***The card observes and does not prescribe***, *which is 21.4.4 obeyed
+      rather than quoted. There is a famous target here — polarised 80-20 — and
+      putting it on the card would turn every sentence into a mark out of ten for
+      a rider who never asked to be marked.* **Easy** *is Z1–Z2 and* **hard** *is
+      Z4 and above, the second of those borrowed from* `EffortAgainstPlan` *so
+      the two features cannot come to mean different things by the same word. Z3
+      is in neither number, is visible in the bar, and is not named.*
+
+      ***Watched on the tablet AVD on two profiles as each other's controls, and
+      checked against the database rather than against the screenshot.*** *Alex:*
+      "Time in zone across the last 30 days · from 6 of 13 rides" *and* "1 hour 8
+      minutes ridden: 4% easy (Z1–Z2) and 95% hard (Z4 and above)". *The same
+      window counted in* `sqlite3` *by hand gives Z1 107 · Z2 74 · Z3 28 · Z4
+      3809 · Z5 26 · Z6 28 · Z7 21, against the card's 106 / 74 / 29 / 3809 / 26
+      / 28 / 21 — **identical totals, with two seconds sitting one band over**,
+      which is the whole-watt rounding the query documents rather than a
+      disagreement. Then a real 5:52 ride was finished and the card moved to* "7
+      of 14" *without leaving the screen, which is the flow's own design: it
+      observes* `workouts` *and not* `workout_metrics`, *so it redraws when a
+      ride finishes rather than a few times a minute while one is ridden. Robin,
+      the control: 3 of 12 rides, 12 minutes, 46% easy — a completely different
+      shape off the same code.*
+- [ ] **21.4.5** **The 30-day mix on the dashboard is deliberately not built.**
+      *Your riding* is one tap from the card that opens it, and the dashboard
+      spent two whole items (22.8, 22.9) getting its height back down from 993 dp
+      of content in a 664 dp viewport. A fourth card there would spend that
+      again on the least urgent of the three questions — *how hard* is something
+      a rider asks about a month, not about tonight. If it ever goes there it is
+      **one line**, not the bar and the legend
+- [ ] **21.4.6** **The heart's own version of 21.4.3, and the condition it has
+      to meet first.** Time in HR zone across the window is the more honest
+      answer to *how much easy riding did I do* — a heart rate is a better
+      ceiling than an uncalibrated power model (21.5) — and it is unbuildable
+      until enough rides carry a strap. The rule it needs is 21.4.1's, applied to
+      a set of rides rather than to one: the counts divide the time a heart rate
+      was **reported**, and the card says how many of the window's rides that
+      was. A month drawn from the two rides somebody wore a strap for, captioned
+      as a month, is the defect; the same month captioned *from 2 of 9 rides* is
+      not. Note the denominator moves too — `workouts.max_hr_bpm` is the ride's
+      own (21.2.3), so the same three-rule shape 21.4.3 uses for the FTP applies
+      here for the maximum
 - [ ] **21.4.4** Be careful what a zone summary is allowed to imply. Heart rate
       **lags effort by 30–60 seconds**, drifts upward across a long ride at
       constant power (cardiac drift), and moves with heat, sleep, caffeine and

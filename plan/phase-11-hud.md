@@ -416,7 +416,7 @@ less of the screen and less of the attention.
       2 dp of transparent height stays so the strip does not jump when the alert
       thickens it to 6.*
 
-- [ ] **11.1b.11** **Collapsed down a side, the strip is far wider than it needs
+- [x] **11.1b.11** **Collapsed down a side, the strip is far wider than it needs
       to be — the owner's note, 17 August 2026.** Verbatim: *"Compact mode when
       on left/right needs some work. Should be much more compact width-wise. i.e.
       the play/pause/end buttons should be aligned vertically."* Written the
@@ -450,13 +450,49 @@ less of the screen and less of the attention.
       **expanding is a jump** unless something is done about it — worth looking
       at rather than assuming, because the strip is the thing a rider glances at
       while pedalling
-- [ ] **11.1b.11a** **What the collapsed column shows is a separate question
+
+      ***Done in the sixty-third sitting, and watched on the tablet AVD with a
+      ride running: Right dock expanded, collapsed, expanded again, with the
+      horizontal band as the control.*** *132 dp against 244, and the third of
+      the three things above turned out to need nothing: the window is resized
+      by the same `updateViewLayout` a re-dock uses and the strip simply appears
+      at its new width, which is what a rider gets today when they collapse a
+      horizontal band. Nothing was added to smooth it, because a transition on a
+      window the rider has just asked to get out of the way is a thing to look at
+      rather than a thing to have.*
+
+      ***Two defects came out of looking at the tablet rather than the diff, and
+      both are the same one this component has now had three times.***
+      `143 BPM` *drew as* `143 BP` *with a lone* `M` *underneath. The two answers
+      this project allows are* smaller *and* wrapped, *never* cut — *and here
+      neither was right, because what did not fit was a **pair** rather than a
+      word. So the pair stacks: the unit keeps its own line at full size, and the
+      width of the strip stops depending on how many characters a unit happens to
+      have, which is also what stops a rider with larger system text reopening
+      it.* **The unit was never a candidate for dropping** *(11.1b.11a).*
+
+      *And the clock wrapped at* `03:14` *having fitted a minute earlier at*
+      `01:51` — **because a `1` is half the width of a `3`**. *A layout whose
+      correctness depends on which digits the ride happens to be showing is the
+      worst version of this defect, because it passes every check that is not
+      made at the wrong minute. It is* `ShrinkToFitText` *now, measured against
+      the widest string of its own shape, so the type can step down once at the
+      hour and never pulses as the seconds turn over.*
+- [x] **11.1b.11a** **What the collapsed column shows is a separate question
       from how wide it is, and it is not answered here.** A narrow strip cannot
       hold `188` and `BPM` side by side four times over, so if the width goes far
       enough the readouts have to stack their units or lose them. **The unit is
       not the thing to drop** — Phase 26 puts the ride surfaces in the small set
       of places a unit belongs, because that is where a measurement is actually
       being read. Written down so that a later squeeze does not quietly take one
+
+      ***Answered in the same sitting, because 11.1b.11's first build walked
+      straight into it.*** *The readouts stack their units rather than losing
+      them, and the answer generalises: the thing that runs out of room on a
+      narrow strip is the **pair**, so the pair gets a second line. What is left
+      open is only whether four readouts is the right number for a collapsed
+      column at all — that is 11.1b.3's territory (a resizable strip) and not
+      this item's.*
 
 ### 11.2 What the strip is still missing
 - [x] **11.2.1** Resistance, with a prescribed range derived by inverting `PowerModel` at the middle of the cadence target. Shown next to cadence — the two inputs together, then the two outputs. Reports *no* band rather than a clamped percentage when the target is out of the knob's reach at that cadence, because the honest instruction there is "spin faster".
