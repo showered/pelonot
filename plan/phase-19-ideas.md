@@ -422,6 +422,19 @@ has simply never been written down.
       gone stale once**, for exactly 17.15.2's reason: a generator nobody runs
       is worse than a page somebody rewrites
 
+      ***It has now gone stale, and the condition above is met.*** In the
+      sixty-fourth sitting `STATUS.md` was seven sittings behind: **795 JVM
+      tests where the build said 858**, an instrumented figure attributed to
+      the forty-fourth sitting, and a box count of 618 of 837 against a real
+      651 of 863. **The three numbers are the whole of what had drifted** —
+      every *claim* on the page was stale only in the ordinary way, by
+      omission, and none of it was false. That sharpens what to build: **the
+      script emits the measurements, not the prose**, and CI (19.1.4) fails on
+      a figure that no longer matches. The measurements have been refreshed by
+      hand and the header now says out loud how far behind its own prose is,
+      which is the cheap half of the same idea and is what an un-regenerated
+      page should say about itself.
+
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
 - [ ] **19.2.2** **Community class library** — share and import classes. `class_templates` is already a cloud table and already world-readable

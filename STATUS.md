@@ -1,13 +1,20 @@
 # Where Pelonot is
 
-**Written 4 August 2026, updated 16 August (fifty-seventh sitting).**
-Measured, not estimated: `assembleDebug` passes, **795 JVM tests, 0
-failures**, the 21 migration tests green including 20 → 21, and the
-whole 113-test instrumented suite last run green in the forty-fourth sitting.
-**618 of 837 plan boxes** are ticked — counted as
+**Written 4 August 2026, measurements refreshed 17 August (sixty-fourth
+sitting).** Measured, not estimated: `assembleDebug` passes, **858 JVM tests, 0
+failures**, and the **whole 130-test instrumented suite green in this sitting**,
+migrations included. **651 of 863 plan boxes** are ticked — counted as
 `grep -c '^- \[x\]' PLAN.md plan/*.md`, which is worth writing down because the
 figure this page carried before (*588 of 805*) was counted some other way and
-had drifted, across 28 phases. It is a summary —
+had drifted, across 28 phases.
+
+> **The prose below is seven sittings behind these numbers**, and that is
+> 19.1.7's third rule showing its cost rather than a lapse: this page is
+> *regenerated*, not maintained, so a sitting that only moves the measurements
+> moves the measurements. **The file has now gone stale once, which is exactly
+> the condition 19.1.7a set** before a script that emits these figures is worth
+> building. Sittings 58–64 are in [PLAN.md](PLAN.md) and are not summarised
+> here yet. It is a summary —
 every claim below belongs to a phase file and
 names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
 [plan/](plan/). Nothing is decided here.
@@ -331,8 +338,9 @@ for.
 ### Nice to have, and honestly labelled as such
 
 Most of Phase 17 beyond what is hosted, most of Phase 18 beyond the leaderboard,
-the rest of avatars (20.2.4–20.2.8 — the built-in set is done and drawn on three
-screens), the Material Expressive cosmetic backlog (~30 items in 8.11), a
+the rest of avatars (20.2.6a–20.2.8 — the built-in set and a photograph from
+the gallery are both done and drawn on three screens; what is left is the
+camera, the leaderboard and the cloud), the Material Expressive cosmetic backlog (~30 items in 8.11), a
 custom class builder (19.2.1), a guided FTP test (19.2.3), Strava upload
 (19.2.4), and localisation. None of it is load-bearing: `plan/fundamentals.md`
 is the standing argument for why, and it has been right so far.
