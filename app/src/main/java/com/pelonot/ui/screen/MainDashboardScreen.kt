@@ -14,6 +14,7 @@ import com.pelonot.domain.progress.RidingWindow
 import com.pelonot.data.local.entity.FtpChangeSource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Path
@@ -82,6 +83,7 @@ import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.HouseholdPanelCard
 import com.pelonot.ui.components.RideDaysCard
+import com.pelonot.ui.viewmodel.StartingPoint
 import com.pelonot.ui.components.RiderScore
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.ui.components.RiderAvatar
@@ -157,6 +159,12 @@ fun MainDashboardScreen(
     suggestionProfile: ClassProfile? = null,
     /** How many classes there are to browse, for the door beside the offer. */
     classCount: Int? = null,
+    /**
+     * A few more places to start (22.9.5), and **empty for anybody who has
+     * ridden** — the state that fills this screen and the state this row exists
+     * for are the same state read two ways.
+     */
+    startingPoints: List<StartingPoint> = emptyList(),
     /** Opens the suggested class's own screen — never starts a ride (22.7.2). */
     onRideSuggestion: (String) -> Unit = {},
     onHistory: () -> Unit,
@@ -348,6 +356,11 @@ fun MainDashboardScreen(
                 // panel nobody has. Left before right keeps the order and puts
                 // both above the fold, and it is what fills the rail rather
                 // than a card invented to fill it (22.8.6).
+                // One expression of *is there anybody else on this bike*, read
+                // twice: the section fills its rail with them, and the row below
+                // only exists when neither is true (22.9.5).
+                val household = householdRecent.takeIf { it.size >= 2 }
+
                 ProgressSection(
                     stats = stats,
                     riding = ridingHistory,
@@ -359,9 +372,49 @@ fun MainDashboardScreen(
                     // so the card does not invite a tap that lands on an empty
                     // screen. Nothing is disabled — it simply is not a door.
                     onFtpProgress = onFtpProgress.takeIf { ftpTrend.current != null },
-                    household = householdRecent.takeIf { it.size >= 2 },
+                    household = household,
                     youId = youId
                 )
+
+                // ── 4️⃣ Somewhere to start, or an honest nothing ─────────
+                // 22.9.5, and it draws for one rider: the one with nothing
+                // behind them, whose dashboard was a greeting, three cards and
+                // 280 dp of nothing. Everything above this line is a summary of
+                // riding they have not done, so the room is filled with the one
+                // thing this tablet holds plenty of at ride zero — the library.
+                //
+                // **Below the fold's other content rather than beside it**: the
+                // primary action must never leave the fold (22.9.3), and this
+                // is a row a rider reads *after* deciding the offer above is not
+                // the one they want.
+                // **Only where the space actually is.** The gate is the same
+                // condition `ProgressSection` uses for its honest-empty branch,
+                // and it has to be: a never-ridden rider on a bike with a
+                // household already has a full rail, and adding three more
+                // cards under it puts the screen back over the fold — 22.9.3's
+                // ceiling, and 22.8's note, undone by the answer to 22.9's.
+                if (!stats.hasRidden && household == null) {
+                    Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
+                    if (startingPoints.isNotEmpty()) {
+                        StartingPointsSection(
+                            starters = startingPoints,
+                            onRide = onRideSuggestion
+                        )
+                    } else {
+                        // No library to offer — a fresh install whose seed has
+                        // not landed. The honest empty state this section used
+                        // to draw unconditionally, kept for the one case where
+                        // the app genuinely has nothing to put here. It went
+                        // when the row above arrived: *"your riding will appear
+                        // here"* and *"somewhere to start"* are two lines of
+                        // prose in a row, and only one of them is a door.
+                        Text(
+                            text = "No rides recorded yet — your riding will appear here.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
             }
@@ -1014,17 +1067,12 @@ private fun ProgressSection(
     household: List<HouseholdRider>?,
     youId: Int?
 ) {
-    if (!stats.hasRidden && household == null) {
-        // An honest empty state. This section used to show "12.5 kJ" today
-        // and "8.3 kJ" last ride as hardcoded literals, on a device that
-        // had never recorded a workout.
-        Text(
-            text = "No rides recorded yet — your riding will appear here.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
-        return
-    }
+    // Nothing of the rider's own and nobody else on the bike. **The sentence
+    // that used to be here is now the caller's** (22.9.5): it is one line of
+    // prose immediately above another, and which of the two is worth saying
+    // depends on whether the caller has somewhere to send them — which this
+    // section cannot see.
+    if (!stats.hasRidden && household == null) return
 
     // 22.1.2 took a third card away from this set. *Today's Output* and
     // *Recent Ride* were both kilojoule totals on the same axis, and on a rider
@@ -1493,6 +1541,109 @@ private fun FtpSparkline(trend: FtpTrend, color: Color, modifier: Modifier = Mod
  * number for "this screen has room for more than one thing", not a different
  * guess per surface.
  */
+// =========================================================================
+// Somewhere to start (22.9.5)
+// =========================================================================
+/**
+ * A short row of classes for a rider with no history at all.
+ *
+ * **The heading is the question rather than a label.** Every other section on
+ * this screen dropped its heading in 22.8.2 because the cards said what they
+ * were; three class cards in a row do not say *why these three*, and *"Somewhere
+ * to start"* is the only thing on this screen addressed to somebody who has
+ * never ridden. It is four words and it earns them.
+ *
+ * **No reason line under each title.** The offer card above says *"a good place
+ * to start"* because it is choosing one class out of 72 and owes an
+ * explanation; these three are a range of lengths, and *new to you* under every
+ * one of them — on a screen where every class is new — would be a line written
+ * to fill a line (Phase 26).
+ *
+ * `WideGrid` rather than a `Row` for the same reason the glance cards use it: a
+ * narrow screen gets a column instead of three 130 dp slivers (22.8.4).
+ */
+@Composable
+private fun StartingPointsSection(
+    starters: List<StartingPoint>,
+    onRide: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Somewhere to start",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.semantics { heading() }
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+        WideGrid(items = starters, minCellWidth = 320.dp, equalHeightRows = true) { starter ->
+            StartingPointCard(starter = starter, onClick = { onRide(starter.classId) })
+        }
+    }
+}
+
+/**
+ * One of them: what it is called, how long it is, and what it looks like.
+ *
+ * **A quieter card than the offer above it**, on `surfaceContainer` rather than
+ * `primaryContainer`. There is one primary action on this screen (22.8.1) and
+ * three more cards in the same teal would be four things shouting the same
+ * loudness — which is 22.8's *"stretched"* arriving as colour instead of space.
+ *
+ * The shape is drawn at 56 dp rather than the offer's 72: it is the same
+ * picture doing a smaller job, telling a rider that a 30-minute endurance class
+ * is flat where the 20-minute one is not.
+ */
+@Composable
+private fun StartingPointCard(
+    starter: StartingPoint,
+    onClick: () -> Unit
+) {
+    val detail = "${starter.minutes} min · ${starter.category}"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "Ride ${starter.title}, $detail. Opens the class."
+            },
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large)
+        ) {
+            Text(
+                text = starter.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (starter.profile.blocks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
+                ClassProfileChart(
+                    profile = starter.profile,
+                    height = 56.dp,
+                    showClock = false
+                )
+            }
+        }
+    }
+}
+
 private val CARDS_ABREAST_BREAKPOINT = 900.dp
 
 /**

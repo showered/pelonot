@@ -136,6 +136,21 @@ data class AppUiState(
      */
     val suggestionProfile: ClassProfile? = null,
     /**
+     * A few more places to start, for a rider with nothing behind them
+     * (22.9.5).
+     *
+     * **Empty for everybody else**, and that is the gate rather than a
+     * coincidence: this exists to fill the fold on the one screen that cannot
+     * fill itself, and a rider with history has three glance cards and a rail
+     * in the same space. `ClassToRide.startingPoints` says why the row is a
+     * choice about *length* and not the three shortest classes.
+     *
+     * Each carries its own shape, resolved from its own id at the same moment
+     * for the same reason [suggestionProfile] is: a card naming one class and
+     * drawing another looks like a working feature.
+     */
+    val startingPoints: List<StartingPoint> = emptyList(),
+    /**
      * How much riding a backup would be protecting (PLAN 23.3.1). Only *due*
      * once ten rides have gone by unprotected, and the dashboard draws nothing
      * until then.
@@ -420,6 +435,28 @@ class AppViewModel(
                 classes.firstOrNull { it.id == s.classId }
                     ?.let { ClassProfile.of(it.intervals) }
             },
+            // 22.9.5, and the condition is the same one that decides the
+            // honest-empty branch on the dashboard: nothing ridden. Computing
+            // it for a rider with history would be work whose only consumer
+            // is a branch they never take.
+            startingPoints = if (dashboard.riderRides.recent.isEmpty()) {
+                ClassToRide.startingPoints(
+                    library = classes.map { it.toSuggestable() },
+                    exclude = suggested?.classId
+                ).mapNotNull { starter ->
+                    classes.firstOrNull { it.id == starter.id }?.let { plan ->
+                        StartingPoint(
+                            classId = starter.id,
+                            title = starter.title,
+                            category = starter.category,
+                            durationSec = starter.durationSec,
+                            profile = ClassProfile.of(plan.intervals)
+                        )
+                    }
+                }
+            } else {
+                emptyList()
+            },
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active
@@ -665,6 +702,27 @@ class AppViewModel(
  * The mapping lives here rather than beside `ClassPlan` so that nothing in the
  * data layer has to know the rule exists.
  */
+/**
+ * One of the *somewhere to start* classes on a first-run dashboard (22.9.5).
+ *
+ * Deliberately not `ClassSuggestion`: that type carries a [ClassSuggestion
+ * .Reason], and the reason is the part that has to be true. There is no reason
+ * to give here beyond *the library has one this long*, and inventing one — *new
+ * to you*, on a screen where every class is — would be a claim made to fill a
+ * line.
+ */
+data class StartingPoint(
+    val classId: String,
+    val title: String,
+    val category: String,
+    val durationSec: Int,
+    /** The class's own shape, or empty-blocked when its intervals would not
+     * decode. Never fetched twice — see `AppUiState.suggestionProfile`. */
+    val profile: ClassProfile
+) {
+    val minutes: Int get() = (durationSec + 30) / 60
+}
+
 private fun ClassPlan.toSuggestable() = SuggestableClass(
     id = id,
     title = title,

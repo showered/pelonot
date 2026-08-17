@@ -238,4 +238,103 @@ class ClassToRideTest {
         // blocks could not be decoded asks for nothing, which is not hard.
         assertEquals("BAD-01", ClassToRide.suggest(broken, rides, now)?.classId)
     }
+
+    // =====================================================================
+    // 22.9.5 — somewhere to start, for a rider with nothing behind them
+    // =====================================================================
+
+    /**
+     * The row is a choice about **time**, which is the only thing a rider with
+     * no history can answer about themselves. Endurance sorted and cut at three
+     * here would be 20, 30, 45 — which happens to be right for this library and
+     * is not what the rule does; the case below is the one that separates them.
+     */
+    @Test
+    fun `starting points span the range of lengths rather than the shortest`() {
+        val long = listOf(
+            klass("END-01", "Endurance", 15, 3),
+            klass("END-02", "Endurance", 20, 3),
+            klass("END-03", "Endurance", 25, 3),
+            klass("END-04", "Endurance", 30, 3),
+            klass("END-05", "Endurance", 45, 3),
+            klass("END-06", "Endurance", 60, 3)
+        )
+
+        val starters = ClassToRide.startingPoints(long)
+
+        // Shortest, middle and longest — not 15, 20, 25.
+        assertEquals(listOf(15, 30, 60), starters.map { it.durationSec / 60 })
+    }
+
+    /**
+     * Two classes of the same length ask a rider with no history to choose on a
+     * distinction they cannot make yet.
+     */
+    @Test
+    fun `starting points never offer two classes of the same length`() {
+        val starters = ClassToRide.startingPoints(library)
+
+        assertEquals(starters.map { it.durationSec }.distinct(), starters.map { it.durationSec })
+    }
+
+    /** Endurance, for [suggest]'s own reason: a recovery class follows something. */
+    @Test
+    fun `starting points come from the starter category`() {
+        val starters = ClassToRide.startingPoints(library)
+
+        assertTrue(starters.all { it.category == "Endurance" })
+    }
+
+    /**
+     * The class the offer card above is already naming. One screen saying *ride
+     * this* and *somewhere to start* about the same class is the screen
+     * disagreeing with itself.
+     */
+    @Test
+    fun `the class already being offered is left out`() {
+        val offered = ClassToRide.suggest(library, RiderRides(), now)!!
+
+        val starters = ClassToRide.startingPoints(library, exclude = offered.classId)
+
+        assertTrue(starters.none { it.id == offered.classId })
+    }
+
+    /** Fewer lengths than places to fill is a shorter row, not a repeated one. */
+    @Test
+    fun `a library with fewer lengths than places gives a shorter row`() {
+        val two = listOf(
+            klass("END-01", "Endurance", 20, 3),
+            klass("END-02", "Endurance", 30, 3),
+            klass("END-03", "Endurance", 30, 3)
+        )
+
+        assertEquals(listOf("END-01", "END-02"), ClassToRide.startingPoints(two).map { it.id })
+    }
+
+    /** The same input twice, for the same reason [suggest] is deterministic. */
+    @Test
+    fun `starting points are a function of the library`() {
+        assertEquals(
+            ClassToRide.startingPoints(library),
+            ClassToRide.startingPoints(library.reversed())
+        )
+    }
+
+    /** No library at all — the state a fresh install is in before the seed lands. */
+    @Test
+    fun `an empty library has nowhere to start`() {
+        assertTrue(ClassToRide.startingPoints(emptyList()).isEmpty())
+    }
+
+    /**
+     * A library with no Endurance in it at all falls back to the whole of it
+     * rather than to nothing — the same `ifEmpty` [suggest] uses, and the same
+     * reason: a row with something in it beats a hole.
+     */
+    @Test
+    fun `a library with no starter category falls back to all of it`() {
+        val hard = library.filter { it.category != "Endurance" }
+
+        assertTrue(ClassToRide.startingPoints(hard).isNotEmpty())
+    }
 }

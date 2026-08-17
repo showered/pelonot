@@ -181,6 +181,15 @@ object ClassToRide {
     private const val STARTER_CATEGORY = "Endurance"
 
     /**
+     * Three, and it is a judgement about the screen rather than about riding.
+     *
+     * Two is not a range and four is a browse — and the library door is already
+     * on this screen for anybody who wants one. 22.9.3's ceiling is the fold,
+     * so the row that fills it has to stop somewhere on its own.
+     */
+    private const val STARTING_POINTS = 3
+
+    /**
      * @param nowMs read once by the caller. This is a decision, not a clock:
      *   nobody's suggestion should change under them while they look at it.
      * @return null only when there is no library at all — a class is always
@@ -254,6 +263,71 @@ object ClassToRide {
             else -> ClassSuggestion.Reason.NotSince(ridden.getValue(choice.id).lastRiddenAtMs)
         }
         return choice.toSuggestion(reason)
+    }
+
+    /**
+     * A few more places to start, for the one rider the dashboard cannot fill
+     * a screen for (PLAN 22.9.5).
+     *
+     * **The question it answers is *how long have you got*, and that is the
+     * only question a rider with no history can answer about themselves.**
+     * Everything else this file decides is read off the rider's own riding —
+     * the length they usually ride, the classes they have ridden least, whether
+     * yesterday was hard — and a rider at ride zero has none of it. What the app
+     * does have at ride zero is 72 authored classes, so the honest way to fill
+     * a first-run screen is with more of the library rather than with a card
+     * about the rider (22.2.3, 22.9.1).
+     *
+     * **Spread across the range rather than the [count] shortest**, which is
+     * the whole of why this is not two lines. Endurance classes sorted by
+     * length and cut at three offers 15, 20 and 20 minutes — three answers to a
+     * question nobody asked. Taking the shortest, the longest and the middle
+     * makes the row a choice about *time*, which is the choice a first-timer is
+     * actually making.
+     *
+     * One class per distinct length, because two 20-minute classes side by side
+     * ask a rider with no history to pick on a distinction they cannot yet
+     * make. And [exclude] is the class the primary card is already offering:
+     * the same class named twice on one screen is the screen disagreeing with
+     * itself about what to do next.
+     *
+     * Empty for anybody with a ride behind them — the caller decides that, and
+     * the dashboard's rule is the same one that gates the honest-empty branch.
+     * Deterministic for the same reason [suggest] is.
+     */
+    fun startingPoints(
+        library: List<SuggestableClass>,
+        exclude: String? = null,
+        count: Int = STARTING_POINTS
+    ): List<SuggestableClass> {
+        if (count <= 0) return emptyList()
+
+        val pool = library.filter { it.category == STARTER_CATEGORY }
+            .ifEmpty { library }
+            .filter { it.id != exclude }
+
+        // One representative per length, chosen by id so the row is a function
+        // of the library rather than of the order a query returned it in.
+        val byLength = pool
+            .groupBy { it.durationSec }
+            .toSortedMap()
+            .values
+            .mapNotNull { classes -> classes.minByOrNull { it.id } }
+
+        if (byLength.size <= count) return byLength
+        if (count == 1) return listOf(byLength.first())
+
+        // Shortest, longest, and evenly spaced between, rounded to the nearest
+        // rather than truncated — with four lengths and a count of three,
+        // truncation picks the second of four for the middle and rounding picks
+        // the third, which is the one a rider would call the middle. `distinct`
+        // rather than an assumption that the arithmetic never collides.
+        val last = byLength.size - 1
+        val steps = count - 1
+        return (0..steps)
+            .map { i -> (i * last + steps / 2) / steps }
+            .distinct()
+            .map { byLength[it] }
     }
 
     /**

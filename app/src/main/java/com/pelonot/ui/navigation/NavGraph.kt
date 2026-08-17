@@ -281,6 +281,7 @@ fun PelonotNavGraph(
                 suggestion = uiState.suggestion,
                 suggestionProfile = uiState.suggestionProfile,
                 classCount = uiState.classes.size.takeIf { it > 0 },
+                startingPoints = uiState.startingPoints,
                 // The class's own screen, which is where the library lands too
                 // (22.7.2). One tap fewer than browsing, and not one fewer than
                 // starting a ride.
