@@ -6,6 +6,166 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 17 August 2026 (sixty-fifth sitting): a word that cost a face, and the same rule that was only a hope
+
+**The inbox had an entry in it**, so the pick was made for this sitting rather
+than on merit: *"lvl indicator in avatar. It's too big, too much padding. Should
+probably just be the number with very little padding around it. It's obscuring
+too much of that avatar and looks bad."* It is **26.4.9**, and the second piece
+of work came out of building the first — which is the sitting's shape and is the
+same shape as the one before it.
+
+**The measurement was taken before the write-up and it is worse than the note
+claims.** On the tablet with a household of five the face is 70 dp, the disc
+inside its ring is 58, and the badge's minimum width is **44 dp** — so the pill
+was **three-quarters of the width of the face it sat on**, centred on an Open
+Peeps figure's collar. And the word it was that wide to hold is set at
+`18 × 0.30` = **5.5 sp**. It was paying 44 dp of somebody's face for a label
+nobody can read at arm's length.
+
+**The owner named the fix and the trade is better than a shrink.** Drop `LVL`
+from the compact form and the number stops competing for width: 18 dp instead of
+44, a 60% reduction, **and the digit gets larger** — 0.44 of the height to 0.58 —
+because it is no longer the smaller half of a pair. *"Make it smaller"* and
+*"make the number bigger"* sound like opposite instructions and here they were
+the same one. The padding is now a fraction of the badge's own height rather than
+a 4 dp spacing token that was a quarter of the budget at this size, so it is
+*"very little"* at every size the tile derives.
+
+**Rule 1 is narrowed rather than broken, and the interesting part is what the
+word was secretly doing.** What the rule forbids is a label *richer* than *has
+ridden more*, and dropping one is less. But `LVL` was also saying **what kind of
+number this is** — so 26.4.9a lists the three places a bare number gets that
+from instead, because if any of them goes the badge is ambiguous again: the
+**ring** is the progress to the next level and a number inside a progress ring is
+the most recognised "level" there is; the **screen reader is untouched** and
+still hears *"Riding level 6, earned by 41 rides"*; and on both surfaces the
+other number about that rider carries its own unit (`FTP 155 W`). **The pill
+beside a name keeps the word** and that is not inconsistency — it has none of
+those three things on its row.
+
+**26.4.9b is the finding rather than a caveat, and it is deliberately left
+open.** A bare number is safe on the live leaderboard *because there is no rank
+on that board* — 24.3.17c deleted it and 24.3.19d is the owner's open question
+about putting it back. Restore a rank and every person's row carries two
+unlabelled small integers on the one surface where a small number in a list
+obviously means position. So this does not decide 24.3.19d; it **raises its
+price**, and the answer if the rank comes back is that the compact badge takes
+its word back on that screen. Written down now because the two items are in
+different phases and nine days apart, and the dependency runs from the smaller
+to the larger.
+
+**Then the second piece, and it is the previous sitting's lesson arriving at a
+second component.** Building 26.4.9 meant reading `RiderScore`'s KDoc closely,
+and **rule 2 is stated four times in prose and enforced by nobody**: *"Nothing
+else may follow either. Not the greeting, not the household panel, not the static
+class board, not the overlay."* There are two screens that may put a level on a
+face and five other `RiderAvatar` call sites; what kept the level off those five
+is that **nobody had passed the argument**. That is a hope, in exactly the sense
+2.2a.8 named it one sitting earlier — and the cost of it failing is not cosmetic:
+one `level = rider.level` on the household panel is a plausible three-word diff
+that would publish a level beside a housemate's FTP on a *presence* card.
+
+**`RiderScoreFenceTest` is six checks and one of them found a rule with no test
+at all.** Rule 4 — a guest has no badge, an unridden profile is level 1 — is
+behaviour rather than structure, it is the same family as nullable
+`heartRateBpm`, and `AppUiState.levelFor` had never been tested. The others are
+the allowlisted pair of screens with a reason each, the three named surfaces
+checked *from the other end* so their failing is a test rather than a convention,
+the three files that may draw the badge at all, `LVL` spelled in exactly one file
+— which is also the fence against the private copy this component was extracted
+to prevent — and no amber token, which is rule 3.
+
+**A JVM source scan and not a Compose UI test, deliberately.** This project has
+no Compose test infrastructure at all: twelve instrumented tests and every one of
+them Room. Adding a whole test category to hold one component's rules is a larger
+decision than the rules need, and `PowerModelFenceTest` and
+`CloudAccessFenceTest` had already established the shape. `RiderAvatar` calls are
+read by **balanced paren rather than by line**, because a fence whose correctness
+depends on somebody's line breaks stops matching silently.
+
+**What the fence deliberately does not claim is 26.4.9a**, and saying so beats a
+scan that pretends: that a *compact* badge draws no word is a fact about which
+branch a literal sits in. What it gets instead is the count, which catches the
+regression that actually happens — somebody adding the word back.
+
+**Every check watched failing against its own violation** (26.4.10a), because a
+source scan that quietly matches nothing passes cheerfully for ever. Five
+violations: the household panel acquiring a level (two checks fire), the overlay
+calling `RiderScore` for real, a second `LVL` speller, the badge on
+`tertiaryContainer`, and `levelFor` handing a guest level 1. Two of the five had
+to be rewritten to compile before they could fail for the right reason, which is
+itself the point.
+
+**Watched on the tablet AVD rather than in the diff.** The profile selector at
+levels 4, 6 and 1 with the faces visible; the greeting and all three household
+rows still wearing the word; the live leaderboard row with Robin's photograph,
+ring, level and `FTP 155 W`. **A two-digit level was seeded against Jo to check
+the width floor** — because this project's own lesson is that watching `4` fit
+proves nothing about `12`, exactly as `01:51` proved nothing about `03:14` —
+and `12` stays inside the disc unclipped. **The fixture was removed afterwards**
+and the device is back to its documented state: Jo at level 1, Robin still
+wearing `photo:avatar-1-1786964382388.jpg`.
+
+**864 JVM tests, 0 failures**, up from 858.
+
+**Then the owner answered three questions and one of the answers changed what
+this sitting could do.** The rank stays off the live leaderboard, so **24.3.19d
+closes as decided** after nine days and 26.4.9b's conditional closes with it.
+There will be no Compose UI test infrastructure, and the argument is good enough
+to be written down as **8.14.1** rather than as a shrug: almost every defect this
+project has found came from looking at the tablet, and a Compose test would have
+caught **none** of them, because each was a legibility fault on a real display at
+a real density. And the third was CI — the owner had already merged `setup` into
+`main` and pushed.
+
+**So CI ran for the first time in the project's history, and it is green
+(19.1.4).** Written in the twenty-eighth sitting and unrun for eighteen of them,
+not because anything was wrong with it but because `ci.yml` triggers on push to
+`main` and every commit was going to `setup`: **a workflow correct in every line
+and reachable by nothing.** `assembleDebug`, then 864 tests, 0 failures, on a
+clean Ubuntu clone with **no `local.properties`** — which *tests* the
+offline-first decision (14.10.3) rather than restating it, and is the first
+external evidence that a stranger cloning this gets a build.
+
+**And that put the sitting's third stale claim at the top of the list, which is
+the most expensive one this project has found (8.15.1).** `ci.yml`'s own comment
+said CI runs the JVM tests only because the instrumented suite is
+order-dependent; `CLAUDE.md`, 19.1.4 and `STATUS.md` item 6 all said the same.
+**It is not, and both causes had been fixed by other items with nobody coming
+back to cross it off** — `stoppingWithoutStartingIsHarmless` asserts against a
+captured *before* rather than against `Idle`, and 2.4.6 removed the preference
+race. The difference from the other three stale claims is that this one was not
+describing something wrongly, it was **withholding coverage**.
+
+**Read structurally, then measured, because reading is not evidence.** Ten of the
+twelve instrumented classes build their own in-memory database, `MigrationTest`
+uses one named `migration-test`, and `DatabaseBackupTest` deliberately stops
+before `restoreFrom` — which leaves `WorkoutServiceTest` as the whole surface.
+Then the documented trigger was **reproduced**: a throwaway class in
+`com.pelonot.data.aaa` that finishes a ride, discards its own row and **asserts
+it left the process-global service in `Completed`**, because a probe that fails to
+create the leak proves nothing. **131 tests, 0 failures**, with the order
+confirmed out of the results XML rather than assumed — probe **first** of
+thirteen classes, `WorkoutServiceTest` **last**. The probe was deleted and the
+fixtures were restored, since the suite uninstalls the app.
+
+**8.15.2 replaces the stale reason and the conclusion survives on a better
+argument.** Still no emulator in CI — but because `WorkoutServiceTest` waits on a
+fixed `TIMEOUT_MS = 15_000` calibrated to a local hardware-accelerated AVD, and a
+cold cloud runner without KVM is exactly where that goes red, so adding it would
+**manufacture** the flakiness the refusal was about rather than inherit it. The
+conditions for changing it are written in order, and it is the owner's to overrule
+for the price of one job.
+
+**Counted rather than carried forward, with `grep -c '^- \[x\]'` against each
+phase file:** **Phase 26 is 19 of 24** (five new items, five ticks — 26.4.9b
+closed with 24.3.19d), **Phase 8 is 39 of 56** (three new items, two ticks — 8.15.2
+is deliberately open), **Phase 19 is 11 of 23** and **Phase 24 is 47 of 51**.
+**19.1.4 was the first entry on *What to do next*.** *(The older figures for
+Phases 8 and 19 in the paragraph below were among the ones counting boxes the
+wrong way round; these four are measured.)*
+
 ## 17 August 2026 (sixty-fourth sitting): a rule that was only a hope, and a face that is a photograph
 
 **The inbox was empty**, so both picks were made on merit. The first is small
