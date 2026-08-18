@@ -41,6 +41,17 @@ is no build step and nothing to install; `npx wrangler deploy` in `web/` is a
 manual alternative, not the route.
 
 ```bash
+./tools/status-figures.sh --check    # and --write after ticking plan boxes
+```
+
+**`STATUS.md`'s numbers are generated and CI fails on drift** (19.1.7a). Tick a
+plan box, run `./tools/status-figures.sh --write`, commit the page with it. The
+script emits the JVM test count and the box count and **nothing else** — no
+script can check the prose, which is what actually goes stale on that page — and
+it reads the test count out of `app/build/test-results`, so run
+`testDebugUnitTest` first or it exits 2 rather than reporting a zero.
+
+```bash
 ./web/check-deployed.sh
 ```
 

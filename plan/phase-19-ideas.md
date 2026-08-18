@@ -452,7 +452,7 @@ has simply never been written down.
         status table goes stale — so it carries the date it was written and the
         measurement behind it (the test count, the box count), and a sitting
         that changes the picture rewrites it rather than patching it
-- [ ] **19.1.7a** **Nothing keeps `STATUS.md` honest, which is the same
+- [x] **19.1.7a** **Nothing keeps `STATUS.md` honest, which is the same
       problem as 17.15.2 and has the same cheap answer.** The box counts in it
       are `grep -c` over `plan/*.md` and the test count is the build's own; a
       script that emits both — in `classlibrary/build.py`'s spirit — would make
@@ -473,6 +473,49 @@ has simply never been written down.
       hand and the header now says out loud how far behind its own prose is,
       which is the cheap half of the same idea and is what an un-regenerated
       page should say about itself.
+
+      ***Built in the sixty-seventh sitting, and what it found on its first run
+      is the case for it.*** `tools/status-figures.sh` emits two measurements —
+      the JVM test count out of the build's own results, and the plan box count
+      out of `PLAN.md` and `plan/*.md` — into a marked region of `STATUS.md`,
+      and `--check` fails on a figure that has drifted. It is a CI step, after
+      the tests and only if they passed, because the test count comes out of
+      what they wrote.
+
+      **The page was carrying two box counts that disagreed with each other.**
+      The header said *651 of 863* and the *how close to done* paragraph said
+      *577 of 801*, seventy-four boxes apart on one page, each stated as a
+      measurement. Neither number is typed any more: the header's is generated
+      and the paragraph now points at it, with the old pair left visible in a
+      parenthesis because the disagreement is the argument.
+
+      **It counts indented boxes**, which the pattern this page quoted did not.
+      `^- \[x\]` silently excludes 20.2.4a–f and every other nested sub-item,
+      and PLAN.md's own note from the sixty-sixth sitting says that is how two
+      phases came to be carried at figures that were wrong in opposite
+      directions. The script's pattern is `^[[:space:]]*- \[x\]` and it says so
+      in the block it writes, so the next person to recount by hand gets the
+      same number.
+
+      **It emits the measurements and refuses the prose, which is the item's own
+      rule and also the honest limit.** Item 7 of the ranked list below argued
+      that a script like this *"would not have caught it"* when this page went
+      stale in the forty-fifth sitting, because what had drifted was four
+      sentences about what a rider meets. That is still true and it is why the
+      generated region is three lines rather than the whole header. What it
+      makes impossible is a *number* stated wrongly — which is what went wrong
+      in the sixty-fourth sitting, and what had been wrong in two places at once
+      until this ran.
+
+      **A missing results directory is an error rather than a zero** (exit 2),
+      and so is a suite with failures in it. A script that reported "0 tests,
+      matching" on a machine that had not run any would be the same class of
+      defect as the claim it exists to stop.
+
+      **Two consequences for a session:** ticking a plan box now means running
+      `--write` and committing the page with it, which is in `CLAUDE.md`; and
+      the figure in a sitting's write-up and the figure on `STATUS.md` can no
+      longer disagree, because only one of them is written by hand.
 
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all

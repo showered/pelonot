@@ -48,6 +48,14 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
+      # 19.1.7a. STATUS.md is regenerated rather than maintained, and it had
+      # gone stale once with two disagreeing box counts on the same page. The
+      # script emits the measurements only — no script can check the prose —
+      # and it reads the test count out of the results the step above just
+      # wrote, so it has to run after it and only when it passed.
+      - name: STATUS.md figures
+        run: ./tools/status-figures.sh --check
+
       - name: Test report
         if: failure()
         uses: actions/upload-artifact@v4
