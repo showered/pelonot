@@ -38,8 +38,13 @@ plan_files=(PLAN.md plan/*.md)
 # silently excludes 20.2.4a-f and every other nested box, which is how two
 # phases were carried at figures that were wrong in opposite directions
 # (PLAN.md's own note, sixty-sixth sitting).
-ticked=$(grep -chE '^[[:space:]]*- \[x\]' "${plan_files[@]}" | paste -sd+ - | bc)
-total=$(grep -chE '^[[:space:]]*- \[[ x]\]' "${plan_files[@]}" | paste -sd+ - | bc)
+# `awk` rather than `paste | bc`: `bc` is not on GitHub's ubuntu runner images,
+# and a check step that fails on a missing binary is indistinguishable from a
+# check step that failed on drift.
+sum() { awk '{ n += $1 } END { print n + 0 }'; }
+
+ticked=$(grep -chE '^[[:space:]]*- \[x\]' "${plan_files[@]}" | sum)
+total=$(grep -chE '^[[:space:]]*- \[[ x]\]' "${plan_files[@]}" | sum)
 percent=$(( ticked * 100 / total ))
 
 if [[ ! -d $RESULTS ]]; then
@@ -48,7 +53,7 @@ if [[ ! -d $RESULTS ]]; then
 fi
 
 sum_attr() {
-    grep -rho "$1=\"[0-9]*\"" "$RESULTS"/*.xml | tr -dc '0-9\n' | paste -sd+ - | bc
+    grep -rho "$1=\"[0-9]*\"" "$RESULTS"/*.xml | tr -dc '0-9\n' | sum
 }
 
 tests=$(sum_attr tests)
