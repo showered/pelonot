@@ -25,11 +25,18 @@ const val DISPLAY_INTERVAL_MS = 500L
  *
  * Semantics: the first value goes out immediately — a rider who has just
  * started pedalling should not watch `--` for half a second — and after that at
- * most one value per [intervalMs], always the **latest**. Nothing is averaged
- * and nothing is invented: every number shown is one the board actually
- * reported, which is the same rule the fence follows. Intermediate values are
- * dropped rather than queued, so a burst cannot build a backlog that plays out
- * in slow motion after the rider has stopped.
+ * most one value per [intervalMs], always the **latest**. Intermediate values
+ * are dropped rather than queued, so a burst cannot build a backlog that plays
+ * out in slow motion after the rider has stopped.
+ *
+ * **This paces; it does not average.** It used to be able to say the stronger
+ * thing — that every number on the screen was one the board actually reported —
+ * and since 11.6.20 that is no longer true of the **watts**, which are a
+ * three-second mean by the time they reach here ([PowerSmoother]). The owner
+ * asked for it and it is the right trade for the one metric whose raw form is
+ * unreadable out of the saddle; the sentence is changed rather than left
+ * standing, because a promise nobody has revisited is how a comment starts
+ * lying. Cadence, resistance and heart rate still keep it.
  */
 fun <T> Flow<T>.atDisplayRate(intervalMs: Long = DISPLAY_INTERVAL_MS): Flow<T> = flow {
     // conflate() keeps the producer running at full speed while this collector

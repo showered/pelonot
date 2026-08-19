@@ -75,7 +75,12 @@ class SimulatedSensorSource(
                 .plus(random.nextDouble(-RESISTANCE_JITTER, RESISTANCE_JITTER))
                 .coerceIn(0.0, 100.0)
 
-            val power = if (coasting) 0.0 else PowerModel.estimateWatts(cadence, resistance)
+            val steadyPower = if (coasting) 0.0 else PowerModel.estimateWatts(cadence, resistance)
+            val power = if (nowMs < standUntilMs) {
+                outOfTheSaddle(steadyPower, cadence, elapsedSec)
+            } else {
+                steadyPower
+            }
 
             val targetHr = RESTING_HR + (power / HR_WATTS_PER_BPM)
             heartRate += (targetHr - heartRate) * HR_RESPONSIVENESS
@@ -105,6 +110,31 @@ class SimulatedSensorSource(
         val surge = sin(2 * PI * elapsedSec / SURGE_PERIOD_SEC)
         val combined = 0.5 + 0.3 * slowWave + 0.2 * surge
         return (warmup * combined).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * The same effort, delivered in pedal strokes rather than steadily
+     * (11.6.20).
+     *
+     * A rider out of the saddle on a heavy gear puts torque in twice a
+     * revolution and almost nothing in between, so the watts swing hard around
+     * the effort at `cadence / 30` Hz — 2.7 Hz at 80 rpm. **Nothing here is a
+     * lie about the telemetry**, which is the same distinction [RaceDebug]
+     * makes: this is what the board genuinely reports for a standing rider, and
+     * it is only unreachable on an emulator because the simulated rider never
+     * stands up.
+     *
+     * It is worth knowing that the *jumping* the owner reported is partly an
+     * aliasing artefact and this reproduces that too: at four samples a second
+     * a 2.7 Hz ripple is sampled below its own Nyquist rate, so what reaches
+     * the screen is a slow irregular beat rather than a clean oscillation — and
+     * a real board polling three times a second does exactly the same thing.
+     */
+    private fun outOfTheSaddle(watts: Double, cadence: Double, elapsedSec: Double): Double {
+        if (watts <= 0.0 || cadence <= 0.0) return watts
+        val strokesPerSecond = cadence / 30.0
+        return (watts * (1.0 + STAND_RIPPLE * sin(2 * PI * strokesPerSecond * elapsedSec)))
+            .coerceAtLeast(0.0)
     }
 
     /**
@@ -194,6 +224,21 @@ class SimulatedSensorSource(
         fun silenceFor(seconds: Int) {
             silentUntilMs = System.currentTimeMillis() + seconds * 1000L
         }
+
+        /** Wall-clock instant the simulated rider sits back down (11.6.20). */
+        @Volatile
+        private var standUntilMs: Long = 0L
+
+        /**
+         * The rider gets out of the saddle for [seconds], so the watts arrive
+         * in pedal strokes instead of steadily. Debug builds only.
+         */
+        fun standFor(seconds: Int) {
+            standUntilMs = System.currentTimeMillis() + seconds * 1000L
+        }
+
+        /** How far either side of the effort a standing stroke swings. */
+        private const val STAND_RIPPLE = 0.55
 
         /** Wall-clock instant the board starts answering a bind again (2.7.7). */
         @Volatile

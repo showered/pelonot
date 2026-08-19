@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -69,6 +70,17 @@ class SensorRepository(
     private val _sensorReading = MutableStateFlow(SensorReading.EMPTY)
 
     /**
+     * The display flow's rolling mean (11.6.20).
+     *
+     * One instance, held here, because `displayReading` is shared eagerly and
+     * therefore collected exactly once however many screens are watching — a
+     * smoother per collector would be two windows disagreeing about the same
+     * three seconds, which is the shape of defect this repository exists to
+     * prevent.
+     */
+    private val smoother = PowerSmoother()
+
+    /**
      * Every reading, at whatever rate the board produces them.
      *
      * What the **recorder** reads. Anything writing a number into a rider's
@@ -77,13 +89,20 @@ class SensorRepository(
     val sensorReading: StateFlow<SensorReading> = _sensorReading.asStateFlow()
 
     /**
-     * The same readings, paced to something a rider can read (11.6.7).
+     * The same readings, with the watts smoothed (11.6.20) and paced to
+     * something a rider can read (11.6.7).
      *
      * What every **screen** reads — the ride screen and the overlay both, from
      * here, so the two surfaces cannot drift into different answers or solve
      * this twice. Nothing recorded goes through it.
+     *
+     * The smoothing happens **before** the pacing and not after, because
+     * `atDisplayRate` conflates: a mean taken downstream of it would be a mean
+     * of the two readings a second that survived, which is not the same as a
+     * mean of what the board actually sent.
      */
     val displayReading: StateFlow<SensorReading> = _sensorReading
+        .map(smoother::smooth)
         .atDisplayRate()
         .stateIn(scope, SharingStarted.Eagerly, SensorReading.EMPTY)
 
@@ -150,6 +169,7 @@ class SensorRepository(
         val simulated = source === simulatedSource
         rejectedReadings = 0
         reconnects.reset()
+        smoother.reset()
 
         // 2.7.7. Whether *this* bind ever delivered anything is the one thing
         // that separates a board which dropped out from a port that was never

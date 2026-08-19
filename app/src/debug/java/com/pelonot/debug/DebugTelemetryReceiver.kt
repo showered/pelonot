@@ -20,6 +20,10 @@ import com.pelonot.data.sensor.SimulatedSensorSource
  * adb shell am broadcast -a com.pelonot.debug.COAST \
  *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
  *
+ * # The rider gets out of the saddle: the pedal-stroke ripple of 11.6.20.
+ * adb shell am broadcast -a com.pelonot.debug.STAND \
+ *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 60
+ *
  * # The board reports nonsense: the overlay corruption of 2.7.
  * adb shell am broadcast -a com.pelonot.debug.CORRUPT \
  *   -n com.pelonot/com.pelonot.debug.DebugTelemetryReceiver --ei seconds 40
@@ -81,6 +85,15 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
                 )
             }
 
+            // 11.6.20. Not a lie about the telemetry, the same distinction
+            // RaceDebug makes: this is what the board genuinely reports for a
+            // standing rider, and it is only unreachable here because the
+            // simulated rider never stands up.
+            ACTION_STAND -> {
+                SimulatedSensorSource.standFor(seconds)
+                Log.i(TAG, "Simulated rider rides out of the saddle for ${seconds}s")
+            }
+
             ACTION_TRACE -> {
                 PelotonSensorServiceSource.traceFor(seconds)
                 Log.i(TAG, "Tracing raw sensor events for ${seconds}s")
@@ -116,6 +129,7 @@ class DebugTelemetryReceiver : BroadcastReceiver() {
         const val ACTION_CORRUPT = "com.pelonot.debug.CORRUPT"
         const val ACTION_SILENCE = "com.pelonot.debug.SILENCE"
         const val ACTION_DEAD_BOARD = "com.pelonot.debug.DEAD_BOARD"
+        const val ACTION_STAND = "com.pelonot.debug.STAND"
         const val ACTION_TRACE = "com.pelonot.debug.TRACE"
         const val ACTION_RACE = "com.pelonot.debug.RACE"
         const val EXTRA_ON = "on"
