@@ -20,3 +20,11 @@ local.properties
 # Avatar candidate sheets — regenerate with avatars/browse.sh
 avatars/.candidates/
 avatars/candidates.html
+
+# The release signing key and anything named like one (PLAN 30.1.3).
+# A signing key in a public repository cannot be undone by a force-push, and
+# losing this key costs every installed copy an uninstall — so it is backed up
+# somewhere that is not this directory and it is never in a commit.
+*.jks
+*.keystore
+/keystore.properties

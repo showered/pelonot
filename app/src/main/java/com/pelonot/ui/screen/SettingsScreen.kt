@@ -70,10 +70,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pelonot.BuildConfig
 import com.pelonot.R
 import com.pelonot.core.Formatters
 import com.pelonot.data.repository.CalibrationState
@@ -325,9 +327,50 @@ fun SettingsScreen(
                 onBackupFirst = { backupLauncher.launch(viewModel.backupFileName()) }
             )
 
+            AboutLine()
+
             Spacer(Modifier.size(MaterialTheme.spacing.large))
         }
     }
+}
+
+/**
+ * Which build this is — the last line on the page and the quietest (PLAN 30.2.2).
+ *
+ * The app has never once said, and that was survivable only while one person
+ * installed it over a cable: `BuildConfig.VERSION_NAME` was referenced by
+ * nothing in the whole source tree. The moment a second bike has a copy, the
+ * first question about any problem is *which one are you on*, and the answer
+ * cannot be `dumpsys package` when the person holding the tablet is a friend
+ * rather than the owner.
+ *
+ * **No heading, no card, and the version code in brackets.** Phase 26's rule is
+ * to say less, and a rider is not reading a measurement here — this is the line
+ * they are asked to read out once a year. The bracketed number is the one the
+ * update check actually compares (30.2.1), invisible to anybody who does not
+ * need it.
+ *
+ * **`debug` is appended only on a debug build**, and it earns its place because
+ * of 30.1.5: a debug build and a release build carry different signing
+ * certificates and neither can update the other. When that starts biting, this
+ * line is what tells the two apart from across a room.
+ */
+@Composable
+private fun AboutLine() {
+    Text(
+        text = buildString {
+            append("Pelonot ")
+            append(BuildConfig.VERSION_NAME)
+            append(" (")
+            append(BuildConfig.VERSION_CODE)
+            append(")")
+            if (BuildConfig.DEBUG) append(" · debug")
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 /**

@@ -67,6 +67,39 @@ fun publicConfig(key: String, envKey: String): String =
 
 val pelonotWebUrl = publicConfig("pelonot.webUrl", "PELONOT_WEB_URL")
 
+/**
+ * The release signing key (PLAN 30.1.2), and the reason this project needs one
+ * at all is not "shipping" — it is that **Android refuses to update an app
+ * whose signing certificate has changed**.
+ *
+ * Until 30.1 every copy of Pelonot in existence was a *debug* build, signed
+ * with the per-machine `~/.android/debug.keystore`, and `release` had no
+ * `signingConfig`, so `assembleRelease` produced an APK installable on nothing.
+ * That is survivable while one person installs over a cable and fatal the
+ * moment somebody else's bike has a copy: the first release-signed APK cannot
+ * replace a debug-signed one, and the changeover costs an uninstall, which
+ * costs the database (30.1.4).
+ *
+ * **A missing keystore is a supported configuration, not a failure.** A fresh
+ * clone has none and CI has none, and both must still build — the same rule
+ * 14.10.3 settled for the cloud credentials. With nothing configured this
+ * returns null, `release` gets no signing config, and only `assembleRelease`
+ * is affected.
+ *
+ * **Deliberately not routed through `secret()`.** That function's call count is
+ * `CloudConfigFenceTest`'s fence, and a store password must never become a
+ * `buildConfigField` — which is precisely what widening the fence to admit it
+ * would stop anybody noticing. These values reach the signing config and
+ * nothing else.
+ */
+fun signingValue(key: String, envKey: String): String? =
+    listOf(System.getenv(envKey), localProperties.getProperty(key))
+        .firstOrNull { !it.isNullOrBlank() }
+
+val releaseKeystoreFile = signingValue("release.storeFile", "PELONOT_RELEASE_STORE_FILE")
+    ?.let { rootProject.file(it) }
+    ?.takeIf { it.exists() }
+
 android {
     namespace = "com.pelonot"
     compileSdk = 34
@@ -97,11 +130,25 @@ android {
         }
     }
 
+    signingConfigs {
+        // Created only when a keystore is actually configured, so that a clone
+        // without one builds rather than failing at configuration time.
+        if (releaseKeystoreFile != null) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = signingValue("release.storePassword", "PELONOT_RELEASE_STORE_PASSWORD")
+                keyAlias = signingValue("release.keyAlias", "PELONOT_RELEASE_KEY_ALIAS")
+                keyPassword = signingValue("release.keyPassword", "PELONOT_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
         }
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

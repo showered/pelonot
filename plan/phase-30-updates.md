@@ -8,7 +8,7 @@ introduce free OTA updates somehow so when he opens the app it'll say 'do you
 want to install an update?'"*
 
 **The short answers, before the items.** Yes, it can be done, and it costs
-nothing: the repository is public, so **GitHub Releases hosts a 24 MB APK for
+nothing: the repository is public, so **GitHub Releases hosts the APK for
 free**, and the companion web app — already live, already deployed by `git
 push`, already the URL the bike carries in `BuildConfig.PELONOT_WEB_URL` — can
 serve the small JSON that says what the latest version is. The app downloads it
@@ -53,6 +53,16 @@ exactly the rider the note is about.
 the phase is harmed by being built later; this one costs the friend's ride
 history if it is.
 
+**30.1.2 and 30.1.3 are built** (sixty-ninth sitting) and the release build was
+watched producing a signed APK against a throwaway key that was then deleted.
+Two measurements came off that run and both are worth having. **A release build
+is 3.4 MB**, against the debug build's 24 — R8 and resource shrinking take
+seven-eighths of it, which moves the hosting question (30.3) from *forced* to
+*chosen*. And **`assembleRelease` works**, which nothing in this project had
+ever established: minify and `shrinkResources` have been switched on and never
+once exercised, so the first person to run it could as easily have met a
+`proguard-rules.pro` that had drifted for sixty-eight sittings.
+
 - [ ] **30.1.1 A release keystore exists and is not in the repository.** One
       `keytool -genkeypair` with a **long validity** — 30 years, because an
       expired signing key on an app with no store behind it means the same
@@ -61,7 +71,7 @@ history if it is.
       **Losing it has exactly the same cost as never having made it**, which is
       worth saying plainly: there is no recovery, no Play Store key rotation to
       fall back on, and the only fix is uninstalling every copy
-- [ ] **30.1.2 `app/build.gradle.kts` gains a release `signingConfig` read from
+- [x] **30.1.2 `app/build.gradle.kts` gains a release `signingConfig` read from
       `local.properties`**, the same four-level resolution the Supabase values
       use — and **not through `secret()`**, which `CloudConfigFenceTest` counts
       as its fence (`app/build.gradle.kts` says why). A store password is not a
@@ -70,7 +80,7 @@ history if it is.
       rule that absence is a supported configuration applies here too — no
       keystore means an unsigned release build and a working `assembleDebug`,
       not a failure
-- [ ] **30.1.3 The gitignore is checked against the real filenames** before the
+- [x] **30.1.3 The gitignore is checked against the real filenames** before the
       first key is generated, not after. `*.jks`, `*.keystore`, and whatever
       `local.properties` names. A signing key in a public repository is the one
       mistake in this phase that cannot be undone by a force-push
@@ -104,14 +114,20 @@ being cosmetic.
       and can be forgotten. **`version.properties` is the recommendation**, on
       the same argument as `cloud.properties`: a fresh clone should be able to
       see what the answer is without running anything
-- [ ] **30.2.2 The version is visible in the app, and today it is nowhere.**
+- [x] **30.2.2 The version is visible in the app, and today it is nowhere.**
       Measured rather than assumed: `BuildConfig.VERSION_NAME` and
       `VERSION_CODE` are referenced by **nothing** in `app/src/main/java`, so
       the app has never once said which build it is. That is survivable while
       one person installs it over a cable and unsurvivable the moment somebody
       else has a copy — the first question about any update problem is *which
       one are you on*, and the friend is not going to run `dumpsys package`.
-      Settings, at the bottom, where an about line belongs
+      Settings, at the bottom, where an about line belongs. **Built and watched
+      on the tablet AVD**: `Pelonot 1.0.0 (1) · debug`, centred, `bodySmall` and
+      `onSurfaceVariant`, with no heading and no card — Phase 26's rule is to
+      say less, and this is not a measurement anybody reads. The `· debug`
+      suffix appears on debug builds only and earns its place from 30.1.5: when
+      a debug copy and a release copy start refusing to replace each other, this
+      is the line that tells them apart from across a room
 - [ ] **30.2.3 A downgrade is refused, and this project already knows why.**
       12.5.1 kept `fallbackToDestructiveMigration` on **downgrade** on the
       argument that it only ever happens on a development device. An OTA channel
@@ -123,9 +139,14 @@ being cosmetic.
 
 **Two hosts, one command.** The JSON lives in `web/`, because it is this app's
 contract and this repository should own its shape rather than inherit GitHub's;
-the APK lives on a GitHub release, because that is where a 24 MB binary belongs
-and because Cloudflare's static-asset ceiling is 25 MiB, which today's debug
-build is 24 MB of. Both are free and neither needs an account on the bike.
+the APK lives on a GitHub release, because that is where a binary with a
+version history belongs. **The size argument that used to be here is gone**: a
+release build is 3.4 MB, comfortably under Cloudflare's 25 MiB per-asset
+ceiling, so both files *could* sit on the Worker. The reason not to is that
+`git push` would then carry a 3.4 MB binary into the repository on every
+release, and a repository that accumulates every APK it has ever shipped is a
+repository nobody can clone in a year. Both hosts are free and neither needs an
+account on the bike.
 
 - [ ] **30.3.1 `web/update.json`** — `versionCode`, `versionName`, `notes` (one
       sentence a rider can read, not a changelog), `url` and `sha256`. Served
