@@ -142,6 +142,20 @@ class DeviceLinkRepository(
      */
     suspend fun adopt(handover: PairingHandover): AuthAttempt {
         val supabase = client ?: return AuthAttempt.Disabled
+
+        // 15.6.16a. **Which route the hand-off took is the whole diagnosis and
+        // nothing recorded it.** The phone tries the Edge Function and falls
+        // back to 15.6.9's SQL route on a 404 alone, so the two produce
+        // different failures for different reasons — and the owner's report of
+        // *"refresh token invalid"* can only come from one of them. `Log.i` is
+        // enough because it is one line per pairing, but note this tablet drops
+        // anything below `W` unless the tag is raised (CLAUDE.md).
+        val route = when (handover) {
+            is PairingHandover.OneTimeCode -> "a one-time code (15.6.4, the Edge Function)"
+            is PairingHandover.RefreshToken -> "the phone's own refresh token (15.6.9, the fallback)"
+        }
+        Log.i(TAG, "The phone handed over $route")
+
         return try {
             when (handover) {
                 is PairingHandover.OneTimeCode -> supabase.auth.verifyEmailOtp(
@@ -159,8 +173,30 @@ class DeviceLinkRepository(
                 ?: return AuthAttempt.Failed("The bike was handed a session it could not use")
             AuthAttempt.Success(id, authRepository.currentEmail())
         } catch (e: Exception) {
-            Log.w(TAG, "adopting the handover failed", e)
-            AuthAttempt.Failed(e.message ?: "That sign-in could not be completed")
+            Log.w(TAG, "adopting $route failed", e)
+            AuthAttempt.Failed(riderFacing(e))
+        }
+    }
+
+    /**
+     * What a rider standing at a bike is told when a hand-off fails (15.6.16d).
+     *
+     * The message used to be `e.message` passed straight through, so the owner
+     * met *"Invalid Refresh Token"* — the server's phrase, about a credential
+     * they have never seen, with nothing they could do about it. A one-time code
+     * and a handed-over token both lapse for the same rider-visible reason and
+     * have the same answer, which is to show a fresh code. The raw text still
+     * goes to logcat, where it is the thing worth reading.
+     */
+    private fun riderFacing(failure: Exception): String {
+        val raw = failure.message.orEmpty()
+        val expired = raw.contains("refresh token", ignoreCase = true) ||
+            raw.contains("expired", ignoreCase = true) ||
+            raw.contains("invalid", ignoreCase = true)
+        return if (expired) {
+            "That link expired before the bike could use it. Show a new code and scan it again."
+        } else {
+            "That sign-in could not be completed. Show a new code and scan it again."
         }
     }
 

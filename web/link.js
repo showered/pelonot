@@ -359,6 +359,11 @@ async function hand0ver() {
 
   // Fallback (15.6.9). Said out loud rather than done quietly, because it has a
   // cost the rider can feel: this phone loses its session.
+  //
+  // 15.6.16a: it is also the only route that can produce a refresh-token
+  // failure on the bike, and nothing said which route a pairing took. The bike
+  // logs its side; this is the other half, for a rider reporting what they saw.
+  console.info('Pelonot: the Edge Function was not reachable — handing over this phone\'s session (15.6.9)');
   el('fallback-warning').classList.remove('hidden');
 
   const { data: claim, error } = await client.rpc('device_link_claim', {
@@ -389,8 +394,16 @@ function finish(handedOwnSession) {
     el('done-text').textContent =
       'The bike is signed in. This phone has been signed out, because it handed ' +
       'its own session over — sign in again here whenever you like.';
-    // Stop using the token family we just gave away, rather than racing the
-    // bike for it and having the server revoke both.
-    client.auth.signOut();
+    // Stop *this phone* using the token family we just gave away, rather than
+    // racing the bike for it.
+    //
+    // **`local` is load-bearing and the default is wrong here** (PLAN 15.6.16b).
+    // supabase-js defaults `signOut` to `global`, which revokes every refresh
+    // token the user has — including the one this phone handed over a moment
+    // ago, and before the bike's two-second poll has necessarily collected it.
+    // The comment this replaces claimed to be avoiding exactly that and was
+    // performing the revocation itself: the bike's `refreshSession` then failed
+    // with *"Invalid Refresh Token"*, which is the owner's own report.
+    client.auth.signOut({ scope: 'local' });
   }
 }
