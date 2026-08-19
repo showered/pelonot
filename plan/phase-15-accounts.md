@@ -786,6 +786,11 @@ own**, minted for it, not a copy of the phone's.
       its own right, and the cheapest fix in this item: the bike should log which
       `PairingHandover` kind it adopted, and the phone should say which route it
       used when it fails
+
+      *Both written in the sixty-eighth sitting and both unticked for the same
+      reason as 15.6.16b — reaching `adopt` at all needs a real pairing. Note
+      the bike's line is `Log.i`, so `log.tag.PelonotDeviceLink` has to be
+      raised on the tablet first (CLAUDE.md).*
 - [ ] **15.6.16b The strong candidate, and it is a real defect whether or not it
       is this one.** On the fallback route `web/link.js` calls
       `client.auth.signOut()` immediately after handing the token over. **supabase-js
@@ -801,6 +806,11 @@ own**, minted for it, not a copy of the phone's.
       **This is a one-line fix and it deploys on push**, so it is worth doing
       whether or not the fallback was the route taken — an untested fallback
       that cannot work is a fallback that does not exist (15.6.9)
+
+      *Written in the sixty-eighth sitting — `signOut({ scope: 'local' })` — and
+      **left unticked because it cannot be observed without a real account and a
+      404 from the Edge Function**. It is also not deployed: the push is the
+      owner's.*
 - [ ] **15.6.16c The second candidate is the purge the owner names, and it is
       the one their own guess points at.** `SupabaseModule` installs Auth with
       `autoLoadFromStorage` and `alwaysAutoRefresh`, so a tablet holding a
@@ -821,6 +831,9 @@ own**, minted for it, not a copy of the phone's.
       it. Show a new code and scan it again."* — and the raw text belongs in
       logcat. Same rule `SyncOutcome.Rejected` already follows for the sync
       messages
+
+      *Written in the sixty-eighth sitting, that sentence exactly, and unticked
+      for the same reason as the two above.*
 - [ ] **15.6.16e What would settle it, and it needs the owner or a throwaway
       account.** The recipe at the end of 15.3.2 mints an account through the
       admin API with nothing emailed, which is the only way to walk this journey

@@ -1270,7 +1270,13 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
 - [ ] **11.6.20d Whether the overlay smooths too: yes, and it is free.** Both
       surfaces render from `displayReading`, so this lands on the strip in the
       same commit without a second decision — which is the whole reason 11.6.7
-      was put on the repository rather than in a ViewModel
+      was put on the repository rather than in a ViewModel.
+
+      *Structurally true since the sixty-eighth sitting and **not observed**:
+      the tablet AVD has never been granted `SYSTEM_ALERT_WINDOW`, so the strip
+      cannot be raised on it without a session granting a permission that
+      CLAUDE.md says is the rider's to give. One look on the bike, where it is
+      already granted, closes this.*
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 

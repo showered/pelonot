@@ -352,8 +352,8 @@ form is unreadable — but a promise nobody revisits is how a comment starts
 lying, so the sentence changed with the code and the other three metrics keep
 it.
 
-**15.6.16 is the one that was not built, and the reason is that a session
-cannot reach it.** The owner's report ends in *"refresh token invalid"* on both
+**15.6.16 is the one that could not be *finished*, and three parts of it were
+written anyway.** The owner's report ends in *"refresh token invalid"* on both
 routes, sign-up and sign-in, **after** the bike had redrawn — so the pairing row
 was claimed and whatever failed, failed later. The write-up ranks the candidates
 rather than guessing: **15.6.16a** is that nothing on either device says which
@@ -370,6 +370,14 @@ refreshes it at every launch and gets that message, and nothing distinguishes
 *"the session you were carrying is gone"* from *"the sign-in you just did
 failed"*.
 
+**Three of the five were written before the sitting ended and none is ticked.**
+`signOut({ scope: 'local' })` on the phone, the route logged on both sides, and
+a sentence a rider can act on where the server's phrase used to be — all of them
+unobservable without a real pairing against the owner's project, and the web
+half needs a push that is theirs to make. Written rather than left because
+15.6.16b is a defect whichever route broke, and 15.6.16a is what makes the next
+report readable.
+
 **903 JVM tests, 0 failures**, up from 891. `assembleDebug` passes and the two
 new suites are `RoadSpeedTest` and `PowerSmootherTest`.
 
@@ -377,8 +385,11 @@ new suites are `RoadSpeedTest` and `PowerSmootherTest`.
 x, Sam and Jo — which is the owner using it between sittings rather than
 anything a session did. 55 workouts, Robin's photograph, telemetry on *Auto*,
 captions still **off**. Two simulated rides were made for this sitting and both
-were discarded through the app's own *Throw it away*; the fixture is exactly as
-it was found.
+were discarded through the app's own *Throw it away*; the fixture is 55 rides
+exactly as it was found. **What did change on it is every ride's
+`total_distance_km`**, which is 2.5a.5 and is the point — and
+`SYSTEM_ALERT_WINDOW` is still **not** granted there, which is why 11.6.20d is
+open.
 
 ### The sitting before — 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
 
@@ -521,18 +532,26 @@ which was which. It is a one-shot pass at launch rather than a migration
 figure back. Observed over all 55: every ride's implied speed now falls between
 **25.6 and 30.3 km/h**, which is the check a cyclist can read.
 
-**Two smaller things came off the same work.** **11.6.20d** is one look at the
-overlay: it renders from `displayReading` so the smoothing is already on it, and
-what is missing is somebody having seen it. **2.5a.6** is whether a distance
-still wants two decimals now that it means something — a hundredth of a
-kilometre is ten metres of a road that does not exist.
+**Two smaller things came off the same work and both are a look rather than a
+change.** **11.6.20d** is the overlay: it renders from `displayReading`, so the
+smoothing is already on it and what is missing is somebody having seen it —
+**not on this AVD**, which has never been granted `SYSTEM_ALERT_WINDOW`, and
+granting it is the rider's to do (CLAUDE.md). One look on the bike closes it.
+**2.5a.6** is whether a distance still wants two decimals now that it means
+something: a hundredth of a kilometre is ten metres of a road that does not
+exist, and the argument against one decimal is the *live* tile, which would then
+sit at `0.0` for the first minute of every ride.
 
-**And 15.6.16 is the one entry of the four that a session could not close.**
-The next move on it is 15.6.16a, which is not a fix: nothing on either device
-records which hand-off route the pairing took, and until it does, the owner's
-report cannot be told apart from three different causes. 15.6.16b is a real
-defect on the fallback route and one line, and 15.6.16c is the likeliest live
-cause and needs a `pm clear` to reproduce.
+**And 15.6.16 is the one entry of the four a session could not close.** Three
+of its five items are written and none is ticked, because reaching the code at
+all needs a real pairing against the owner's project — so the next move is a
+**trip**, not a change: sign in once by QR with `log.tag.PelonotDeviceLink`
+raised on the tablet, and the log line now says which route the hand-off took,
+which is the whole diagnosis. **15.6.16c is the likeliest live cause** and is
+the one still unwritten: a tablet carrying a session belonging to a purged user
+refreshes it at every launch, and nothing tells that apart from a sign-in that
+has just failed. It needs a `pm clear` to reproduce. **And the web half needs a
+push, which is the owner's.**
 
 **This sitting's shape is worth keeping for the next one.** The inbox had four
 entries and emptying it took an hour; three of the four were then buildable the
