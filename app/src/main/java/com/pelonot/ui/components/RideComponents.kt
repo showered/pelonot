@@ -340,6 +340,10 @@ object MetricIcons {
  * Off by default and opted into only by the ride screen: the strip has a
  * quarter of the width for the same tile, and shrinking one design until it
  * fits both surfaces is how the gauge ended up saying nothing on either.
+ *
+ * It spells out **both** kinds of band (11.7.5) and only the governing one
+ * carries the word `TARGET`. A range with no word beside a shaded stripe is
+ * information; the word is the instruction, and there is only ever one.
  */
 @Composable
 fun MetricReadout(
@@ -453,15 +457,37 @@ fun MetricReadout(
             // what makes "one instruction at a time" visible rather than
             // merely true: exactly one tile on the ride screen carries a
             // TARGET line at any moment, and that is the one to ride to.
-            if (showTargetRange && instructs && targetRange != null) {
-                Text(
-                    text = "TARGET ${targetWithUnit(targetRange, unit)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false
-                )
+            // 11.7.5. The owner: *"It's unclear what the numbers are in the
+            // target range. Please add them."* — about the tile that is
+            // context, where the band was drawn as a stripe on a track with
+            // nothing anywhere saying it meant 80 to 90. That is 11.7.3's own
+            // cost arriving where it said it would.
+            //
+            // **The numbers are the fix; the word is not.** What 11.7.3 bought
+            // is exactly one `TARGET` line on the screen at a time, which is
+            // what makes "what do I do?" answerable at a glance — so the
+            // governing tile keeps the word and the context tile gets the range
+            // alone, smaller and dimmer, labelling its own stripe rather than
+            // instructing anybody.
+            if (showTargetRange && targetRange != null) {
+                if (instructs) {
+                    Text(
+                        text = "TARGET ${targetWithUnit(targetRange, unit)}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                } else {
+                    Text(
+                        text = targetWithUnit(targetRange, unit),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
             }
         }
