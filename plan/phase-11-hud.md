@@ -1197,7 +1197,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
 
       Worth noting it is the second thing on that tile now — 11.6.17 is about
       what it *renders* — so the two are one visit to `SmallStat`.
-- [ ] **11.6.20 The numbers jump about when the rider is out of the saddle.**
+- [x] **11.6.20 The numbers jump about when the rider is out of the saddle.**
       The owner's inbox, 19 August 2026, verbatim: *"Is it possible to smooth it
       out somehow? Imagine i'm out of the seat with a really high resistance. All
       the down pedals will be super high wattage, and then inbetween it's lower,
@@ -1236,7 +1236,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
         number lags the hand feels broken.
       - **Heart rate is not**, and it is nullable — a mean would have to decide
         what an absent sample contributes, and the honest answer is nothing.
-- [ ] **11.6.20a How much smoothing, and the number is a judgement.** Garmin's
+- [x] **11.6.20a How much smoothing, and the number is a judgement.** Garmin's
       *3s power* is the industry's answer to exactly this and is the
       recommendation: at 60 rpm it spans three full pedal strokes, so both pulses
       and both gaps are in every window. **One second is not enough** (it is
@@ -1248,17 +1248,25 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       `WorkoutService` and only during a recorded ride — the ride screen shows
       live numbers before a ride starts too, so the smoother has to sit on the
       flow rather than borrow the calculator's
-- [ ] **11.6.20b The gauge, the amber and the arrow follow the number they are
+- [x] **11.6.20b The gauge, the amber and the arrow follow the number they are
       about.** Whatever is drawn as POWER is what `rawValue` compares against the
       band, or the tile says 240 in one place and points ▲ about 310 in another.
       This is the same rule `MetricReadout` already keeps and it is worth naming
       because the two arguments are passed separately
-- [ ] **11.6.20c A smoothed number must not become a smoothed *claim*.** Nothing
+- [x] **11.6.20c A smoothed number must not become a smoothed *claim*.** Nothing
       that is written down, exported, uploaded or ranked may read the display
       flow — that is `sensorReading`'s job and the split already exists. The
       thing to check when this lands is that the ride's own average power at the
       end still equals `AVG(power)` over its samples, which is the check the
       `avg_*` family earned the hard way
+      *Built and **measured** in the sixty-eighth sitting, with a new debug
+      lever to make it visible at all — `com.pelonot.debug.STAND` gives the
+      simulated rider a pedal-stroke ripple at `cadence / 30` Hz. Over ten
+      seconds of it `workout_metrics` recorded 52, 143, 72, 162, 51, 85, 52 and
+      128 W while the screen read 89, 100, 104, 123, 103, 110 — and the ride's
+      own power chart afterwards drew the standing section as a jagged band and
+      the seated section as a smooth line, which is 11.6.20c holding where it
+      can be seen rather than asserted.*
 - [ ] **11.6.20d Whether the overlay smooths too: yes, and it is free.** Both
       surfaces render from `displayReading`, so this lands on the strip in the
       same commit without a second decision — which is the whole reason 11.6.7
@@ -1467,7 +1475,7 @@ told to ease the cadence back — and the power drift the class actually cared
 about **could never be reached at all**, because cadence had already answered.
 Same defect as the amber, one channel louder.
 
-- [ ] **11.7.5 The band that is context does not say what its numbers are.** The
+- [x] **11.7.5 The band that is context does not say what its numbers are.** The
       owner's inbox, 19 August 2026, verbatim, under the heading *Cadence
       target*: *"It's unclear what the numbers are in the target range. Please
       add them."*
@@ -1497,6 +1505,11 @@ Same defect as the amber, one channel louder.
       That keeps one instruction and adds the information the gauge was already
       trying to convey. Judge it on the tablet: the test is whether a glance
       still lands on the tile with the outline round it.
+
+      *Built and observed on the tablet AVD, mid-ride on `Loosen the Legs`:
+      POWER outlined and carrying `TARGET 0–82 watts` in bold, CADENCE with a
+      plain dim `75–85 rpm` under its own gauge, and still exactly one `TARGET`
+      line on the screen. The glance still lands on the outlined tile.*
 - [ ] **11.7.5a It is the same gap on the overlay, and the answer there is
       different.** The strip has a quarter of the width and `showTargetRange` is
       off for it on purpose (`MetricReadout`'s own KDoc). Nothing changes there

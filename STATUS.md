@@ -12,8 +12,8 @@ keeps its sitting.
 
 | Measured | |
 |---|---|
-| JVM tests | **891**, 0 failures |
-| Plan boxes ticked | **669 of 887** — 75% |
+| JVM tests | **903**, 0 failures |
+| Plan boxes ticked | **678 of 907** — 74% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
@@ -444,7 +444,18 @@ race has to exclude.
    a 66%-wrong guess was being shown with the same authority as two measured
    numbers. The code is kept because 11.7.3 says when it comes back — a bike
    riding its own calibrated curve (2.2a).
-6. **The instrumented suite is *not* order-dependent, and this item said it was
+6. **A rider's distance history has two models in it (2.5a.5).** The owner
+   reported half an hour at 130 W coming out at 5 km, and they were right: the
+   model integrated *cadence* at 2.1 m a revolution and never looked at the
+   power at all, so a recovery spin and a standing climb at the same rpm covered
+   the same ground. Every ride recorded from the sixty-eighth sitting onward
+   goes through `RoadSpeed` — the flat-road power equation on a fixed nominal
+   rider, which puts that ride at 13.2 km — and **every ride already on disk
+   still holds the old figure**. Nothing on any screen says which is which, so
+   the monthly total, the history list and any personal best mix them silently.
+   The repair is designed at 2.5a.5 and is deliberately left for the owner to
+   agree, because it rewrites a column on every existing row.
+7. **The instrumented suite is *not* order-dependent, and this item said it was
    for four sittings while using it as the reason CI runs only the JVM tests
    (8.15.1).** That makes it the most expensive stale claim this page has
    carried: the others described something wrongly, and this one was
@@ -469,7 +480,7 @@ race has to exclude.
    hardware-accelerated AVD, and a cold cloud emulator without KVM is exactly
    where they would go red — which would manufacture the flakiness the refusal
    was about. That is the owner's to overrule and it is one job in `ci.yml`.
-7. **A written rule that nothing checks describes the library nobody built.**
+8. **A written rule that nothing checks describes the library nobody built.**
    `classlibrary/` R10 has always said a title names the shape and the demand,
    *"not the category and the length"*, and ended with the words **not
    tested** — and all 72 titles ended in their own duration. "The Long Climb
@@ -518,7 +529,7 @@ race has to exclude.
    separately: **a box with two clauses in it gets ticked for whichever one was
    done**, and a stale claim goes stale in the direction of *already finished*
    as readily as the other way.
-8. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
+9. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the
    drift actually happens. **The third member of that list has been struck off**:
@@ -540,7 +551,7 @@ race has to exclude.
    19.1.7a stays unbuilt for a better reason than "not yet": the drift this page
    actually suffers is the kind only a person re-reading it against the code can
    find, and doing that is what the forty-fifth sitting spent its morning on.
-9. **10.6 is still unanswered**: battery, thermals and memory over a full-length
+10. **10.6 is still unanswered**: battery, thermals and memory over a full-length
    ride. The one 20-minute ride on real hardware was spent finding 2.7.
 
 ---

@@ -319,8 +319,8 @@
 
 - [x] **8.15.1** ***Measured and it is fixed. The claim was stale, and it was
       gating a feature.*** Three documents said the instrumented suite is
-      order-dependent — `CLAUDE.md`'s trap list, **19.1.4**, and item 6 of
-      `STATUS.md`'s ranked list — and one of them was using it as the reason CI
+      order-dependent — `CLAUDE.md`'s trap list, **19.1.4**, and the entry on it
+      in `STATUS.md`'s ranked list — and one of them was using it as the reason CI
       runs the JVM tests only: *"a red run would mean 're-run it' often enough to
       train everyone to ignore the whole thing."* That made this the most
       expensive stale claim on the project, because unlike the others it was not
@@ -392,8 +392,8 @@
       runner **repeatedly** before making it a gate, because 8.8b's flake is
       unreproduced rather than fixed and ten clean local runs say nothing about
       a cold cloud emulator. **And it must be a gate or it must not exist**: a
-      non-blocking CI job is item 6's own complaint wearing a different hat, a
-      red mark nobody is required to read.
+      non-blocking CI job is that same entry's complaint wearing a different
+      hat, a red mark nobody is required to read.
 
       **This is the owner's to overrule and it is cheap to.** One job in
       `ci.yml`, and the argument above is about a constant rather than about

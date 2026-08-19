@@ -449,7 +449,7 @@ that is 13.7 km. So this app is reporting roughly 38% of the figure the rider is
 comparing it against, which is a bad place for a number that exists *"for
 comparability between rides"* to be.
 
-- [ ] **2.5a.1 Derive the speed from the power, on a fixed nominal rider.** The
+- [x] **2.5a.1 Derive the speed from the power, on a fixed nominal rider.** The
       standard flat-road model, which is a real equation rather than a fudge
       factor: `P·η = v·(Crr·m·g + ½·ρ·CdA·v²)`, solved for `v` at each sample.
       With `m` 84 kg (a 75 kg rider on a 9 kg bike), `Crr` 0.005, `CdA` 0.40 m²,
@@ -467,19 +467,19 @@ comparability between rides"* to be.
       identical watts show different distances is a board comparing bodies
       rather than efforts. One curve for everybody, and it is a fiction that is
       the same fiction for all of them
-- [ ] **2.5a.2 It is a real integration, not a rate applied to a total.** Per
+- [x] **2.5a.2 It is a real integration, not a rate applied to a total.** Per
       sample, `v` from that sample's watts, times the elapsed step, with
       `MAX_SAMPLE_GAP_SEC`'s five-second clamp exactly as the energy integral
       already has it. The cube root is monotone but not linear, so
       `f(mean power) ≠ mean f(power)` — a ride that alternates 0 W and 260 W
       covers less ground than one held at 130, which is true and is the whole
       reason to integrate rather than multiply at the end
-- [ ] **2.5a.3 `WorkoutAggregates` and `RivalTrace` must move together**, or
+- [x] **2.5a.3 `WorkoutAggregates` and `RivalTrace` must move together**, or
       the ghost disagrees with the ride that cast it. 24.3.13 already found this
       trap once and fixed it by making the three constants `internal` and having
       the trace borrow them; the same discipline applies here, and the test that
       asserts both integrations agree for the same samples is what holds it
-- [ ] **2.5a.4 What it costs the distance board, said plainly.** 24.3.13's
+- [x] **2.5a.4 What it costs the distance board, said plainly.** 24.3.13's
       closing finding was that **a distance race does not need measured power**,
       because distance was integrated cadence and every ride this app has ever
       recorded has cadence — so the distance board is populated where the output
@@ -495,6 +495,12 @@ comparability between rides"* to be.
       orderings that cannot disagree is a toggle with nothing behind it — and
       that should be written into 24.3.15 rather than discovered by whoever
       builds it
+      *Built in the sixty-eighth sitting as `RoadSpeed`, and **observed on the
+      tablet AVD rather than checked against the formula alone**: a 70-second
+      simulated ride at 157 W average drew 0.33 mi, where the cadence model
+      would have drawn 0.13. `RoadSpeedTest` checks the equation the curve
+      claims to solve as well as the magnitudes, because a wrong cube root would
+      still be monotone and plausible.*
 - [ ] **2.5a.5 The rides already on disk, and this is the owner's call.**
       `workouts.total_distance_km` holds the old fiction for every ride ever
       recorded, so the day this lands a rider's history has two models in it and

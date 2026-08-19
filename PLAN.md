@@ -241,7 +241,129 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
+### Latest session — 19 August 2026 (sixty-eighth sitting): four notes in the inbox, and the first one that was a measurement anybody could check
+
+**The inbox had four entries in it**, so the shape of the sitting was set before
+it started: emptying it is urgent, building what comes out of it is not. All
+four are written up — **15.6.16**, **2.5a**, **11.7.5** and **11.6.20**,
+nineteen items between them — and then three of the four were built on merit,
+which is the order they came out in rather than the order they were written.
+
+**"Distance is surely wrong" is the one worth reading first, because it was
+checkable in four minutes and had been wrong for the life of the project.** The
+owner: *"I rode at about 130W for 30 minutes and only clocked something like
+5km. It's surely WAY off."* `WorkoutMetricsCalculator` integrated **cadence** at
+2.1 m a revolution — thirty minutes at 85 rpm is 5.36 km, which is the number
+they saw, arrived at **without once looking at how hard they were pushing**. A
+recovery spin and a standing climb at the same rpm covered the same ground, and
+the one thing a rider changes to go faster changed nothing at all.
+
+**The replacement is an equation rather than a bigger constant**, which matters
+because a bigger constant would have fixed the magnitude and kept the defect.
+`RoadSpeed` solves `P·η = v·(Crr·m·g + ½ρCdA·v²)` for `v` at each sample —
+Cardano rather than a search, since `p > 0` makes the discriminant always
+positive. The owner's ride lands at **13.2 km**, within a few percent of the
+machine they were comparing it against, and **nothing was tuned to match it**.
+
+**The rider in it is nominal, and that is the decision in the item rather than
+the arithmetic.** This app knows the real weight and using it would be more
+physical — a heavier rider genuinely is slower for the same watts. It must not,
+because distance is a **race metric**, and a board where two riders producing
+identical watts show different distances is a board comparing bodies rather than
+efforts. Peloton's own speed is a function of output alone for the same reason.
+
+**What it costs is written down rather than discovered later** (2.5a.4).
+24.3.13's closing finding was that a distance race needs no measured power,
+because distance was integrated cadence and every ride has cadence — so the
+distance board was populated where the output board is empty.
+`RaceMetric.Distance.requiresMeasuredPower` is **true** now and the test that
+asserted the opposite is inverted with the reason attached. It also makes
+24.3.15 mostly moot: a toggle between two orderings that cannot disagree has
+nothing behind it.
+
+**What is not done is the history**, and 2.5a.5 is deliberately left open with a
+recommendation rather than defaulted: every ride on disk still holds the old
+fiction, so a rider's record now has two models in it. The case for recomputing
+is stronger here than the plan's usual rule allows and the item says exactly why
+— *"do not backfill"* is about the FTP a ride was **judged against**, where a
+later guess is a lie about the past, and a distance is a **display derived from
+the samples** that can be re-derived from the same samples at any time.
+
+**11.7.5 — the band that is context did not say what its numbers were**, and
+that is 11.7.3's own written-down cost turning up exactly where it said it
+would. On a power-governed block the cadence tile drew a shaded stripe on a
+track and **nothing anywhere on the screen said the stripe meant 75 to 85**. The
+fix is the numbers and not the word: the invariant 11.7.3 bought is one `TARGET`
+line at a time, so the governing tile keeps the word in bold and the context
+tile gets the range alone, dimmer and smaller, labelling its own stripe rather
+than instructing anybody. Watched mid-ride on `Loosen the Legs`.
+
+**11.6.20 — the watts out of the saddle, and the first thing to get right was
+that this is not a defect.** A standing rider on a heavy gear delivers torque in
+two pulses a revolution; the board reports it faithfully. Nothing is impossible,
+so `TelemetryBounds` is the wrong instrument — the fence turns impossible values
+into gaps and these values are true. It is a **display** concern and it went
+where 11.6.7 already put one: `PowerSmoother` is a three-second mean on
+`SensorRepository.displayReading`, **before** the pacing rather than after,
+because `atDisplayRate` conflates and a mean of the two survivors a second is
+not a mean of what the board sent.
+
+**Three seconds is Garmin's *3s power* and the reasoning is in 11.6.20a**: at
+60 rpm it spans three whole strokes, one second is barely one, and ten seconds
+would leave the amber lying for several seconds after a rider had fixed their
+effort. **Cadence, resistance and heart rate are untouched**, each for its own
+reason — a knob whose number lags the hand feels broken, and a mean of a
+nullable heart rate would have to decide what an absent sample contributes.
+
+**It could not be seen on an emulator, so a lever was built for it** — the same
+move 2.7a made for the corruption. `com.pelonot.debug.STAND` gives the simulated
+rider a pedal-stroke ripple at `cadence / 30` Hz, and it is **not a lie about
+the telemetry**: it is what the board genuinely reports for a standing rider,
+and it reproduces the *aliasing* too, since a 2.7 Hz ripple sampled four times a
+second reaches the screen as a slow irregular beat rather than a clean
+oscillation. **Measured rather than reasoned about**: over ten seconds of it
+`workout_metrics` recorded 52, 143, 72, 162, 51, 85, 52 and 128 W while the
+screen read 89, 100, 104, 123, 103 and 110 — and the ride's own power chart drew
+the standing section as a jagged band beside the seated section's smooth line,
+which is 11.6.20c holding somewhere it can be seen rather than asserted.
+
+**`DisplayRate`'s KDoc lost a promise rather than keeping one that had stopped
+being true.** It said *"nothing is averaged and nothing is invented: every
+number shown is one the board actually reported"*. One number is a mean now.
+That is the owner's own request and the right trade for the one metric whose raw
+form is unreadable — but a promise nobody revisits is how a comment starts
+lying, so the sentence changed with the code and the other three metrics keep
+it.
+
+**15.6.16 is the one that was not built, and the reason is that a session
+cannot reach it.** The owner's report ends in *"refresh token invalid"* on both
+routes, sign-up and sign-in, **after** the bike had redrawn — so the pairing row
+was claimed and whatever failed, failed later. The write-up ranks the candidates
+rather than guessing: **15.6.16a** is that nothing on either device says which
+of the two hand-off routes was taken, which is the whole diagnosis and is itself
+a defect; **15.6.16b** is a real one found underneath it — `web/link.js` calls
+`client.auth.signOut()` on the fallback path, and supabase-js defaults that to
+**global** scope, which revokes the very token family it has just handed the
+bike. The comment above that line says it is avoiding exactly this. It wants
+`{ scope: 'local' }`, it is one line, and it deploys on push — but the fallback
+is only reached on a 404 and 15.6.4 is deployed, so it is a fix for a route that
+may not be the one that broke. **15.6.16c** is the owner's own guess and is
+probably the live one: a tablet holding a session belonging to a purged user
+refreshes it at every launch and gets that message, and nothing distinguishes
+*"the session you were carrying is gone"* from *"the sign-in you just did
+failed"*.
+
+**903 JVM tests, 0 failures**, up from 891. `assembleDebug` passes and the two
+new suites are `RoadSpeedTest` and `PowerSmootherTest`.
+
+**The tablet AVD has five profiles on it now rather than two** — Alex, Robin,
+x, Sam and Jo — which is the owner using it between sittings rather than
+anything a session did. 55 workouts, Robin's photograph, telemetry on *Auto*,
+captions still **off**. Two simulated rides were made for this sitting and both
+were discarded through the app's own *Throw it away*; the fixture is exactly as
+it was found.
+
+### The sitting before — 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
 
 **The inbox was empty**, so every pick was made on merit — and the pattern that
 emerged is worth naming, because it made the sitting cheap. **Three of the four
@@ -341,7 +463,7 @@ header and *577 of 801* in the *how close to done* paragraph, seventy-four apart
 each stated as a measurement. Neither is typed any more.
 
 **It emits the measurements and refuses the prose, which is the item's own rule
-and the honest limit.** Item 7 of `STATUS.md`'s ranked list argued that a script
+and the honest limit.** `STATUS.md`'s ranked entry on the class-library rule argued that a script
 like this *"would not have caught it"* when the page went stale in the
 forty-fifth sitting, because what had drifted was four sentences about what a
 rider meets. That is still true, and it is why the generated region is three
@@ -370,114 +492,40 @@ the app's own *Throw it away*. **Captions are off because turning a rider's
 preference on for them is the thing 21.6.1 spent the morning refusing to do** —
 Settings → Volume → *Print the coach's cues on the ride screen* is one tap.
 
-### The sitting before — 18 August 2026 (sixty-sixth sitting): the photograph moves to the web app
-
-**The inbox had an entry in it**, so the pick was made for this sitting rather
-than on merit, the way it was for the sixty-fifth. Verbatim: *"The peloton bike
-doesn't have a camera, so let's remove the ability to set a custom photo avatar
-in the app. Instead leave that functionality only for the web companion app. We
-will need to also then think about how we can compress and store those images.
-Hopefully there are free services we can utilise. Remember that any of these
-services -- domains, URLs, API keys, need to be configurable with environment
-variables / local properties -- it is an open source app after all."*
-
-**It is one instruction and four questions, and only the instruction was built
-this sitting.** Written up as **20.7**, ten items: the removal (20.7.1, built),
-the reason the note gives naming an option this app already refused on the same
-grounds (20.7.2), the privacy property that has to be rebuilt in a browser
-(20.7.3), where the bytes live and why no image service earns its keep
-(20.7.4), the configuration rule (20.7.5), what it costs the connectivity model
-(20.7.6), the ordering (20.7.7, 20.7.9) and the refusal at 17.4 it reverses
-(20.7.8). The other nine cross the cloud and are behind a migration only the
-owner can apply — 15.3.7's queue, same as 20.2.7 already was.
-
-**The note lands on an item this plan already had, and that keeps happening
-often enough to be worth naming again**: 20.2.8 — *"Change your avatar from the
-companion web app — much later, and strictly after 17 exists"* — was written
-before any of this was built, for the same reason. What the note adds is that
-the web app is not merely *also* a place to do it; after 20.7.1 it is the
-**only** one.
-
-**The note's own reason names the one door this app had already refused to
-build, and the argument transfers one step along.** 20.2.4e is a written-up
-refusal — no camera on the bike, nothing that answers
-`ACTION_IMAGE_CAPTURE` — and the gallery that *was* built inherits it: a bike
-tablet's gallery is whatever somebody side-loaded, which on this one is
-nothing, so the door the picker drew opened onto an empty room either way.
-**Unmeasured rather than assumed** — 20.7.2 asks for the picker to actually be
-opened on the tablet to see what `ACTION_OPEN_DOCUMENT` resolves to, and that
-is left for 22.2.5's trip rather than reasoned about here, because the removal
-does not wait on the answer.
-
-**What was taken out, and what stayed.** `AvatarPicker` loses its `PhotoSwatch`
-and the `onPickPhoto` parameter that hid the whole option from profile
-creation; `ProfileSelectorScreen` loses the `PickVisualMedia` launcher and the
-`importing`/`importFailed` state that reported it. `AvatarPhotoStore.import`
-and its three private helpers — orientation, upright, centre-square — are
-deleted entire, because nothing in this app can produce a photograph any more.
-**What stayed is the whole of the drawing half**: the `photo:` scheme,
-`AvatarPhoto`'s name fence, `RiderAvatar`'s decode-at-draw-size,
-`forgetUnreferenced`'s launch sweep. A rider's face arriving from the web is
-still a file on this tablet that something has to draw, validate and
-eventually collect — and the column can already hold `photo:` today, on any
-tablet where somebody used the removed feature in the week it existed, so
-dropping the drawing half would have drawn a blank disc for them rather than a
-face. **This is the same shape 8.15.1 named two sittings ago in reverse**:
-there, code that had stopped mattering was still being treated as load-bearing;
-here, code that stops being reachable from one direction is still load-bearing
-from the other, and the fix is to read which half the note actually asked for
-rather than delete the file.
-
-**`AvatarPhotoStoreTest`'s five EXIF assertions are gone with the code they
-tested, and the property they held has a new owner rather than no owner.** The
-re-encode-never-copy rule was this app's proof that a photograph loses its GPS
-coordinates, camera model and shutter timestamp by construction; **20.7.3
-writes down where that proof has to be remade** — in a browser, against
-`canvas`/`toBlob` rather than `Bitmap.compress` — and names the trap the naive
-port falls into: uploading the `File` straight from the input element is one
-line shorter than re-encoding first and ships a rider's living-room coordinates
-to a server. Two tests replace the five, writing a JPEG straight to where the
-store expects one rather than through an `import` that no longer exists, so
-`exists`, `decode` and `forgetUnreferenced` are still covered as the code that
-still runs.
-
-**Watched on the tablet AVD rather than trusted from the diff.** Robin's
-press-and-hold dialog still opens wearing `photo:avatar-1-1786964382388.jpg` —
-the file and the column are both untouched (20.7.10) — with both rows beneath
-it correctly showing nothing selected, because a photograph is no longer one of
-the answers either row can produce. Profile creation's face step is unchanged,
-which it should be: it never offered a photograph in the first place
-(20.2.4d). Nothing was saved during the check, so the fixture is exactly as the
-sixty-fifth sitting left it.
-
-**864 JVM tests, 0 failures — the same number**, because the five deleted
-assertions were instrumented rather than JVM. `assembleDebug` passes.
-
-**Two refusals get their reasoning reopened rather than reused, because the
-ground under both moved.** 17.4's *"the avatar is deliberately not an
-upload"* gave three reasons — store, moderate, resize — and 20.7.8 answers
-each: **store** and **resize** are cheap once the client has already
-re-encoded down to a few kilobytes for privacy (20.7.4, 20.7.3), and **moderate
-is the one the note does not mention and the one that still costs something**
-— 18.11.1 accepted an open sign-up against a blast radius that named display
-names, class ids and output, never a face, so extending avatars into that
-surface is the owner's decision to re-take rather than a session's to assume.
-And **20.7.6 names a real loss rather than papering over one**: after 20.7.1 an
-offline household has no route to a photographic face at all, because the
-connectivity model's first rule is that an account-less rider makes no request.
-The twenty drawn faces are the honest answer already in the plan — offline
-riders get a face, account holders can have their own photograph — and it is
-worth saying plainly that it was working differently for them yesterday.
-
-**Phase 20 gains ten items and one tick — 43 of 62, measured with the nested
-checkbox pattern rather than the top-level one alone**, because 20.2.4's own
-sub-items (20.2.4a–f) are indented and the plain `^- \[x\]` count this project
-has used before silently excludes them; worth remembering the next time a phase
-is recounted here.
-
 ### What to do next, in order
 
-**This sitting left three things behind it and none of them is a job.** 22.9.5
+**This sitting left one job behind it and it is the biggest thing here: 2.5a.5,
+the rides already on disk.** Distance is right for every ride recorded from now
+on and wrong for all 55 on the tablet, so a rider's history has two models in it
+and nothing on any screen says which is which — the monthly total, the history
+list and any personal best all mix them silently. The item is written up with
+the recommendation and the reason it is *not* the plan's usual no-backfill case,
+and the shape is: recompute by integration where a full-detail series exists,
+fall back to `avg_power` through the same curve where 23.4 has trimmed it or a
+fixture never had one, and say in the migration's own comment which rows got
+which. **It cannot be a SQL migration** — SQLite has no cube root — so it is a
+launch-time repair in the shape of `WorkoutDao.backfillPowerProvenance`.
+
+**Two smaller things came off the same work.** **11.6.20d** is one look at the
+overlay: it renders from `displayReading` so the smoothing is already on it, and
+what is missing is somebody having seen it. **2.5a.6** is whether a distance
+still wants two decimals now that it means something — a hundredth of a
+kilometre is ten metres of a road that does not exist.
+
+**And 15.6.16 is the one entry of the four that a session could not close.**
+The next move on it is 15.6.16a, which is not a fix: nothing on either device
+records which hand-off route the pairing took, and until it does, the owner's
+report cannot be told apart from three different causes. 15.6.16b is a real
+defect on the fallback route and one line, and 15.6.16c is the likeliest live
+cause and needs a `pm clear` to reproduce.
+
+**This sitting's shape is worth keeping for the next one.** The inbox had four
+entries and emptying it took an hour; three of the four were then buildable the
+same day, because the write-up had already done the deciding. The one that was
+not buildable is the one whose diagnosis needs a device this session could not
+reach — which is the ordinary state of Phase 15 and not a new problem.
+
+**The sitting before left three things behind it and none of them is a job.** 22.9.5
 is answered and the fold on a first-run dashboard is filled, but **about 110 dp
 of it is still honestly empty** once the backup nag goes — the remaining
 candidates at 22.9.4 are all refusals with reasons, and the one thing that might
@@ -489,16 +537,16 @@ the AVD**, deliberately — Settings → Volume → *Print the coach's cues on t
 screen* — because turning a rider's preference on for them is what 21.6.1 spent
 the morning refusing to do.
 
-**Three of this sitting's four picks were items an earlier sitting had written
-up and left**, and each one's own written rule decided its shape rather than a
+**Three of the sixty-seventh sitting's four picks were items an earlier sitting
+had written up and left**, and each one's own written rule decided its shape rather than a
 new judgement. That is worth reading as guidance about where to pick next: the
 phases are full of items carrying a design and a reason not to have built it
 yet, and the reason has sometimes expired without anybody going back.
 19.1.7a is the clearest case — it named the condition under which it became
 worth building, and that condition had been met three sittings earlier.
 
-**The owner's inbox is empty and the top of this numbered list is still mostly
-not work**: 15.3.2 is built and unticked and item 0 is still its reason, and the
+**The owner's inbox is empty again and the top of this numbered list is still
+mostly not work**: 15.3.2 is built and unticked and item 0 is still its reason, and the
 mailer (15.7.7) is still what stands between the *journey* and anybody. Four of
 the top five entries cannot be advanced by a session at all, which is why this
 sitting and the two before it made their picks on merit from the phases.
@@ -545,7 +593,8 @@ than read** — the documented trigger was reproduced with a probe class in
 `Completed`, and the suite ran **131 tests, 0 failures** with the probe confirmed
 **first** out of the results XML and `WorkoutServiceTest` **last**. Ten of the
 twelve classes use in-memory databases and cannot see each other at all.
-`CLAUDE.md`, 19.1.4, `ci.yml` and `STATUS.md` item 6 are all corrected, and
+`CLAUDE.md`, 19.1.4, `ci.yml` and `STATUS.md`'s ranked entry on it are all
+corrected, and
 19.1.4's paragraph is left visible with its wrong reason rather than edited away.
 
 **8.15.2 is the decision that replaces it and it is the owner's to overrule
@@ -557,7 +606,8 @@ the refusal was always about rather than inherit it. The old reason was wrong an
 the conclusion happens to survive. What would change it, in order: make the waits
 adaptive rather than one constant tuned to one machine, then run it on the runner
 repeatedly before making it a gate — and **it must be a gate or not exist**,
-because a non-blocking job is item 6's own complaint in a different hat.
+because a non-blocking job is that same entry's own complaint in a different
+hat.
 
 **The honest gap it named is now a decision rather than a gap** (8.14.1). This
 project has **no Compose UI test infrastructure at all** — twelve instrumented
@@ -689,19 +739,19 @@ warned about itself in a parenthesis for two sittings.
 
 | Phase | | Phase | | Phase | |
 |---|---|---|---|---|---|
-| 2 | 49 of 55 | 12 | 33 of 40 | 22 | **51 of 56** |
+| 2 | **53 of 61** | 12 | 33 of 40 | 22 | 51 of 56 |
 | 7 | 31 of 36 | 13 | 8 of 8 | 23 | 34 of 42 |
 | 8 | 39 of 56 | 14 | 34 of 44 | 24 | 47 of 51 |
-| 10 | 5 of 6 | 15 | **42 of 64** | 25 | 12 of 13 |
-| 11 | **62 of 73** | 16 | 19 of 19 | 26 | 19 of 24 |
+| 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |
+| 11 | **67 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
 | | | 17/18 | 31 of 44 | 27 | 0 of 18 |
-| | | 19 | **12 of 23** | 28 | 0 of 24 |
+| | | 19 | 12 of 23 | 28 | 0 of 24 |
 | | | 20 | 43 of 62 | 29 | 0 of 12 |
-| | | 21 | **19 of 37** | | |
+| | | 21 | 19 of 37 | | |
 
-**Phase 15 is still the outlier and now says so in the same units as everything
-else** — 22 boxes open, most of them behind the mailer (15.7.7) or the owner.
-Phase 19 is second. **Phases 27, 28 and 29 are deliberately untouched**: the
+**Phase 15 is still the outlier and got further from the rest this sitting** —
+**28** boxes open where it was 22, because 15.6.16's six items are all things
+only the owner's own project can settle. Phase 19 is second. **Phases 27, 28 and 29 are deliberately untouched**: the
 owner's own weighting on the first two, and the bike's Android version gating
 the third.
 
@@ -761,7 +811,7 @@ bucket and could ride in the profile payload the day that migration happens.
    evidence that a stranger cloning this gets a build. The workflow had been
    correct and unreachable for eighteen sittings, which is this sitting's third
    finding of the same shape. **What is not covered is the instrumented
-   suite**, and the reason item 6 of `STATUS.md`'s ranked list gave for that
+   suite**, and the reason `STATUS.md`'s ranked entry on it gave for that
    turned out to be **stale, and it was withholding coverage** — see 8.15.1
    immediately below. The database, the service and the migrations are still
    tested only on somebody's machine, and 8.15.2 is the decision about whether

@@ -6,6 +6,112 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 18 August 2026 (sixty-sixth sitting): the photograph moves to the web app
+
+**The inbox had an entry in it**, so the pick was made for this sitting rather
+than on merit, the way it was for the sixty-fifth. Verbatim: *"The peloton bike
+doesn't have a camera, so let's remove the ability to set a custom photo avatar
+in the app. Instead leave that functionality only for the web companion app. We
+will need to also then think about how we can compress and store those images.
+Hopefully there are free services we can utilise. Remember that any of these
+services -- domains, URLs, API keys, need to be configurable with environment
+variables / local properties -- it is an open source app after all."*
+
+**It is one instruction and four questions, and only the instruction was built
+this sitting.** Written up as **20.7**, ten items: the removal (20.7.1, built),
+the reason the note gives naming an option this app already refused on the same
+grounds (20.7.2), the privacy property that has to be rebuilt in a browser
+(20.7.3), where the bytes live and why no image service earns its keep
+(20.7.4), the configuration rule (20.7.5), what it costs the connectivity model
+(20.7.6), the ordering (20.7.7, 20.7.9) and the refusal at 17.4 it reverses
+(20.7.8). The other nine cross the cloud and are behind a migration only the
+owner can apply — 15.3.7's queue, same as 20.2.7 already was.
+
+**The note lands on an item this plan already had, and that keeps happening
+often enough to be worth naming again**: 20.2.8 — *"Change your avatar from the
+companion web app — much later, and strictly after 17 exists"* — was written
+before any of this was built, for the same reason. What the note adds is that
+the web app is not merely *also* a place to do it; after 20.7.1 it is the
+**only** one.
+
+**The note's own reason names the one door this app had already refused to
+build, and the argument transfers one step along.** 20.2.4e is a written-up
+refusal — no camera on the bike, nothing that answers
+`ACTION_IMAGE_CAPTURE` — and the gallery that *was* built inherits it: a bike
+tablet's gallery is whatever somebody side-loaded, which on this one is
+nothing, so the door the picker drew opened onto an empty room either way.
+**Unmeasured rather than assumed** — 20.7.2 asks for the picker to actually be
+opened on the tablet to see what `ACTION_OPEN_DOCUMENT` resolves to, and that
+is left for 22.2.5's trip rather than reasoned about here, because the removal
+does not wait on the answer.
+
+**What was taken out, and what stayed.** `AvatarPicker` loses its `PhotoSwatch`
+and the `onPickPhoto` parameter that hid the whole option from profile
+creation; `ProfileSelectorScreen` loses the `PickVisualMedia` launcher and the
+`importing`/`importFailed` state that reported it. `AvatarPhotoStore.import`
+and its three private helpers — orientation, upright, centre-square — are
+deleted entire, because nothing in this app can produce a photograph any more.
+**What stayed is the whole of the drawing half**: the `photo:` scheme,
+`AvatarPhoto`'s name fence, `RiderAvatar`'s decode-at-draw-size,
+`forgetUnreferenced`'s launch sweep. A rider's face arriving from the web is
+still a file on this tablet that something has to draw, validate and
+eventually collect — and the column can already hold `photo:` today, on any
+tablet where somebody used the removed feature in the week it existed, so
+dropping the drawing half would have drawn a blank disc for them rather than a
+face. **This is the same shape 8.15.1 named two sittings ago in reverse**:
+there, code that had stopped mattering was still being treated as load-bearing;
+here, code that stops being reachable from one direction is still load-bearing
+from the other, and the fix is to read which half the note actually asked for
+rather than delete the file.
+
+**`AvatarPhotoStoreTest`'s five EXIF assertions are gone with the code they
+tested, and the property they held has a new owner rather than no owner.** The
+re-encode-never-copy rule was this app's proof that a photograph loses its GPS
+coordinates, camera model and shutter timestamp by construction; **20.7.3
+writes down where that proof has to be remade** — in a browser, against
+`canvas`/`toBlob` rather than `Bitmap.compress` — and names the trap the naive
+port falls into: uploading the `File` straight from the input element is one
+line shorter than re-encoding first and ships a rider's living-room coordinates
+to a server. Two tests replace the five, writing a JPEG straight to where the
+store expects one rather than through an `import` that no longer exists, so
+`exists`, `decode` and `forgetUnreferenced` are still covered as the code that
+still runs.
+
+**Watched on the tablet AVD rather than trusted from the diff.** Robin's
+press-and-hold dialog still opens wearing `photo:avatar-1-1786964382388.jpg` —
+the file and the column are both untouched (20.7.10) — with both rows beneath
+it correctly showing nothing selected, because a photograph is no longer one of
+the answers either row can produce. Profile creation's face step is unchanged,
+which it should be: it never offered a photograph in the first place
+(20.2.4d). Nothing was saved during the check, so the fixture is exactly as the
+sixty-fifth sitting left it.
+
+**864 JVM tests, 0 failures — the same number**, because the five deleted
+assertions were instrumented rather than JVM. `assembleDebug` passes.
+
+**Two refusals get their reasoning reopened rather than reused, because the
+ground under both moved.** 17.4's *"the avatar is deliberately not an
+upload"* gave three reasons — store, moderate, resize — and 20.7.8 answers
+each: **store** and **resize** are cheap once the client has already
+re-encoded down to a few kilobytes for privacy (20.7.4, 20.7.3), and **moderate
+is the one the note does not mention and the one that still costs something**
+— 18.11.1 accepted an open sign-up against a blast radius that named display
+names, class ids and output, never a face, so extending avatars into that
+surface is the owner's decision to re-take rather than a session's to assume.
+And **20.7.6 names a real loss rather than papering over one**: after 20.7.1 an
+offline household has no route to a photographic face at all, because the
+connectivity model's first rule is that an account-less rider makes no request.
+The twenty drawn faces are the honest answer already in the plan — offline
+riders get a face, account holders can have their own photograph — and it is
+worth saying plainly that it was working differently for them yesterday.
+
+**Phase 20 gains ten items and one tick — 43 of 62, measured with the nested
+checkbox pattern rather than the top-level one alone**, because 20.2.4's own
+sub-items (20.2.4a–f) are indented and the plain `^- \[x\]` count this project
+has used before silently excludes them; worth remembering the next time a phase
+is recounted here.
+
+
 ## 17 August 2026 (sixty-fifth sitting): a word that cost a face, and the same rule that was only a hope
 
 **The inbox had an entry in it**, so the pick was made for this sitting rather
