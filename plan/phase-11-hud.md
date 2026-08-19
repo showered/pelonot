@@ -1197,6 +1197,72 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
 
       Worth noting it is the second thing on that tile now — 11.6.17 is about
       what it *renders* — so the two are one visit to `SmallStat`.
+- [ ] **11.6.20 The numbers jump about when the rider is out of the saddle.**
+      The owner's inbox, 19 August 2026, verbatim: *"Is it possible to smooth it
+      out somehow? Imagine i'm out of the seat with a really high resistance. All
+      the down pedals will be super high wattage, and then inbetween it's lower,
+      this causes the output to jump up and down quite dramatically. Would be
+      good to smooth it out slightly."*
+
+      **This is a real physical effect and not a sensor fault**, which is what
+      decides where the fix goes. A standing rider at high resistance delivers
+      torque in two pulses per revolution; at 60 rpm that is a two-hertz square
+      wave in the watts, and the board is reporting it faithfully several times a
+      second. Nothing here is impossible, so **`TelemetryBounds` must not be
+      touched** — the fence turns impossible values into gaps and these values are
+      true.
+
+      **It is a display concern and it belongs where 11.6.7 already put one.**
+      `SensorRepository` publishes two flows: `sensorReading`, which the recorder
+      reads, and `displayReading`, which is the same values `atDisplayRate()` and
+      is what both screens render. **The smoothing goes on the display flow and
+      only there** — `workout_metrics` keeps every raw sample, so the chart, the
+      averages, the twenty-minute peak that moves a rider's FTP and everything in
+      `calibration/` are untouched by construction. A rider who smooths their
+      record cannot un-smooth it.
+
+      **It costs `DisplayRate`'s own promise, and that has to be said out loud
+      rather than quietly broken.** Its KDoc reads *"Nothing is averaged and
+      nothing is invented: every number shown is one the board actually
+      reported."* After this, one number on the screen is a mean of several. That
+      is the owner's own request and it is the right trade for a metric whose raw
+      form is unreadable — but the sentence must change with the code, and the
+      other three metrics keep the old promise:
+      - **Power is smoothed.** It is the one with the pedal-stroke ripple in it.
+      - **Cadence is not.** It is already a rate over a revolution and it does
+        not pulse; smoothing it would only add lag to the metric a rider uses to
+        judge whether they are still on the beat.
+      - **Resistance is not.** It moves when a hand moves it, and a knob whose
+        number lags the hand feels broken.
+      - **Heart rate is not**, and it is nullable — a mean would have to decide
+        what an absent sample contributes, and the honest answer is nothing.
+- [ ] **11.6.20a How much smoothing, and the number is a judgement.** Garmin's
+      *3s power* is the industry's answer to exactly this and is the
+      recommendation: at 60 rpm it spans three full pedal strokes, so both pulses
+      and both gaps are in every window. **One second is not enough** (it is
+      barely one stroke and the ripple survives), and **ten is too much** (the
+      number stops answering *what am I doing now*, which is the question the
+      tile exists for, and the amber would go on lying for several seconds after
+      a rider had fixed their effort). `WorkoutMetricsCalculator` already keeps a
+      rolling window and computes `avgPower1s/5s/30s`, but it runs inside
+      `WorkoutService` and only during a recorded ride — the ride screen shows
+      live numbers before a ride starts too, so the smoother has to sit on the
+      flow rather than borrow the calculator's
+- [ ] **11.6.20b The gauge, the amber and the arrow follow the number they are
+      about.** Whatever is drawn as POWER is what `rawValue` compares against the
+      band, or the tile says 240 in one place and points ▲ about 310 in another.
+      This is the same rule `MetricReadout` already keeps and it is worth naming
+      because the two arguments are passed separately
+- [ ] **11.6.20c A smoothed number must not become a smoothed *claim*.** Nothing
+      that is written down, exported, uploaded or ranked may read the display
+      flow — that is `sensorReading`'s job and the split already exists. The
+      thing to check when this lands is that the ride's own average power at the
+      end still equals `AVG(power)` over its samples, which is the check the
+      `avg_*` family earned the hard way
+- [ ] **11.6.20d Whether the overlay smooths too: yes, and it is free.** Both
+      surfaces render from `displayReading`, so this lands on the strip in the
+      same commit without a second decision — which is the whole reason 11.6.7
+      was put on the repository rather than in a ViewModel
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 
@@ -1400,6 +1466,47 @@ block a rider spinning 92 rpm against the library's neutral 75–85 default was
 told to ease the cadence back — and the power drift the class actually cared
 about **could never be reached at all**, because cadence had already answered.
 Same defect as the amber, one channel louder.
+
+- [ ] **11.7.5 The band that is context does not say what its numbers are.** The
+      owner's inbox, 19 August 2026, verbatim, under the heading *Cadence
+      target*: *"It's unclear what the numbers are in the target range. Please
+      add them."*
+
+      **This is 11.7.3's own cost arriving, and it arrived exactly where that
+      item said it would.** The shaded band was deliberately kept on the
+      non-governing tile so the class would not appear to have said nothing about
+      cadence — the reasoning is three paragraphs above — and what was dropped
+      with the amber, the arrow and the spoken cue was the `TARGET 80–90 rpm`
+      line. So on a power-governed block the cadence tile draws a stripe on a
+      track and a marker somewhere along it, and **nothing on the screen says the
+      stripe is 80 to 90**. A rider can see they are below something without ever
+      learning what.
+
+      **The fix is the numbers, not the line.** The invariant 11.7.3 bought is
+      *exactly one `TARGET` line on the ride screen at any moment*, and that is
+      what makes "what do I do?" answerable at a glance — printing `TARGET 80–90
+      rpm` under a context band would undo it and put the app back to asking for
+      two things at once. What the owner asked for is the numbers, and the two
+      can be separated:
+      - the **governing** tile keeps `TARGET 85–95 rpm` — the word, bold, in
+        `titleSmall`, exactly as today
+      - the **context** tile gets the range and no word — `80–90 rpm`, dimmer and
+        smaller, sitting under its own gauge where it labels the stripe rather
+        than instructing anybody
+
+      That keeps one instruction and adds the information the gauge was already
+      trying to convey. Judge it on the tablet: the test is whether a glance
+      still lands on the tile with the outline round it.
+- [ ] **11.7.5a It is the same gap on the overlay, and the answer there is
+      different.** The strip has a quarter of the width and `showTargetRange` is
+      off for it on purpose (`MetricReadout`'s own KDoc). Nothing changes there
+      by default — but the numbers should be checked against 11.1b.11's rule
+      before anybody adds them: what does not fit gets smaller or wraps, and a
+      pair gets a second line
+- [ ] **11.7.5b Resistance is unaffected and must stay so.** It has no band on
+      either surface (11.7.3), so there is no range to print. A session reading
+      this item as *"put the numbers back on every tile"* would reinstate a
+      figure that is `PowerModel` inverted at 66% median error
 
 ---
 

@@ -429,6 +429,98 @@ Settings section. The gates are exercised against the real 31 July sweep in
 - [x] Cumulative distance estimation
 - [x] Long sample gaps clamped so a backgrounded app cannot integrate idle time
 
+### 2.5a The distance is wrong, and it is wrong by about two and a half times
+
+**The owner's inbox, 19 August 2026, verbatim:** *"I rode at about 130W for 30
+minutes and only clocked something like 5km. It's surely WAY off. Please
+check."*
+
+**Checked, and they are right.** `WorkoutMetricsCalculator` integrates
+**cadence** at `KM_PER_REVOLUTION = 0.0021` — 2.1 metres of imaginary road per
+crank revolution. Thirty minutes at 85 rpm is 2,550 revolutions and therefore
+**5.36 km**, which is the number the owner saw, arrived at without reference to
+how hard they were pushing. **Resistance and power appear nowhere in it**, so
+the model says a gentle spin and a standing climb at the same cadence cover the
+same ground, and the one thing a rider changes to go faster changes nothing.
+
+**What a Peloton says for the same ride is about 13 km.** Their speed is a
+function of *output* alone, and at 130 W it is around 17 mph — half an hour of
+that is 13.7 km. So this app is reporting roughly 38% of the figure the rider is
+comparing it against, which is a bad place for a number that exists *"for
+comparability between rides"* to be.
+
+- [ ] **2.5a.1 Derive the speed from the power, on a fixed nominal rider.** The
+      standard flat-road model, which is a real equation rather than a fudge
+      factor: `P·η = v·(Crr·m·g + ½·ρ·CdA·v²)`, solved for `v` at each sample.
+      With `m` 84 kg (a 75 kg rider on a 9 kg bike), `Crr` 0.005, `CdA` 0.40 m²,
+      `ρ` 1.225 kg/m³ and `η` 0.97 it gives 17.6 km/h at 50 W, 23.7 at 100,
+      **26.3 at 130** and 31.1 at 200 — which lands the owner's ride at 13.2 km
+      and within a few percent of the machine they are comparing it to, without
+      anybody having tuned it to match.
+
+      **The mass is nominal on purpose and it is the one decision here that
+      could reasonably go the other way.** This app knows the rider's real
+      weight, and using it would be more *physical* — a heavier rider genuinely
+      does go slower for the same watts. It must not, for the same reason
+      Peloton's does not: distance is a **race metric** in this app
+      (`RaceMetric.Distance`, 24.3.13), and a board where two riders producing
+      identical watts show different distances is a board comparing bodies
+      rather than efforts. One curve for everybody, and it is a fiction that is
+      the same fiction for all of them
+- [ ] **2.5a.2 It is a real integration, not a rate applied to a total.** Per
+      sample, `v` from that sample's watts, times the elapsed step, with
+      `MAX_SAMPLE_GAP_SEC`'s five-second clamp exactly as the energy integral
+      already has it. The cube root is monotone but not linear, so
+      `f(mean power) ≠ mean f(power)` — a ride that alternates 0 W and 260 W
+      covers less ground than one held at 130, which is true and is the whole
+      reason to integrate rather than multiply at the end
+- [ ] **2.5a.3 `WorkoutAggregates` and `RivalTrace` must move together**, or
+      the ghost disagrees with the ride that cast it. 24.3.13 already found this
+      trap once and fixed it by making the three constants `internal` and having
+      the trace borrow them; the same discipline applies here, and the test that
+      asserts both integrations agree for the same samples is what holds it
+- [ ] **2.5a.4 What it costs the distance board, said plainly.** 24.3.13's
+      closing finding was that **a distance race does not need measured power**,
+      because distance was integrated cadence and every ride this app has ever
+      recorded has cadence — so the distance board is populated where the output
+      board is empty. **After 2.5a.1 that is no longer true.** Distance becomes a
+      monotone function of power, `RaceMetric.Distance.requiresMeasuredPower`
+      has to become `true`, and a distance race stops being a second opinion and
+      becomes an output race in prettier units.
+
+      That is a genuine loss and it is worth taking anyway: the property was
+      bought with a number the owner has now told us is wrong by a factor of
+      two and a half, and a populated board of wrong distances is worse than an
+      empty one. **It also makes 24.3.15 mostly moot** — a toggle between two
+      orderings that cannot disagree is a toggle with nothing behind it — and
+      that should be written into 24.3.15 rather than discovered by whoever
+      builds it
+- [ ] **2.5a.5 The rides already on disk, and this is the owner's call.**
+      `workouts.total_distance_km` holds the old fiction for every ride ever
+      recorded, so the day this lands a rider's history has two models in it and
+      nothing on any screen says which is which — the monthly total, the history
+      list and any personal best all mix them silently.
+
+      **The case for recomputing is stronger here than the plan's usual rule
+      allows, and the difference is worth stating.** *"Do not backfill"* (7.8,
+      21.4.2c) is about the FTP and the maximum heart rate a ride was **judged
+      against** — facts about a moment, where a later guess is a lie about the
+      past. A distance is not a fact about a moment; it is a **display derived
+      from the samples**, and re-deriving it from the same samples with a better
+      function is not rewriting the record, it is redrawing it.
+
+      What stops it being free is that not every row has its samples any more:
+      a ride condensed by 23.4 kept an outline, and the seeded fixtures have no
+      `workout_metrics` at all. So the shape is: recompute by integration where
+      a full-detail series exists, fall back to `avg_power` through the same
+      curve where it does not — noting that a concave `f` makes the fallback
+      slightly generous — and **say in the migration's own comment which rows
+      got which**. Decide it; do not default it
+- [ ] **2.5a.6 `Formatters.distance` shows two decimals and should probably
+      show one.** A hundredth of a kilometre is ten metres of a road that does
+      not exist. Not part of the fix and not to be smuggled in with it, but the
+      moment the number changes is the moment somebody looks at it
+
 ### 2.6 Simulated source ✅
 - [x] `SimulatedSensorSource` producing a plausible effort profile with lagging heart rate
 - [x] Settings toggle: Auto / Hardware / Simulated

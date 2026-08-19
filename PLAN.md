@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Sixty-one entries have passed through it.** In order: standing and seated
+**Sixty-five entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -171,15 +171,20 @@ the fix, and the measurement makes its case for it: 44 dp of pill across a 58 dp
 disc, to hold a word set at 5.5 sp), and **the custom photo avatar belonging to
 the web app rather than the bike** (**20.7** — one instruction that a session can
 build and four questions that cross the cloud, and the note lands on **20.2.8**,
-an item this plan wrote before any of it was built).
+an item this plan wrote before any of it was built), and **the four notes of 19
+August** — the QR journey ending in *"refresh token invalid"* (**15.6.16**, with
+a one-line defect found underneath it at **15.6.16b** that makes the fallback
+route unable to work at all), the distance being *"surely WAY off"* (**2.5a** —
+checked, and it is out by about two and a half times, because the model
+integrates cadence and has never once looked at how hard the rider is pushing),
+the cadence target's numbers not being shown (**11.7.5**, which is 11.7.3's own
+written-down cost arriving exactly where it said it would), and the watts
+jumping about out of the saddle (**11.6.20** — a real physical effect rather
+than a sensor fault, so it is smoothed on the display flow and nowhere near
+the record).
 
-*Empty. The entry of 18 August 2026 — the custom photo avatar belonging to the
-web app rather than the bike — is written up as **20.7**, ten items: the removal
-itself (20.7.1), the reason the note gives naming an option that was never built
-(20.7.2), the privacy property that has to be rebuilt in a browser (20.7.3),
-where the bytes live and why no image service is needed (20.7.4), the
-configuration rule (20.7.5), what it does to the connectivity model (20.7.6),
-the ordering (20.7.7, 20.7.9) and the refusal at 17.4 it reverses (20.7.8).*
+*Empty. The four entries of 19 August 2026 are written up as **15.6.16**
+(five items), **2.5a** (six), **11.7.5** (three) and **11.6.20** (five).*
 
 ---
 

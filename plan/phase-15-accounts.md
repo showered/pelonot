@@ -758,6 +758,75 @@ own**, minted for it, not a copy of the phone's.
       Back changes with it: there is no longer a step between the code and the
       offer, because the code *is* the offer, so back is *Not now* — one step,
       and `abandonPairing` still takes the live code with it (15.6.13)
+- [ ] **15.6.16 The link lands, the bike redraws — and then says the refresh
+      token is invalid.** The owner's inbox, 19 August 2026, verbatim: *"I don't
+      know if this is because we recently purged all user accounts on supabase
+      but I just went through the flow of signing in with an existing offline
+      account and then tried to back it up to a new online account. I scanned teh
+      QR code, i created an account, i verified email address, and then the
+      peloton screen refreshed -- it was wonderful! -- however there was an
+      error, i can't remember the exact wording but it was saying "refresh token
+      invalid" or something. I then tried to do the same thing (with QR code) but
+      this time sign in rather than sign up. It all worked again until the point
+      where it said the refresh token didn't work."*
+
+      **Two facts in the note are worth separating before anything is
+      diagnosed.** The first is that **it happened on both routes** — sign-up and
+      sign-in — which rules out everything specific to email confirmation and
+      points at the hand-off itself. The second is that **the bike redrew**, so
+      the poll found the payload and 15.6.11's panel is what the owner saw
+      working; whatever failed, failed after the pairing row was claimed.
+- [ ] **15.6.16a The first thing to establish is which of the two routes the
+      hand-off actually took, and nothing on either screen says.** `link.js`
+      tries the Edge Function and falls back to 15.6.9's SQL route **only on a
+      404**; the bike then either verifies an OTP or calls
+      `refreshSession(phone's refresh token)`. Only the second can produce those
+      words. So the question *"was the function reached?"* is the whole diagnosis
+      and it is currently unanswerable from either device — which is a defect in
+      its own right, and the cheapest fix in this item: the bike should log which
+      `PairingHandover` kind it adopted, and the phone should say which route it
+      used when it fails
+- [ ] **15.6.16b The strong candidate, and it is a real defect whether or not it
+      is this one.** On the fallback route `web/link.js` calls
+      `client.auth.signOut()` immediately after handing the token over. **supabase-js
+      defaults `signOut` to global scope, which revokes every refresh token in
+      the family** — including the one the phone has just given the bike, and
+      before the bike's two-second poll has necessarily collected it. The
+      comment above that line says it is there to avoid *"racing the bike for it
+      and having the server revoke both"*, and what it does instead is perform
+      the revocation itself. It should be `signOut({ scope: 'local' })`: the
+      phone forgets its session, the family survives, and the bike's
+      `refreshSession` has something to refresh.
+
+      **This is a one-line fix and it deploys on push**, so it is worth doing
+      whether or not the fallback was the route taken — an untested fallback
+      that cannot work is a fallback that does not exist (15.6.9)
+- [ ] **15.6.16c The second candidate is the purge the owner names, and it is
+      the one their own guess points at.** `SupabaseModule` installs Auth with
+      `autoLoadFromStorage` and `alwaysAutoRefresh`, so a tablet holding a
+      session belonging to a deleted user tries to refresh it at every launch and
+      gets exactly that message from the server. That is **not** a sign-in
+      failure — the new session may be perfectly good — but the app has no
+      handling that distinguishes *"the session you were carrying is gone"* from
+      *"the sign-in you just did failed"*, and 15.1.3's rule is that an expiry
+      must never surface as a screen. **A stale credential from a deleted account
+      should be discarded silently at launch, once, and the rider told nothing.**
+      Worth checking with `pm clear` before believing anything else about this
+      journey: a tablet that has never held a purged session cannot reproduce it
+- [ ] **15.6.16d Wherever it comes from, the wording is wrong for a rider.**
+      *"Invalid Refresh Token"* is the server's phrase and `AuthAttempt.Failed`
+      passes `e.message` through untouched (`DeviceLinkRepository.adopt`).
+      Nothing a rider standing at a bike can do with it. It should say what
+      happened and what to do — *"That link expired before the bike could use
+      it. Show a new code and scan it again."* — and the raw text belongs in
+      logcat. Same rule `SyncOutcome.Rejected` already follows for the sync
+      messages
+- [ ] **15.6.16e What would settle it, and it needs the owner or a throwaway
+      account.** The recipe at the end of 15.3.2 mints an account through the
+      admin API with nothing emailed, which is the only way to walk this journey
+      repeatedly while 15.7.7 stands. Two runs: one with the Edge Function
+      reachable and one with it made to 404 on purpose, watching logcat on the
+      bike for which handover kind arrives
 
 ---
 
