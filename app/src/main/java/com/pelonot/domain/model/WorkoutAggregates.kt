@@ -10,9 +10,9 @@ package com.pelonot.domain.model
  *
  * Kept deliberately consistent with
  * [com.pelonot.data.sensor.WorkoutMetricsCalculator] — same trapezoidal
- * integration, same 5-second gap clamp, same revolution-to-distance fiction —
- * so a recovered ride is comparable with one that finished normally rather
- * than being a differently-shaped number with the same name.
+ * integration, same 5-second gap clamp, same [RoadSpeed] curve behind the
+ * distance — so a recovered ride is comparable with one that finished normally
+ * rather than being a differently-shaped number with the same name.
  */
 data class WorkoutAggregates(
     val durationSec: Int = 0,
@@ -67,7 +67,7 @@ data class WorkoutAggregates(
         // disagrees with the distance the ride recorded. Same family as the
         // `avg_*` trap — one quantity, two derivations, one of them drifting.
         internal const val SECONDS_PER_MINUTE = 60.0
-        internal const val KM_PER_REVOLUTION = 0.0021
+        internal const val METRES_PER_KM = 1000.0
         internal const val MAX_SAMPLE_GAP_SEC = 5.0
 
         /**
@@ -87,8 +87,10 @@ data class WorkoutAggregates(
                 val dt = (current.second - previous.second).toDouble()
                     .coerceIn(0.0, MAX_SAMPLE_GAP_SEC)
                 energyJoules += (previous.power + current.power) / 2.0 * dt
-                distanceKm += ((previous.cadence + current.cadence) / 2.0 / SECONDS_PER_MINUTE) *
-                    KM_PER_REVOLUTION * dt
+                distanceKm += (
+                    RoadSpeed.metresPerSecond(previous.power) +
+                        RoadSpeed.metresPerSecond(current.power)
+                    ) / 2.0 * dt / METRES_PER_KM
             }
 
             val heartRates = ordered.mapNotNull { it.heartRate }

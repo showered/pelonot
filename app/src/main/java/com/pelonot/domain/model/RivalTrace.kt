@@ -84,8 +84,7 @@ data class RivalTrace(
         // rival's own ride recorded, and that promise is only kept if both
         // integrations use the same constants — including the gap clamp.
         private const val MAX_SAMPLE_GAP_SEC = WorkoutAggregates.MAX_SAMPLE_GAP_SEC
-        private const val KM_PER_REVOLUTION = WorkoutAggregates.KM_PER_REVOLUTION
-        private const val SECONDS_PER_MINUTE = WorkoutAggregates.SECONDS_PER_MINUTE
+        private const val METRES_PER_KM = WorkoutAggregates.METRES_PER_KM
 
         /**
          * @param samples time-ordered `(second, power, cadence, heartRate)`
@@ -113,10 +112,13 @@ data class RivalTrace(
                     // Joules, reported as kJ.
                     RaceMetric.Output ->
                         (previous.power + current.power) / 2.0 * dt / 1000.0
-                    // Revolutions, reported as km.
+                    // Metres of road the watts would have covered (2.5a),
+                    // reported as km.
                     RaceMetric.Distance ->
-                        (previous.cadence + current.cadence) / 2.0 /
-                            SECONDS_PER_MINUTE * KM_PER_REVOLUTION * dt
+                        (
+                            RoadSpeed.metresPerSecond(previous.power) +
+                                RoadSpeed.metresPerSecond(current.power)
+                            ) / 2.0 * dt / METRES_PER_KM
                 }
                 points += current.second to total
             }

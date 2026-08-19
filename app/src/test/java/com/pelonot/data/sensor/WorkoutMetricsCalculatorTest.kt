@@ -1,6 +1,7 @@
 package com.pelonot.data.sensor
 
 import com.pelonot.domain.model.PowerZone
+import com.pelonot.domain.model.RoadSpeed
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -79,8 +80,26 @@ class WorkoutMetricsCalculatorTest {
         val oneMinute = rideAt(power = 200.0, durationSec = 60, cadence = 90.0)
         assertTrue("distance did not accumulate", oneMinute.distanceKm > 0.1)
 
-        val expectedKm = (90.0 / 60.0) * 0.0021 * 60.0
+        // 2.5a. A minute at a steady 200 W, so every trapezoid is the same
+        // speed and the total is that speed times sixty seconds.
+        val expectedKm = RoadSpeed.metresPerSecond(200.0) * 60.0 / 1000.0
         assertEquals(expectedKm, oneMinute.distanceKm, 0.0001)
+    }
+
+    @Test
+    fun `distance answers to the power and not to the cadence`() {
+        // The owner's note of 19 August: half an hour at 130 W came out at
+        // 5 km whatever they did with the knob, because the model integrated
+        // cadence alone. Two rides at the same cadence and different watts must
+        // now cover different ground — that is the whole of 2.5a.
+        val easy = rideAt(power = 80.0, durationSec = 300, cadence = 90.0)
+        val hard = WorkoutMetricsCalculator()
+            .let { calc -> (0..300).map { calc.processReading(reading(it, 260.0, 90.0), FTP) }.last() }
+
+        assertTrue(
+            "same cadence, four times the watts, no further: ${easy.distanceKm} vs ${hard.distanceKm}",
+            hard.distanceKm > easy.distanceKm * 1.5
+        )
     }
 
     @Test

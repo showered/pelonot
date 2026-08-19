@@ -117,11 +117,14 @@ class WorkoutAggregatesTest {
     }
 
     @Test
-    fun `distance accumulates from cadence`() {
-        // 90 rpm for 600 s is 900 revolutions at 2.1 m each.
-        val aggregates = WorkoutAggregates.from(ride(600, cadence = 90.0))
+    fun `distance accumulates from the power`() {
+        // 2.5a. Ten minutes at whatever `ride` holds, through the same curve
+        // the live calculator uses — the two must not be able to disagree.
+        val samples = ride(600, cadence = 90.0)
+        val aggregates = WorkoutAggregates.from(samples)
 
-        assertEquals(900 * 0.0021, aggregates.distanceKm, 0.01)
+        val expected = RoadSpeed.metresPerSecond(samples.first().power) * 600.0 / 1000.0
+        assertEquals(expected, aggregates.distanceKm, 0.01)
     }
 
     @Test

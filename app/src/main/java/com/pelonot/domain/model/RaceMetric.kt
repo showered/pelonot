@@ -21,13 +21,12 @@ package com.pelonot.domain.model
  * backwards on it by resting. Anything integrated over the ride qualifies;
  * anything averaged over it does not.
  *
- * **And [Distance] is a fiction, but a fair one.** It is derived from cadence
- * through an assumed wheel circumference rather than measured, exactly as
- * `WorkoutAggregates` says. That is not the `PowerModel` problem: there a
- * *modelled* watt gets compared against a *measured* one. Here both sides of
- * the comparison run the same constants over the same kind of reading, so the
- * ranking is precisely as trustworthy as the cadence behind it. It has one
- * real consequence in this feature's favour — see [requiresMeasuredPower].
+ * **And [Distance] is a fiction, but a fair one.** It is [RoadSpeed] integrated
+ * rather than measured — a stationary bike covers no ground. That is not the
+ * `PowerModel` problem: there a *modelled* watt gets compared against a
+ * *measured* one. Here both sides of the comparison run the same curve on the
+ * same nominal rider, so the ranking is precisely as trustworthy as the watts
+ * behind it. Which is now the whole of the caveat — see [requiresMeasuredPower].
  */
 enum class RaceMetric {
 
@@ -46,11 +45,20 @@ enum class RaceMetric {
      * — that is the whole of `PowerProvenance.isTrustworthyAsMeasured`, and it
      * is why most rides in the library have no ghost at all today.
      *
-     * [Distance] does not care. It is integrated *cadence*, which is measured
-     * on every ride this app has ever recorded, simulated ones included. So a
-     * distance race works on rides the output race has to exclude — which is
-     * the non-obvious reason this enum earns its place rather than merely
-     * anticipating a request.
+     * **[Distance] used to answer false, and 2.5a is why it no longer can.**
+     * It was integrated *cadence*, measured on every ride this app has ever
+     * recorded, so a distance race worked on rides the output race had to
+     * exclude — which was the non-obvious reason this enum earned its place.
+     * Distance is now a monotone function of power, so a modelled watt reaches
+     * it exactly as it reaches [Output], and a board that let it through would
+     * be ranking a `PowerModel` guess against the board's own watts.
+     *
+     * That is a real loss and 2.5a takes it deliberately: the property was
+     * bought with a distance the owner measured as wrong by two and a half
+     * times, and a populated board of wrong distances is worse than an empty
+     * one. It stays a property rather than becoming a constant because a third
+     * metric has to answer it, and because *why* both answer true is different
+     * for each.
      */
-    val requiresMeasuredPower: Boolean get() = this == Output
+    val requiresMeasuredPower: Boolean get() = true
 }

@@ -53,12 +53,14 @@ class RivalTraceTest {
     }
 
     @Test
-    fun `only an output race needs the power to have been measured`() {
-        // The non-obvious half of why this enum earns its place: distance is
-        // integrated cadence, which is measured on every ride this app has
-        // recorded — so a distance race works on rides 24.4.2 has to exclude.
+    fun `every race needs the power to have been measured`() {
+        // This assertion is inverted from what it was, and the inversion is
+        // 2.5a's cost written down. Distance used to be integrated cadence,
+        // measured on every ride this app has recorded, so a distance race
+        // worked on rides 24.4.2 has to exclude. It is integrated power now, so
+        // a modelled watt reaches it exactly as it reaches the output board.
         assertTrue(RaceMetric.Output.requiresMeasuredPower)
-        assertFalse(RaceMetric.Distance.requiresMeasuredPower)
+        assertTrue(RaceMetric.Distance.requiresMeasuredPower)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.pelonot.data.sensor
 
 import com.pelonot.domain.model.PowerZone
+import com.pelonot.domain.model.RoadSpeed
 
 /**
  * Derives cumulative and rolling workout metrics from the raw [SensorReading]
@@ -40,8 +41,15 @@ class WorkoutMetricsCalculator {
 
             totalEnergyJoules += (previous.power + sample.power) / 2.0 * dtSec
 
-            val avgCadence = (previous.cadence + sample.cadence) / 2.0
-            totalDistanceKm += (avgCadence / SECONDS_PER_MINUTE) * KM_PER_REVOLUTION * dtSec
+            // 2.5a. The speed each sample's watts would carry the rider at,
+            // trapezoid over the step — not the mean power for the step put
+            // through the curve afterwards, because the curve is concave and
+            // the two are different numbers.
+            val avgSpeed = (
+                RoadSpeed.metresPerSecond(previous.power) +
+                    RoadSpeed.metresPerSecond(sample.power)
+                ) / 2.0
+            totalDistanceKm += avgSpeed * dtSec / METRES_PER_KM
         }
 
         lastSample = sample
@@ -125,15 +133,8 @@ class WorkoutMetricsCalculator {
     }
 
     companion object {
-        private const val SECONDS_PER_MINUTE = 60.0
         private const val ROLLING_WINDOW_SEC = 30
-
-        /**
-         * Rough distance model: one flywheel revolution is treated as 2.1 m of
-         * road. Peloton's own "distance" is a similar fiction — there is no
-         * wheel — so this exists for comparability between rides, not accuracy.
-         */
-        private const val KM_PER_REVOLUTION = 0.0021
+        private const val METRES_PER_KM = 1000.0
 
         /** Longest gap between samples that still counts as continuous riding. */
         private const val MAX_SAMPLE_GAP_SEC = 5.0
