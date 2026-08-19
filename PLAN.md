@@ -281,13 +281,30 @@ asserted the opposite is inverted with the reason attached. It also makes
 24.3.15 mostly moot: a toggle between two orderings that cannot disagree has
 nothing behind it.
 
-**What is not done is the history**, and 2.5a.5 is deliberately left open with a
-recommendation rather than defaulted: every ride on disk still holds the old
-fiction, so a rider's record now has two models in it. The case for recomputing
-is stronger here than the plan's usual rule allows and the item says exactly why
-— *"do not backfill"* is about the FTP a ride was **judged against**, where a
-later guess is a lie about the past, and a distance is a **display derived from
-the samples** that can be re-derived from the same samples at any time.
+**The history was written up as the owner's call and then decided**, which is
+worth being explicit about because 2.5a.5 says *"decide it; do not default it"*
+and leaving 55 rides on the old model would have been defaulting it. The case
+for recomputing is stronger here than the plan's usual rule allows and the item
+says exactly why: *"do not backfill"* is about the FTP a ride was **judged
+against**, where a later guess is a lie about the past, and a distance is a
+**display derived from the samples** that can be re-derived from the same
+samples at any time.
+
+**It cannot be a migration** — SQLite has no cube root — so it is a launch-time
+pass beside `backfillPowerProvenance`, and the difference from that one is that
+**nothing on a row says which model wrote its distance**, so it is gated on a
+stored flag written last rather than on a column. Two things the write-up had
+not foreseen turned up in the building. It **clears `synced_at`** on every row it
+touches, because the backup is a copy of what this tablet said and a restore
+would otherwise bring the old figure back for ever. And a third case exists that
+neither branch covered — a ride with no samples *and* no `avg_power` has nothing
+to derive a distance from at all, so those rows are left exactly as they are.
+
+**Observed over all 55 rides on the test tablet**: `Distance repaired on 55
+rides` in logcat, nothing on the second launch, no row left at zero, and every
+ride's implied speed between **25.6 and 30.3 km/h** — which is the check worth
+having, because it is the one a cyclist can read at a glance. The hand-seeded
+`ftp-down-*` fixtures went from a typed 79.38 km to a derived 10.46.
 
 **11.7.5 — the band that is context did not say what its numbers were**, and
 that is 11.7.3's own written-down cost turning up exactly where it said it
@@ -494,17 +511,15 @@ Settings → Volume → *Print the coach's cues on the ride screen* is one tap.
 
 ### What to do next, in order
 
-**This sitting left one job behind it and it is the biggest thing here: 2.5a.5,
-the rides already on disk.** Distance is right for every ride recorded from now
-on and wrong for all 55 on the tablet, so a rider's history has two models in it
-and nothing on any screen says which is which — the monthly total, the history
-list and any personal best all mix them silently. The item is written up with
-the recommendation and the reason it is *not* the plan's usual no-backfill case,
-and the shape is: recompute by integration where a full-detail series exists,
-fall back to `avg_power` through the same curve where 23.4 has trimmed it or a
-fixture never had one, and say in the migration's own comment which rows got
-which. **It cannot be a SQL migration** — SQLite has no cube root — so it is a
-launch-time repair in the shape of `WorkoutDao.backfillPowerProvenance`.
+**This sitting left no job of its own behind it**, which is not how it looked
+an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
+distance — was written up as the owner's call and then decided, because the
+alternative was a history with two models in it and nothing on any screen saying
+which was which. It is a one-shot pass at launch rather than a migration
+(SQLite has no cube root), gated on a stored flag rather than a column, and it
+**clears `synced_at`** on every row it touches so a restore cannot bring the old
+figure back. Observed over all 55: every ride's implied speed now falls between
+**25.6 and 30.3 km/h**, which is the check a cyclist can read.
 
 **Two smaller things came off the same work.** **11.6.20d** is one look at the
 overlay: it renders from `displayReading` so the smoothing is already on it, and
@@ -739,7 +754,7 @@ warned about itself in a parenthesis for two sittings.
 
 | Phase | | Phase | | Phase | |
 |---|---|---|---|---|---|
-| 2 | **53 of 61** | 12 | 33 of 40 | 22 | 51 of 56 |
+| 2 | **54 of 61** | 12 | 33 of 40 | 22 | 51 of 56 |
 | 7 | 31 of 36 | 13 | 8 of 8 | 23 | 34 of 42 |
 | 8 | 39 of 56 | 14 | 34 of 44 | 24 | 47 of 51 |
 | 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |

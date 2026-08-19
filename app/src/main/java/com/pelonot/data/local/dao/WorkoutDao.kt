@@ -864,6 +864,31 @@ interface WorkoutDao {
     suspend fun completeRidesWithoutProvenance(): Int
 
     /**
+     * Every finished ride, for the distance repair (PLAN 2.5a.5).
+     *
+     * Whole rows rather than a projection because the repair writes one back
+     * through `@Update`, and because the fallback for a ride with no samples
+     * left needs [WorkoutEntity.avgPower] and [WorkoutEntity.durationSec].
+     */
+    @Query("SELECT * FROM workouts WHERE is_complete = 1")
+    suspend fun completedWorkouts(): List<WorkoutEntity>
+
+    /**
+     * Re-derives one ride's distance, and forgets that the cloud has it
+     * (2.5a.5).
+     *
+     * `synced_at = NULL` deliberately: the backup is a copy of what this tablet
+     * said, so a repaired ride whose cloud copy still holds the old figure
+     * would come back wrong on the next restore — and re-sending is free, for
+     * the same reason [clearSyncedFor] gives (the upload is an upsert keyed by
+     * the ride's own UUID).
+     */
+    @Query(
+        "UPDATE workouts SET total_distance_km = :km, synced_at = NULL WHERE id = :id"
+    )
+    suspend fun repairDistance(id: String, km: Double)
+
+    /**
      * The rides old enough to trim, oldest first (PLAN 23.4.2).
      *
      * **Four clauses and three of them are somebody's defect written down.**

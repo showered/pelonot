@@ -13,7 +13,7 @@ keeps its sitting.
 | Measured | |
 |---|---|
 | JVM tests | **903**, 0 failures |
-| Plan boxes ticked | **678 of 907** — 74% |
+| Plan boxes ticked | **679 of 907** — 74% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
@@ -444,17 +444,25 @@ race has to exclude.
    a 66%-wrong guess was being shown with the same authority as two measured
    numbers. The code is kept because 11.7.3 says when it comes back — a bike
    riding its own calibrated curve (2.2a).
-6. **A rider's distance history has two models in it (2.5a.5).** The owner
+6. **Every distance this app has ever shown was wrong by about two and a half
+   times, and it is fixed on new rides and on old ones (2.5a).** The owner
    reported half an hour at 130 W coming out at 5 km, and they were right: the
    model integrated *cadence* at 2.1 m a revolution and never looked at the
    power at all, so a recovery spin and a standing climb at the same rpm covered
-   the same ground. Every ride recorded from the sixty-eighth sitting onward
-   goes through `RoadSpeed` — the flat-road power equation on a fixed nominal
-   rider, which puts that ride at 13.2 km — and **every ride already on disk
-   still holds the old figure**. Nothing on any screen says which is which, so
-   the monthly total, the history list and any personal best mix them silently.
-   The repair is designed at 2.5a.5 and is deliberately left for the owner to
-   agree, because it rewrites a column on every existing row.
+   the same ground. Everything now goes through `RoadSpeed` — the flat-road
+   power equation on a fixed nominal rider — which puts that ride at 13.2 km,
+   within a few percent of the machine the owner was comparing it against and
+   with nothing tuned to match it. **A one-shot pass at launch re-derived all 55
+   rides on the test tablet** rather than leaving a history with two models in
+   it (2.5a.5); it re-derives from the samples where they still exist and from
+   the ride's own mean power where 23.4 has trimmed them.
+
+   **What it cost is written down rather than left to be discovered**: distance
+   is a monotone function of power now, so a distance *race* needs measured
+   power exactly as an output race does, and the second opinion 24.3.13 valued
+   is gone. The remaining caveat is that this is still a fiction — a stationary
+   bike covers no ground — and 29.1.5 is the item that decides whether it may be
+   written into somebody's health record at all.
 7. **The instrumented suite is *not* order-dependent, and this item said it was
    for four sittings while using it as the reason CI runs only the JVM tests
    (8.15.1).** That makes it the most expensive stale claim this page has

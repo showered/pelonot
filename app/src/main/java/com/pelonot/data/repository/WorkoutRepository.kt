@@ -21,6 +21,7 @@ import com.pelonot.domain.chart.TimeInZone
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.MetricSample
+import com.pelonot.domain.model.RoadSpeed
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
@@ -638,6 +639,56 @@ class WorkoutRepository(
      * nothing.
      */
     suspend fun backfillPowerProvenance(): Int = workoutDao.backfillPowerProvenance()
+
+    /**
+     * Re-derives every finished ride's distance under the new model (2.5a.5).
+     *
+     * Until 2.5a the distance was integrated **cadence** at 2.1 m a revolution
+     * and never looked at the power, so half an hour at 130 W came out at
+     * 5.4 km whatever the rider did with the knob. Every ride recorded since
+     * goes through [RoadSpeed]; without this, a rider's history holds two
+     * models at once and nothing on any screen says which is which.
+     *
+     * **This is not the backfill the plan forbids**, and the difference is the
+     * whole justification. *"Do not backfill"* (7.8, 21.4.2c) is about the FTP
+     * and the maximum heart rate a ride was **judged against** — facts about a
+     * moment, where a later guess is a lie about the past. A distance is a
+     * *display derived from the samples*, and re-deriving it from the same
+     * samples with a better function redraws the record rather than rewriting
+     * it.
+     *
+     * **Two rides in three cannot be re-integrated, and they get the honest
+     * second-best.** A ride condensed by 23.4 kept an outline rather than its
+     * seconds, and a seeded fixture never had any samples at all; those go
+     * through the same curve on their own `avg_power` for their own duration.
+     * The curve is concave, so `f(mean) ≥ mean f(·)` and the fallback runs
+     * slightly generous — which is worth knowing and is much smaller than the
+     * error it replaces.
+     *
+     * Returns how many rows it rewrote. The caller runs it once and remembers,
+     * because unlike [backfillPowerProvenance] there is no column that says
+     * whether a row has been through it.
+     */
+    suspend fun repairDistances(): Int {
+        var repaired = 0
+        for (workout in workoutDao.completedWorkouts()) {
+            val samples = metricDao.getMetricsForWorkout(workout.id).map {
+                MetricSample(it.timestampSec, it.power, it.cadence, it.heartRate)
+            }
+            val km = if (samples.size >= 2) {
+                WorkoutAggregates.from(samples).distanceKm
+            } else {
+                // A ride with no samples *and* no mean has nothing to derive a
+                // distance from, and inventing one is worse than the old
+                // figure. Left exactly as it is.
+                val mean = workout.avgPower ?: continue
+                RoadSpeed.kilometres(mean, workout.durationSec.toDouble())
+            }
+            workoutDao.repairDistance(workout.id, km)
+            repaired++
+        }
+        return repaired
+    }
 
     /**
      * Writes down where one ride's watts came from, and what its best efforts

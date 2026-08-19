@@ -3,6 +3,7 @@ package com.pelonot
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.util.Log
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.pelonot.data.worker.WorkoutSyncWorker
@@ -38,6 +39,7 @@ class PelonotApp : Application() {
         }
 
         backfillPowerProvenance()
+        repairDistancesOnce()
         trimOldRides()
         forgetUnusedAvatarPhotos()
 
@@ -98,6 +100,37 @@ class PelonotApp : Application() {
     private fun backfillPowerProvenance() {
         appScope.launch {
             runCatching { ServiceLocator.workoutRepository.backfillPowerProvenance() }
+        }
+    }
+
+    /**
+     * Re-derives every ride's distance, once ever (PLAN 2.5a.5).
+     *
+     * Until 2.5a a distance was integrated cadence and never looked at the
+     * power, so it was out by about two and a half times and answered to the
+     * wrong thing entirely. Without this pass a rider's history holds two models
+     * at once and no screen says which is which.
+     *
+     * **Gated on a stored flag rather than on a column**, which is the
+     * difference from [backfillPowerProvenance] beside it: there is nothing on a
+     * row that says which model wrote its distance, so the pass cannot recognise
+     * its own work. The flag is written **last**, the [ClassTemplateSeeder]
+     * pattern — a process that dies half way simply does it again, and the pass
+     * is idempotent anyway.
+     *
+     * It reads a sample series per ride, so unlike the provenance backfill it is
+     * genuinely expensive — which is exactly why it must run once and not on
+     * every launch.
+     */
+    private fun repairDistancesOnce() {
+        appScope.launch {
+            val preferences = getSharedPreferences(DISTANCE_REPAIR, MODE_PRIVATE)
+            if (preferences.getBoolean(DISTANCE_REPAIR_DONE, false)) return@launch
+            runCatching { ServiceLocator.workoutRepository.repairDistances() }
+                .onSuccess { repaired ->
+                    preferences.edit().putBoolean(DISTANCE_REPAIR_DONE, true).apply()
+                    Log.i(TAG, "Distance repaired on $repaired rides (2.5a.5)")
+                }
         }
     }
 
@@ -232,5 +265,11 @@ class PelonotApp : Application() {
     companion object {
         const val NOTIFICATION_CHANNEL_WORKOUT = "workout_channel"
         const val NOTIFICATION_CHANNEL_SYNC = "sync_channel"
+
+        private const val TAG = "PelonotApp"
+
+        /** Where the one-shot distance repair remembers it has run (2.5a.5). */
+        private const val DISTANCE_REPAIR = "distance_repair"
+        private const val DISTANCE_REPAIR_DONE = "repaired_to_road_speed"
     }
 }

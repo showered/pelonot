@@ -501,7 +501,7 @@ comparability between rides"* to be.
       would have drawn 0.13. `RoadSpeedTest` checks the equation the curve
       claims to solve as well as the magnitudes, because a wrong cube root would
       still be monotone and plausible.*
-- [ ] **2.5a.5 The rides already on disk, and this is the owner's call.**
+- [x] **2.5a.5 The rides already on disk, and this is the owner's call.**
       `workouts.total_distance_km` holds the old fiction for every ride ever
       recorded, so the day this lands a rider's history has two models in it and
       nothing on any screen says which is which — the monthly total, the history
@@ -522,6 +522,33 @@ comparability between rides"* to be.
       curve where it does not — noting that a concave `f` makes the fallback
       slightly generous — and **say in the migration's own comment which rows
       got which**. Decide it; do not default it
+
+      *Decided and built in the sixty-eighth sitting, the shape above and one
+      thing the write-up had not foreseen. It **cannot be a migration**: SQLite
+      has no cube root, so it is a launch-time pass in `PelonotApp` beside
+      `backfillPowerProvenance` — but unlike that one it is **gated on a stored
+      flag rather than on a column**, because nothing on a row says which model
+      wrote its distance and the pass cannot recognise its own work. The flag is
+      written last, the `ClassTemplateSeeder` pattern.*
+
+      ***It clears `synced_at` on every row it touches***, which the item had not
+      thought about and is load-bearing: the backup is a copy of what this tablet
+      said, so a repaired ride whose cloud copy still held the old figure would
+      come back wrong on the next restore. Re-sending is free for the reason
+      `clearSyncedFor` already gives — the upload is an upsert keyed by the
+      ride's own UUID.
+
+      *A third case turned up that neither branch covered: a ride with **no
+      samples and no `avg_power`** has nothing to derive a distance from at all,
+      and inventing one would be worse than the old figure. Those rows are left
+      exactly as they are.*
+
+      ***Observed on the tablet AVD over 55 real rows***: `Distance repaired on
+      55 rides` in logcat, nothing on the second launch, no row left at zero, and
+      every ride's implied speed between **25.6 and 30.3 km/h** — which is the
+      check worth having, because it is the one a cyclist can read. The
+      hand-seeded `ftp-down-*` fixtures went from a typed 79.38 km to a derived
+      10.46, and a real 2:26 ride at 141 W reads 0.67 mi on ride detail.
 - [ ] **2.5a.6 `Formatters.distance` shows two decimals and should probably
       show one.** A hundredth of a kilometre is ten metres of a road that does
       not exist. Not part of the fix and not to be smuggled in with it, but the
