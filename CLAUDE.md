@@ -590,6 +590,18 @@ adb shell "run-as com.pelonot cat /data/data/com.pelonot/databases/pelonot_datab
 sqlite3 db.sqlite "SELECT COUNT(*) FROM workout_metrics;"
 ```
 
+**Two things kill `run-as`, and both look like a bricked app.** A **release**
+build is not debuggable, so every command above answers *package not
+debuggable* and the database stops being the witness on that device entirely
+(PLAN 30.1.6 — it is an argument in 30.5.2 about which builds the bikes carry).
+And restoring a `tar` taken with `tar cf - -C /data/data/com.pelonot .` carries
+a `./` entry whose host permissions land on the app's home directory, after
+which `run-as` refuses everything with *readable or writable by others: 40755*.
+`chmod 700 /data/data/com.pelonot` from inside the same `run-as` is the fix —
+and `adb root` is not available to fall back on, because the AVD is a Play Store
+image.
+
+
 Settings → Telemetry source → **Simulated** makes the whole ride flow work
 without a bike.
 

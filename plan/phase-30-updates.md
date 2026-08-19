@@ -53,15 +53,38 @@ exactly the rider the note is about.
 the phase is harmed by being built later; this one costs the friend's ride
 history if it is.
 
-**30.1.2 and 30.1.3 are built** (sixty-ninth sitting) and the release build was
-watched producing a signed APK against a throwaway key that was then deleted.
-Two measurements came off that run and both are worth having. **A release build
-is 3.4 MB**, against the debug build's 24 — R8 and resource shrinking take
-seven-eighths of it, which moves the hosting question (30.3) from *forced* to
-*chosen*. And **`assembleRelease` works**, which nothing in this project had
-ever established: minify and `shrinkResources` have been switched on and never
-once exercised, so the first person to run it could as easily have met a
-`proguard-rules.pro` that had drifted for sixty-eight sittings.
+**30.1.2 and 30.1.3 are built** (sixty-ninth sitting), and rather than stop at
+compiling, **the whole of 30.1.4 was rehearsed on the tablet AVD** — signed,
+installed, run, and the fixture put back. Four things came off that and every
+one of them is a thing this project did not know.
+
+**A release build is 3.4 MB**, against the debug build's 24. R8 and resource
+shrinking take seven-eighths of it, which moves the hosting question (30.3)
+from *forced* to *chosen*.
+
+**`assembleRelease` works**, which nothing here had ever established: minify and
+`shrinkResources` have been on since Phase 0 and never once exercised, so the
+first person to run it could as easily have met a `proguard-rules.pro` that had
+drifted for sixty-eight sittings. Signed against a throwaway key, verified with
+`apksigner verify --print-certs`, and the key deleted.
+
+**And the minified build *runs*, which is the part that mattered.** R8 strips
+`kotlinx.serialization` generated serializers for a living and this app reads 72
+JSON classes out of its assets on first launch. Measured rather than assumed:
+installed onto an empty tablet, the first-run screen drew, `Guest` opened a
+dashboard, and the classes card read **72 to choose from** with the interval
+bars drawn off `intervals_json`. Room, Compose and the serializer chain all
+survive minification as the rules stand today. Settings' new line read
+`Pelonot 1.0.0 (1)` with **no** `· debug`, which is the other half of 30.2.2
+checked.
+
+**The consequence nobody had noticed is that `run-as` dies with the debug
+build.** A release APK is not debuggable, so `run-as com.pelonot cat
+databases/…` — the technique CLAUDE.md leans on for every data-integrity
+question this project has ever settled — answers *package not debuggable* and
+nothing else. **The database stops being the witness on any bike running a
+release build.** That is an argument inside 30.5.2 rather than a blocker, and it
+is why the answer there may end up being two channels after all.
 
 - [ ] **30.1.1 A release keystore exists and is not in the repository.** One
       `keytool -genkeypair` with a **long validity** — 30 years, because an
@@ -90,6 +113,26 @@ once exercised, so the first person to run it could as easily have met a
       the uninstall**, on the owner's own tablet — a backup nobody has put back
       is a belief rather than a backup, and 19.1.3a is this project's own
       evidence that a restore path can be broken while its tests are green
+- [ ] **30.1.4a The rehearsal that has not been done is the one that uses the
+      app's own backup.** 30.1.6 moved the database across the gap with
+      `run-as` and `tar`, which proves the *shape* of the changeover and not the
+      route the owner will actually take — 19.1.3's *Back up now* and *Restore
+      from a backup*, driven from Settings, with a real file. Do that before
+      touching the friend's bike, not on it: 19.1.3a is this project's own
+      evidence that the restore path can be broken while its tests are green
+- [x] **30.1.6 The changeover was rehearsed on the tablet AVD**, on the 55-ride
+      five-profile fixture, and the fixture came back byte-identical: pull, full
+      uninstall, install the signed release, drive it, uninstall, reinstall
+      debug, put it back — **5 profiles, 55 workouts, 5278 metrics, 72 classes**
+      before and after, Robin's photograph included. **Two operational traps
+      were met doing it and both are worth having written down.** A tar taken
+      with `tar cf - -C /data/data/com.pelonot .` carries a `./` entry, and
+      extracting it sets the app's home directory to the host's `0755` — after
+      which `run-as` refuses everything with *readable or writable by others*
+      and the app looks bricked from a session's point of view. `chmod 700` from
+      inside the same `run-as` is the whole fix. And the emulator is a **Play
+      Store image**, so `adb root` is refused and there is no way round a
+      permission mistake once made
 - [ ] **30.1.5 After 30.1.4, `installDebug` onto that bike stops working**, and
       that is correct rather than a regression: a debug build and a release
       build are different certificates and neither can replace the other. The
@@ -233,7 +276,13 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       makes a bug the friend reports reproducible. **Recommendation: one
       channel**, and the owner's bike moves to release builds with it — the cost
       is 30.1.4 a second time, on a tablet whose history the owner can afford to
-      lose
+      lose. **30.1.6 found the argument on the other side**, and it is stronger
+      than the write-up expected: a release build is not debuggable, so `run-as`
+      is gone and with it every database query in CLAUDE.md's *Verifying UI
+      work*. A bike this project can no longer interrogate is a bike whose
+      defects arrive as sentences rather than as rows. That may be exactly the
+      right trade for the friend's bike — it is his tablet, not a test rig — and
+      exactly the wrong one for the owner's
 
 ### 30.6 What was considered and is not being built
 
