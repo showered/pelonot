@@ -244,7 +244,120 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 19 August 2026 (sixty-eighth sitting): four notes in the inbox, and the first one that was a measurement anybody could check
+### Latest session — 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
+
+**The inbox had one entry and it was `OTA Updates`**, verbatim: *"I'm happy to
+do grade installs over adb but my friend probably won't be bothered. Can we
+introduce free OTA updates somehow so when he opens the app it'll say 'do you
+want to install an update?'"* It is written up as **Phase 30**, twenty-two items
+in a new file, and the inbox is empty again.
+
+**The mechanism is the easy half and it is genuinely free.** The repository is
+public, so GitHub Releases hosts the APK for nothing; the companion web app is
+already live, already deploys on `git push`, and already owns the URL the bike
+carries in `BuildConfig.PELONOT_WEB_URL`, so the manifest costs no new
+configuration value and no new secret; and `PackageInstaller` takes the download
+as a stream, which sidesteps `FileProvider` and Android 11's scoped storage
+entirely. The friend taps twice — once, ever, to allow this app to install
+packages, and once per update.
+
+**Underneath it is a prerequisite nobody had noticed, and it is the only item in
+this plan with a deadline.** Android refuses to update an app whose signing
+certificate has changed. **Every copy of Pelonot that exists is a debug build**,
+signed with the per-machine `~/.android/debug.keystore`, and `release` had **no
+`signingConfig` at all**, so `assembleRelease` produced an APK installable on
+nothing. The first release-signed APK therefore cannot replace what is on the
+friend's bike: it is an uninstall, and an uninstall takes the database. **Every
+ride he takes between now and that day is a ride that has to survive a backup
+and a restore**, which makes doing it soon strictly cheaper than doing it later.
+
+**Rather than stop at compiling it, the whole changeover was rehearsed on the
+tablet AVD**, and four things came out of that which this project did not know.
+A release build is **3.4 MB** against debug's 24. `assembleRelease` **works** —
+minify and `shrinkResources` have been switched on since Phase 0 and never once
+exercised, so the first person to run it could as easily have met a
+`proguard-rules.pro` that had drifted for sixty-eight sittings. **The minified
+build runs**, which is the part that mattered: R8 strips `kotlinx.serialization`
+serializers for a living and this app reads 72 JSON classes out of its assets on
+first launch, so it was installed onto an empty tablet and driven — first-run
+screen, `Guest`, dashboard, **72 to choose from** with the interval bars drawn
+off `intervals_json`. And the fixture went back byte-identical afterwards: **5
+profiles, 55 workouts, 5278 metrics, 72 classes**, Robin's photograph included.
+
+**The fourth finding changed a decision.** A release build is not debuggable, so
+`run-as` — and with it every `sqlite3` query CLAUDE.md settles data questions
+with — answers *package not debuggable* and nothing else. **The database stops
+being the witness on any bike running a release.** The write-up had recommended
+one channel for both bikes; that finding won the argument the other way, and the
+owner chose it: **the friend's bike takes releases, this one stays on debug**.
+What it costs is written into 30.5.2 rather than discovered later — a report
+from his tablet may not reproduce anywhere inspectable, and putting a debug
+build on it for an investigation costs his database again.
+
+**The owner answered three things directly and the middle one is the one to
+act on.** 30.5.1: an account-less bike **may** check for updates, with a switch
+in Settings, defaulting **on**. 30.1.4: the signing changeover happens **soon,
+with the history carried across** rather than started clean. 30.5.2: two
+channels, as above.
+
+**30.5.1 is the first network request this app makes for a rider with no
+account, and it was granted on a promise.** The connectivity model's rule 1
+forbids reaching *Supabase* without an account; this reaches a static file and
+sends nothing about the rider — no id, no name, no profile count, no ride. It is
+deliberately **not** routed through `CloudAccess`, because gating it on an
+account would withhold updates from exactly the rider the note was written
+about. **A promise like that decays by somebody adding one harmless parameter**,
+which is `RiderScore`'s rule 2 all over again (26.4.10), so
+`UpdateChannelFenceTest` holds it structurally: one file knows where the
+manifest lives, that file may not mention Supabase, ktor or `CloudAccess`, the
+URL is a constant path with nowhere to hang a query string, and the request is a
+GET that cannot carry a body. Each check was watched failing against its own
+violation. `UpdateRepository` is written on `HttpURLConnection` rather than the
+ktor client the Supabase SDK drags in, so the update path shares nothing at all
+with the cloud tier.
+
+**`UpdatePolicy` is the decision and it is pure**, twelve tests, no clock and no
+`Context`. Strictly greater is an offer; equal is up to date; **older is refused
+*as a downgrade* rather than ignored**, because 12.5.1 left
+`fallbackToDestructiveMigration` in place on downgrade on the argument that a
+downgrade only happens on a development device — and an update channel able to
+offer an older APK makes that argument false, with a rider's whole database
+behind a *yes* button. A version the rider refused is not offered again and a
+newer one still asks (30.4.5). **And a clock that has gone backwards does not
+lock the bike out**, which this tablet does at every boot correcting itself off
+the network; the write-up had not thought of it and the rule handles it.
+
+**The app finally says which build it is** (30.2.2). `BuildConfig.VERSION_NAME`
+was referenced by **nothing** in the whole source tree, so it never once has —
+survivable while one person installs over a cable, not survivable the moment a
+friend has a copy and the first question is *which one are you on*. Settings
+ends with `Pelonot 1.0.0 (1) · debug`, centred and quiet, no heading and no
+card. The `· debug` suffix appears on debug builds only and earns its place from
+30.1.5: it is what tells a debug copy from a release copy across a room, when
+they start refusing to replace each other. Both branches were watched.
+
+**Settings gains one switch**, *Updates → Tell me about new versions*, on by
+default, immediately above the version it is about. The first draft had three
+sentences on it, which is 26.1.4's own complaint; what survives is the two
+things a rider actually wants to know — what leaves the tablet, and whether
+anything can happen without them.
+
+**Nothing calls the check yet, and that is deliberate rather than unfinished.**
+There is nowhere to put the answer until 30.4 draws a prompt, and a check whose
+result is discarded is a request made for nothing. The box is not ticked.
+
+**919 JVM tests, 0 failures**, up from 903. The new suites are
+`UpdatePolicyTest` and `UpdateChannelFenceTest`.
+
+**Two operational traps were met in the rehearsal and both are in CLAUDE.md
+now**, because both look exactly like a bricked app. `run-as` dies on a release
+build, as above. And a tar taken with `tar cf - -C /data/data/com.pelonot .`
+carries a `./` entry whose host permissions land on the app's home directory,
+after which `run-as` refuses everything with *readable or writable by others:
+40755* — `chmod 700` from inside the same `run-as` is the whole fix, and `adb
+root` is not available to fall back on, because the AVD is a Play Store image.
+
+### The sitting before — 19 August 2026 (sixty-eighth sitting): four notes in the inbox, and the first one that was a measurement anybody could check
 
 **The inbox had four entries in it**, so the shape of the sitting was set before
 it started: emptying it is urgent, building what comes out of it is not. All
@@ -394,138 +507,43 @@ exactly as it was found. **What did change on it is every ride's
 `SYSTEM_ALERT_WINDOW` is still **not** granted there, which is why 11.6.20d is
 open.
 
-### The sitting before — 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
-
-**The inbox was empty**, so every pick was made on merit — and the pattern that
-emerged is worth naming, because it made the sitting cheap. **Three of the four
-items already contained their own design**, written down by an earlier sitting
-that had decided not to build them yet. 21.6.1 carried the rule that decided its
-shape; 11.8.4 carried a *recommendation* under a case-for and a case-against;
-19.1.7a carried both the design and the condition under which it became worth
-building. Reading them was most of the work, which is what the plan is for.
-
-**21.6.1 — the heart rate points at one of the three answers.** The owner's note
-of 4 August asked *"surely there's something we can infer from heart rate… you
-don't even need to ask!"*, and 21.6.3 built the free half of it in the
-forty-eighth sitting. This is the half with the rider's own record on the other
-side of it, and **the item's own last sentence decided the shape**: *"a prefilled
-answer must be distinguishable from one the rider gave, or the column stops
-meaning what it says."* A genuine prefill can only meet that by adding a column —
-some `rpe_source` beside `rpe_rating` — and the moment that column exists, every
-reader of `rpe_rating` has to remember to ask. **So the prefill is not filled
-in.** `SuggestedEffort` names one of the three answers, `EffortQuestion` draws an
-outline round that button, and the column stays null until a thumb lands on one.
-The distinction is structural rather than recorded: the app's guess lives on a
-screen, the rider's answer lives on disk, and there is no state in which they can
-be confused.
-
-**What that costs is the tap, and the tap was not the expensive thing.** 26.3's
-own words are *"it causes me anxiety, wondering if I'm selecting the right
-option"* — a decision, not a gesture. A suggestion answers that; a shorter list
-only shortened it.
-
-**The heart is read absolutely, and that is a departure from 21.6.3 worth
-naming.** `EffortAgainstPlan` asks about the **gap**; the three buttons ask about
-the **ride**, and twenty minutes of recovery spin ridden at tempo is a large gap
-and still not *everything I had*. The owner's own two examples both discriminate
-on the heart rather than on the class, which is the tell. Five cases were watched
-on the tablet AVD on hand-built rides, and **the one worth having watched is the
-strap that heard 5:00 of 20:00**: no mark at all, because without the coverage
-gate the card would have marked *Everything I had* off a quarter of a ride.
-
-**22.9.5 — somewhere to start.** The owner's *"we shouldn't have empty space"*
-was answered for everybody with a history or a household in the sixty-third
-sitting; what was left was the rider with neither, and 22.9.5 held it open with
-one rule: **do not answer it by drawing a card that says nothing.** That rule is
-what decided it. Every *card* this screen could add to a first-run rider is about
-the rider, and a rider at ride zero has nothing in them — but the tablet holds 72
-authored classes. So the fold is filled with more of the library.
-
-**The row is a choice about *time*, and that is the part that took the
-thinking.** Endurance sorted by length and cut at three offers 15, 20 and 20
-minutes: three answers to a question nobody asked. `ClassToRide.startingPoints`
-takes one class per distinct length and then picks the shortest, the longest and
-the middle — on the real library, **20, 45 and 60 minutes** — because *how long
-have you got* is the only thing a rider with no history can answer about
-themselves. Measured on the AVD: **383 dp → about 552 dp of a 664 dp fold**, no
-scroll, and a rider with history is untouched because the gate is the same
-condition `ProgressSection` uses for its honest-empty branch.
-
-**One thing came off that screen rather than onto it.** *"No rides recorded yet
-— your riding will appear here"* drew in exactly the state the new row draws in,
-so the two always appeared together: one line of prose immediately above another,
-and only one of them is a door. The sentence survives for a fresh install whose
-class seed has not landed, which is the only state where the app genuinely has
-nothing to offer.
-
-**11.8.4 — the subtitle space, built as captions and only as captions.** The
-owner offered it as *"a designated space for 'subtitles'… It could be a bad
-one"*, and the item's recommendation was that it is a good idea as captions and a
-bad one as a motivational feed. Everything drawn is a rendering of a cue
-`RideCoachPolicy` had already decided to deliver; **there is no source of text
-that exists to fill the line**, which is the whole difference.
-
-**A caption is not a transcript, and that is a second property rather than a
-reuse of `speech`.** The speech strings are written for a synthesiser — one of
-them spells *"R P M"* out so the engine does not try to pronounce it — and
-printing that would put a spelling mistake on the ride screen in the one place a
-first-time rider is looking for help. And it is a **band**, not a line: the
-height is reserved whenever the rider has captions on, because a sentence that
-pushed the layout would move the three numbers a rider reads at two metres, twice
-a block, on a screen whose last two owner reports were both about overflow.
-
-**Off by default, with the switch under the coach's own volume**, because the
-rider who wants this is the rider who has just turned the coach down or cannot
-hear it over a film. **`CoachStyle.Off` silences captions too** — that setting
-says *"no voice, no buzz, no movement"* — and Settings says so in red under the
-toggle, because a switch that is on and does nothing reads exactly like a broken
-feature. It is on its own `StateFlow` rather than on `RideSnapshot` so that
-moving text cannot reach the overlay by accident (24.1.5). Watched on a simulated
-ride of `Loosen the Legs` with alerts on **Silent**, which is the case the
-accessibility argument is about: *"Zone 1 · Active Recovery"* at 00:05 and again
-at 05:02 after the second block change, gone six seconds later, with every
-element above it at the same pixel.
-
-**19.1.7a — the numbers on `STATUS.md` are emitted now, and CI fails on drift.**
-The item said not to build it until the page had gone stale once, and it had. **On
-its first run the script found something worse than staleness**: the page was
-carrying **two box counts that disagreed with each other** — *651 of 863* in the
-header and *577 of 801* in the *how close to done* paragraph, seventy-four apart,
-each stated as a measurement. Neither is typed any more.
-
-**It emits the measurements and refuses the prose, which is the item's own rule
-and the honest limit.** `STATUS.md`'s ranked entry on the class-library rule argued that a script
-like this *"would not have caught it"* when the page went stale in the
-forty-fifth sitting, because what had drifted was four sentences about what a
-rider meets. That is still true, and it is why the generated region is three
-lines rather than the header. **It counts indented boxes** — `^- \[x\]` excludes
-20.2.4a–f and every other nested sub-item, which is how two phases came to be
-carried at figures wrong in opposite directions — and a missing results directory
-is an **error rather than a zero**, because a script reporting *"0 tests,
-matching"* on a machine that had not run any would be the same class of defect as
-the claim it exists to stop.
-
-**Two consequences for the next session, and one is in `CLAUDE.md`**: ticking a
-plan box now means running `tools/status-figures.sh --write` and committing the
-page with it, and a sitting's write-up can no longer disagree with `STATUS.md`
-because only one of the two is written by hand.
-
-**891 JVM tests, 0 failures**, up from 864. `assembleDebug` passes and the four
-new suites are `SuggestedEffortTest`, the `ClassToRideTest` additions,
-`RideCaptionTest` and the script's own `--check`.
-
-**The tablet AVD is exactly as the sixty-sixth sitting left it** — 55 workouts,
-Robin's photograph, everyone household-visible, telemetry back on *Auto*,
-captions back **off**. Four fixture rides with hand-written heart rates were
-inserted for 21.6.1 and deleted again; two `household_visible` edits were made
-for 22.9.5 and reversed; the 6:17 simulated ride for 11.8.4 was discarded through
-the app's own *Throw it away*. **Captions are off because turning a rider's
-preference on for them is the thing 21.6.1 spent the morning refusing to do** —
-Settings → Volume → *Print the coach's cues on the ride screen* is one tap.
-
 ### What to do next, in order
 
-**This sitting left no job of its own behind it**, which is not how it looked
+**The top of this list is one item and it has a deadline.** **30.1.1** — the
+release keystore — is the owner's to run, because it needs a password a session
+must not handle, and everything else in Phase 30 sits behind it. It is one
+`keytool -genkeypair` with a 30-year validity, kept somewhere that is not the
+laptop, and the gitignore is already waiting for it (`*.jks`, `*.keystore`,
+`/keystore.properties`). **30.1.2 reads it from `local.properties` or the
+environment and a missing keystore is still a supported configuration**, so
+nothing breaks by not doing it today — except that the cost of 30.1.4 grows with
+every ride the friend takes on a debug-signed build that no release can replace.
+
+**Then 30.1.4a, and it is a rehearsal rather than a change.** The changeover was
+rehearsed this sitting with `run-as` and `tar` and the fixture came back
+byte-identical, which proves the *shape*. It does not prove the route the owner
+will actually take — 19.1.3's *Back up now* and *Restore from a backup*, driven
+from Settings, with a real file. **Do that on this tablet before touching the
+friend's**, because 19.1.3a is this project's own evidence that the restore path
+can be broken while its tests are green.
+
+**And then 30.4, which is the only part of the note not yet answered.** The
+check exists and is fenced and tested; nothing calls it, because there is
+nowhere to put the answer until there is a prompt. 30.4 is four items and it is
+fully observable on the AVD — install a build, raise the version, publish a
+manifest, take the prompt, and confirm the database survived, which is the
+assertion an install test would otherwise skip. **30.4.1 first and before
+believing anything**: `REQUEST_INSTALL_PACKAGES` in the manifest, because a
+permission the manifest does not declare is denied instantly with nothing in
+logcat, and this project has lost two sittings to exactly that.
+
+**One thing worth knowing before picking anything else in Phase 30**:
+`tools/release.sh` (30.3.2) is what makes the manifest and the APK agree, and
+until it exists **`web/update.json` must not be published**, because a manifest
+is a promise that a binary exists at a URL with a given hash. A 404 is already
+*no update today*, so the live site is correct as it stands.
+
+**The sitting before left no job of its own behind it**, which is not how it looked
 an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
 distance — was written up as the owner's call and then decided, because the
 alternative was a history with two models in it and nothing on any screen saying

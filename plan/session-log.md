@@ -6,6 +6,135 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
+
+**The inbox was empty**, so every pick was made on merit — and the pattern that
+emerged is worth naming, because it made the sitting cheap. **Three of the four
+items already contained their own design**, written down by an earlier sitting
+that had decided not to build them yet. 21.6.1 carried the rule that decided its
+shape; 11.8.4 carried a *recommendation* under a case-for and a case-against;
+19.1.7a carried both the design and the condition under which it became worth
+building. Reading them was most of the work, which is what the plan is for.
+
+**21.6.1 — the heart rate points at one of the three answers.** The owner's note
+of 4 August asked *"surely there's something we can infer from heart rate… you
+don't even need to ask!"*, and 21.6.3 built the free half of it in the
+forty-eighth sitting. This is the half with the rider's own record on the other
+side of it, and **the item's own last sentence decided the shape**: *"a prefilled
+answer must be distinguishable from one the rider gave, or the column stops
+meaning what it says."* A genuine prefill can only meet that by adding a column —
+some `rpe_source` beside `rpe_rating` — and the moment that column exists, every
+reader of `rpe_rating` has to remember to ask. **So the prefill is not filled
+in.** `SuggestedEffort` names one of the three answers, `EffortQuestion` draws an
+outline round that button, and the column stays null until a thumb lands on one.
+The distinction is structural rather than recorded: the app's guess lives on a
+screen, the rider's answer lives on disk, and there is no state in which they can
+be confused.
+
+**What that costs is the tap, and the tap was not the expensive thing.** 26.3's
+own words are *"it causes me anxiety, wondering if I'm selecting the right
+option"* — a decision, not a gesture. A suggestion answers that; a shorter list
+only shortened it.
+
+**The heart is read absolutely, and that is a departure from 21.6.3 worth
+naming.** `EffortAgainstPlan` asks about the **gap**; the three buttons ask about
+the **ride**, and twenty minutes of recovery spin ridden at tempo is a large gap
+and still not *everything I had*. The owner's own two examples both discriminate
+on the heart rather than on the class, which is the tell. Five cases were watched
+on the tablet AVD on hand-built rides, and **the one worth having watched is the
+strap that heard 5:00 of 20:00**: no mark at all, because without the coverage
+gate the card would have marked *Everything I had* off a quarter of a ride.
+
+**22.9.5 — somewhere to start.** The owner's *"we shouldn't have empty space"*
+was answered for everybody with a history or a household in the sixty-third
+sitting; what was left was the rider with neither, and 22.9.5 held it open with
+one rule: **do not answer it by drawing a card that says nothing.** That rule is
+what decided it. Every *card* this screen could add to a first-run rider is about
+the rider, and a rider at ride zero has nothing in them — but the tablet holds 72
+authored classes. So the fold is filled with more of the library.
+
+**The row is a choice about *time*, and that is the part that took the
+thinking.** Endurance sorted by length and cut at three offers 15, 20 and 20
+minutes: three answers to a question nobody asked. `ClassToRide.startingPoints`
+takes one class per distinct length and then picks the shortest, the longest and
+the middle — on the real library, **20, 45 and 60 minutes** — because *how long
+have you got* is the only thing a rider with no history can answer about
+themselves. Measured on the AVD: **383 dp → about 552 dp of a 664 dp fold**, no
+scroll, and a rider with history is untouched because the gate is the same
+condition `ProgressSection` uses for its honest-empty branch.
+
+**One thing came off that screen rather than onto it.** *"No rides recorded yet
+— your riding will appear here"* drew in exactly the state the new row draws in,
+so the two always appeared together: one line of prose immediately above another,
+and only one of them is a door. The sentence survives for a fresh install whose
+class seed has not landed, which is the only state where the app genuinely has
+nothing to offer.
+
+**11.8.4 — the subtitle space, built as captions and only as captions.** The
+owner offered it as *"a designated space for 'subtitles'… It could be a bad
+one"*, and the item's recommendation was that it is a good idea as captions and a
+bad one as a motivational feed. Everything drawn is a rendering of a cue
+`RideCoachPolicy` had already decided to deliver; **there is no source of text
+that exists to fill the line**, which is the whole difference.
+
+**A caption is not a transcript, and that is a second property rather than a
+reuse of `speech`.** The speech strings are written for a synthesiser — one of
+them spells *"R P M"* out so the engine does not try to pronounce it — and
+printing that would put a spelling mistake on the ride screen in the one place a
+first-time rider is looking for help. And it is a **band**, not a line: the
+height is reserved whenever the rider has captions on, because a sentence that
+pushed the layout would move the three numbers a rider reads at two metres, twice
+a block, on a screen whose last two owner reports were both about overflow.
+
+**Off by default, with the switch under the coach's own volume**, because the
+rider who wants this is the rider who has just turned the coach down or cannot
+hear it over a film. **`CoachStyle.Off` silences captions too** — that setting
+says *"no voice, no buzz, no movement"* — and Settings says so in red under the
+toggle, because a switch that is on and does nothing reads exactly like a broken
+feature. It is on its own `StateFlow` rather than on `RideSnapshot` so that
+moving text cannot reach the overlay by accident (24.1.5). Watched on a simulated
+ride of `Loosen the Legs` with alerts on **Silent**, which is the case the
+accessibility argument is about: *"Zone 1 · Active Recovery"* at 00:05 and again
+at 05:02 after the second block change, gone six seconds later, with every
+element above it at the same pixel.
+
+**19.1.7a — the numbers on `STATUS.md` are emitted now, and CI fails on drift.**
+The item said not to build it until the page had gone stale once, and it had. **On
+its first run the script found something worse than staleness**: the page was
+carrying **two box counts that disagreed with each other** — *651 of 863* in the
+header and *577 of 801* in the *how close to done* paragraph, seventy-four apart,
+each stated as a measurement. Neither is typed any more.
+
+**It emits the measurements and refuses the prose, which is the item's own rule
+and the honest limit.** `STATUS.md`'s ranked entry on the class-library rule argued that a script
+like this *"would not have caught it"* when the page went stale in the
+forty-fifth sitting, because what had drifted was four sentences about what a
+rider meets. That is still true, and it is why the generated region is three
+lines rather than the header. **It counts indented boxes** — `^- \[x\]` excludes
+20.2.4a–f and every other nested sub-item, which is how two phases came to be
+carried at figures wrong in opposite directions — and a missing results directory
+is an **error rather than a zero**, because a script reporting *"0 tests,
+matching"* on a machine that had not run any would be the same class of defect as
+the claim it exists to stop.
+
+**Two consequences for the next session, and one is in `CLAUDE.md`**: ticking a
+plan box now means running `tools/status-figures.sh --write` and committing the
+page with it, and a sitting's write-up can no longer disagree with `STATUS.md`
+because only one of the two is written by hand.
+
+**891 JVM tests, 0 failures**, up from 864. `assembleDebug` passes and the four
+new suites are `SuggestedEffortTest`, the `ClassToRideTest` additions,
+`RideCaptionTest` and the script's own `--check`.
+
+**The tablet AVD is exactly as the sixty-sixth sitting left it** — 55 workouts,
+Robin's photograph, everyone household-visible, telemetry back on *Auto*,
+captions back **off**. Four fixture rides with hand-written heart rates were
+inserted for 21.6.1 and deleted again; two `household_visible` edits were made
+for 22.9.5 and reversed; the 6:17 simulated ride for 11.8.4 was discarded through
+the app's own *Throw it away*. **Captions are off because turning a rider's
+preference on for them is the thing 21.6.1 spent the morning refusing to do** —
+Settings → Volume → *Print the coach's cues on the ride screen* is one tap.
+
 ## 18 August 2026 (sixty-sixth sitting): the photograph moves to the web app
 
 **The inbox had an entry in it**, so the pick was made for this sitting rather

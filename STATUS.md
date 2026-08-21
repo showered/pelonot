@@ -381,7 +381,22 @@ race has to exclude.
 
 ## What is wrong today, ranked
 
-1. **Public sign-up is open, and that is now a decision rather than an
+1. **There is no release signing key, and the cost of that grows every day the
+   second bike is ridden (30.1).** Every copy of Pelonot in existence is a
+   *debug* build, signed with the per-machine keystore on the owner's laptop,
+   and `release` had no `signingConfig` at all until 21 August 2026 — so
+   `assembleRelease` produced an APK installable on nothing. Android refuses to
+   update an app whose signing certificate changed, so **the first properly
+   signed release cannot replace what is on the friend's bike**: it is an
+   uninstall, and an uninstall takes the database. Every ride he takes before
+   that day is a ride that has to survive a backup and a restore. **The config
+   is built and the key is the owner's to generate** — it needs a password a
+   session must not handle — and the changeover was rehearsed on the tablet AVD
+   with the 55-ride fixture coming back byte-identical (30.1.6). This is ranked
+   first not because anything is broken today but because it is the only entry
+   on this page that gets more expensive by waiting.
+
+2. **Public sign-up is open, and that is now a decision rather than an
    oversight (18.11.1).** The owner settled it on 4 August — *"Leave on public
    signup. It doesn't matter — it requires email validation anyway"* — and the
    measurement supports them: `mailer_autoconfirm` is `false`, so an account is
@@ -398,7 +413,7 @@ race has to exclude.
    rows. The item to care about instead is **17.16.3**: which publishable key is
    on the internet matters more once the door is deliberately open. And this is
    the paragraph to re-read the day the project has more than four riders.
-2. ~~**The deploy is written down nowhere (17.16.2).**~~ **Closed, by the owner,
+3. ~~**The deploy is written down nowhere (17.16.2).**~~ **Closed, by the owner,
    and the answer is one word: `git push`.** Cloudflare watches the repository,
    so the branch reaching GitHub republishes the site. There is no build step
    and nothing to install; `wrangler.jsonc` in `web/` is a fallback nobody has
@@ -417,12 +432,12 @@ race has to exclude.
    change, not a commit's, and that is worth knowing before somebody rotates the
    one they remember (14.11.4).
 
-3. **The cloud tier has been alive for two days.** Everything in it has been
+4. **The cloud tier has been alive for two days.** Everything in it has been
    observed once, by one household, mostly on an emulator. This project's
    history is three cloud defects that all returned success codes, plus the one
    above, so the right posture is that the round trip works and nothing about it
    is weathered.
-4. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
+5. **The sensor board's serial port leaks (2.7d)**, and it is Peloton's, not
    ours. One `/dev/ttyO0`, one open, so two bike apps can never both work — and
    after the other app is gone the port can stay unopenable **until the tablet
    is rebooted**. **What we owed it is now paid** (2.7.7, 2.7.8): the app stops
@@ -434,7 +449,7 @@ race has to exclude.
    rebinding after four tries rather than reaching attempt 141. **The ride is
    still lost** — nothing in userspace can reopen that port — so this is
    honesty about the failure rather than a fix for it.
-5. **The power curve is measurably wrong** — RMSE 137 W against the board's own
+6. **The power curve is measurably wrong** — RMSE 137 W against the board's own
    watts, 66% median absolute error. It is fenced to two consumers (the
    simulator and `RideSnapshot.resistanceTarget`) and can never reach a
    recorded number, which is the only reason this is a caveat rather than a
@@ -444,7 +459,7 @@ race has to exclude.
    a 66%-wrong guess was being shown with the same authority as two measured
    numbers. The code is kept because 11.7.3 says when it comes back — a bike
    riding its own calibrated curve (2.2a).
-6. **Every distance this app has ever shown was wrong by about two and a half
+7. **Every distance this app has ever shown was wrong by about two and a half
    times, and it is fixed on new rides and on old ones (2.5a).** The owner
    reported half an hour at 130 W coming out at 5 km, and they were right: the
    model integrated *cadence* at 2.1 m a revolution and never looked at the
@@ -463,7 +478,7 @@ race has to exclude.
    is gone. The remaining caveat is that this is still a fiction — a stationary
    bike covers no ground — and 29.1.5 is the item that decides whether it may be
    written into somebody's health record at all.
-7. **The instrumented suite is *not* order-dependent, and this item said it was
+8. **The instrumented suite is *not* order-dependent, and this item said it was
    for four sittings while using it as the reason CI runs only the JVM tests
    (8.15.1).** That makes it the most expensive stale claim this page has
    carried: the others described something wrongly, and this one was
@@ -488,7 +503,7 @@ race has to exclude.
    hardware-accelerated AVD, and a cold cloud emulator without KVM is exactly
    where they would go red — which would manufacture the flakiness the refusal
    was about. That is the owner's to overrule and it is one job in `ci.yml`.
-8. **A written rule that nothing checks describes the library nobody built.**
+9. **A written rule that nothing checks describes the library nobody built.**
    `classlibrary/` R10 has always said a title names the shape and the demand,
    *"not the category and the length"*, and ended with the words **not
    tested** — and all 72 titles ended in their own duration. "The Long Climb
@@ -537,7 +552,7 @@ race has to exclude.
    separately: **a box with two clauses in it gets ticked for whichever one was
    done**, and a stale claim goes stale in the direction of *already finished*
    as readily as the other way.
-9. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
+10. **Nothing keeps the two design systems in step (17.15.2)**, and nothing keeps
    this page in step with the plan (19.1.7a). Both are stated rather than
    hidden, and both have the same cheap fix that should not be built until the
    drift actually happens. **The third member of that list has been struck off**:
@@ -559,7 +574,7 @@ race has to exclude.
    19.1.7a stays unbuilt for a better reason than "not yet": the drift this page
    actually suffers is the kind only a person re-reading it against the code can
    find, and doing that is what the forty-fifth sitting spent its morning on.
-10. **10.6 is still unanswered**: battery, thermals and memory over a full-length
+11. **10.6 is still unanswered**: battery, thermals and memory over a full-length
    ride. The one 20-minute ride on real hardware was spent finding 2.7.
 
 ---
