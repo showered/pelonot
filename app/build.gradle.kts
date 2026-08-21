@@ -68,6 +68,19 @@ fun publicConfig(key: String, envKey: String): String =
 val pelonotWebUrl = publicConfig("pelonot.webUrl", "PELONOT_WEB_URL")
 
 /**
+ * The version, from `version.properties` rather than from a literal here
+ * (PLAN 30.2.1) — because an update check is nothing but a comparison of these
+ * two numbers, and `tools/release.sh` has to be able to raise them without
+ * editing Kotlin.
+ *
+ * The fallbacks are the values this project shipped with for its whole history,
+ * so a clone with the file missing builds something honest rather than nothing.
+ */
+val versionProperties = properties("version.properties")
+val appVersionCode = versionProperties.getProperty("versionCode")?.toIntOrNull() ?: 1
+val appVersionName = versionProperties.getProperty("versionName") ?: "1.0.0"
+
+/**
  * The release signing key (PLAN 30.1.2), and the reason this project needs one
  * at all is not "shipping" — it is that **Android refuses to update an app
  * whose signing certificate has changed**.
@@ -108,8 +121,8 @@ android {
         applicationId = "com.pelonot"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

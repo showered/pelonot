@@ -327,10 +327,62 @@ fun SettingsScreen(
                 onBackupFirst = { backupLauncher.launch(viewModel.backupFileName()) }
             )
 
+            // Last but one, immediately above the version it is about (30.5.1).
+            // A switch whose whole subject is "which build is this" reads
+            // better beside the answer than three sections away from it.
+            UpdatesSection(
+                enabled = state.settings.updateChecksEnabled,
+                onEnabledChange = viewModel::setUpdateChecksEnabled
+            )
+
             AboutLine()
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
         }
+    }
+}
+
+/**
+ * Whether the bike may ask what the newest version is (PLAN 30.5.1).
+ *
+ * **This is the only switch in the app that governs a request made by a rider
+ * with no account**, which is why it exists at all: the owner allowed the check
+ * on the reasoning that it is about the *app* rather than the *rider*, and the
+ * switch is what keeps the connectivity model's first rule honest for somebody
+ * who wants an offline tablet to be an offline tablet.
+ *
+ * **The copy says what is sent, not what the feature is called.** A rider
+ * reading a settings screen about the network wants one question answered —
+ * *what does this tell them about me* — and the honest answer here is
+ * *nothing*, so it is the sentence under the switch. Phase 26's rule is to say
+ * less; this is the case where one more sentence is the whole point.
+ */
+@Composable
+private fun UpdatesSection(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    SettingsSection("Updates") {
+        SettingsToggle(
+            title = "Tell me about new versions",
+            // Three sentences about one switch is 26.1.4's complaint, and the
+            // first draft of this had them. What survives is the two things a
+            // rider actually wants to know: what leaves the tablet, and whether
+            // anything can happen without them.
+            description = "Once a day, Pelonot asks whether there's a newer one.",
+            checked = enabled,
+            onCheckedChange = onEnabledChange
+        )
+        Text(
+            text = if (enabled) {
+                "Nothing about you or your rides is sent, and nothing installs " +
+                    "without you saying yes."
+            } else {
+                "Pelonot won't contact anything. New versions have to be installed by hand."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

@@ -391,6 +391,10 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setCloudSyncEnabled(enabled) }
     }
 
+    fun setUpdateChecksEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setUpdateChecksEnabled(enabled) }
+    }
+
     fun setCoachStyle(style: CoachStyle) {
         viewModelScope.launch { settingsRepository.setCoachStyle(style) }
     }

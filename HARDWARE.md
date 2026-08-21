@@ -102,6 +102,21 @@ Not a stock Peloton image — it has been used. Relevant packages:
 | `com.netflix.mediaclient` | Side-loaded |
 | `com.teslacoilsw.launcher` | Nova Launcher, side-loaded, is the active launcher |
 
+## Which build a bike carries (PLAN 30.5.2)
+
+**The friend's bike takes release builds; this one stays on debug.** Decided by
+the owner, 21 August 2026. Two consequences a session will meet before it
+remembers the decision:
+
+- **`installDebug` cannot update a release-signed bike, and vice versa.** They
+  are different signing certificates and Android refuses the swap outright — it
+  is an uninstall and a reinstall, which takes the database with it. That is not
+  a bug to work around; it is the platform doing the thing that makes an OTA
+  channel safe at all (30.1).
+- **`run-as` does not work on a release build**, so every `sqlite3` recipe below
+  answers *package not debuggable* on that tablet. A bike on releases cannot be
+  interrogated, and its defects arrive as sentences rather than as rows.
+
 ## Driving it from a session
 
 ```bash

@@ -41,6 +41,36 @@ data class AppSettings(
     val heartRateDeviceAddress: String? = null,
     val cloudSyncEnabled: Boolean = true,
 
+    /**
+     * Whether the app may ask the internet what the newest version is
+     * (PLAN 30.5.1).
+     *
+     * **On by default, and that is the owner's decision rather than a
+     * default nobody thought about.** It is the first request this app makes
+     * for a rider with no account, so it was put to them: the connectivity
+     * model's rule 1 forbids reaching *Supabase* without one, and this reaches
+     * a static file and sends nothing about the rider — no id, no name, no
+     * profile count, no ride. Gating it on an account would withhold updates
+     * from exactly the rider who has no other way to get one.
+     *
+     * The switch is what keeps rule 1 honest: a rider who wants an offline
+     * tablet to be an offline tablet can have one, and turning this off means
+     * **no request at all**, not a quieter one.
+     */
+    val updateChecksEnabled: Boolean = true,
+
+    /** When the last update check finished, or null if it never has. */
+    val lastUpdateCheckAtMs: Long? = null,
+
+    /**
+     * The newest version the rider has said no to (PLAN 30.4.5).
+     *
+     * Being asked the same question at every launch is how an update prompt
+     * becomes a thing people dismiss without reading — the same failure 7.11.8
+     * refused for the FTP proposal. A *newer* version still asks.
+     */
+    val declinedUpdateVersionCode: Int? = null,
+
     /** How loudly the ride is allowed to interrupt. */
     val coachStyle: CoachStyle = CoachStyle.DEFAULT,
 
@@ -182,6 +212,9 @@ class SettingsRepository(context: Context) {
                 lastProfileId = prefs[Keys.LAST_PROFILE_ID]?.takeIf { it >= 0 },
                 heartRateDeviceAddress = prefs[Keys.HR_DEVICE_ADDRESS],
                 cloudSyncEnabled = prefs[Keys.CLOUD_SYNC_ENABLED] ?: true,
+                updateChecksEnabled = prefs[Keys.UPDATE_CHECKS_ENABLED] ?: true,
+                lastUpdateCheckAtMs = prefs[Keys.LAST_UPDATE_CHECK_AT],
+                declinedUpdateVersionCode = prefs[Keys.DECLINED_UPDATE_VERSION],
                 coachStyle = CoachStyle.fromName(prefs[Keys.COACH_STYLE]),
                 coachVolume = (prefs[Keys.COACH_VOLUME] ?: AppSettings.DEFAULT_COACH_VOLUME)
                     .coerceIn(0f, 1f),
@@ -218,6 +251,16 @@ class SettingsRepository(context: Context) {
     }
 
     suspend fun setCloudSyncEnabled(enabled: Boolean) = edit { it[Keys.CLOUD_SYNC_ENABLED] = enabled }
+
+    suspend fun setUpdateChecksEnabled(enabled: Boolean) = edit {
+        it[Keys.UPDATE_CHECKS_ENABLED] = enabled
+    }
+
+    suspend fun markUpdateCheckedAt(atMs: Long) = edit { it[Keys.LAST_UPDATE_CHECK_AT] = atMs }
+
+    suspend fun declineUpdate(versionCode: Int) = edit {
+        it[Keys.DECLINED_UPDATE_VERSION] = versionCode
+    }
 
     suspend fun setCoachStyle(style: CoachStyle) = edit { it[Keys.COACH_STYLE] = style.name }
 
@@ -329,6 +372,9 @@ class SettingsRepository(context: Context) {
         val LAST_CLOUD_SYNC_ERROR = stringPreferencesKey("last_cloud_sync_error")
         val LAST_CLOUD_SYNC_ERROR_AT = longPreferencesKey("last_cloud_sync_error_at")
         val RETENTION_AGE = stringPreferencesKey("retention_age")
+        val UPDATE_CHECKS_ENABLED = booleanPreferencesKey("update_checks_enabled")
+        val LAST_UPDATE_CHECK_AT = longPreferencesKey("last_update_check_at")
+        val DECLINED_UPDATE_VERSION = intPreferencesKey("declined_update_version")
     }
 
     private companion object {

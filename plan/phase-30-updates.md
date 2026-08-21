@@ -137,12 +137,14 @@ is why the answer there may end up being two channels after all.
       inside the same `run-as` is the whole fix. And the emulator is a **Play
       Store image**, so `adb root` is refused and there is no way round a
       permission mistake once made
-- [ ] **30.1.5 After 30.1.4, `installDebug` onto that bike stops working**, and
+- [x] **30.1.5 After 30.1.4, `installDebug` onto that bike stops working**, and
       that is correct rather than a regression: a debug build and a release
       build are different certificates and neither can replace the other. The
       owner's own bike may keep taking debug builds; the friend's takes releases
-      only. Write it in `HARDWARE.md` where the adb recipes are, because it will
-      otherwise be met as a confusing error a month from now
+      only. **Written in `HARDWARE.md`** where the adb recipes are, because it
+      will otherwise be met as a confusing error a month from now — together
+      with 30.1.6's finding that `run-as` dies with it, which is the half that
+      turns a confusing error into a session that thinks the tablet is broken
 
 ### 30.2 A version that moves
 
@@ -151,16 +153,18 @@ the life of the project** — which has been harmless because nothing has ever
 compared them. An update check is nothing *but* a comparison, so this stops
 being cosmetic.
 
-- [ ] **30.2.1 One scheme, decided once.** The recommendation is a monotonic
+- [x] **30.2.1 One scheme, decided once.** The recommendation is a monotonic
       integer `versionCode` that nobody edits by hand and a `versionName` the
       owner chooses — the code is for the machine and the name is for the
       screen, and conflating them is how a hotfix ends up unable to describe
       itself. Where the integer comes from is the choice: the git commit count
       (`git rev-list --count HEAD`) is automatic and monotonic but is not
       reproducible from a tarball; a number in `version.properties` is explicit
-      and can be forgotten. **`version.properties` is the recommendation**, on
-      the same argument as `cloud.properties`: a fresh clone should be able to
-      see what the answer is without running anything
+      and can be forgotten. **`version.properties` is what was built**, on the
+      same argument as `cloud.properties`: a fresh clone should be able to see
+      what the answer is without running anything. `app/build.gradle.kts` reads
+      it, with the historical `1` / `1.0.0` as the fallback so a clone missing
+      the file builds something honest rather than nothing
 - [x] **30.2.2 The version is visible in the app, and today it is nowhere.**
       Measured rather than assumed: `BuildConfig.VERSION_NAME` and
       `VERSION_CODE` are referenced by **nothing** in `app/src/main/java`, so
@@ -195,11 +199,19 @@ release, and a repository that accumulates every APK it has ever shipped is a
 repository nobody can clone in a year. Both hosts are free and neither needs an
 account on the bike.
 
-- [ ] **30.3.1 `web/update.json`** — `versionCode`, `versionName`, `notes` (one
-      sentence a rider can read, not a changelog), `url` and `sha256`. Served
-      from the same origin the app already carries, so **no new configuration
-      value and no new secret**: it is `BuildConfig.PELONOT_WEB_URL` plus a
-      path. A self-hoster's is theirs, exactly as 17.14 decided for the endpoint
+- [ ] **30.3.1 `web/update.json`** — `version_code`, `version_name`, `notes`
+      (one sentence a rider can read, not a changelog), `url` and `sha256`.
+      Served from the same origin the app already carries, so **no new
+      configuration value and no new secret**: it is
+      `BuildConfig.PELONOT_WEB_URL` plus a path. A self-hoster's is theirs,
+      exactly as 17.14 decided for the endpoint. **The bike's half is built**:
+      `UpdateManifest` is the shape, snake_case on the wire with `@SerialName`
+      doing the matching for `intervals_json`'s reason, and `UpdateRepository`
+      fetches and parses it. **The file itself is not published**, deliberately
+      — a manifest is a promise that an APK exists at a URL, and no release
+      exists yet. A 404 is already *no update today* (30.3.4), so the live site
+      is correct as it stands. This box ticks when `tools/release.sh` writes a
+      real one
 - [ ] **30.3.2 `tools/release.sh` writes both**, in the manner of
       `tools/status-figures.sh`: bump the version, `assembleRelease`, compute
       the hash, create the GitHub release with the APK on it, rewrite
@@ -211,13 +223,27 @@ account on the bike.
 - [ ] **30.3.3 The check is cheap and rare.** Once per app open at most, and not
       more than once every 24 hours — a timestamp in preferences, and no
       background work, no `WorkManager`, no polling. The note says *"when he
-      opens the app"* and that is the whole requirement
+      opens the app"* and that is the whole requirement. **The rule is built and
+      tested and nothing calls it yet**: `UpdatePolicy.isCheckDue` and
+      `UpdateRepository.check` exist, `last_update_check_at` is stored, and the
+      app does not ask at launch — because there is nowhere to put the answer
+      until 30.4 draws a prompt, and a check whose result is discarded is a
+      request made for nothing. Wire it with 30.4.4, not before. **One thing the
+      rule already handles that the write-up had not thought of**: a clock that
+      has gone *backwards* — which this tablet does at every boot, correcting
+      itself off the network — must not lock a bike out of updates until the
+      stored timestamp comes round again
 - [ ] **30.3.4 A failed check is silent.** No network, a 404, a malformed
       manifest, a captive portal answering everything with a login page — all of
       them mean *no update today*, and none of them is a thing to tell a rider
       about. This is the same rule as `SyncOutcome.Disabled`: the offline tier is
       the mode and its failures are not errors. The one place it may be visible
-      is a manual *Check for updates* in Settings, where the rider asked
+      is a manual *Check for updates* in Settings, where the rider asked.
+      **`UpdateCheck` is the built shape**, and it names the three
+      nothing-happened cases apart — `Disabled`, `NotDue`, `NotConfigured` —
+      beside `Unreachable`, for `SyncOutcome.Disabled`'s reason: a Settings
+      screen has to be able to tell *"you turned this off"* from *"the internet
+      did not answer"*, and a nullable cannot say which
 
 ### 30.4 Installing it
 
@@ -277,7 +303,18 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       the wire**: no id, no name, no profile count, no ride. That sentence is an
       invariant rather than a description, and whatever ends up making the
       request should be readable enough that a stranger can check it in one
-      screenful
+      screenful. **Built**: the switch is *Updates → Tell me about new versions*,
+      on by default, and the sentence under it says what leaves the tablet
+      rather than what the feature is called. The request itself is
+      `UpdateRepository`, deliberately written on `HttpURLConnection` rather
+      than the ktor client the Supabase SDK drags in, so the update path shares
+      nothing with anything cloud-shaped. **`UpdateChannelFenceTest` is the
+      promise held structurally rather than in prose** — one file knows where
+      the manifest lives, that file may not mention Supabase, ktor or
+      `CloudAccess`, the URL is a constant path with nowhere to hang a query
+      string, and the request is a GET that cannot carry a body. Each check was
+      watched failing against its own violation, which is `RiderScore`'s rule 2
+      not being stated four times and enforced by nobody (26.4.10)
 - [x] **30.5.2 Which builds the two bikes carry — answered, 21 August 2026:
       the friend's takes releases, the owner's stays on debug.** The write-up
       recommended one channel, on the argument that a bug the friend reports

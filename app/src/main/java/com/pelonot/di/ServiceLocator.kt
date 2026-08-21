@@ -16,6 +16,7 @@ import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.RestoreRepository
 import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.UpdateRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.sensor.BleHeartRateManager
@@ -91,6 +92,16 @@ object ServiceLocator {
     val avatarPhotoStore: AvatarPhotoStore by lazy { AvatarPhotoStore(context) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(context) }
+
+    /**
+     * What the newest version is (30.3), and pointedly **not** cloud-shaped.
+     *
+     * It sits beside the settings rather than beside [syncRepository] because
+     * it is not part of the cloud tier and must never be gated on an account:
+     * the rider with no account is precisely the one who has no other way to be
+     * offered an update (30.5.1). `UpdateChannelFenceTest` holds that apart.
+     */
+    val updateRepository: UpdateRepository by lazy { UpdateRepository(settingsRepository) }
 
     /**
      * Shared between Settings and the HUD deliberately: both move the same
