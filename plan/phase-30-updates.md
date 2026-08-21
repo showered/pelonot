@@ -34,16 +34,17 @@ about *how it gets there*, and it is the difference between a project with one
 user and a project with two. The owner's note names the whole of it: the second
 rider will not run `gradlew`.
 
-**Where it sits against the connectivity model.** An update check is a network
-request made by a rider who has no account, which is the first thing in this
-project to be that. It does not break rule 1 as written — *"a rider with no
-account makes no request to **Supabase**"* — and it carries nothing about the
-rider: no id, no name, no ride, not even a profile count. It asks *what is the
-newest version* and is told. But rule 1's spirit is "offline is the mode", and
-this is a decision rather than a reading, so **30.5.1 puts it to the owner** and
-nothing here assumes the answer. It is not routed through `CloudAccess` and
-must not be: gating updates on having an account would withhold them from
-exactly the rider the note is about.
+**Where it sits against the connectivity model — settled, by the owner, 21
+August 2026.** An update check is a network request made by a rider who has no
+account, which is the first thing in this project to be that. It does not break
+rule 1 as written — *"a rider with no account makes no request to
+**Supabase**"* — and it carries nothing about the rider: no id, no name, no
+ride, not even a profile count. It asks *what is the newest version* and is
+told. But rule 1's spirit is "offline is the mode", so it was put to the owner
+rather than assumed, and **the answer is yes, with a switch in Settings and the
+switch defaulting on** (30.5.1). It is not routed through `CloudAccess` and must
+not be: gating updates on having an account would withhold them from exactly the
+rider the note is about.
 
 ---
 
@@ -107,8 +108,11 @@ is why the answer there may end up being two channels after all.
       first key is generated, not after. `*.jks`, `*.keystore`, and whatever
       `local.properties` names. A signing key in a public repository is the one
       mistake in this phase that cannot be undone by a force-push
-- [ ] **30.1.4 The changeover is planned before it is performed**, and it is the
-      owner's to schedule: back the friend's bike up through 19.1.3, uninstall,
+- [ ] **30.1.4 The changeover is planned before it is performed**, and the
+      owner has chosen **soon, with the history carried across** rather than
+      started clean (21 August 2026) — so the backup is load-bearing rather
+      than a courtesy, and 30.1.4a is what has to happen before the friend's
+      tablet is touched at all. The steps: back the friend's bike up through 19.1.3, uninstall,
       install the first release-signed APK, restore. **Verify the restore before
       the uninstall**, on the owner's own tablet — a backup nobody has put back
       is a belief rather than a backup, and 19.1.3a is this project's own
@@ -261,28 +265,34 @@ into it — and the confirmation is a `PendingIntent` the system raises.
 
 ### 30.5 The decisions in it
 
-- [ ] **30.5.1 Whether an account-less bike may make this request at all** —
-      the owner's, and the reasoning is at the head of this phase. The
-      recommendation is **yes, with a switch in Settings and nothing about the
-      rider on the wire**, because the request is about the *app* and not the
-      *rider*, and because gating it on an account withholds it from the person
-      the note was written about. What the switch is worth arguing about is its
-      default, and the recommendation there is **on**: an update nobody is
-      offered is the state we are in now
-- [ ] **30.5.2 Whether the friend's bike gets the release channel or the
-      owner's build.** Two answers, both defensible: one release APK for
-      everybody, or the owner's bike stays on debug and only the friend's takes
-      releases. The second is what will happen by accident; the first is what
-      makes a bug the friend reports reproducible. **Recommendation: one
-      channel**, and the owner's bike moves to release builds with it — the cost
-      is 30.1.4 a second time, on a tablet whose history the owner can afford to
-      lose. **30.1.6 found the argument on the other side**, and it is stronger
-      than the write-up expected: a release build is not debuggable, so `run-as`
-      is gone and with it every database query in CLAUDE.md's *Verifying UI
-      work*. A bike this project can no longer interrogate is a bike whose
-      defects arrive as sentences rather than as rows. That may be exactly the
-      right trade for the friend's bike — it is his tablet, not a test rig — and
-      exactly the wrong one for the owner's
+- [x] **30.5.1 Whether an account-less bike may make this request at all —
+      answered *yes*, 21 August 2026, and the switch defaults on.** The
+      reasoning is at the head of this phase and the owner took it as put: the
+      request is about the *app* and not the *rider*, so it is not the thing
+      rule 1 forbids, and gating it on an account would withhold it from the
+      person the note was written about. **The switch is the part that keeps the
+      rule honest** — a rider who wants an offline tablet to be an offline
+      tablet can have one — and the default is **on**, because an update nobody
+      is offered is the state we are in now. **Nothing about the rider goes on
+      the wire**: no id, no name, no profile count, no ride. That sentence is an
+      invariant rather than a description, and whatever ends up making the
+      request should be readable enough that a stranger can check it in one
+      screenful
+- [x] **30.5.2 Which builds the two bikes carry — answered, 21 August 2026:
+      the friend's takes releases, the owner's stays on debug.** The write-up
+      recommended one channel, on the argument that a bug the friend reports
+      should reproduce on the same binary. **30.1.6 found the argument on the
+      other side and it won**: a release build is not debuggable, so `run-as` is
+      gone and with it every database query in CLAUDE.md's *Verifying UI work*.
+      A bike this project can no longer interrogate is a bike whose defects
+      arrive as sentences rather than as rows — and almost everything this
+      project has found, it found in `workout_metrics`. His tablet is a bike;
+      the owner's is also the test rig. **What it costs is written here rather
+      than discovered later**: a report from the friend's bike may not reproduce
+      on a build anybody can inspect, and when that happens the answer is to put
+      a debug build on his tablet for the length of the investigation — which
+      30.1.5 makes a reinstall rather than an update, so it costs his database
+      again. That is the trade
 
 ### 30.6 What was considered and is not being built
 
