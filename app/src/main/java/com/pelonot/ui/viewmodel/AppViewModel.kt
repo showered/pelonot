@@ -25,9 +25,16 @@ import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.domain.suggest.ClassToRide
 import com.pelonot.domain.suggest.RiderRides
 import com.pelonot.domain.suggest.SuggestableClass
+import android.content.Intent
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.UpdateCheck
+import com.pelonot.data.repository.UpdateInstallCoordinator
+import com.pelonot.data.repository.UpdateInstallState
+import com.pelonot.data.repository.UpdateRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
+import com.pelonot.domain.update.UpdateDecision
+import com.pelonot.domain.update.UpdateManifest
 import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
@@ -168,7 +175,18 @@ data class AppUiState(
      * the launcher, or the strip after the task was swiped away — and the rider
      * is looking for the ride, not the profile picker.
      */
-    val activeRide: ActiveRide? = null
+    val activeRide: ActiveRide? = null,
+    /**
+     * A newer build than this one, offered and not yet declined (PLAN 30.4.4).
+     *
+     * **Null while a ride is running**, and that is the point rather than an
+     * oversight — installing replaces the process, so nothing may prompt for
+     * it mid-ride. This is the live answer to "is `WorkoutService` idle",
+     * asked of [RideInProgress] rather than of the database, for the same
+     * reason [recoverableWorkout] is: a ride in progress is `is_complete = 0`
+     * exactly like a crashed one, and only the service can tell the two apart.
+     */
+    val updateOffer: UpdateManifest? = null
 ) {
     val selectedProfile: UserEntity?
         get() = profiles.firstOrNull { it.localUserId == settings.lastProfileId }
@@ -201,7 +219,9 @@ class AppViewModel(
     private val userRepository: UserRepository,
     classRepository: ClassRepository,
     private val workoutRepository: WorkoutRepository,
-    private val syncRepository: SupabaseSyncRepository
+    private val syncRepository: SupabaseSyncRepository,
+    private val updateRepository: UpdateRepository,
+    private val updateInstallCoordinator: UpdateInstallCoordinator
 ) : ViewModel() {
 
     /**
@@ -213,9 +233,43 @@ class AppViewModel(
      */
     private val _recoverableWorkout = MutableStateFlow<InterruptedRide?>(null)
 
+    /**
+     * The once-a-day check (30.3.3), run at launch and nowhere else — the
+     * note asks for *"when he opens the app"* and that is the whole
+     * requirement, so there is no polling and no background work.
+     */
+    private val _updateOffer = MutableStateFlow<UpdateManifest?>(null)
+
     init {
         viewModelScope.launch { refreshRecoverableWorkout() }
+        viewModelScope.launch { checkForUpdate() }
     }
+
+    private suspend fun checkForUpdate() {
+        val result = updateRepository.check()
+        val decision = (result as? UpdateCheck.Decided)?.decision
+        _updateOffer.value = (decision as? UpdateDecision.Offer)?.manifest
+    }
+
+    /** *Not now* on the update prompt (30.4.5) — refused for this version, not forever. */
+    fun declineUpdate(manifest: UpdateManifest) {
+        viewModelScope.launch {
+            settingsRepository.declineUpdate(manifest.versionCode)
+            _updateOffer.value = null
+        }
+    }
+
+    /**
+     * Shared with Settings' own *Check for updates now* — see
+     * [UpdateInstallCoordinator]'s own KDoc for why there is one instance.
+     */
+    val installState: StateFlow<UpdateInstallState> = updateInstallCoordinator.state
+
+    fun installUpdate(manifest: UpdateManifest) {
+        viewModelScope.launch { updateInstallCoordinator.install(manifest) }
+    }
+
+    fun unknownSourcesSettingsIntent(): Intent = updateInstallCoordinator.unknownSourcesSettingsIntent()
 
     /**
      * Re-reads the orphan, if any, together with how long it has been sitting
@@ -253,8 +307,9 @@ class AppViewModel(
      */
     private val rideStatus = combine(
         _recoverableWorkout,
-        RideInProgress.active
-    ) { recoverable, active -> recoverable to active }
+        RideInProgress.active,
+        _updateOffer
+    ) { recoverable, active, updateOffer -> Triple(recoverable, active, updateOffer) }
 
     /** The selected rider's FTP over time (7.10.2, and 16.3.1's screen). */
     private val ftpTrend = settingsRepository.settings
@@ -403,7 +458,7 @@ class AppViewModel(
         classRepository.allPlans,
         dashboard,
         rideStatus
-    ) { settings, profiles, classes, dashboard, (recoverable, active) ->
+    ) { settings, profiles, classes, dashboard, (recoverable, active, updateOffer) ->
         // Computed here rather than in a flow of its own because it is a
         // function of two things the state already carries — the library and
         // the rider's rides — and a third flow that re-derives one of them is a
@@ -459,7 +514,11 @@ class AppViewModel(
             },
             isLoading = false,
             recoverableWorkout = recoverable,
-            activeRide = active
+            activeRide = active,
+            // 30.4.4: nothing may be asked mid-ride, so the offer is withheld
+            // rather than merely left unshown — a screen reaching into the
+            // state directly must see the same "no" a dialog would.
+            updateOffer = if (active == null) updateOffer else null
         )
     }.stateIn(
         scope = viewModelScope,
@@ -685,7 +744,9 @@ class AppViewModel(
                 userRepository = ServiceLocator.userRepository,
                 classRepository = ServiceLocator.classRepository,
                 workoutRepository = ServiceLocator.workoutRepository,
-                syncRepository = ServiceLocator.syncRepository
+                syncRepository = ServiceLocator.syncRepository,
+                updateRepository = ServiceLocator.updateRepository,
+                updateInstallCoordinator = ServiceLocator.updateInstallCoordinator
             )
         }
     }

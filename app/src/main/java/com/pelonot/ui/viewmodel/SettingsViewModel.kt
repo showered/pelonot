@@ -1,5 +1,6 @@
 package com.pelonot.ui.viewmodel
 
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,10 @@ import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.StorageFacts
 import com.pelonot.data.repository.ThemeMode
+import com.pelonot.data.repository.UpdateCheck
+import com.pelonot.data.repository.UpdateInstallCoordinator
+import com.pelonot.data.repository.UpdateInstallState
+import com.pelonot.data.repository.UpdateRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.sensor.HeartRateDevice
 import com.pelonot.data.sensor.PowerModel
@@ -28,6 +33,7 @@ import com.pelonot.domain.coach.CoachStyle
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.UnitSystem
 import com.pelonot.domain.retention.RetentionAge
+import com.pelonot.domain.update.UpdateManifest
 import kotlinx.coroutines.flow.SharingStarted
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.repository.WorkoutRepository
@@ -99,7 +105,16 @@ data class SettingsUiState(
      * was sized off an estimate of ~61 MB a year, and this is the tablet's own
      * answer — on the bike, without adb.
      */
-    val storage: StorageFacts? = null
+    val storage: StorageFacts? = null,
+
+    /**
+     * The result of *Check for updates now* (PLAN 30.4), null until it is
+     * asked for. Kept apart from [AppUiState.updateOffer] — the automatic
+     * check's own state — because a manual check has to be able to say *"you
+     * are up to date"* and *"turned off"* out loud, which an automatic check
+     * that only ever surfaces an offer has no reason to.
+     */
+    val manualUpdateCheck: UpdateCheck? = null
 ) {
     val ftpWatts: Int get() = profile?.ftpWatts ?: UserEntity.DEFAULT_FTP
     val weightKg: Double? get() = profile?.weightKg
@@ -150,6 +165,8 @@ class SettingsViewModel(
     private val retentionRepository: RetentionRepository,
     private val cloudAccess: CloudAccess,
     private val accountRepository: AccountRepository,
+    private val updateRepository: UpdateRepository,
+    private val updateInstallCoordinator: UpdateInstallCoordinator,
     /** Whether this build has an endpoint at all — see [SettingsUiState]. */
     private val cloudConfigured: Boolean
 ) : ViewModel() {
@@ -240,20 +257,27 @@ class SettingsViewModel(
     /** 23.4.1, read on demand for the same reason: nothing draws it live. */
     private val _storage = MutableStateFlow<StorageFacts?>(null)
 
-    /** The four things this screen looks up rather than observes. */
+    /** *Check for updates now* (30.4), asked for rather than observed like the rest of this group. */
+    private val _manualUpdateCheck = MutableStateFlow<UpdateCheck?>(null)
+
+    /** The things this screen looks up rather than observes. */
     private data class OnDemand(
         val mediaVolume: Float,
         val volumeError: String?,
         val highestHr: Int?,
-        val storage: StorageFacts?
+        val storage: StorageFacts?,
+        val manualUpdateCheck: UpdateCheck?
     )
 
     private val volume = combine(
         volumeController.mediaVolume,
         volumeController.lastError,
         _highestRecordedHr,
-        _storage
-    ) { level, error, highestHr, storage -> OnDemand(level, error, highestHr, storage) }
+        _storage,
+        _manualUpdateCheck
+    ) { level, error, highestHr, storage, manualUpdateCheck ->
+        OnDemand(level, error, highestHr, storage, manualUpdateCheck)
+    }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
@@ -261,7 +285,7 @@ class SettingsViewModel(
         sensors,
         volume,
         calibrationRepository.state
-    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr, storage), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr, storage, manualUpdateCheck), calibration ->
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -276,7 +300,8 @@ class SettingsViewModel(
             ridesWaiting = cloudSync.ridesWaiting,
             cloudConfigured = cloudConfigured,
             highestRecordedHr = highestHr,
-            storage = storage
+            storage = storage,
+            manualUpdateCheck = manualUpdateCheck
         )
     }.stateIn(
         scope = viewModelScope,
@@ -394,6 +419,31 @@ class SettingsViewModel(
     fun setUpdateChecksEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setUpdateChecksEnabled(enabled) }
     }
+
+    /** *Check for updates now* — skips the daily interval, still obeys the switch (PLAN 30.3.3). */
+    fun checkForUpdatesNow() {
+        viewModelScope.launch { _manualUpdateCheck.value = updateRepository.check(force = true) }
+    }
+
+    fun dismissManualUpdateCheck() {
+        _manualUpdateCheck.value = null
+    }
+
+    /** Shared with the automatic prompt — see [UpdateInstallCoordinator]'s own KDoc for why. */
+    val installState: StateFlow<UpdateInstallState> = updateInstallCoordinator.state
+
+    fun installUpdate(manifest: UpdateManifest) {
+        viewModelScope.launch { updateInstallCoordinator.install(manifest) }
+    }
+
+    fun declineUpdate(manifest: UpdateManifest) {
+        viewModelScope.launch {
+            settingsRepository.declineUpdate(manifest.versionCode)
+            _manualUpdateCheck.value = null
+        }
+    }
+
+    fun unknownSourcesSettingsIntent(): Intent = updateInstallCoordinator.unknownSourcesSettingsIntent()
 
     fun setCoachStyle(style: CoachStyle) {
         viewModelScope.launch { settingsRepository.setCoachStyle(style) }
@@ -567,6 +617,8 @@ class SettingsViewModel(
                 retentionRepository = ServiceLocator.retentionRepository,
                 cloudAccess = ServiceLocator.cloudAccess,
                 accountRepository = ServiceLocator.accountRepository,
+                updateRepository = ServiceLocator.updateRepository,
+                updateInstallCoordinator = ServiceLocator.updateInstallCoordinator,
                 cloudConfigured = ServiceLocator.authRepository.cloudConfigured
             )
         }

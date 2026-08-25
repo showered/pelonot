@@ -1,5 +1,6 @@
 package com.pelonot.ui.navigation
 
+import android.content.Intent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -45,9 +46,12 @@ import com.pelonot.ui.screen.RideDetailScreen
 import com.pelonot.ui.screen.RideScreen
 import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
+import com.pelonot.ui.screen.UpdateOfferDialog
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.core.Features
+import com.pelonot.data.repository.UpdateInstallState
 import com.pelonot.domain.social.ClassRival
+import com.pelonot.domain.update.UpdateManifest
 import com.pelonot.core.Formatters
 import com.pelonot.ui.viewmodel.AppUiState
 import com.pelonot.ui.viewmodel.InterruptedRide
@@ -92,7 +96,12 @@ fun PelonotNavGraph(
         { classId, _ -> ClassLeaderboard(classId) },
     /** Rides of this class that can be raced live (24.3.3). Always a Room read. */
     onLoadRivals: suspend (classId: String, youId: Int?) -> List<ClassRival> =
-        { _, _ -> emptyList() }
+        { _, _ -> emptyList() },
+    /** Where a download/install has got to (30.4), shared with Settings' own check. */
+    updateInstallState: UpdateInstallState = UpdateInstallState.Idle,
+    onInstallUpdate: (UpdateManifest) -> Unit = {},
+    onDeclineUpdate: (UpdateManifest) -> Unit = {},
+    unknownSourcesSettingsIntent: () -> Intent = { Intent() }
 ) {
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var pendingClassId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -163,6 +172,19 @@ fun PelonotNavGraph(
                 }
             },
             onDiscard = onDiscardRecoverableWorkout
+        )
+    }
+
+    // 30.4.4: uiState.updateOffer is already null while a ride is running —
+    // AppViewModel withholds it there rather than this screen filtering it,
+    // so nothing reaching the state directly can draw it either.
+    uiState.updateOffer?.let { manifest ->
+        UpdateOfferDialog(
+            manifest = manifest,
+            installState = updateInstallState,
+            onInstall = { onInstallUpdate(manifest) },
+            onNotNow = { onDeclineUpdate(manifest) },
+            unknownSourcesSettingsIntent = unknownSourcesSettingsIntent
         )
     }
 

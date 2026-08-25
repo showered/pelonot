@@ -63,6 +63,16 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!--
+      OTA updates (PLAN 30.4.1). `PackageInstaller`'s session API still needs
+      this declared, exactly like every other permission on this page — a
+      runtime request behind an undeclared one is denied instantly with
+      nothing in the log, and this project has lost two sittings to that
+      already (VIBRATE, ACCESS_FINE_LOCATION above). Declared before the
+      installer is wired, on the same reasoning as MODIFY_AUDIO_SETTINGS.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
       Declared for completeness against Peloton's sensor service. It is a
       signature-level permission we can never be granted, and the service's
       <service> tag sets no android:permission, so it is not enforced and the
@@ -100,6 +110,11 @@
         <service
             android:name=".data.service.WorkoutService"
             android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <!-- Where PackageInstaller reports back on a committed session (30.4). -->
+        <receiver
+            android:name=".data.repository.UpdateInstallReceiver"
             android:exported="false" />
 
     </application>

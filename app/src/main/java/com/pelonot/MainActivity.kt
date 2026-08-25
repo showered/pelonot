@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
             // is stopped, rather than keeping database flows hot in the
             // background as a plain collectAsState would.
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val updateInstallState by viewModel.installState.collectAsStateWithLifecycle()
 
             val darkTheme = when (uiState.settings.themeMode) {
                 ThemeMode.System -> isSystemInDarkTheme()
@@ -69,7 +70,11 @@ class MainActivity : ComponentActivity() {
                             onDismissAccountOffer = viewModel::dismissAccountOffer,
                             onRevertFtpChange = viewModel::revertFtpChange,
                             onLoadLeaderboard = viewModel::householdLeaderboard,
-                            onLoadRivals = viewModel::classRivals
+                            onLoadRivals = viewModel::classRivals,
+                            updateInstallState = updateInstallState,
+                            onInstallUpdate = viewModel::installUpdate,
+                            onDeclineUpdate = viewModel::declineUpdate,
+                            unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
                         )
                     }
                 }

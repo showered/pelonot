@@ -16,6 +16,9 @@ import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.RestoreRepository
 import com.pelonot.data.repository.RetentionRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.UpdateDownloader
+import com.pelonot.data.repository.UpdateInstallCoordinator
+import com.pelonot.data.repository.UpdateInstaller
 import com.pelonot.data.repository.UpdateRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
@@ -102,6 +105,23 @@ object ServiceLocator {
      * offered an update (30.5.1). `UpdateChannelFenceTest` holds that apart.
      */
     val updateRepository: UpdateRepository by lazy { UpdateRepository(settingsRepository) }
+
+    /**
+     * Downloading and committing an offered update (30.4). Kept apart from
+     * [updateRepository] — which only ever reads the manifest — because
+     * `UpdateChannelFenceTest` holds that file to knowing nothing else, and an
+     * installer that touches `PackageInstaller` has no business in it.
+     */
+    val updateDownloader: UpdateDownloader by lazy { UpdateDownloader(context) }
+    val updateInstaller: UpdateInstaller by lazy { UpdateInstaller(context) }
+
+    /**
+     * One instance so the automatic prompt and Settings' *Check for updates
+     * now* cannot each think they own the download.
+     */
+    val updateInstallCoordinator: UpdateInstallCoordinator by lazy {
+        UpdateInstallCoordinator(updateDownloader, updateInstaller)
+    }
 
     /**
      * Shared between Settings and the HUD deliberately: both move the same

@@ -81,6 +81,8 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.repository.CalibrationState
 import com.pelonot.data.repository.StorageFacts
 import com.pelonot.data.repository.ThemeMode
+import com.pelonot.data.repository.UpdateCheck
+import com.pelonot.domain.update.UpdateDecision
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
@@ -130,6 +132,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateInstallState by viewModel.installState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // The media volume is a system value; anything on the device may have moved
@@ -150,6 +153,28 @@ fun SettingsScreen(
     var pendingRestore by remember { mutableStateOf<Uri?>(null) }
 
     val say: (String) -> Unit = { message -> scope.launch { snackbarHost.showSnackbar(message) } }
+
+    // 30.3.4: a failed automatic check says nothing, but a manual one is the
+    // one place that rule allows an answer — the rider asked. An Offer is
+    // excluded because the dialog below is that answer.
+    LaunchedEffect(state.manualUpdateCheck) {
+        val check = state.manualUpdateCheck ?: return@LaunchedEffect
+        val decision = (check as? UpdateCheck.Decided)?.decision
+        if (decision is UpdateDecision.Offer) return@LaunchedEffect
+        val message = when (check) {
+            is UpdateCheck.Decided -> when (decision) {
+                UpdateDecision.UpToDate -> "You're on the newest version."
+                is UpdateDecision.Declined -> "You already said not now to ${decision.manifest.versionName}."
+                is UpdateDecision.Rejected -> "Couldn't read that update."
+                else -> null
+            }
+            UpdateCheck.Disabled -> "Turn on \"Tell me about new versions\" first."
+            UpdateCheck.NotConfigured -> "This build has no update address configured."
+            UpdateCheck.Unreachable, UpdateCheck.NotDue -> "Couldn't check just now — try again in a moment."
+        }
+        if (message != null) say(message)
+        viewModel.dismissManualUpdateCheck()
+    }
 
     val backupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -332,10 +357,25 @@ fun SettingsScreen(
             // better beside the answer than three sections away from it.
             UpdatesSection(
                 enabled = state.settings.updateChecksEnabled,
-                onEnabledChange = viewModel::setUpdateChecksEnabled
+                onEnabledChange = viewModel::setUpdateChecksEnabled,
+                manualCheck = state.manualUpdateCheck,
+                onCheckNow = viewModel::checkForUpdatesNow
             )
 
             AboutLine()
+
+            state.manualUpdateCheck?.let { check ->
+                val offer = (check as? UpdateCheck.Decided)?.decision as? UpdateDecision.Offer
+                if (offer != null) {
+                    UpdateOfferDialog(
+                        manifest = offer.manifest,
+                        installState = updateInstallState,
+                        onInstall = { viewModel.installUpdate(offer.manifest) },
+                        onNotNow = { viewModel.declineUpdate(offer.manifest) },
+                        unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
+                    )
+                }
+            }
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
         }
@@ -360,7 +400,9 @@ fun SettingsScreen(
 @Composable
 private fun UpdatesSection(
     enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit
+    onEnabledChange: (Boolean) -> Unit,
+    manualCheck: UpdateCheck?,
+    onCheckNow: () -> Unit
 ) {
     SettingsSection("Updates") {
         SettingsToggle(
@@ -383,6 +425,13 @@ private fun UpdatesSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        OutlinedButton(
+            onClick = onCheckNow,
+            // Disabled mid-check rather than turned into a spinner — one tap
+            // to ask and the answer arrives as the snackbar or dialog above,
+            // which is enough for a request this small.
+            enabled = manualCheck == null
+        ) { Text("Check for updates now") }
     }
 }
 
