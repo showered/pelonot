@@ -117,13 +117,32 @@ is why the answer there may end up being two channels after all.
       the uninstall**, on the owner's own tablet — a backup nobody has put back
       is a belief rather than a backup, and 19.1.3a is this project's own
       evidence that a restore path can be broken while its tests are green
-- [ ] **30.1.4a The rehearsal that has not been done is the one that uses the
+- [x] **30.1.4a The rehearsal that has not been done is the one that uses the
       app's own backup.** 30.1.6 moved the database across the gap with
       `run-as` and `tar`, which proves the *shape* of the changeover and not the
       route the owner will actually take — 19.1.3's *Back up now* and *Restore
       from a backup*, driven from Settings, with a real file. Do that before
       touching the friend's bike, not on it: 19.1.3a is this project's own
-      evidence that the restore path can be broken while its tests are green
+      evidence that the restore path can be broken while its tests are green.
+      **Done, on the tablet AVD, on the same 55-ride five-profile fixture as
+      30.1.6.** Settings → *Back up now* wrote a real file into Downloads
+      through the SAF save dialog (709 kB); `pm clear` then stood in for the
+      uninstall, since the point being tested is the app's own restore path
+      rather than the certificate change 30.1.6 already rehearsed; Settings →
+      *Restore from a backup* picked that file back up through the SAF open
+      dialog, took the *Replace everything with this backup?* confirmation, and
+      restarted. **5 profiles, 55 workouts, 5278 metrics, 72 classes** — counted
+      out of `sqlite3` after, not read off a screen — came back exactly. One
+      thing came back different rather than missing: Robin's profile photo
+      restored to her derived-colour `R` rather than the picture, because
+      `DatabaseBackup` copies the SQLite file and nothing else, and a photo
+      lives in `files/avatars/` beside it rather than inside it. **This is not a
+      new fault** — 20.2.4 named this exact gap and watched the same fallback
+      by deleting a photo file by hand, and the rehearsal is a second
+      confirmation of a decision already made rather than a discovery. Worth
+      carrying into 30.1.4 in one sentence: the friend's photo, if he sets one
+      before 20.7's removal is reverted, will not survive his changeover either,
+      and that is by design, not a thing to fix first
 - [x] **30.1.6 The changeover was rehearsed on the tablet AVD**, on the 55-ride
       five-profile fixture, and the fixture came back byte-identical: pull, full
       uninstall, install the signed release, drive it, uninstall, reinstall
@@ -220,30 +239,38 @@ account on the bike.
       skipped** — and the failure mode of skipping it is a manifest advertising
       a build that does not exist, or worse, a hash that does not match one that
       does
-- [ ] **30.3.3 The check is cheap and rare.** Once per app open at most, and not
+- [x] **30.3.3 The check is cheap and rare.** Once per app open at most, and not
       more than once every 24 hours — a timestamp in preferences, and no
       background work, no `WorkManager`, no polling. The note says *"when he
-      opens the app"* and that is the whole requirement. **The rule is built and
-      tested and nothing calls it yet**: `UpdatePolicy.isCheckDue` and
-      `UpdateRepository.check` exist, `last_update_check_at` is stored, and the
-      app does not ask at launch — because there is nowhere to put the answer
-      until 30.4 draws a prompt, and a check whose result is discarded is a
-      request made for nothing. Wire it with 30.4.4, not before. **One thing the
-      rule already handles that the write-up had not thought of**: a clock that
-      has gone *backwards* — which this tablet does at every boot, correcting
-      itself off the network — must not lock a bike out of updates until the
-      stored timestamp comes round again
-- [ ] **30.3.4 A failed check is silent.** No network, a 404, a malformed
+      opens the app"* and that is the whole requirement. `UpdatePolicy
+      .isCheckDue` and `UpdateRepository.check` exist, `last_update_check_at`
+      is stored, and **now the app does ask at launch**: `AppViewModel`'s
+      `init` runs it once, the same way `refreshRecoverableWorkout` already
+      does for 8.3d, and 30.4 is what gave it somewhere to put the answer.
+      **One thing the rule already handles that the write-up had not thought
+      of**: a clock that has gone *backwards* — which this tablet does at every
+      boot, correcting itself off the network — must not lock a bike out of
+      updates until the stored timestamp comes round again
+- [x] **30.3.4 A failed check is silent.** No network, a 404, a malformed
       manifest, a captive portal answering everything with a login page — all of
       them mean *no update today*, and none of them is a thing to tell a rider
       about. This is the same rule as `SyncOutcome.Disabled`: the offline tier is
       the mode and its failures are not errors. The one place it may be visible
       is a manual *Check for updates* in Settings, where the rider asked.
-      **`UpdateCheck` is the built shape**, and it names the three
+      `UpdateCheck` is the built shape, and it names the three
       nothing-happened cases apart — `Disabled`, `NotDue`, `NotConfigured` —
       beside `Unreachable`, for `SyncOutcome.Disabled`'s reason: a Settings
       screen has to be able to tell *"you turned this off"* from *"the internet
-      did not answer"*, and a nullable cannot say which
+      did not answer"*, and a nullable cannot say which. **Settings' *Check for
+      updates now* is built on exactly that distinction** — a snackbar names
+      which of the six nothing-happened-or-decided cases it got, and only
+      `Offer` opens the install dialog instead. **Confirmed against the real
+      endpoint rather than a stand-in**: with 30.4.6's rehearsal finished and
+      the AVD pointed back at the true `pelonot.webUrl`, a manual check against
+      the live site's still-unpublished manifest (30.3.1) came back
+      *"Couldn't check just now"* — the honest `Unreachable` answer for a 404,
+      exactly as this item specifies, on the actual production endpoint rather
+      than an assumption about it
 
 ### 30.4 Installing it
 
@@ -253,12 +280,12 @@ read it, and on Android 11's scoped storage that means a `FileProvider` and a
 grant. A session takes an `OutputStream` — the download can be written straight
 into it — and the confirmation is a `PendingIntent` the system raises.
 
-- [ ] **30.4.1 `REQUEST_INSTALL_PACKAGES` is declared in the manifest.** First,
+- [x] **30.4.1 `REQUEST_INSTALL_PACKAGES` is declared in the manifest.** First,
       and before believing anything about the flow: CLAUDE.md's rule is that a
       permission the manifest does not declare is **denied instantly, with no
       dialog and nothing in logcat**, and this project has lost two sittings to
       exactly that (`VIBRATE`, then `ACCESS_FINE_LOCATION`)
-- [ ] **30.4.2 The one-off grant is asked for at the moment it is needed.**
+- [x] **30.4.2 The one-off grant is asked for at the moment it is needed.**
       Above API 26 the rider must also allow this app to install unknown apps,
       which is `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES` and **cannot be
       granted programmatically**. `canRequestPackageInstalls()` says whether it
@@ -266,28 +293,61 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       the same rule 11.6.14 settled for the overlay permission, and 20.4.8 for
       notifications: a permission asked outside the moment it is for is a
       permission refused
-- [ ] **30.4.3 The download is verified before it is committed.** SHA-256
+- [x] **30.4.3 The download is verified before it is committed.** SHA-256
       against the manifest. This does not replace the platform's signature check
       — that is what actually makes an OTA channel safe, and it is 30.1's whole
       point — but a bike on household wifi truncating a 24 MB download is the
       likely failure, and a truncated APK should be a retry rather than a
       failed install
-- [ ] **30.4.4 Nothing is asked during a ride.** Installing replaces the
+- [x] **30.4.4 Nothing is asked during a ride.** Installing replaces the
       process. The check and the prompt happen when the app is opened and
       `WorkoutService` is idle, and **a ride in progress is `is_complete = 0`
       exactly like a crashed one** (8.3b) — so *idle* means asking the service,
-      not asking the database
-- [ ] **30.4.5 Once refused is refused for that version.** Store the
+      not asking the database. **Built as a withholding rather than a filter**:
+      `AppViewModel.uiState.updateOffer` is the manifest or null, and it is
+      null whenever `RideInProgress.active` is non-null — the same live,
+      process-scoped answer `recoverableWorkout` already asks for 8.3d, not a
+      second read of the database. A screen reaching into the state directly
+      sees the same *no* the dialog would, which is the point: nothing has to
+      remember to check twice
+- [x] **30.4.5 Once refused is refused for that version.** Store the
       `versionCode` the rider said no to and do not ask again until there is a
       newer one. Being asked the same question at every launch is the failure
       7.11.8 already refused for the FTP proposal, and it is the failure that
       turns an update prompt into a thing people learn to dismiss without
-      reading
-- [ ] **30.4.6 Watched working on the AVD, both halves.** Install a build, raise
+      reading. **The storage half was already built** (30.5.1's
+      `SettingsRepository.declineUpdate`, feeding `UpdatePolicy.decide`'s
+      `declinedVersionCode`); what this box adds is the *Not now* button
+      actually calling it, from both the automatic dialog and Settings' own
+      check
+- [x] **30.4.6 Watched working on the AVD, both halves.** Install a build, raise
       the version, publish, open the app, take the prompt, and confirm the new
       version is running and **the database survived** — which is the assertion
       that matters and the one an install test would otherwise skip. This is
-      fully observable without the bike and without the friend
+      fully observable without the bike and without the friend. **Done, on the
+      tablet AVD, end to end and for real** — not a stand-in for the mechanics,
+      the actual flow: a genuine second APK (`versionCode 2`, built from this
+      tree), a manifest and the APK served over **HTTPS** from a local server
+      (a self-signed cert installed as a user CA on the AVD only, and
+      `pelonot.webUrl` pointed at it, both reverted before anything was
+      committed — 30.3.1's rule that the real manifest stays unpublished until
+      `tools/release.sh` exists was not touched). The automatic prompt appeared
+      unprompted at launch reading *"Pelonot 1.0.1 is ready"*; **Install**
+      correctly detected the missing *install unknown apps* grant and asked for
+      it by name; returning from that settings screen **retried on its own**
+      rather than leaving the rider to tap Install twice; the download,
+      checksum and `PackageInstaller` session all worked, raising the system's
+      own *Update this app?* confirmation (Play Protect's scan gate came after
+      it, unprompted by this app, and was navigated the same way a rider
+      would). **The database survived** — 5 profiles, 55 workouts, 724 kB,
+      counted out of Settings' own Storage card rather than assumed — and
+      Settings' about line read `Pelonot 1.0.1 (2)` afterwards, both figures
+      the update check itself compares. The AVD was left exactly as found:
+      uninstalled back to a clean `versionCode 1` (Android refuses to
+      downgrade a same-signature APK, so a plain reinstall could not do it) and
+      the fixture put back through 30.1.4a's own restore path — which is a
+      second, incidental confirmation of that item, on a build it had not been
+      tried against before
 
 ### 30.5 The decisions in it
 

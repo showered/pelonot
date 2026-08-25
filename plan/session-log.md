@@ -6,6 +6,269 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
+
+**The inbox had one entry and it was `OTA Updates`**, verbatim: *"I'm happy to
+do grade installs over adb but my friend probably won't be bothered. Can we
+introduce free OTA updates somehow so when he opens the app it'll say 'do you
+want to install an update?'"* It is written up as **Phase 30**, twenty-two items
+in a new file, and the inbox is empty again.
+
+**The mechanism is the easy half and it is genuinely free.** The repository is
+public, so GitHub Releases hosts the APK for nothing; the companion web app is
+already live, already deploys on `git push`, and already owns the URL the bike
+carries in `BuildConfig.PELONOT_WEB_URL`, so the manifest costs no new
+configuration value and no new secret; and `PackageInstaller` takes the download
+as a stream, which sidesteps `FileProvider` and Android 11's scoped storage
+entirely. The friend taps twice — once, ever, to allow this app to install
+packages, and once per update.
+
+**Underneath it is a prerequisite nobody had noticed, and it is the only item in
+this plan with a deadline.** Android refuses to update an app whose signing
+certificate has changed. **Every copy of Pelonot that exists is a debug build**,
+signed with the per-machine `~/.android/debug.keystore`, and `release` had **no
+`signingConfig` at all**, so `assembleRelease` produced an APK installable on
+nothing. The first release-signed APK therefore cannot replace what is on the
+friend's bike: it is an uninstall, and an uninstall takes the database. **Every
+ride he takes between now and that day is a ride that has to survive a backup
+and a restore**, which makes doing it soon strictly cheaper than doing it later.
+
+**Rather than stop at compiling it, the whole changeover was rehearsed on the
+tablet AVD**, and four things came out of that which this project did not know.
+A release build is **3.4 MB** against debug's 24. `assembleRelease` **works** —
+minify and `shrinkResources` have been switched on since Phase 0 and never once
+exercised, so the first person to run it could as easily have met a
+`proguard-rules.pro` that had drifted for sixty-eight sittings. **The minified
+build runs**, which is the part that mattered: R8 strips `kotlinx.serialization`
+serializers for a living and this app reads 72 JSON classes out of its assets on
+first launch, so it was installed onto an empty tablet and driven — first-run
+screen, `Guest`, dashboard, **72 to choose from** with the interval bars drawn
+off `intervals_json`. And the fixture went back byte-identical afterwards: **5
+profiles, 55 workouts, 5278 metrics, 72 classes**, Robin's photograph included.
+
+**The fourth finding changed a decision.** A release build is not debuggable, so
+`run-as` — and with it every `sqlite3` query CLAUDE.md settles data questions
+with — answers *package not debuggable* and nothing else. **The database stops
+being the witness on any bike running a release.** The write-up had recommended
+one channel for both bikes; that finding won the argument the other way, and the
+owner chose it: **the friend's bike takes releases, this one stays on debug**.
+What it costs is written into 30.5.2 rather than discovered later — a report
+from his tablet may not reproduce anywhere inspectable, and putting a debug
+build on it for an investigation costs his database again.
+
+**The owner answered three things directly and the middle one is the one to
+act on.** 30.5.1: an account-less bike **may** check for updates, with a switch
+in Settings, defaulting **on**. 30.1.4: the signing changeover happens **soon,
+with the history carried across** rather than started clean. 30.5.2: two
+channels, as above.
+
+**30.5.1 is the first network request this app makes for a rider with no
+account, and it was granted on a promise.** The connectivity model's rule 1
+forbids reaching *Supabase* without an account; this reaches a static file and
+sends nothing about the rider — no id, no name, no profile count, no ride. It is
+deliberately **not** routed through `CloudAccess`, because gating it on an
+account would withhold updates from exactly the rider the note was written
+about. **A promise like that decays by somebody adding one harmless parameter**,
+which is `RiderScore`'s rule 2 all over again (26.4.10), so
+`UpdateChannelFenceTest` holds it structurally: one file knows where the
+manifest lives, that file may not mention Supabase, ktor or `CloudAccess`, the
+URL is a constant path with nowhere to hang a query string, and the request is a
+GET that cannot carry a body. Each check was watched failing against its own
+violation. `UpdateRepository` is written on `HttpURLConnection` rather than the
+ktor client the Supabase SDK drags in, so the update path shares nothing at all
+with the cloud tier.
+
+**`UpdatePolicy` is the decision and it is pure**, twelve tests, no clock and no
+`Context`. Strictly greater is an offer; equal is up to date; **older is refused
+*as a downgrade* rather than ignored**, because 12.5.1 left
+`fallbackToDestructiveMigration` in place on downgrade on the argument that a
+downgrade only happens on a development device — and an update channel able to
+offer an older APK makes that argument false, with a rider's whole database
+behind a *yes* button. A version the rider refused is not offered again and a
+newer one still asks (30.4.5). **And a clock that has gone backwards does not
+lock the bike out**, which this tablet does at every boot correcting itself off
+the network; the write-up had not thought of it and the rule handles it.
+
+**The app finally says which build it is** (30.2.2). `BuildConfig.VERSION_NAME`
+was referenced by **nothing** in the whole source tree, so it never once has —
+survivable while one person installs over a cable, not survivable the moment a
+friend has a copy and the first question is *which one are you on*. Settings
+ends with `Pelonot 1.0.0 (1) · debug`, centred and quiet, no heading and no
+card. The `· debug` suffix appears on debug builds only and earns its place from
+30.1.5: it is what tells a debug copy from a release copy across a room, when
+they start refusing to replace each other. Both branches were watched.
+
+**Settings gains one switch**, *Updates → Tell me about new versions*, on by
+default, immediately above the version it is about. The first draft had three
+sentences on it, which is 26.1.4's own complaint; what survives is the two
+things a rider actually wants to know — what leaves the tablet, and whether
+anything can happen without them.
+
+**Nothing calls the check yet, and that is deliberate rather than unfinished.**
+There is nowhere to put the answer until 30.4 draws a prompt, and a check whose
+result is discarded is a request made for nothing. The box is not ticked.
+
+**919 JVM tests, 0 failures**, up from 903. The new suites are
+`UpdatePolicyTest` and `UpdateChannelFenceTest`.
+
+**Two operational traps were met in the rehearsal and both are in CLAUDE.md
+now**, because both look exactly like a bricked app. `run-as` dies on a release
+build, as above. And a tar taken with `tar cf - -C /data/data/com.pelonot .`
+carries a `./` entry whose host permissions land on the app's home directory,
+after which `run-as` refuses everything with *readable or writable by others:
+40755* — `chmod 700` from inside the same `run-as` is the whole fix, and `adb
+root` is not available to fall back on, because the AVD is a Play Store image.
+
+## 19 August 2026 (sixty-eighth sitting): four notes in the inbox, and the first one that was a measurement anybody could check
+
+**The inbox had four entries in it**, so the shape of the sitting was set before
+it started: emptying it is urgent, building what comes out of it is not. All
+four are written up — **15.6.16**, **2.5a**, **11.7.5** and **11.6.20**,
+nineteen items between them — and then three of the four were built on merit,
+which is the order they came out in rather than the order they were written.
+
+**"Distance is surely wrong" is the one worth reading first, because it was
+checkable in four minutes and had been wrong for the life of the project.** The
+owner: *"I rode at about 130W for 30 minutes and only clocked something like
+5km. It's surely WAY off."* `WorkoutMetricsCalculator` integrated **cadence** at
+2.1 m a revolution — thirty minutes at 85 rpm is 5.36 km, which is the number
+they saw, arrived at **without once looking at how hard they were pushing**. A
+recovery spin and a standing climb at the same rpm covered the same ground, and
+the one thing a rider changes to go faster changed nothing at all.
+
+**The replacement is an equation rather than a bigger constant**, which matters
+because a bigger constant would have fixed the magnitude and kept the defect.
+`RoadSpeed` solves `P·η = v·(Crr·m·g + ½ρCdA·v²)` for `v` at each sample —
+Cardano rather than a search, since `p > 0` makes the discriminant always
+positive. The owner's ride lands at **13.2 km**, within a few percent of the
+machine they were comparing it against, and **nothing was tuned to match it**.
+
+**The rider in it is nominal, and that is the decision in the item rather than
+the arithmetic.** This app knows the real weight and using it would be more
+physical — a heavier rider genuinely is slower for the same watts. It must not,
+because distance is a **race metric**, and a board where two riders producing
+identical watts show different distances is a board comparing bodies rather than
+efforts. Peloton's own speed is a function of output alone for the same reason.
+
+**What it costs is written down rather than discovered later** (2.5a.4).
+24.3.13's closing finding was that a distance race needs no measured power,
+because distance was integrated cadence and every ride has cadence — so the
+distance board was populated where the output board is empty.
+`RaceMetric.Distance.requiresMeasuredPower` is **true** now and the test that
+asserted the opposite is inverted with the reason attached. It also makes
+24.3.15 mostly moot: a toggle between two orderings that cannot disagree has
+nothing behind it.
+
+**The history was written up as the owner's call and then decided**, which is
+worth being explicit about because 2.5a.5 says *"decide it; do not default it"*
+and leaving 55 rides on the old model would have been defaulting it. The case
+for recomputing is stronger here than the plan's usual rule allows and the item
+says exactly why: *"do not backfill"* is about the FTP a ride was **judged
+against**, where a later guess is a lie about the past, and a distance is a
+**display derived from the samples** that can be re-derived from the same
+samples at any time.
+
+**It cannot be a migration** — SQLite has no cube root — so it is a launch-time
+pass beside `backfillPowerProvenance`, and the difference from that one is that
+**nothing on a row says which model wrote its distance**, so it is gated on a
+stored flag written last rather than on a column. Two things the write-up had
+not foreseen turned up in the building. It **clears `synced_at`** on every row it
+touches, because the backup is a copy of what this tablet said and a restore
+would otherwise bring the old figure back for ever. And a third case exists that
+neither branch covered — a ride with no samples *and* no `avg_power` has nothing
+to derive a distance from at all, so those rows are left exactly as they are.
+
+**Observed over all 55 rides on the test tablet**: `Distance repaired on 55
+rides` in logcat, nothing on the second launch, no row left at zero, and every
+ride's implied speed between **25.6 and 30.3 km/h** — which is the check worth
+having, because it is the one a cyclist can read at a glance. The hand-seeded
+`ftp-down-*` fixtures went from a typed 79.38 km to a derived 10.46.
+
+**11.7.5 — the band that is context did not say what its numbers were**, and
+that is 11.7.3's own written-down cost turning up exactly where it said it
+would. On a power-governed block the cadence tile drew a shaded stripe on a
+track and **nothing anywhere on the screen said the stripe meant 75 to 85**. The
+fix is the numbers and not the word: the invariant 11.7.3 bought is one `TARGET`
+line at a time, so the governing tile keeps the word in bold and the context
+tile gets the range alone, dimmer and smaller, labelling its own stripe rather
+than instructing anybody. Watched mid-ride on `Loosen the Legs`.
+
+**11.6.20 — the watts out of the saddle, and the first thing to get right was
+that this is not a defect.** A standing rider on a heavy gear delivers torque in
+two pulses a revolution; the board reports it faithfully. Nothing is impossible,
+so `TelemetryBounds` is the wrong instrument — the fence turns impossible values
+into gaps and these values are true. It is a **display** concern and it went
+where 11.6.7 already put one: `PowerSmoother` is a three-second mean on
+`SensorRepository.displayReading`, **before** the pacing rather than after,
+because `atDisplayRate` conflates and a mean of the two survivors a second is
+not a mean of what the board sent.
+
+**Three seconds is Garmin's *3s power* and the reasoning is in 11.6.20a**: at
+60 rpm it spans three whole strokes, one second is barely one, and ten seconds
+would leave the amber lying for several seconds after a rider had fixed their
+effort. **Cadence, resistance and heart rate are untouched**, each for its own
+reason — a knob whose number lags the hand feels broken, and a mean of a
+nullable heart rate would have to decide what an absent sample contributes.
+
+**It could not be seen on an emulator, so a lever was built for it** — the same
+move 2.7a made for the corruption. `com.pelonot.debug.STAND` gives the simulated
+rider a pedal-stroke ripple at `cadence / 30` Hz, and it is **not a lie about
+the telemetry**: it is what the board genuinely reports for a standing rider,
+and it reproduces the *aliasing* too, since a 2.7 Hz ripple sampled four times a
+second reaches the screen as a slow irregular beat rather than a clean
+oscillation. **Measured rather than reasoned about**: over ten seconds of it
+`workout_metrics` recorded 52, 143, 72, 162, 51, 85, 52 and 128 W while the
+screen read 89, 100, 104, 123, 103 and 110 — and the ride's own power chart drew
+the standing section as a jagged band beside the seated section's smooth line,
+which is 11.6.20c holding somewhere it can be seen rather than asserted.
+
+**`DisplayRate`'s KDoc lost a promise rather than keeping one that had stopped
+being true.** It said *"nothing is averaged and nothing is invented: every
+number shown is one the board actually reported"*. One number is a mean now.
+That is the owner's own request and the right trade for the one metric whose raw
+form is unreadable — but a promise nobody revisits is how a comment starts
+lying, so the sentence changed with the code and the other three metrics keep
+it.
+
+**15.6.16 is the one that could not be *finished*, and three parts of it were
+written anyway.** The owner's report ends in *"refresh token invalid"* on both
+routes, sign-up and sign-in, **after** the bike had redrawn — so the pairing row
+was claimed and whatever failed, failed later. The write-up ranks the candidates
+rather than guessing: **15.6.16a** is that nothing on either device says which
+of the two hand-off routes was taken, which is the whole diagnosis and is itself
+a defect; **15.6.16b** is a real one found underneath it — `web/link.js` calls
+`client.auth.signOut()` on the fallback path, and supabase-js defaults that to
+**global** scope, which revokes the very token family it has just handed the
+bike. The comment above that line says it is avoiding exactly this. It wants
+`{ scope: 'local' }`, it is one line, and it deploys on push — but the fallback
+is only reached on a 404 and 15.6.4 is deployed, so it is a fix for a route that
+may not be the one that broke. **15.6.16c** is the owner's own guess and is
+probably the live one: a tablet holding a session belonging to a purged user
+refreshes it at every launch and gets that message, and nothing distinguishes
+*"the session you were carrying is gone"* from *"the sign-in you just did
+failed"*.
+
+**Three of the five were written before the sitting ended and none is ticked.**
+`signOut({ scope: 'local' })` on the phone, the route logged on both sides, and
+a sentence a rider can act on where the server's phrase used to be — all of them
+unobservable without a real pairing against the owner's project, and the web
+half needs a push that is theirs to make. Written rather than left because
+15.6.16b is a defect whichever route broke, and 15.6.16a is what makes the next
+report readable.
+
+**903 JVM tests, 0 failures**, up from 891. `assembleDebug` passes and the two
+new suites are `RoadSpeedTest` and `PowerSmootherTest`.
+
+**The tablet AVD has five profiles on it now rather than two** — Alex, Robin,
+x, Sam and Jo — which is the owner using it between sittings rather than
+anything a session did. 55 workouts, Robin's photograph, telemetry on *Auto*,
+captions still **off**. Two simulated rides were made for this sitting and both
+were discarded through the app's own *Throw it away*; the fixture is 55 rides
+exactly as it was found. **What did change on it is every ride's
+`total_distance_km`**, which is 2.5a.5 and is the point — and
+`SYSTEM_ALERT_WINDOW` is still **not** granted there, which is why 11.6.20d is
+open.
+
 ## 18 August 2026 (sixty-seventh sitting): four picks on merit, and three of them were items that had been written up and left
 
 **The inbox was empty**, so every pick was made on merit — and the pattern that

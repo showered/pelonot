@@ -244,7 +244,108 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
+### Latest session — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
+
+**The inbox was empty**, so this sitting picked up where the sixty-ninth left
+the numbered list: **30.1.1** is the owner's own — a keystore needs a password
+a session must not hold — so the two items that were actually buildable were
+**30.1.4a** and **30.4**, in that order, and both are done.
+
+**30.1.4a first, because it was the smaller rehearsal and the one the
+sixty-ninth sitting had explicitly not done.** 30.1.6 proved the changeover's
+*shape* with `run-as` and `tar`; this proved the route the owner will actually
+take — Settings' own *Back up now* and *Restore from a backup*, through the
+SAF pickers, on the same 55-ride five-profile fixture. A real file went into
+Downloads (709 kB), `pm clear` stood in for the uninstall, and the restore
+came back **5 profiles, 55 workouts, 5278 metrics, 72 classes** — counted out
+of `sqlite3`, not read off a screen. **One thing came back different rather
+than missing**: Robin's photo reverted to her derived-colour `R`, because
+`DatabaseBackup` copies the SQLite file and nothing else — a photo lives
+beside it in `files/avatars/`. This is not a new fault. 20.2.4 named this exact
+gap in the twentieth sitting and watched the same fallback by deleting a photo
+file by hand; this sitting's finding is a second confirmation of a decision
+already made, not a discovery, and it is worth carrying forward one sentence:
+the friend's changeover will lose a profile photo the same way, and that is by
+design.
+
+**Then 30.4, all six items, and the whole thing was watched working rather
+than merely compiled.** `PackageInstaller`'s session API rather than the old
+`ACTION_INSTALL_PACKAGE` intent, exactly as the phase's own write-up specified
+— a session takes a plain `OutputStream`, so there is no `FileProvider` and
+nothing for Android 11's scoped storage to refuse. `REQUEST_INSTALL_PACKAGES`
+went into the manifest first, on the standing rule that an undeclared
+permission is denied instantly with nothing in logcat (`VIBRATE`,
+`ACCESS_FINE_LOCATION`). `UpdateDownloader` streams the APK into the cache dir
+and hashes it in the same pass, so a 24 MB file is never held twice over.
+`UpdateInstaller` opens the session, writes the file, and commits with a
+`PendingIntent` aimed at a new `UpdateInstallReceiver`, which does the one job
+a commit needs done outside the app's own foreground: forwarding the system's
+confirmation `Intent` with `FLAG_ACTIVITY_NEW_TASK`. `UpdateInstallCoordinator`
+is the one piece of shared state — download, permission, install, failure —
+so the automatic prompt and Settings' own *Check for updates now* cannot each
+think they own the download, the same reasoning `volumeController` already
+gets in `ServiceLocator` for a different shared value.
+
+**30.4.4's gate is a withholding, not a filter.** `AppViewModel.uiState
+.updateOffer` is the manifest or null, and it is null whenever
+`RideInProgress.active` is non-null — the live, process-scoped answer 8.3d's
+`recoverableWorkout` already asks for, not a second read of the database. A
+screen reaching into the state directly sees the same *no* the dialog would,
+which is the point of doing it there rather than in the composable that draws
+the prompt.
+
+**30.4.6 is the item worth reading in full, because "watched working" turned
+out to mean something more literal than usual.** Rather than stop at the
+mechanics, the whole channel was rehearsed end to end with a genuine second
+build: `version.properties` bumped to `2` / `1.0.1`, `assembleDebug`, the real
+APK served over **actual HTTPS** from a local server — a self-signed
+certificate installed as a user-trusted CA on the AVD alone, and
+`pelonot.webUrl` pointed at it for one rebuild, both reverted before anything
+in this sitting was committed. 30.3.1's rule that the real manifest stays
+unpublished until `tools/release.sh` exists was not touched at any point; the
+live site never saw a request built for it. What came back, screen by screen:
+the automatic prompt at launch, unprompted, reading *"Pelonot 1.0.1 is
+ready"*; **Install** correctly detecting the missing *install unknown apps*
+grant and naming it rather than failing silently; returning from that system
+settings screen **retried on its own** — the dialog does not make the rider
+tap Install twice; the download, the checksum and the `PackageInstaller`
+session all succeeding, raising the system's own *Update this app?*
+confirmation; Play Protect's scan gate afterwards, which is the platform's
+own addition and was simply navigated, not built for. **The database
+survived** — Settings' own Storage card read 55 rides and 724 kB afterwards,
+the same figures as before, and the about line read `Pelonot 1.0.1 (2)`,
+both numbers the update check itself compares. 30.4.3's checksum path and
+30.4.2's permission path were each watched failing before they were watched
+working, the same discipline `UpdateChannelFenceTest` held for 30.5.1.
+
+**One finding fell out of the rehearsal that no item had asked for.** With
+the AVD's build and `pelonot.webUrl` back to normal, Settings' manual *Check
+for updates now* was tried once more against the **real** production
+endpoint — and came back *"Couldn't check just now — try again in a
+moment."* That is correct: `web/update.json` is still deliberately
+unpublished (30.3.1), so the live site answers 404, and `UpdateCheck
+.Unreachable` is 30.3.4's honest answer to exactly that. It is a second,
+free confirmation of 30.3.4, on the actual endpoint rather than an assumption
+about it.
+
+**Cleaning up the AVD after the rehearsal was itself informative.** A plain
+reinstall of the clean `versionCode 1` build was refused — `INSTALL_FAILED
+_VERSION_DOWNGRADE` — because Android will not downgrade a same-signature
+APK, which is 30.2.3's whole argument for refusing a downgrade manifest,
+observed rather than merely reasoned about from the other direction. The fix
+was an uninstall and a plain reinstall, and the fixture went back through
+30.1.4a's own restore path — an incidental second rehearsal of that item, on
+a tablet it had not been tried against since being written.
+
+**919 JVM tests, 0 failures — unchanged.** Nothing this sitting built is pure:
+`UpdateDownloader` and `UpdateInstaller` both need a real `Context` and a real
+`PackageInstaller`, the same shape as `UpdateRepository.fetch()`, which has
+never had a JVM test of its own either. What is testable already was —
+`UpdatePolicy` and `UpdateChannelFenceTest` — and neither changed. The
+coverage this sitting relies on is the AVD rehearsal above, in the same spirit
+as 8.14.1's standing answer for anything that draws a screen.
+
+### The sitting before — 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
 
 **The inbox had one entry and it was `OTA Updates`**, verbatim: *"I'm happy to
 do grade installs over adb but my friend probably won't be bothered. Can we
@@ -357,191 +458,38 @@ after which `run-as` refuses everything with *readable or writable by others:
 40755* — `chmod 700` from inside the same `run-as` is the whole fix, and `adb
 root` is not available to fall back on, because the AVD is a Play Store image.
 
-### The sitting before — 19 August 2026 (sixty-eighth sitting): four notes in the inbox, and the first one that was a measurement anybody could check
-
-**The inbox had four entries in it**, so the shape of the sitting was set before
-it started: emptying it is urgent, building what comes out of it is not. All
-four are written up — **15.6.16**, **2.5a**, **11.7.5** and **11.6.20**,
-nineteen items between them — and then three of the four were built on merit,
-which is the order they came out in rather than the order they were written.
-
-**"Distance is surely wrong" is the one worth reading first, because it was
-checkable in four minutes and had been wrong for the life of the project.** The
-owner: *"I rode at about 130W for 30 minutes and only clocked something like
-5km. It's surely WAY off."* `WorkoutMetricsCalculator` integrated **cadence** at
-2.1 m a revolution — thirty minutes at 85 rpm is 5.36 km, which is the number
-they saw, arrived at **without once looking at how hard they were pushing**. A
-recovery spin and a standing climb at the same rpm covered the same ground, and
-the one thing a rider changes to go faster changed nothing at all.
-
-**The replacement is an equation rather than a bigger constant**, which matters
-because a bigger constant would have fixed the magnitude and kept the defect.
-`RoadSpeed` solves `P·η = v·(Crr·m·g + ½ρCdA·v²)` for `v` at each sample —
-Cardano rather than a search, since `p > 0` makes the discriminant always
-positive. The owner's ride lands at **13.2 km**, within a few percent of the
-machine they were comparing it against, and **nothing was tuned to match it**.
-
-**The rider in it is nominal, and that is the decision in the item rather than
-the arithmetic.** This app knows the real weight and using it would be more
-physical — a heavier rider genuinely is slower for the same watts. It must not,
-because distance is a **race metric**, and a board where two riders producing
-identical watts show different distances is a board comparing bodies rather than
-efforts. Peloton's own speed is a function of output alone for the same reason.
-
-**What it costs is written down rather than discovered later** (2.5a.4).
-24.3.13's closing finding was that a distance race needs no measured power,
-because distance was integrated cadence and every ride has cadence — so the
-distance board was populated where the output board is empty.
-`RaceMetric.Distance.requiresMeasuredPower` is **true** now and the test that
-asserted the opposite is inverted with the reason attached. It also makes
-24.3.15 mostly moot: a toggle between two orderings that cannot disagree has
-nothing behind it.
-
-**The history was written up as the owner's call and then decided**, which is
-worth being explicit about because 2.5a.5 says *"decide it; do not default it"*
-and leaving 55 rides on the old model would have been defaulting it. The case
-for recomputing is stronger here than the plan's usual rule allows and the item
-says exactly why: *"do not backfill"* is about the FTP a ride was **judged
-against**, where a later guess is a lie about the past, and a distance is a
-**display derived from the samples** that can be re-derived from the same
-samples at any time.
-
-**It cannot be a migration** — SQLite has no cube root — so it is a launch-time
-pass beside `backfillPowerProvenance`, and the difference from that one is that
-**nothing on a row says which model wrote its distance**, so it is gated on a
-stored flag written last rather than on a column. Two things the write-up had
-not foreseen turned up in the building. It **clears `synced_at`** on every row it
-touches, because the backup is a copy of what this tablet said and a restore
-would otherwise bring the old figure back for ever. And a third case exists that
-neither branch covered — a ride with no samples *and* no `avg_power` has nothing
-to derive a distance from at all, so those rows are left exactly as they are.
-
-**Observed over all 55 rides on the test tablet**: `Distance repaired on 55
-rides` in logcat, nothing on the second launch, no row left at zero, and every
-ride's implied speed between **25.6 and 30.3 km/h** — which is the check worth
-having, because it is the one a cyclist can read at a glance. The hand-seeded
-`ftp-down-*` fixtures went from a typed 79.38 km to a derived 10.46.
-
-**11.7.5 — the band that is context did not say what its numbers were**, and
-that is 11.7.3's own written-down cost turning up exactly where it said it
-would. On a power-governed block the cadence tile drew a shaded stripe on a
-track and **nothing anywhere on the screen said the stripe meant 75 to 85**. The
-fix is the numbers and not the word: the invariant 11.7.3 bought is one `TARGET`
-line at a time, so the governing tile keeps the word in bold and the context
-tile gets the range alone, dimmer and smaller, labelling its own stripe rather
-than instructing anybody. Watched mid-ride on `Loosen the Legs`.
-
-**11.6.20 — the watts out of the saddle, and the first thing to get right was
-that this is not a defect.** A standing rider on a heavy gear delivers torque in
-two pulses a revolution; the board reports it faithfully. Nothing is impossible,
-so `TelemetryBounds` is the wrong instrument — the fence turns impossible values
-into gaps and these values are true. It is a **display** concern and it went
-where 11.6.7 already put one: `PowerSmoother` is a three-second mean on
-`SensorRepository.displayReading`, **before** the pacing rather than after,
-because `atDisplayRate` conflates and a mean of the two survivors a second is
-not a mean of what the board sent.
-
-**Three seconds is Garmin's *3s power* and the reasoning is in 11.6.20a**: at
-60 rpm it spans three whole strokes, one second is barely one, and ten seconds
-would leave the amber lying for several seconds after a rider had fixed their
-effort. **Cadence, resistance and heart rate are untouched**, each for its own
-reason — a knob whose number lags the hand feels broken, and a mean of a
-nullable heart rate would have to decide what an absent sample contributes.
-
-**It could not be seen on an emulator, so a lever was built for it** — the same
-move 2.7a made for the corruption. `com.pelonot.debug.STAND` gives the simulated
-rider a pedal-stroke ripple at `cadence / 30` Hz, and it is **not a lie about
-the telemetry**: it is what the board genuinely reports for a standing rider,
-and it reproduces the *aliasing* too, since a 2.7 Hz ripple sampled four times a
-second reaches the screen as a slow irregular beat rather than a clean
-oscillation. **Measured rather than reasoned about**: over ten seconds of it
-`workout_metrics` recorded 52, 143, 72, 162, 51, 85, 52 and 128 W while the
-screen read 89, 100, 104, 123, 103 and 110 — and the ride's own power chart drew
-the standing section as a jagged band beside the seated section's smooth line,
-which is 11.6.20c holding somewhere it can be seen rather than asserted.
-
-**`DisplayRate`'s KDoc lost a promise rather than keeping one that had stopped
-being true.** It said *"nothing is averaged and nothing is invented: every
-number shown is one the board actually reported"*. One number is a mean now.
-That is the owner's own request and the right trade for the one metric whose raw
-form is unreadable — but a promise nobody revisits is how a comment starts
-lying, so the sentence changed with the code and the other three metrics keep
-it.
-
-**15.6.16 is the one that could not be *finished*, and three parts of it were
-written anyway.** The owner's report ends in *"refresh token invalid"* on both
-routes, sign-up and sign-in, **after** the bike had redrawn — so the pairing row
-was claimed and whatever failed, failed later. The write-up ranks the candidates
-rather than guessing: **15.6.16a** is that nothing on either device says which
-of the two hand-off routes was taken, which is the whole diagnosis and is itself
-a defect; **15.6.16b** is a real one found underneath it — `web/link.js` calls
-`client.auth.signOut()` on the fallback path, and supabase-js defaults that to
-**global** scope, which revokes the very token family it has just handed the
-bike. The comment above that line says it is avoiding exactly this. It wants
-`{ scope: 'local' }`, it is one line, and it deploys on push — but the fallback
-is only reached on a 404 and 15.6.4 is deployed, so it is a fix for a route that
-may not be the one that broke. **15.6.16c** is the owner's own guess and is
-probably the live one: a tablet holding a session belonging to a purged user
-refreshes it at every launch and gets that message, and nothing distinguishes
-*"the session you were carrying is gone"* from *"the sign-in you just did
-failed"*.
-
-**Three of the five were written before the sitting ended and none is ticked.**
-`signOut({ scope: 'local' })` on the phone, the route logged on both sides, and
-a sentence a rider can act on where the server's phrase used to be — all of them
-unobservable without a real pairing against the owner's project, and the web
-half needs a push that is theirs to make. Written rather than left because
-15.6.16b is a defect whichever route broke, and 15.6.16a is what makes the next
-report readable.
-
-**903 JVM tests, 0 failures**, up from 891. `assembleDebug` passes and the two
-new suites are `RoadSpeedTest` and `PowerSmootherTest`.
-
-**The tablet AVD has five profiles on it now rather than two** — Alex, Robin,
-x, Sam and Jo — which is the owner using it between sittings rather than
-anything a session did. 55 workouts, Robin's photograph, telemetry on *Auto*,
-captions still **off**. Two simulated rides were made for this sitting and both
-were discarded through the app's own *Throw it away*; the fixture is 55 rides
-exactly as it was found. **What did change on it is every ride's
-`total_distance_km`**, which is 2.5a.5 and is the point — and
-`SYSTEM_ALERT_WINDOW` is still **not** granted there, which is why 11.6.20d is
-open.
-
 ### What to do next, in order
 
-**The top of this list is one item and it has a deadline.** **30.1.1** — the
-release keystore — is the owner's to run, because it needs a password a session
-must not handle, and everything else in Phase 30 sits behind it. It is one
-`keytool -genkeypair` with a 30-year validity, kept somewhere that is not the
-laptop, and the gitignore is already waiting for it (`*.jks`, `*.keystore`,
-`/keystore.properties`). **30.1.2 reads it from `local.properties` or the
-environment and a missing keystore is still a supported configuration**, so
-nothing breaks by not doing it today — except that the cost of 30.1.4 grows with
-every ride the friend takes on a debug-signed build that no release can replace.
+**The top of this list is still one item and it still has a deadline.**
+**30.1.1** — the release keystore — is the owner's to run, because it needs a
+password a session must not handle, and everything in Phase 30 that still
+needs a *real* release sits behind it. It is one `keytool -genkeypair` with a
+30-year validity, kept somewhere that is not the laptop, and the gitignore is
+already waiting for it (`*.jks`, `*.keystore`, `/keystore.properties`).
+Nothing breaks by not doing it today, except that the cost of 30.1.4 grows
+with every ride the friend takes on a debug-signed build that no release can
+replace — and that argument is stronger now than it was, because 30.1.4a and
+30.4 are both done and rehearsed, so the only thing left between here and
+offering the friend a real update is the key itself.
 
-**Then 30.1.4a, and it is a rehearsal rather than a change.** The changeover was
-rehearsed this sitting with `run-as` and `tar` and the fixture came back
-byte-identical, which proves the *shape*. It does not prove the route the owner
-will actually take — 19.1.3's *Back up now* and *Restore from a backup*, driven
-from Settings, with a real file. **Do that on this tablet before touching the
-friend's**, because 19.1.3a is this project's own evidence that the restore path
-can be broken while its tests are green.
+**With 30.1.1 done, 30.1.4 is next and it is the owner's trip rather than a
+session's task** — sign in to the friend's bike, back it up through 19.1.3,
+uninstall, install the first release-signed APK, restore. 30.1.4a rehearsed
+the *route* on this tablet this sitting; what only the owner can rehearse is
+the tablet itself.
 
-**And then 30.4, which is the only part of the note not yet answered.** The
-check exists and is fenced and tested; nothing calls it, because there is
-nowhere to put the answer until there is a prompt. 30.4 is four items and it is
-fully observable on the AVD — install a build, raise the version, publish a
-manifest, take the prompt, and confirm the database survived, which is the
-assertion an install test would otherwise skip. **30.4.1 first and before
-believing anything**: `REQUEST_INSTALL_PACKAGES` in the manifest, because a
-permission the manifest does not declare is denied instantly with nothing in
-logcat, and this project has lost two sittings to exactly that.
-
-**One thing worth knowing before picking anything else in Phase 30**:
-`tools/release.sh` (30.3.2) is what makes the manifest and the APK agree, and
-until it exists **`web/update.json` must not be published**, because a manifest
-is a promise that a binary exists at a URL with a given hash. A 404 is already
-*no update today*, so the live site is correct as it stands.
+**Two small, cheap, AVD-observable items are worth picking before 30.1.1
+lands, because neither needs the keystore.** **30.2.3** is built —
+`UpdatePolicy.decide` already refuses a manifest offering a lower
+`versionCode` — and unticked, because nobody has watched it refuse one on the
+device rather than in a JVM test; a manifest hand-edited to offer `versionCode
+1` while `2` is installed is a five-minute check with this sitting's local
+HTTPS rig, if it is kept around, or rebuilt. **30.3.1 / 30.3.2** are the
+release script and the first real manifest — `tools/release.sh` is what keeps
+a published `web/update.json` honest, and **it must not be built as a
+convenience before 30.1.1**, because a script that signs with nothing signs
+with the debug key by accident, which is the one certificate this phase
+exists to stop shipping to the friend.
 
 **The sitting before left no job of its own behind it**, which is not how it looked
 an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
@@ -1660,4 +1608,4 @@ Two notes worth carrying into the next bike session:
 | 27 | Being told something worth knowing | ⬜ **Not started, and that is the owner's own weighting** — *"definitely nice-to-have and low priority for now"*. Promoted out of 19.3.2's one line the way Phase 21 was promoted out of 19.3.3's, because the one line is not one job: nothing in this app *remembers* anything, and an alert is a claim about a change, so 27.1.1's table is what everything else waits on. Three families that are not the same feature — your own record, your own consistency, and somebody else beating you, which is the only one needing the network. The rules were the point of writing it: `PowerProvenance` gates every power record (**no alert can fire on the emulator**, and that cost is worth paying); records are built on absolutes rather than on anything relative to a moving FTP or maximum heart rate (7.8, 21.2.3); **the first ten rides are all records**, which is the design problem rather than a detail; one per ride; nothing on the overlay and nothing spoken; and 16.3.3a is a hard prerequisite because retention would otherwise congratulate a rider for beating a record that only fell because its ride was trimmed |
 | 28 | Achievements | ⬜ **Not started, at the owner's own weighting** — *"one for the backlog"* — and written at length for Phase 27's reason: the one sentence is not one job. **The opening section is the part that matters most and it is not a badge list.** An alert is an *event* and fails on frequency; an achievement is a *possession* and fails on meaning — which makes Phase 27 the delivery mechanism and this phase forbidden from building a second one, or it grows its own toast, its own dashboard card and its own one-per-ride rule before 27 arrives. It is also **the honest form of the thing 26.4 was right to refuse**: the owner asked to *"gamify it all even further"* and separately agreed to leave a game-style score, and those two only disagree if a score is what gamifying means — an achievement is a discrete, nameable, **true sentence about something the rider actually did**, with nothing in it to round off. Six rules underneath it, and the sharp ones are: **never revoked** (7.11 lets auto-FTP fall, 23.4 trims old rides, and a badge derived live would un-earn itself — the award is *recorded*, not derived); `PowerProvenance` gates anything from watts and **most of the catalogue is on the free side of that line**, since a count of rides and a duration are the same quantity whoever measured them; **no achievement may reward what a coach would advise against**, which rules out day-streaks and rode-twice-today and is 22.5's weekly-streak decision arriving as a rule; the set is finite and the unearned ones are visible, so nothing may depend on equipment the rider does not own; offline throughout, with the across-bikes family **absent** rather than greyed out (rule 3, not a trial of the paid tier); and prose names with no points, no levels, no total. The catalogue is ordered by how much already exists — volume and consistency need no new data, and **breadth is the family this app is unusually well placed for**, because 72 authored classes make *every class in this collection* and *the same class five times* joins onto `class_templates`; that last one rewards the behaviour that makes 24.1's per-class ranking work at all. Also settled in advance: the back-fill awards a year of history but **announces none of it** (forty badges through 27.3's path would poison the feature on day one), two devices earning one badge resolve to the **earlier** date, and the dashboard's share is one line — the nearest *unearned* badge, because **three rides to fifty** is the only thing in the phase that answers *should I ride today* (22.8.8, 28.5.2) |
 | 29 | Health Connect and Apple Health | ⬜ **Written up, nothing built, and the owner's question answered.** Their note: *"Is that something we can integrate with? If so it's REALLY HIGH importance. But i wonder if we need to register an app."* **Health Connect: yes, and it needs nothing from them** — no account, no registration, no API key, no fee; the Play declaration form binds an app distributed on Play and this is not one. What it needs is the **bike**: Health Connect is in the platform only from Android 14 and the tablet is Android 11, so 29.1.1's three adb commands decide whether the phase is a feature or an essay, and 29.1.2 is a real decision about minSdk (`connect-client` floors at 26; this app claims 24). **Apple Health: no, and not for want of effort** — HealthKit has no Android SDK and no server API, because the data lives on the rider's iPhone; the honest route is the `.tcx` already written (12.4.3) carried across once, which is 29.2.2. Two of this project's rules carry straight over: **never write a modelled watt into a health record as measured** (`PowerProvenance` gates it) and **a trimmed ride cannot write seconds it no longer has** (23.4) |
-| 30 | Getting a version onto somebody else's bike | ⬜ **Written up, nothing built, and the finding is a deadline rather than a feature.** The owner's note asks for free OTA updates so their friend does not need adb, and the mechanism is easy: the repository is public so **GitHub Releases hosts a 24 MB APK for nothing**, the companion web app already deploys on `git push` and already owns the URL the bike carries, and `PackageInstaller` takes the download as a stream. **Underneath it is a prerequisite nobody had noticed.** Android refuses an update whose signing certificate changed; every copy of this app that exists is a **debug** build signed with the laptop's `debug.keystore`, and `release` has no `signingConfig` at all — so `assembleRelease` produces something installable on nothing. The first real release therefore cannot update the friend's bike: it has to be uninstalled, and an uninstall takes the database. **Every ride he takes before that day is a ride that has to survive a backup and a restore** (30.1.4), which makes 30.1 the one item in this plan that gets more expensive by waiting. One decision is the owner's (30.5.1): an update check is the first network request this app would make for a rider with **no account**, which does not break the connectivity model as written — it is not Supabase and it carries nothing about the rider — but is a reading of rule 1 rather than an application of it. Gating it on an account is refused in the write-up, because that withholds updates from exactly the rider the note is about. Play Store, F-Droid and Firebase App Distribution are each considered and each rejected with the reason attached (30.6) |
+| 30 | Getting a version onto somebody else's bike | 🔶 **The whole mechanism is built and watched working on the AVD; what is left needs a password a session must not hold.** The owner's note asked for free OTA updates so their friend does not need adb. `PackageInstaller`'s session API, `UpdateRepository`/`UpdatePolicy`/`UpdateManifest` for the check, and `UpdateDownloader`/`UpdateInstaller`/`UpdateInstallReceiver`/`UpdateInstallCoordinator` for the install are all built, and 30.4.6 rehearsed the entire chain end to end with a genuine second APK over real HTTPS: the automatic prompt, the *install unknown apps* grant asked for and retried on return, the download, the checksum, the system's own confirmation, and **the database surviving** the replace. **Underneath it is still the prerequisite nobody had noticed.** Android refuses an update whose signing certificate changed; every copy of this app that exists is a **debug** build signed with the laptop's `debug.keystore`, and `release` has no `signingConfig` of its own yet — **30.1.1**, a release keystore, is the one item left that only the owner can do, because it needs a password a session must not handle, and it is the only thing in this plan with a deadline: every ride the friend takes before it exists is a ride that has to survive a backup and a restore across the changeover (30.1.4a rehearsed that route too, this sitting, and it works). 30.5.1 settled the connectivity-model question — an update check is the first network request this app makes for a rider with **no account**, and the owner allowed it because it is about the app rather than the rider and carries nothing about either. Play Store, F-Droid and Firebase App Distribution are each considered and each rejected with the reason attached (30.6) |

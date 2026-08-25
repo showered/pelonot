@@ -13,7 +13,7 @@ keeps its sitting.
 | Measured | |
 |---|---|
 | JVM tests | **919**, 0 failures |
-| Plan boxes ticked | **687 of 929** — 73% |
+| Plan boxes ticked | **696 of 929** — 74% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
@@ -392,9 +392,15 @@ race has to exclude.
    that day is a ride that has to survive a backup and a restore. **The config
    is built and the key is the owner's to generate** — it needs a password a
    session must not handle — and the changeover was rehearsed on the tablet AVD
-   with the 55-ride fixture coming back byte-identical (30.1.6). This is ranked
-   first not because anything is broken today but because it is the only entry
-   on this page that gets more expensive by waiting.
+   with the 55-ride fixture coming back byte-identical (30.1.6), and again
+   through the app's own Settings backup/restore, the route the owner will
+   actually use (30.1.4a). **The rest of the update channel is built and
+   watched working**, on a real second APK served over real HTTPS on the AVD:
+   the prompt, the permission grant, the download, the checksum, the system's
+   own install confirmation, and the database surviving the replace (30.4).
+   This is ranked first not because anything is broken today but because it is
+   the only entry on this page that gets more expensive by waiting, and
+   everything behind the key is now finished.
 
 2. **Public sign-up is open, and that is now a decision rather than an
    oversight (18.11.1).** The owner settled it on 4 August — *"Leave on public
