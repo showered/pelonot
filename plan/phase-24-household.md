@@ -1344,7 +1344,7 @@ alongside them is enough to tell a recovery spin from a race. So the answer is
 a board of his **own rides**, grouped by length, showing what makes them
 comparable and what makes them not.
 
-- [ ] **24.5.1** **Your own previous rides of *this* class, on the ride summary
+- [x] **24.5.1** **Your own previous rides of *this* class, on the ride summary
       and on class detail.** The cheapest and least arguable half, and it is
       strictly like-for-like: same intervals, same prescription, same length, so
       27.2.1's rule is satisfied rather than bent. It is a different card from
@@ -1353,7 +1353,7 @@ comparable and what makes them not.
       not per ride"* stays true of the thing it was written about. **A rider
       with one ride of the class sees nothing**, the same rule as 24.1.6 and for
       the same reason
-- [ ] **24.5.2** **Then by length, across classes — the note's actual ask.**
+- [x] **24.5.2** **Then by length, across classes — the note's actual ask.**
       Every completed ride of the same nominal duration, the rider's own,
       best first. No schema change: `class_templates.duration_sec` is the
       class's length and `workouts.class_id` points at it, so the bucket comes
@@ -1365,7 +1365,7 @@ comparable and what makes them not.
       are the same thirty minutes to a rider and different integers to SQL. A
       free ride has no `class_id` at all and therefore no bucket, which is
       correct — it had no prescribed length to be measured against
-- [ ] **24.5.3** **Every row says which class it was, and that is what makes
+- [x] **24.5.3** **Every row says which class it was, and that is what makes
       24.5.2 honest rather than misleading.** The objection above is real and
       the answer is not to hide it: a row reading *`Sprints · 246 kJ`* beside
       *`Recovery · 148 kJ`* is a comparison the rider can actually make, and one
@@ -1373,23 +1373,86 @@ comparable and what makes them not.
       was a bad ride. This is the same argument 24.1.3 made for showing kJ and
       kJ/kg together when they disagree: **show the second number rather than
       picking a winner**
-- [ ] **24.5.4** **The measured-power rule applies unchanged** —
+- [x] **24.5.4** **The measured-power rule applies unchanged** —
       `w.power_provenance = 'Measured'` (24.4.2). A simulated ride's watts are
       `PowerModel`'s output at RMSE 137 W, and ranking one against a real ride
       is as wrong for one rider over time as it is between two riders. The
       consequence to expect on the AVD: **this draws nothing there** until the
       column is set by hand, exactly like the household board
-- [ ] **24.5.5** **What this does not become: a personal-best feature.** 16.3.3
+- [x] **24.5.5** **What this does not become: a personal-best feature.** 16.3.3
       already owns *"the rider's best twenty minutes"* and it is a stronger claim
       than anything here — mean-maximal power is comparable across every ride
       ever done, where a 30-minute bucket is comparable across the ones that
       happened to be thirty minutes. These two must not grow into each other:
       this is *your last few thirty-minutes*, on the screen where a rider has
       just finished one
-- [ ] **24.5.6** **A question for the owner, and it is the one 24.5.3 cannot
+- [x] **24.5.6** **A question for the owner, and it is the one 24.5.3 cannot
       settle alone: should a ride the rider did not finish be on this board?**
       An abandoned 30-minute class is a real occasion and a bad comparison. The
       instinct here is to exclude it — `is_complete = 1` already does, since an
       abandoned ride is discarded rather than kept — but if 8.3d's recovery path
       ever keeps a short ride as a short ride, this board is one of the places
       it would appear unlabelled
+
+      ***Answered, and it is settled by construction rather than by a
+      decision.*** *An abandoned ride is discarded and never reaches
+      `is_complete = 1`, so there is nothing to exclude. The one route that
+      does keep a short ride is 8.3d's recovery — and it finalises the ride
+      properly, so it arrives here as an ordinary ride of that class, which is
+      correct: the rider really did ride it. The sentence to carry forward is
+      that this board says nothing about how much of a class was ridden, only
+      what the class prescribed, and if that ever becomes a fault it is
+      24.5.3's shape of fault — a second fact beside the first, not a filter.*
+
+***All six done and observed on the tablet AVD***, on the 55-ride
+five-profile fixture, restored byte-for-byte afterwards.
+
+**24.5.1 and 24.5.2 are one card rather than two, and that is a decision
+against the way they are written above.** Two cards on one screen — *your rides
+of this class*, then *your rides of this length* — is the over-stuffing 22.7.3
+and 26.1 both complain about, and the second list would contain the first.
+24.5.3 is what makes one card safe: every row names its class, so a rider
+reading *Your 30 minutes* can see at a glance which rows were this class and
+which were not, without the app splitting them into two lists to say so.
+
+**One thing was found by looking at it and could not have been found any other
+way, and it changed a constant.** The card was written with the household
+board's ceiling of six rows (24.1.8) and **six is wrong here**, because a row on
+this board is *two* lines — the class, and the date that tells one of a rider's
+own rides from another — where the board's is one. Beside *how did that feel*
+on the summary, six rows ran to the fold and left about 400 dp of air in the
+question next to it, which is 24.1.8's own complaint arriving from the
+opposite direction. `MAX_ROWS` is **four**, and four is right on its own terms
+rather than as a trim: what a rider wants off this card is the bar to beat and
+where today landed against it. It compiled and tested green at six.
+
+*What was watched:* on **class detail**, `The Long Climb`, the people column
+drawing for the first time on a bike with one rider — *Your 30 minutes*, *Every
+30 minutes you have ridden, whatever the class*, four rows across **two**
+classes with `Endurance Build` and `The Long Climb` interleaved by output, and
+*and 5 more*. On the **post-ride summary**, reached through 8.3d's recovery
+path so the card had a *this ride* to mark: it took the slot beside the effort
+question — the slot 24.1.2's comment already described as "the RPE card and half
+a screen of air" on most nights — with the finished ride at rank 3 in bold with
+a filled rank chip. Then the same screen with the ride's rivals raised above it:
+ranks **1, 2, 2, 4** — the tie sharing a rank and rank 3 correctly absent — the
+`⋮` break, and the ride itself kept at **rank 9**, which is the case
+`tonight is kept even when it is nowhere near the best` exists for and the one
+that would make the card useless on the night it matters most.
+
+*The gate cost a fixture edit, as it always does here:* the AVD can only produce
+simulated rides, so nine of Robin's thirty-minute rides had
+`power_provenance` set to `Measured` by hand, and the recovery path needed 1800
+hand-written `power_is_measured = 1` samples — which is itself a small
+confirmation that the finalise computes the column from the samples rather than
+trusting what was there.
+
+**Two things are deliberately not drawn and both are absences with a reason.**
+There is no cloud half: these are the rider's own rides and a second bike's copy
+of one would put the same occasion on the board twice. And there is no caveat —
+24.4.1's argument, plus one of its own, since both sides of every comparison
+here are the same person on the same bike.
+
+**937 JVM tests, 0 failures**, up from 925. Twelve cases in
+`RidesOfThisLengthTest`, on the ranking, the tie, the two marks, and every
+branch of the window

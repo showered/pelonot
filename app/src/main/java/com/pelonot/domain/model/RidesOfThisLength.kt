@@ -131,8 +131,24 @@ data class RidesOfThisLength(
 
     companion object {
 
-        /** Six, the same ceiling the household board settled on (24.1.8). */
-        const val MAX_ROWS = 6
+        /**
+         * **Four, where the household board takes six** (24.1.8), and the
+         * difference is the row rather than the rule.
+         *
+         * A row here is two lines — the class, and the date that tells one of
+         * the rider's own rides from another — so six of them stand half again
+         * as tall as six of the board's. Seen doing exactly that on the AVD:
+         * beside *how did that feel* on the summary the card ran to the fold
+         * and left about 400 dp of air in the question next to it, which is
+         * 24.1.8's own complaint arriving from the other direction.
+         *
+         * **And four is right on its own terms rather than as a trim.** What a
+         * rider wants off this card is the bar to beat and where today landed
+         * against it, not a leaderboard of themselves; [visible] already
+         * guarantees today is kept however far down it came, and the rest are
+         * counted rather than dropped silently.
+         */
+        const val MAX_ROWS = 4
 
         /**
          * Rank and mark a rider's rides, best first.

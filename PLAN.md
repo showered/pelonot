@@ -274,7 +274,30 @@ different thirty-minute classes mostly measures *which class it was*, which is
 what 16.3.3 said when it chose mean-maximal power and what 27.2.1 says from the
 other side. That shapes the answer instead of killing it — 24.5.3 puts the
 class name beside the number, the way 24.1.3 shows kJ and kJ/kg together when
-they disagree. Six items; nothing built.
+they disagree. **Six items, and all six then built and watched.**
+
+**Two decisions came out of building it that the write-up had not made.**
+24.5.1 and 24.5.2 are **one card rather than two** — two lists on one screen,
+the second containing the first, is the over-stuffing 22.7.3 and 26.1 both
+complain about, and 24.5.3's class name on every row is what makes one list
+safe. And **`MAX_ROWS` is four where the household board takes six**, which was
+found by looking at the screen and could not have been found any other way: a
+row here is two lines (the class, and the date that tells one of a rider's own
+rides from another) where the board's is one, so six of them ran to the fold
+and left about 400 dp of air in *how did that feel* beside it — 24.1.8's own
+complaint arriving from the opposite direction. It compiled and tested green at
+six.
+
+**Watched on class detail and on the post-ride summary**, the second reached
+through 8.3d's recovery path so the card had a *this ride* to mark. Class
+detail drew the people column for the first time on a bike with one rider.
+The summary showed the finished ride at rank 3 in bold, and then — with the
+other rides raised above it — ranks **1, 2, 2, 4**, the tie sharing a rank with
+rank 3 correctly absent, the `⋮` break, and the ride kept at **rank 9**: the
+case that would make the card useless on the night it matters most. The
+measured-power gate cost the usual fixture edit, and the recovery path needed
+1800 hand-written measured samples, which is a small free confirmation that the
+finalise computes provenance from the samples rather than trusting the column.
 
 **`Login` landed on an item that was already open and waiting for it.**
 23.3.1a was written in the twenty-third sitting, parked explicitly on Phase 15
@@ -339,7 +362,8 @@ It was waiting for the count to move *per profile*; this moved it *per ride*
 and left it device-wide. Its objection stands unchanged and both files now say
 so.
 
-**925 JVM tests, 0 failures**, up from 919.
+**937 JVM tests, 0 failures**, up from 919 — six on the backup reminder and
+twelve on the new board.
 
 ### The sitting before — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
 
@@ -475,14 +499,16 @@ convenience before 30.1.1**, because a script that signs with nothing signs
 with the debug key by accident, which is the one certificate this phase
 exists to stop shipping to the friend.
 
-**Two of this sitting's own items are worth picking up before anything else on
-this list, because both are cheap and both are already decided.** **24.5.1** is
-*your own previous rides of this class* — strictly like-for-like, no argument to
-settle, and it is the half of the owner's leaderboard note that 27.2.1's rule
-already endorses. **24.5.2** is the note's actual ask and needs 24.5.3 built
-with it or it is a scoreboard that calls a recovery ride a bad ride; both are a
-query and a card, no schema change. **24.5.6 is a question for the owner** and
-is small enough to answer in a sentence.
+**This sitting left no item of its own open**, which is unusual for one that
+started with two inbox entries: 24.5 is six ticked boxes and 23.3.1a–c is
+three, and the only thing either of them handed on is a sentence in 15.8.5
+saying why it is *still* blocked. **Two things are worth a look on the real
+bike rather than a job**, and both are the owner's rather than a session's: the
+new board has only ever been seen against a hand-edited fixture, because the
+AVD cannot produce a measured ride, and the owner's own bike has nine or more
+genuinely measured thirty-minutes on it — so *Your 30 minutes* on his class
+detail screen is the first honest instance of it anybody will see. And it is
+the screen his note was written about.
 
 **The sitting before that left no job of its own behind it**, which is not how it looked
 an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
