@@ -1404,7 +1404,7 @@ comparable and what makes them not.
       what the class prescribed, and if that ever becomes a fault it is
       24.5.3's shape of fault — a second fact beside the first, not a filter.*
 
-- [ ] **24.5.7** **The same fault on the screen that matters most, and the
+- [x] **24.5.7** **The same fault on the screen that matters most, and the
       owner had to say so twice.** Their words, on being shown 24.5.1–24.5.6:
       *"I'm fairly sure we have discussed, somewhere in the PLAN, about showing
       various milestones or ghosts to chase. 30-min PB, 30 min best this year,
@@ -1465,7 +1465,52 @@ comparable and what makes them not.
         states its own field, on a board 24.3.17 stripped to a name and a
         number because it is read at 90 rpm
 
-- [ ] **24.5.8** **What this does not do, and it should be said before somebody
+      ***Done and watched on the tablet AVD, mid-ride***, on the case the note
+      describes exactly: **Robin starting `Rolling Climbs`, a thirty-minute
+      class she has never ridden**, with nine measured thirty-minutes behind
+      her on two other classes. Before this the board on that class had two
+      rows and neither was hers.
+
+      *What logcat said, which is the whole item in one line:*
+      `Racing 4 on CLB-04 (2 generated, measured): Your best 30 minutes 261,
+      Your best 30 this year 254, Class target 195, Your average 30 minutes 221`
+      — and on screen, six rows with no truncation at any label:
+      `○ 300`, `YOUR BEST 30 MINUTES`, `YOUR BEST 30 THIS YEAR`,
+      `○ YOUR AVERAGE 30 MINUTES`, `○ CLASS TARGET` and `YOU`, the `○`
+      marking the three the app made up and the two length bests unmarked
+      because somebody rode them. The board re-sorted as the rider passed and
+      was passed by her own two bests, which separate correctly — 261 and 254
+      are two different rides, one of them aged past twelve months on purpose
+      so the pair could be told apart.
+
+      **The verification failed once first and the failure was the fixture
+      rather than the feature**, which is worth recording because the next
+      person will hit it: the first attempt drew only the two generated rows,
+      and logcat said why — *"Your best 30 minutes has no samples; leaving them
+      off the board"*. `loadRaceBoard` drops any competitor whose ride has no
+      per-second trace, correctly, because a live race is run against a curve
+      and not a total. The seeded fixture rides have totals and no
+      `workout_metrics`. **So the query was right on the first attempt and
+      invisible anyway**, and the check that proved it was the log line rather
+      than the screen.
+
+      `RaceDebug.ignoreMeasuredGate` is what makes any of this observable on an
+      AVD — 24.3.13a's lever, and it earns its place again here.
+
+      **One thing was not caught on camera and should not be claimed:** the
+      `PAST YOUR BEST` banner (24.3.18d) firing on a *length* best. The rider
+      passed and was passed several times, and the moment is transient by
+      design. What holds it is the `ghostKind` mapping — `YourBestAtLength`
+      answers `GhostKind.YourBest`, so `RacePassTracker`'s `!isPerson &&
+      !isGenerated` test sees it exactly as it sees a class best — and that
+      mapping is unit-tested. It is one look on the bike to close properly.
+
+      **945 JVM tests, 0 failures**, up from 937. Nine new cases: the average
+      ghost and its label and its place under the cap, the two honesty flags,
+      and four on `oneRowPerRide` — the collapse when one ride is both, the
+      separation when they are two, and both directions of `widerThan`
+
+- [x] **24.5.8** **What this does not do, and it should be said before somebody
       "fixes" it.** The length rows are the rider's own only. There is no
       *household best 30 minutes* and no cloud equivalent, and both are
       deliberate: `householdRivals` is per class because a housemate's row is a

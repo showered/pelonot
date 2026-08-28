@@ -362,8 +362,55 @@ It was waiting for the count to move *per profile*; this moved it *per ride*
 and left it device-wide. Its objection stands unchanged and both files now say
 so.
 
-**937 JVM tests, 0 failures**, up from 919 — six on the backup reminder and
-twelve on the new board.
+**Then the owner pushed back on all of it, and they were right.** *"I'm fairly
+sure we have discussed, somewhere in the PLAN, about showing various milestones
+or ghosts to chase … I 100% expect my 30-min PB to show up as a target, at the
+very least."* Checking the history first — as they asked — turned up **24.3.18,
+built and switched on**: `Your best`, `Your best this year`, `Your recent
+best`, `Your usual`, `Just past your best`, `Class target` and an infinite
+milestone ladder, all live on the ride screen, none of it behind
+`Features.singleRivalGhost`, which hides only the superseded single-rival
+presentation. So the feature existed and the sitting's first answer should have
+said so.
+
+**What did not exist is the thing actually asked for, and it was the same fault
+a third time: every one of those rows is keyed on `class_id`**, through
+`previousBestOfClass` and `ownTotalsForClass`. A rider's thirty-minute PB was
+therefore only ever a target on the class it was set on — and with 72 classes
+and a rider who does not repeat them, the ordinary outcome is a personal best
+that is never once raced. That is worse here than on the two screens 24.5 had
+just fixed, because this is the surface where a target is *chaseable*.
+
+**24.5.7 adds the length rows rather than substituting them**, and
+`oneRowPerRide` is what stops that doubling the board: `Kind.widerThan` already
+existed and only needed the two new kinds slotted in the right place — the time
+window dominates, the length breaks the tie inside it — so they separate only
+when they are genuinely two different rides. The *year average* the owner asked
+for by name is a **generated** row, because an average is a number this app
+computed and 24.3.18a says a rider must never come away thinking they chased a
+real ride.
+
+**Watched mid-ride on exactly the case the note describes** — Robin starting
+`Rolling Climbs`, a thirty-minute class she has never ridden, with nine
+measured thirty-minutes behind her on two others. Logcat: `Racing 4 on CLB-04
+(2 generated, measured): Your best 30 minutes 261, Your best 30 this year 254,
+Class target 195, Your average 30 minutes 221`. Six rows on screen, `○` marking
+the three the app invented, no truncation. **The first attempt drew only the
+generated rows and the failure was the fixture, not the feature** — the seeded
+rides have totals and no `workout_metrics`, and `loadRaceBoard` correctly drops
+a competitor with no trace to race against. The log line is what proved the
+query right; the screen could not have.
+
+**945 JVM tests, 0 failures**, up from 919 — six on the backup reminder,
+twelve on the new board, nine on the length targets.
+
+**One CI failure, and it was this sitting's own.** `STATUS.md`'s figures move on
+any new test **or any new plan box, ticked or not**, and the 24.5.7 commit added
+nine of the first and two of the second without regenerating the page. The step
+that fails lives in the same job as the unit tests, so it reaches the owner's
+inbox looking like a failing suite when the suite is green. The rule that
+prevents it is wider than CLAUDE.md's *"tick a box, run the script"*: run it
+before any push that touches `app/src/test` or `plan/`.
 
 ### The sitting before — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
 
@@ -499,16 +546,19 @@ convenience before 30.1.1**, because a script that signs with nothing signs
 with the debug key by accident, which is the one certificate this phase
 exists to stop shipping to the friend.
 
-**This sitting left no item of its own open**, which is unusual for one that
-started with two inbox entries: 24.5 is six ticked boxes and 23.3.1a–c is
-three, and the only thing either of them handed on is a sentence in 15.8.5
-saying why it is *still* blocked. **Two things are worth a look on the real
-bike rather than a job**, and both are the owner's rather than a session's: the
-new board has only ever been seen against a hand-edited fixture, because the
-AVD cannot produce a measured ride, and the owner's own bike has nine or more
-genuinely measured thirty-minutes on it — so *Your 30 minutes* on his class
-detail screen is the first honest instance of it anybody will see. And it is
-the screen his note was written about.
+**This sitting left one small thing open and it is a look rather than a job.**
+**24.5.7** is ticked on everything except the `PAST YOUR BEST` banner firing on
+a *length* best: the moment is transient by design and was not caught on
+camera, and what holds it is a mapping that is unit-tested rather than an
+observation. One ride on the bike closes it.
+
+**And everything built this sitting has only ever been seen against a
+hand-edited fixture**, because the AVD cannot produce a measured ride and every
+one of these features is gated on measured watts. **The owner's own bike is the
+first honest instance of all of it** — nine or more genuinely measured
+thirty-minutes, so *Your 30 minutes* on class detail and *Your best 30 minutes*
+on the ride screen should both simply be there, on the screens the notes were
+written about.
 
 **The sitting before that left no job of its own behind it**, which is not how it looked
 an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
