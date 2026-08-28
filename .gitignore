@@ -12,6 +12,8 @@ local.properties
 
 # The web app's endpoint and key — same rule as local.properties (PLAN 17.14).
 /web/config.js
+# wrangler's own local cache, written by `wrangler deploy`. Never committed.
+/web/.wrangler
 # A short-lived test session, never committed.
 /web/_session.json
 # The live auth config, saved as 15.7.6's rollback. Never committed.

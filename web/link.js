@@ -394,16 +394,24 @@ function finish(handedOwnSession) {
     el('done-text').textContent =
       'The bike is signed in. This phone has been signed out, because it handed ' +
       'its own session over — sign in again here whenever you like.';
-    // Stop *this phone* using the token family we just gave away, rather than
-    // racing the bike for it.
+    // Stop *this phone* using the token family we just gave away, without
+    // telling the server to revoke it (PLAN 15.6.16c).
     //
-    // **`local` is load-bearing and the default is wrong here** (PLAN 15.6.16b).
-    // supabase-js defaults `signOut` to `global`, which revokes every refresh
-    // token the user has — including the one this phone handed over a moment
-    // ago, and before the bike's two-second poll has necessarily collected it.
-    // The comment this replaces claimed to be avoiding exactly that and was
-    // performing the revocation itself: the bike's `refreshSession` then failed
-    // with *"Invalid Refresh Token"*, which is the owner's own report.
-    client.auth.signOut({ scope: 'local' });
+    // **`signOut({ scope: 'local' })` still calls the server.** That was
+    // 15.6.16b's fix, and it was wrong about what "local" means: supabase-js's
+    // `_signOut` always POSTs `/logout?scope=…`, and GoTrue reads `local` as
+    // "revoke *this session*", not "say nothing to the server". This session is
+    // exactly the one whose refresh token the bike is trying to redeem, so the
+    // 15.6.16b fix revoked the very token it meant to protect — deterministically,
+    // the instant this line ran, not a race the bike sometimes lost. Verified
+    // against the live project: the same hand-off that redeems cleanly with no
+    // sign-out call fails every time with `signOut({scope:'local'})` inserted,
+    // no timing involved — `supabase/verify_device_link_handoff.py` is that
+    // check, kept running.
+    //
+    // `stopAutoRefresh()` is the primitive that actually means "stop using it
+    // without telling anyone": it cancels this tab's own renewal timer and makes
+    // no network call, leaving the token alone for the bike to redeem.
+    client.auth.stopAutoRefresh();
   }
 }
