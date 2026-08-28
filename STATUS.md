@@ -12,8 +12,8 @@ keeps its sitting.
 
 | Measured | |
 |---|---|
-| JVM tests | **937**, 0 failures |
-| Plan boxes ticked | **705 of 937** — 75% |
+| JVM tests | **945**, 0 failures |
+| Plan boxes ticked | **705 of 939** — 75% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
