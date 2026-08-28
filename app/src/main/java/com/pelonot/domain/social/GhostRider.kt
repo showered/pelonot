@@ -185,7 +185,9 @@ object GhostRider {
         ftpWatts: Double,
         intent: RideIntent = RideIntent.DEFAULT,
         personalBestKj: Double? = null,
-        ownTotalsKj: List<Double> = emptyList()
+        ownTotalsKj: List<Double> = emptyList(),
+        averageAtLengthKj: Double? = null,
+        classDurationSec: Int = durationSec
     ): List<LiveLeaderboard.Ghost> {
         if (durationSec <= 0) return emptyList()
 
@@ -198,12 +200,30 @@ object GhostRider {
                 ?.takeIf { it > 0 }
                 ?.let { add(GhostKind.Stretch to it * STRETCH_FACTOR) }
 
+            // 24.5.7, and it is placed above *your usual* rather than below it
+            // because the cap bites exactly where the two overlap. A rider who
+            // has this class three times over has both, and they are close
+            // numbers: this one is drawn from every class of the length rather
+            // than one, which is the field the owner asked to be measured
+            // against, and it is the one that exists on a class they have never
+            // ridden before.
+            averageAtLengthKj
+                ?.takeIf { it > 0 }
+                ?.let { add(GhostKind.AverageAtLength to it) }
+
             usualTotal(ownTotalsKj)?.let { add(GhostKind.Usual to it) }
         }
 
         return candidates.take(MAX_GHOSTS).map { (kind, total) ->
             LiveLeaderboard.Ghost(
-                name = kind.label,
+                name = when (kind) {
+                    // The one label that has to carry a number, so it is built
+                    // here rather than sitting on the enum — same reason
+                    // `WorkoutRepository.lengthLabel` exists one layer up.
+                    GhostKind.AverageAtLength ->
+                        "Your average ${classDurationSec / 60} minutes"
+                    else -> kind.label
+                },
                 trace = paceTrace(total, durationSec),
                 kind = kind
             )
@@ -267,6 +287,17 @@ enum class GhostKind(
 
     /** The median of their own rides of this class (24.3.18b, candidate 4). */
     Usual("Your usual", isPerson = false, isGenerated = true),
+
+    /**
+     * What the rider has averaged at this **length** over the last year
+     * (24.5.7) — the owner's *"year average"*.
+     *
+     * Generated, like [Usual] and for the same reason: an average is a number
+     * this app computed and not a ride anybody did, so a rider must never come
+     * away thinking they are chasing a real ride. Its label carries the length
+     * and is built at the call site.
+     */
+    AverageAtLength("", isPerson = false, isGenerated = true),
 
     /** A round number, and the rung moves (24.3.18b, candidate 1). */
     Milestone("", isPerson = false, isGenerated = true);

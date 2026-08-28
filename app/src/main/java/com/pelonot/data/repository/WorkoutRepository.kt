@@ -893,12 +893,13 @@ class WorkoutRepository(
      */
     suspend fun raceBoardFor(
         classId: String,
+        classDurationSec: Int,
         youId: Int?,
         excludingWorkoutId: String,
         nowMs: Long
     ): List<RaceCompetitor> {
         val yours = youId?.let { id ->
-            listOf(
+            val ofClass = listOf(
                 RaceCompetitor.Kind.YourBestEver to 0L,
                 RaceCompetitor.Kind.YourBestYear to nowMs - RACE_YEAR_MS,
                 RaceCompetitor.Kind.YourBestMonth to nowMs - RACE_RECENT_MS
@@ -918,6 +919,40 @@ class WorkoutRepository(
                     )
                 }
             }
+
+            // 24.5.7. The owner: *"I 100% expect my 30-min PB to show up as a
+            // target, at the very least."* It did not, because every row above
+            // is keyed on `class_id` — so a thirty-minute best earned on a
+            // different thirty-minute class was invisible, which on a library
+            // of 72 classes is the ordinary case rather than the edge one.
+            //
+            // These are added rather than substituted, and `oneRowPerRide`
+            // below is what stops that doubling the board: a ride that is both
+            // the rider's best of this class and their best half-hour appears
+            // once, at the wider label. The two rows only ever separate when
+            // they are genuinely two different rides — which is exactly the
+            // case the owner was missing.
+            val ofLength = listOf(
+                RaceCompetitor.Kind.YourBestAtLength to 0L,
+                RaceCompetitor.Kind.YourBestYearAtLength to nowMs - RACE_YEAR_MS
+            ).mapNotNull { (kind, sinceMs) ->
+                workoutDao.previousBestOfLength(
+                    classDurationSec = classDurationSec,
+                    userId = id,
+                    excludingWorkoutId = excludingWorkoutId,
+                    beforeMs = Long.MAX_VALUE,
+                    sinceMs = sinceMs
+                )?.let { row ->
+                    RaceCompetitor(
+                        workoutId = row.workoutId,
+                        name = lengthLabel(kind, classDurationSec),
+                        kind = kind,
+                        outputKj = row.outputKj
+                    )
+                }
+            }
+
+            ofClass + ofLength
         }.orEmpty()
 
         // 24.3.19a. Read once for the whole board rather than a query a head:
@@ -1024,6 +1059,60 @@ class WorkoutRepository(
      */
     suspend fun ownTotalsForClass(classId: String, userId: Int): List<Double> =
         workoutDao.ownTotalsForClass(userId = userId, classId = classId)
+
+    /**
+     * What the rider has averaged at this length over the last year (24.5.7).
+     *
+     * The owner asked for a *"year average"* beside the length PB, and it is a
+     * different kind of target from the bests either side of it: a best is the
+     * one day everything went right, and an average is the day the rider
+     * usually has. On a bad half-hour it is the only row on the board that is
+     * beatable, which is `Your usual`'s argument (24.3.18b, candidate 4) with a
+     * wider field under it.
+     *
+     * **Null rather than zero below [AVERAGE_MIN_RIDES]**, the same rule
+     * `GhostRider.usualTotal` applies for the same reason: an average of two
+     * rides is one of the two rides, and calling that what a rider usually does
+     * is a claim about a habit that does not exist yet.
+     */
+    suspend fun averageOfLength(
+        userId: Int,
+        classDurationSec: Int,
+        excludingWorkoutId: String,
+        nowMs: Long
+    ): Double? {
+        val totals = workoutDao.ownTotalsOfLength(
+            userId = userId,
+            classDurationSec = classDurationSec,
+            excludingWorkoutId = excludingWorkoutId,
+            sinceMs = nowMs - RACE_YEAR_MS
+        )
+        if (totals.size < AVERAGE_MIN_RIDES) return null
+        return totals.average()
+    }
+
+    /**
+     * The name on a length row — *Your best 30 minutes* (24.5.7).
+     *
+     * Built here rather than on the `Kind` because a kind has no idea how long
+     * the class is, which is the same reason a housemate's label is built here.
+     *
+     * **It does not name the class the ride came from, and that is a
+     * deliberate divergence from 24.5.3**, which made the class name
+     * load-bearing on the summary card. There the row is one of a list of the
+     * rider's own rides and without the class you cannot tell two rows apart;
+     * here it is a single target whose label already states its own field —
+     * *your best thirty minutes* is a complete and true claim without it — on a
+     * board 24.3.17 stripped down to a name and a number because it is read at
+     * 90 rpm.
+     */
+    private fun lengthLabel(kind: RaceCompetitor.Kind, classDurationSec: Int): String {
+        val minutes = classDurationSec / 60
+        return when (kind) {
+            RaceCompetitor.Kind.YourBestYearAtLength -> "Your best $minutes this year"
+            else -> "Your best $minutes minutes"
+        }
+    }
 
     /**
      * Records which rival a ride in progress is racing, so it can be read
@@ -1329,6 +1418,13 @@ class WorkoutRepository(
          */
         private const val RACE_RECENT_MS = RECENT_WINDOW_DAYS * 24L * 60 * 60 * 1000
         private const val RACE_YEAR_MS = 365L * 24 * 60 * 60 * 1000
+
+        /**
+         * Below this, an average of the rider's own rides is not an average
+         * (24.5.7) — `GhostRider.USUAL_MIN_RIDES`'s rule, applied to the wider
+         * field this one draws from.
+         */
+        private const val AVERAGE_MIN_RIDES = 3
 
         /**
          * A ceiling on the field, and it is a safety valve rather than a

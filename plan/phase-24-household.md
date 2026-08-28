@@ -1404,6 +1404,76 @@ comparable and what makes them not.
       what the class prescribed, and if that ever becomes a fault it is
       24.5.3's shape of fault — a second fact beside the first, not a filter.*
 
+- [ ] **24.5.7** **The same fault on the screen that matters most, and the
+      owner had to say so twice.** Their words, on being shown 24.5.1–24.5.6:
+      *"I'm fairly sure we have discussed, somewhere in the PLAN, about showing
+      various milestones or ghosts to chase. 30-min PB, 30 min best this year,
+      year average, whatever, the more the merrier. I 100% expect my 30-min PB
+      to show up as a target, at the very least."*
+
+      **They are right that it was discussed and right that it was missing, and
+      the interesting part is that it was missing for the *third* time in the
+      same way.** 24.3.18 is built and switched on — `Your best`, `Your best
+      this year`, `Your recent best`, `Your usual`, `Just past your best`,
+      `Class target` and an infinite milestone ladder, all live on the ride
+      screen's board, none of it behind `Features.singleRivalGhost`, which
+      hides only the superseded single-rival presentation. So the *feature*
+      existed. What did not is the thing the owner actually asked for: **every
+      one of those rows is keyed on `class_id`.** `previousBestOfClass` and
+      `ownTotalsForClass` are the two queries behind all of them.
+
+      **So a rider's thirty-minute PB is only ever a target on the class it was
+      set on**, and with 72 classes in the library and a rider who does not
+      repeat them, the ordinary outcome is a personal best that is never once
+      raced. That is 24.5's finding exactly, on the third and most important
+      surface — and it is worse here than on the other two, because this is the
+      screen where a target is *chaseable*.
+
+      Four things to build, and the second is what keeps the board from
+      doubling in size:
+      - **Ask the length as well as the class.** `previousBestOfLength` is
+        `previousBestOfClass` with the `class_id` clause swapped for a join onto
+        `class_templates` and `c.duration_sec = :classDurationSec` — the same
+        rule 24.5.2 settled, so a class stopped early still belongs to the
+        length it prescribed and a free ride is dropped by the join
+      - **Add the rows rather than substituting them, and let
+        `oneRowPerRide` sort it out.** A rider who repeats one class has the
+        same ride qualifying as both their class best and their length best;
+        drawing both would put them level with themselves, which is 22.5's
+        finding one row-kind further on. The mechanism for this already exists
+        and is tested — `Kind.widerThan` — so the two new kinds only need
+        declaring in the right place: **the time window dominates and the
+        length breaks the tie inside it**, so `YourBestAtLength`,
+        `YourBestEver`, `YourBestYearAtLength`, `YourBestYear`,
+        `YourBestMonth`. The rows separate only when they are genuinely two
+        different rides, which is precisely the case the owner was missing
+      - **The year average**, which the owner asked for by name. It is a
+        *generated* row and not a ride — `GhostKind.AverageAtLength`,
+        `isGenerated = true` — because an average is a number this app computed
+        and 24.3.18a says a rider must never come away thinking they chased a
+        real ride. Placed above `Your usual` in `ghostsFor`, because
+        `MAX_GHOSTS` is 3 and the two overlap: both are the middle of the
+        rider's own rides, and this one is drawn from the wider field and
+        exists on a class they have never ridden. Three rides minimum, the same
+        rule and the same reason as `USUAL_MIN_RIDES`
+      - **The labels carry the length** — *Your best 30 minutes*, *Your best 30
+        this year*, *Your average 30 minutes* — built at the call site, because
+        a `Kind` has no idea how long the class is. This is the one place 24.5.3
+        is deliberately **not** followed: there the class name was
+        load-bearing, because without it two rows of a list are
+        indistinguishable; here the row is a single target whose label already
+        states its own field, on a board 24.3.17 stripped to a name and a
+        number because it is read at 90 rpm
+
+- [ ] **24.5.8** **What this does not do, and it should be said before somebody
+      "fixes" it.** The length rows are the rider's own only. There is no
+      *household best 30 minutes* and no cloud equivalent, and both are
+      deliberate: `householdRivals` is per class because a housemate's row is a
+      race against a person who rode the same thing, and widening it to a length
+      would put Kilo's Sprints half-hour on a recovery ride labelled as a rival.
+      The rider's own rows survive that because they are labelled as history
+      rather than as opponents, and because the rider knows what they did
+
 ***All six done and observed on the tablet AVD***, on the 55-ride
 five-profile fixture, restored byte-for-byte afterwards.
 

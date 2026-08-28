@@ -68,8 +68,32 @@ data class RaceCompetitor(
          */
         val label: String
     ) {
+        /**
+         * Your best ride of **this length**, ever, whatever the class (24.5.7).
+         *
+         * Declared first because it is the widest window on this board: it is
+         * every thirty-minute ride the rider has ever done rather than every
+         * ride of one class, so when a single ride qualifies as both this and
+         * [YourBestEver] the label that says more is this one.
+         *
+         * Its label is built in the repository rather than here, like
+         * [Housemate]'s, because it has to carry the length — *Your best 30
+         * minutes* — and a `Kind` has no idea how long the class is.
+         */
+        YourBestAtLength(""),
+
         /** Your best ride of this class, ever. */
         YourBestEver("Your best"),
+
+        /**
+         * Your best of this length in the last twelve months (24.5.7).
+         *
+         * Between the two class rows on purpose: the time window dominates,
+         * which is [widerThan]'s existing rule — *a ride that is your best
+         * ever is not usefully described as your best of the last thirty
+         * days* — and the length breaks the tie inside a window.
+         */
+        YourBestYearAtLength(""),
 
         /** Your best of the last twelve months — `12 months` until 24.3.12a. */
         YourBestYear("Your best this year"),
@@ -127,8 +151,15 @@ data class RaceCompetitor(
          */
         val ghostKind: GhostKind
             get() = when (this) {
-                YourBestEver -> GhostKind.YourBest
-                YourBestYear -> GhostKind.YourBestThisYear
+                // The length rows share their class cousins' kinds rather than
+                // adding two more, and that is the honest mapping rather than a
+                // shortcut: `GhostKind` answers *is this a person* and *did the
+                // app make this number up*, and the answers are identical —
+                // both are real rides of the rider's own. It is also what keeps
+                // `RacePassTracker` firing `PAST YOUR BEST` when the ride
+                // passed is a length best (24.3.18d).
+                YourBestAtLength, YourBestEver -> GhostKind.YourBest
+                YourBestYearAtLength, YourBestYear -> GhostKind.YourBestThisYear
                 YourBestMonth -> GhostKind.YourRecentBest
                 Housemate, HousemateLatest, Friend -> GhostKind.Human
             }

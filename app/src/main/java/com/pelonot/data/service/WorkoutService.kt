@@ -644,6 +644,10 @@ class WorkoutService : Service() {
         val ridden = runCatching {
             workoutRepository.raceBoardFor(
                 classId = classId,
+                // 24.5.7. The class's own authored length, so the board can
+                // also ask *what is your best half-hour* rather than only
+                // *what is your best of this class*.
+                classDurationSec = classLengthSec(classId),
                 youId = youId,
                 excludingWorkoutId = workoutId,
                 nowMs = System.currentTimeMillis()
@@ -770,15 +774,43 @@ class WorkoutService : Service() {
                 .getOrDefault(emptyList())
         }.orEmpty()
 
+        // 24.5.7 — the owner's *"year average"*, over every class of this
+        // length rather than this one class.
+        val averageAtLength = youId?.let { id ->
+            runCatching {
+                workoutRepository.averageOfLength(
+                    userId = id,
+                    classDurationSec = classPlan.durationSec,
+                    excludingWorkoutId = session.workoutId,
+                    nowMs = System.currentTimeMillis()
+                )
+            }.getOrNull()
+        }
+
         return GhostRider.ghostsFor(
             intervals = classPlan.intervals,
             durationSec = duration,
             ftpWatts = session.ftpWatts.toDouble(),
             intent = session.intent,
             personalBestKj = ownTotals.maxOrNull(),
-            ownTotalsKj = ownTotals
+            ownTotalsKj = ownTotals,
+            averageAtLengthKj = averageAtLength,
+            classDurationSec = classPlan.durationSec
         )
     }
+
+    /**
+     * The class's own authored length, or zero when it cannot be read.
+     *
+     * Zero matches no `class_templates` row, so a failure here costs the length
+     * rows and leaves every other row on the board standing — which is the
+     * right way round: a board that is shorter than it could be is 24.3.18's
+     * ordinary failure, and a board that does not draw is not.
+     */
+    private suspend fun classLengthSec(classId: String): Int =
+        runCatching { classRepository.getPlan(classId)?.durationSec }
+            .onFailure { Log.w(TAG, "No plan for $classId; no length targets", it) }
+            .getOrNull() ?: 0
 
     private fun clearRace() {
         rivalTrace = null

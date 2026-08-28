@@ -5,6 +5,7 @@ import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -175,6 +176,65 @@ class GhostRiderTest {
     fun `two rides are not a usual`() {
         assertNull(GhostRider.usualTotal(listOf(200.0, 300.0)))
         assertEquals(250.0, GhostRider.usualTotal(listOf(200.0, 250.0, 300.0))!!, 0.0)
+    }
+
+    // ---- 24.5.7: the length targets --------------------------------------
+
+    @Test
+    fun `the year average at this length is offered as a target`() {
+        val ghosts = GhostRider.ghostsFor(
+            intervals = emptyList(),
+            durationSec = 1800,
+            ftpWatts = 200.0,
+            averageAtLengthKj = 210.0,
+            classDurationSec = 1800
+        )
+
+        assertEquals(listOf(GhostKind.AverageAtLength), ghosts.map { it.kind })
+        assertEquals(210.0, ghosts.single().trace.finalValue, 0.001)
+        // The label has to carry the length or it is indistinguishable from
+        // *your usual*, which is the same shape of number over one class.
+        assertEquals("Your average 30 minutes", ghosts.single().name)
+    }
+
+    @Test
+    fun `the average outranks your usual when the cap bites`() {
+        // A rider who has ridden this class three times has both, and they are
+        // close numbers. The one that survives is the one drawn from every
+        // class of the length — the field the owner asked to be measured
+        // against — rather than from this class alone.
+        val ghosts = GhostRider.ghostsFor(
+            intervals = listOf(block(0, 1800, zone = 3)),
+            durationSec = 1800,
+            ftpWatts = 200.0,
+            personalBestKj = 300.0,
+            ownTotalsKj = listOf(200.0, 250.0, 300.0),
+            averageAtLengthKj = 210.0,
+            classDurationSec = 1800
+        )
+
+        assertEquals(GhostRider.MAX_GHOSTS, ghosts.size)
+        assertEquals(
+            listOf(GhostKind.Prescribed, GhostKind.Stretch, GhostKind.AverageAtLength),
+            ghosts.map { it.kind }
+        )
+    }
+
+    @Test
+    fun `an average this app made up is marked as generated`() {
+        // The honesty rule (24.3.18a): an average is a number nobody rode, so a
+        // rider must never come away thinking they are chasing a real ride.
+        assertTrue(GhostKind.AverageAtLength.isGenerated)
+        assertFalse(GhostKind.AverageAtLength.isPerson)
+    }
+
+    @Test
+    fun `a length best is not generated, because somebody rode it`() {
+        // The other half of the same rule, and it is what keeps
+        // `RacePassTracker` firing PAST YOUR BEST when the ride passed is a
+        // length best rather than a class one.
+        assertFalse(GhostKind.YourBest.isGenerated)
+        assertFalse(GhostKind.YourBest.isPerson)
     }
 
     @Test

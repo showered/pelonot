@@ -730,6 +730,51 @@ interface WorkoutDao {
     ): PreviousBestRow?
 
     /**
+     * The same question asked of a **length** rather than a class (24.5.7).
+     *
+     * The owner: *"I 100% expect my 30-min PB to show up as a target, at the
+     * very least."* It did not, and the reason is the one 24.5 found on the
+     * other two screens — every one of the rider's own rows on the live board
+     * came out of [previousBestOfClass], so a thirty-minute best earned on a
+     * different thirty-minute class was invisible. On a library of 72 classes
+     * that is the ordinary case rather than the edge one: a rider who does not
+     * repeat classes has a personal best and never once races it.
+     *
+     * **The length is the class's, exactly as in [ridesOfLength]**, and the
+     * join is again what drops a free ride. Everything else is
+     * [previousBestOfClass]'s clause verbatim — the same `beforeMs` /
+     * `sinceMs` pair that turns one query into *best ever* and *best this
+     * year*, and the same measured-power gate, because two sides of one
+     * comparison disagreeing about what counts as measured is how a rider is
+     * told they beat something nobody rode.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.total_output_kj AS outputKj,
+               w.timestamp AS recordedAt
+        FROM workouts w
+        JOIN class_templates c ON c.id = w.class_id
+        WHERE c.duration_sec = :classDurationSec
+          AND w.user_id = :userId
+          AND w.id != :excludingWorkoutId
+          AND w.timestamp < :beforeMs
+          AND w.timestamp >= :sinceMs
+          AND w.is_complete = 1
+          AND w.power_provenance = 'Measured'
+        ORDER BY w.total_output_kj DESC
+        LIMIT 1
+        """
+    )
+    suspend fun previousBestOfLength(
+        classDurationSec: Int,
+        userId: Int,
+        excludingWorkoutId: String,
+        beforeMs: Long,
+        sinceMs: Long
+    ): PreviousBestRow?
+
+    /**
      * The rides whose watts the **bike measured** and whose efforts have not
      * been worked out yet (16.3.3, 16.3.3a).
      *
@@ -1375,6 +1420,39 @@ interface WorkoutDao {
         """
     )
     suspend fun ownTotalsForClass(userId: Int, classId: String): List<Double>
+
+    /**
+     * Every measured total the rider has recorded **at this length**, since a
+     * moment (24.5.7).
+     *
+     * The owner asked for a *"year average"* beside the length PB, and an
+     * average wants more than one class's worth of rides behind it or it is
+     * the same two numbers the *usual* ghost is already made of. `sinceMs` is
+     * what makes it a year rather than a lifetime: a rider's average
+     * half-hour from three summers ago is not a target, it is an obituary.
+     *
+     * Same gates as [ownTotalsForClass], including `total_output_kj > 0` — the
+     * abandoned ten-second attempt that would otherwise drag an average down.
+     */
+    @Query(
+        """
+        SELECT w.total_output_kj FROM workouts w
+        JOIN class_templates c ON c.id = w.class_id
+        WHERE c.duration_sec = :classDurationSec
+          AND w.user_id = :userId
+          AND w.id != :excludingWorkoutId
+          AND w.timestamp >= :sinceMs
+          AND w.is_complete = 1
+          AND w.total_output_kj > 0
+          AND w.power_provenance = 'Measured'
+        """
+    )
+    suspend fun ownTotalsOfLength(
+        userId: Int,
+        classDurationSec: Int,
+        excludingWorkoutId: String,
+        sinceMs: Long
+    ): List<Double>
 
     /**
      * The same totals, minus one ride — for asking whether *that* ride was the
