@@ -212,7 +212,7 @@ no cloud dependency**, which is the good news in this phase.
       reminder returning at 14 once more rides landed; and a real backup
       through the picker writing 405,504 bytes to Downloads, setting the flag
       and clearing the card.*
-- [ ] **23.3.1a** **Whose backup, once accounts exist?** The reminder counts
+- [x] **23.3.1a** **Whose backup, once accounts exist?** The reminder counts
       rides on the tablet and says nothing about sign-in, which is right today
       because no profile can have an account (15 does not exist) — but it is a
       real question and not an oversight. Cloud backup is **per profile** and
@@ -249,7 +249,7 @@ no cloud dependency**, which is the good news in this phase.
         neither. The rider who most needs that sentence is the one who has just
         signed in for the first time and is looking for evidence it worked;
         23.3.1c is that.*
-- [ ] **23.3.1b** **The reminder's sentence is false for a signed-in rider, and
+- [x] **23.3.1b** **The reminder's sentence is false for a signed-in rider, and
       it is the exact sentence 23.3.2 already fixed one screen along.**
       `BackupReminder.message` says *"They live on this tablet and nowhere
       else."* — unconditionally, because the object knows a count and a flag and
@@ -284,7 +284,7 @@ no cloud dependency**, which is the good news in this phase.
         nothing to do with the rider. That is honest (those rides *are* waiting)
         but it means the sentence must never say *"since your last backup"* about
         a number that did not come from the backup mark
-- [ ] **23.3.1c** **The dashboard never says the cloud is working, and that is
+- [x] **23.3.1c** **The dashboard never says the cloud is working, and that is
       what the owner's note is really about.** *"I'm not sure if the classes are
       actually backed up online"* is a rider looking for evidence and finding
       none on the screen he was on. The evidence exists — `RestoreState` carries
@@ -299,6 +299,66 @@ no cloud dependency**, which is the good news in this phase.
       rides are on this tablet only"* on a signed-in bike is simultaneously the
       nag and the evidence, because the rider can read from it that the others
       are not
+
+      ***All three done and observed on the tablet AVD***, on the 55-ride
+      five-profile fixture, which was restored byte-for-byte afterwards.
+
+      **The rule that fixes both halves is one rule**, which is why 23.3.1a and
+      23.3.1b landed together: *a ride the cloud already holds is not at stake
+      and is not counted.* `WorkoutDao.observeOnTabletOnlySince` is
+      `synced_at IS NULL` and deliberately nothing else — it answers correctly
+      for a guest ride, for a housemate with no account, for a signed-in rider
+      with backup switched off and for a ride still climbing, **without asking
+      about any of them** — and it errs towards warning rather than away from
+      it: 2.5a.5's distance pass clears the column, so those rides get counted
+      again, which is honest, and the failure this shape cannot produce is the
+      dangerous one of telling a rider they are safe.
+
+      **Both counts travel to the card rather than one replacing the other**,
+      because the difference between them is what licenses the second sentence.
+      `someRidesAreUp` is derived from the two counts and **never from a sign-in
+      flag** — a rider can be signed in with nothing uploaded yet, and telling
+      them an account holds the others would be the same false claim pointing
+      the other way.
+
+      *What was watched, in order, each read out of `uiautomator` rather than
+      off a screenshot:* the fixture as found, 55 rides all unsynced, drawing
+      the **unchanged** offline sentence — *"55 rides recorded on this tablet,
+      and no backup yet…"* — which is the regression check that matters, since
+      the offline tier is the ordinary case and its wording was already correct;
+      then 43 rides marked synced by hand, giving *"**12 rides** live on this
+      tablet and nowhere else, and no backup yet. An account holds the others —
+      a backup is one file, and it takes everything on the tablet"*, at three
+      lines, which is the longest of the four branches and the layout held;
+      then all but three marked synced and **the card disappeared entirely**,
+      with 55 rides still on the tablet, which states the behaviour change as
+      plainly as it can be put — the old count showed the card on all 55; then a
+      **real** backup through Settings' own picker, which wrote the mark and
+      `has_ever_backed_up` (both read out of the DataStore protobuf, which is
+      also a free re-confirmation of 23.3.1's mark-on-success), and rides staged
+      either side of it for the fourth branch: *"12 rides live on this tablet
+      and nowhere else. An account holds the others; it does not hold these."*
+
+      **One limit, stated here rather than discovered later.** A rider whose
+      rides are *all* up sees no card at all, and therefore no evidence either.
+      That is 23.3.1's own rule working — the card measures risk, and there is
+      none of the kind it measures — and drawing a card to say everything is
+      fine is exactly the nag this item forbids. The evidence for that rider is
+      Settings → *Your rides* → *Backed up to your account*, which already
+      exists.
+
+      **What this does not unblock is 15.8.5**, and that is worth saying because
+      15.8.5 names 23.3.1a as the thing it is waiting for. It was waiting for
+      the count to move *per profile*, beside `account_offer_dismissed`; this
+      moved it **per ride** instead, and it is still device-wide. 15.8.5's own
+      objection therefore stands unchanged: wiring the account offer to this
+      count would still give a second profile's rides a say in whether *this*
+      profile gets asked.
+
+      **925 JVM tests, 0 failures**, up from 919. Six new cases in
+      `BackupReminderTest`, on the four branches and on the two claims no branch
+      may make — the count in the sentence is never the total, and an account is
+      never mentioned until something is actually up there
 - [x] **23.3.2** The Backup section says it: *copy it somewhere safe and it can
       be restored onto any tablet running Pelonot*. Reworded for a signed-in
       rider too, where "your rides live on this tablet and nowhere else" had

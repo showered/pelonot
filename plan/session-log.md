@@ -6,6 +6,107 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
+
+**The inbox was empty**, so this sitting picked up where the sixty-ninth left
+the numbered list: **30.1.1** is the owner's own — a keystore needs a password
+a session must not hold — so the two items that were actually buildable were
+**30.1.4a** and **30.4**, in that order, and both are done.
+
+**30.1.4a first, because it was the smaller rehearsal and the one the
+sixty-ninth sitting had explicitly not done.** 30.1.6 proved the changeover's
+*shape* with `run-as` and `tar`; this proved the route the owner will actually
+take — Settings' own *Back up now* and *Restore from a backup*, through the
+SAF pickers, on the same 55-ride five-profile fixture. A real file went into
+Downloads (709 kB), `pm clear` stood in for the uninstall, and the restore
+came back **5 profiles, 55 workouts, 5278 metrics, 72 classes** — counted out
+of `sqlite3`, not read off a screen. **One thing came back different rather
+than missing**: Robin's photo reverted to her derived-colour `R`, because
+`DatabaseBackup` copies the SQLite file and nothing else — a photo lives
+beside it in `files/avatars/`. This is not a new fault. 20.2.4 named this exact
+gap in the twentieth sitting and watched the same fallback by deleting a photo
+file by hand; this sitting's finding is a second confirmation of a decision
+already made, not a discovery, and it is worth carrying forward one sentence:
+the friend's changeover will lose a profile photo the same way, and that is by
+design.
+
+**Then 30.4, all six items, and the whole thing was watched working rather
+than merely compiled.** `PackageInstaller`'s session API rather than the old
+`ACTION_INSTALL_PACKAGE` intent, exactly as the phase's own write-up specified
+— a session takes a plain `OutputStream`, so there is no `FileProvider` and
+nothing for Android 11's scoped storage to refuse. `REQUEST_INSTALL_PACKAGES`
+went into the manifest first, on the standing rule that an undeclared
+permission is denied instantly with nothing in logcat (`VIBRATE`,
+`ACCESS_FINE_LOCATION`). `UpdateDownloader` streams the APK into the cache dir
+and hashes it in the same pass, so a 24 MB file is never held twice over.
+`UpdateInstaller` opens the session, writes the file, and commits with a
+`PendingIntent` aimed at a new `UpdateInstallReceiver`, which does the one job
+a commit needs done outside the app's own foreground: forwarding the system's
+confirmation `Intent` with `FLAG_ACTIVITY_NEW_TASK`. `UpdateInstallCoordinator`
+is the one piece of shared state — download, permission, install, failure —
+so the automatic prompt and Settings' own *Check for updates now* cannot each
+think they own the download, the same reasoning `volumeController` already
+gets in `ServiceLocator` for a different shared value.
+
+**30.4.4's gate is a withholding, not a filter.** `AppViewModel.uiState
+.updateOffer` is the manifest or null, and it is null whenever
+`RideInProgress.active` is non-null — the live, process-scoped answer 8.3d's
+`recoverableWorkout` already asks for, not a second read of the database. A
+screen reaching into the state directly sees the same *no* the dialog would,
+which is the point of doing it there rather than in the composable that draws
+the prompt.
+
+**30.4.6 is the item worth reading in full, because "watched working" turned
+out to mean something more literal than usual.** Rather than stop at the
+mechanics, the whole channel was rehearsed end to end with a genuine second
+build: `version.properties` bumped to `2` / `1.0.1`, `assembleDebug`, the real
+APK served over **actual HTTPS** from a local server — a self-signed
+certificate installed as a user-trusted CA on the AVD alone, and
+`pelonot.webUrl` pointed at it for one rebuild, both reverted before anything
+in this sitting was committed. 30.3.1's rule that the real manifest stays
+unpublished until `tools/release.sh` exists was not touched at any point; the
+live site never saw a request built for it. What came back, screen by screen:
+the automatic prompt at launch, unprompted, reading *"Pelonot 1.0.1 is
+ready"*; **Install** correctly detecting the missing *install unknown apps*
+grant and naming it rather than failing silently; returning from that system
+settings screen **retried on its own** — the dialog does not make the rider
+tap Install twice; the download, the checksum and the `PackageInstaller`
+session all succeeding, raising the system's own *Update this app?*
+confirmation; Play Protect's scan gate afterwards, which is the platform's
+own addition and was simply navigated, not built for. **The database
+survived** — Settings' own Storage card read 55 rides and 724 kB afterwards,
+the same figures as before, and the about line read `Pelonot 1.0.1 (2)`,
+both numbers the update check itself compares. 30.4.3's checksum path and
+30.4.2's permission path were each watched failing before they were watched
+working, the same discipline `UpdateChannelFenceTest` held for 30.5.1.
+
+**One finding fell out of the rehearsal that no item had asked for.** With
+the AVD's build and `pelonot.webUrl` back to normal, Settings' manual *Check
+for updates now* was tried once more against the **real** production
+endpoint — and came back *"Couldn't check just now — try again in a
+moment."* That is correct: `web/update.json` is still deliberately
+unpublished (30.3.1), so the live site answers 404, and `UpdateCheck
+.Unreachable` is 30.3.4's honest answer to exactly that. It is a second,
+free confirmation of 30.3.4, on the actual endpoint rather than an assumption
+about it.
+
+**Cleaning up the AVD after the rehearsal was itself informative.** A plain
+reinstall of the clean `versionCode 1` build was refused — `INSTALL_FAILED
+_VERSION_DOWNGRADE` — because Android will not downgrade a same-signature
+APK, which is 30.2.3's whole argument for refusing a downgrade manifest,
+observed rather than merely reasoned about from the other direction. The fix
+was an uninstall and a plain reinstall, and the fixture went back through
+30.1.4a's own restore path — an incidental second rehearsal of that item, on
+a tablet it had not been tried against since being written.
+
+**919 JVM tests, 0 failures — unchanged.** Nothing this sitting built is pure:
+`UpdateDownloader` and `UpdateInstaller` both need a real `Context` and a real
+`PackageInstaller`, the same shape as `UpdateRepository.fetch()`, which has
+never had a JVM test of its own either. What is testable already was —
+`UpdatePolicy` and `UpdateChannelFenceTest` — and neither changed. The
+coverage this sitting relies on is the AVD rehearsal above, in the same spirit
+as 8.14.1's standing answer for anything that draws a screen.
+
 ## 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
 
 **The inbox had one entry and it was `OTA Updates`**, verbatim: *"I'm happy to

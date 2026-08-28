@@ -253,7 +253,95 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
+### Latest session — 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
+
+**The inbox had two entries and both are written up**, which is the part that
+was urgent; one of them was then built, which is the part that was not.
+
+**`Leaderboard` became 24.5, and the write-up's finding is that the note is
+three faults rather than one.** The owner has done three thirty-minute rides
+and cannot see his previous time. It would be easy to read that as a missing
+duration filter; it is three rules stacked, and **any one of them alone shows
+him nothing**. `ClassLeaderboard.isWorthShowing` is `entries.size >= 2`, so a
+rider alone on a bike sees no board at all, whatever he rides and however often
+— the twenty-eighth sitting observed exactly this and recorded it as the rule
+working, which it was, but the consequence is that the bike with the most
+riding on it is the bike with no board. `householdLeaderboard` is one row per
+rider, so a rider's own previous ride is never on it by construction. And it is
+keyed on `class_id`. **The objection the note does not address is carried into
+the item rather than left to be met on the screen**: total output across two
+different thirty-minute classes mostly measures *which class it was*, which is
+what 16.3.3 said when it chose mean-maximal power and what 27.2.1 says from the
+other side. That shapes the answer instead of killing it — 24.5.3 puts the
+class name beside the number, the way 24.1.3 shows kJ and kJ/kg together when
+they disagree. Six items; nothing built.
+
+**`Login` landed on an item that was already open and waiting for it.**
+23.3.1a was written in the twenty-third sitting, parked explicitly on Phase 15
+existing, and Phase 15 has existed for a while — so the owner's note is not a
+new question but the report that turns an old one into a due item. Two items
+were added beside it and then all three were built.
+
+**The defect is that the app was telling a rider something untrue about where
+their data is.** `BackupReminder.message` said *"They live on this tablet and
+nowhere else"* to every rider unconditionally, because the object knew a count
+and a flag and nothing about accounts. For a rider whose rides had gone up that
+is not an over-eager nag, it is **a wrong claim about the location of their
+data** — and it is the worst kind to be wrong about, because it is the sentence
+a rider reads *instead of* checking. The same sentence had already been
+repaired twice one screen along (15.2.8, 23.3.2); this was the third and last
+place it was said.
+
+**One rule fixes both halves, which is why 23.3.1a and 23.3.1b are one change:
+a ride the cloud already holds is not at stake and is not counted.**
+`WorkoutDao.observeOnTabletOnlySince` is `synced_at IS NULL` and deliberately
+nothing else — it answers correctly for a guest ride, a housemate with no
+account, a signed-in rider with backup switched off, and a ride still climbing,
+**without asking about any of them**. It errs towards warning: 2.5a.5's distance
+pass clears that column, so those rides get counted again, which is honest, and
+the failure this shape cannot produce is the dangerous one.
+
+**Both counts travel to the card rather than one replacing the other**, because
+the difference between them is what licenses the second sentence. `someRidesAreUp`
+is derived from the two counts and **never from a sign-in flag** — a rider can
+be signed in with nothing uploaded yet, and telling them an account holds the
+others is the same false claim pointing the other way.
+
+**The card stays on a signed-in bike, and that is the point rather than a
+compromise.** Cloud backup covers one profile's rides; the file covers the
+tablet — the housemates, the profile photos, and the guest rides, which can
+never sync at all. So the direct answer to the owner's direct question is
+**yes, Simon is being asked to back up guest rides, and deliberately**: a guest
+ride really does live on that tablet and nowhere else. What was missing is that
+nothing said so, which is why he had to ask.
+
+**Watched on the AVD in four states, each read out of `uiautomator` rather than
+off a screenshot**, on the 55-ride five-profile fixture, restored byte-for-byte
+afterwards. The fixture as found, all 55 unsynced, drawing the **unchanged**
+offline sentence — the regression check that mattered most, since the offline
+tier is the ordinary case and its wording was already right. Then 43 marked
+synced: *"12 rides live on this tablet and nowhere else, and no backup yet…"*,
+three lines, the longest of the four branches, layout held. Then all but three
+marked synced and **the card vanished** with 55 rides still on the tablet,
+which is the behaviour change put as plainly as it can be — the old count drew
+it on all 55. Then a **real** backup through Settings' own picker, which wrote
+the mark and `has_ever_backed_up` (a free re-confirmation of 23.3.1's
+mark-on-success), and rides staged either side of it for the fourth branch.
+
+**One limit is written into the item rather than left to be found.** A rider
+whose rides are all up sees no card and therefore no evidence either — which is
+23.3.1's own rule working, since the card measures risk and there is none of
+the kind it measures. Drawing a card to say everything is fine is exactly the
+nag the item forbids.
+
+**And 15.8.5 is not unblocked, though it names 23.3.1a as what it waits for.**
+It was waiting for the count to move *per profile*; this moved it *per ride*
+and left it device-wide. Its objection stands unchanged and both files now say
+so.
+
+**925 JVM tests, 0 failures**, up from 919.
+
+### The sitting before — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
 
 **The inbox was empty**, so this sitting picked up where the sixty-ninth left
 the numbered list: **30.1.1** is the owner's own — a keystore needs a password
@@ -354,119 +442,6 @@ never had a JVM test of its own either. What is testable already was —
 coverage this sitting relies on is the AVD rehearsal above, in the same spirit
 as 8.14.1's standing answer for anything that draws a screen.
 
-### The sitting before — 21 August 2026 (sixty-ninth sitting): the inbox asked for OTA updates, and the answer was a key that does not exist
-
-**The inbox had one entry and it was `OTA Updates`**, verbatim: *"I'm happy to
-do grade installs over adb but my friend probably won't be bothered. Can we
-introduce free OTA updates somehow so when he opens the app it'll say 'do you
-want to install an update?'"* It is written up as **Phase 30**, twenty-two items
-in a new file, and the inbox is empty again.
-
-**The mechanism is the easy half and it is genuinely free.** The repository is
-public, so GitHub Releases hosts the APK for nothing; the companion web app is
-already live, already deploys on `git push`, and already owns the URL the bike
-carries in `BuildConfig.PELONOT_WEB_URL`, so the manifest costs no new
-configuration value and no new secret; and `PackageInstaller` takes the download
-as a stream, which sidesteps `FileProvider` and Android 11's scoped storage
-entirely. The friend taps twice — once, ever, to allow this app to install
-packages, and once per update.
-
-**Underneath it is a prerequisite nobody had noticed, and it is the only item in
-this plan with a deadline.** Android refuses to update an app whose signing
-certificate has changed. **Every copy of Pelonot that exists is a debug build**,
-signed with the per-machine `~/.android/debug.keystore`, and `release` had **no
-`signingConfig` at all**, so `assembleRelease` produced an APK installable on
-nothing. The first release-signed APK therefore cannot replace what is on the
-friend's bike: it is an uninstall, and an uninstall takes the database. **Every
-ride he takes between now and that day is a ride that has to survive a backup
-and a restore**, which makes doing it soon strictly cheaper than doing it later.
-
-**Rather than stop at compiling it, the whole changeover was rehearsed on the
-tablet AVD**, and four things came out of that which this project did not know.
-A release build is **3.4 MB** against debug's 24. `assembleRelease` **works** —
-minify and `shrinkResources` have been switched on since Phase 0 and never once
-exercised, so the first person to run it could as easily have met a
-`proguard-rules.pro` that had drifted for sixty-eight sittings. **The minified
-build runs**, which is the part that mattered: R8 strips `kotlinx.serialization`
-serializers for a living and this app reads 72 JSON classes out of its assets on
-first launch, so it was installed onto an empty tablet and driven — first-run
-screen, `Guest`, dashboard, **72 to choose from** with the interval bars drawn
-off `intervals_json`. And the fixture went back byte-identical afterwards: **5
-profiles, 55 workouts, 5278 metrics, 72 classes**, Robin's photograph included.
-
-**The fourth finding changed a decision.** A release build is not debuggable, so
-`run-as` — and with it every `sqlite3` query CLAUDE.md settles data questions
-with — answers *package not debuggable* and nothing else. **The database stops
-being the witness on any bike running a release.** The write-up had recommended
-one channel for both bikes; that finding won the argument the other way, and the
-owner chose it: **the friend's bike takes releases, this one stays on debug**.
-What it costs is written into 30.5.2 rather than discovered later — a report
-from his tablet may not reproduce anywhere inspectable, and putting a debug
-build on it for an investigation costs his database again.
-
-**The owner answered three things directly and the middle one is the one to
-act on.** 30.5.1: an account-less bike **may** check for updates, with a switch
-in Settings, defaulting **on**. 30.1.4: the signing changeover happens **soon,
-with the history carried across** rather than started clean. 30.5.2: two
-channels, as above.
-
-**30.5.1 is the first network request this app makes for a rider with no
-account, and it was granted on a promise.** The connectivity model's rule 1
-forbids reaching *Supabase* without an account; this reaches a static file and
-sends nothing about the rider — no id, no name, no profile count, no ride. It is
-deliberately **not** routed through `CloudAccess`, because gating it on an
-account would withhold updates from exactly the rider the note was written
-about. **A promise like that decays by somebody adding one harmless parameter**,
-which is `RiderScore`'s rule 2 all over again (26.4.10), so
-`UpdateChannelFenceTest` holds it structurally: one file knows where the
-manifest lives, that file may not mention Supabase, ktor or `CloudAccess`, the
-URL is a constant path with nowhere to hang a query string, and the request is a
-GET that cannot carry a body. Each check was watched failing against its own
-violation. `UpdateRepository` is written on `HttpURLConnection` rather than the
-ktor client the Supabase SDK drags in, so the update path shares nothing at all
-with the cloud tier.
-
-**`UpdatePolicy` is the decision and it is pure**, twelve tests, no clock and no
-`Context`. Strictly greater is an offer; equal is up to date; **older is refused
-*as a downgrade* rather than ignored**, because 12.5.1 left
-`fallbackToDestructiveMigration` in place on downgrade on the argument that a
-downgrade only happens on a development device — and an update channel able to
-offer an older APK makes that argument false, with a rider's whole database
-behind a *yes* button. A version the rider refused is not offered again and a
-newer one still asks (30.4.5). **And a clock that has gone backwards does not
-lock the bike out**, which this tablet does at every boot correcting itself off
-the network; the write-up had not thought of it and the rule handles it.
-
-**The app finally says which build it is** (30.2.2). `BuildConfig.VERSION_NAME`
-was referenced by **nothing** in the whole source tree, so it never once has —
-survivable while one person installs over a cable, not survivable the moment a
-friend has a copy and the first question is *which one are you on*. Settings
-ends with `Pelonot 1.0.0 (1) · debug`, centred and quiet, no heading and no
-card. The `· debug` suffix appears on debug builds only and earns its place from
-30.1.5: it is what tells a debug copy from a release copy across a room, when
-they start refusing to replace each other. Both branches were watched.
-
-**Settings gains one switch**, *Updates → Tell me about new versions*, on by
-default, immediately above the version it is about. The first draft had three
-sentences on it, which is 26.1.4's own complaint; what survives is the two
-things a rider actually wants to know — what leaves the tablet, and whether
-anything can happen without them.
-
-**Nothing calls the check yet, and that is deliberate rather than unfinished.**
-There is nowhere to put the answer until 30.4 draws a prompt, and a check whose
-result is discarded is a request made for nothing. The box is not ticked.
-
-**919 JVM tests, 0 failures**, up from 903. The new suites are
-`UpdatePolicyTest` and `UpdateChannelFenceTest`.
-
-**Two operational traps were met in the rehearsal and both are in CLAUDE.md
-now**, because both look exactly like a bricked app. `run-as` dies on a release
-build, as above. And a tar taken with `tar cf - -C /data/data/com.pelonot .`
-carries a `./` entry whose host permissions land on the app's home directory,
-after which `run-as` refuses everything with *readable or writable by others:
-40755* — `chmod 700` from inside the same `run-as` is the whole fix, and `adb
-root` is not available to fall back on, because the AVD is a Play Store image.
-
 ### What to do next, in order
 
 **The top of this list is still one item and it still has a deadline.**
@@ -500,7 +475,16 @@ convenience before 30.1.1**, because a script that signs with nothing signs
 with the debug key by accident, which is the one certificate this phase
 exists to stop shipping to the friend.
 
-**The sitting before left no job of its own behind it**, which is not how it looked
+**Two of this sitting's own items are worth picking up before anything else on
+this list, because both are cheap and both are already decided.** **24.5.1** is
+*your own previous rides of this class* — strictly like-for-like, no argument to
+settle, and it is the half of the owner's leaderboard note that 27.2.1's rule
+already endorses. **24.5.2** is the note's actual ask and needs 24.5.3 built
+with it or it is a scoreboard that calls a recovery ride a bad ride; both are a
+query and a card, no schema change. **24.5.6 is a question for the owner** and
+is small enough to answer in a sentence.
+
+**The sitting before that left no job of its own behind it**, which is not how it looked
 an hour before the end: 2.5a.5 — the 55 rides on disk still holding the old
 distance — was written up as the owner's call and then decided, because the
 alternative was a history with two models in it and nothing on any screen saying

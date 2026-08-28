@@ -998,6 +998,11 @@ beside it.
       per-profile, and wiring one to the other now would give a second
       profile's rides a say in whether *this* profile gets asked. Revisit once
       23.3.1a moves the count to sit beside `account_offer_dismissed`
+
+      **23.3.1a is done and did not do that**, so this stays open and its
+      reason is unchanged. It moved the count *per ride* — a ride the cloud
+      already holds is not counted — and left it device-wide, which is the
+      dimension this item needs and the one that did not move
 - [x] **15.8.6** **Say what it costs, in one line, at the moment of offering.**
       **Done**, in both places 15.8 offers an account: *"Your rides get
       copied to your account. Everything keeps working without one"* on the
