@@ -371,18 +371,31 @@ class AppViewModel(
 
     /**
      * How many rides have been recorded since the last backup — or since the
-     * last "not now", whichever is later (23.3.1).
+     * last "not now", whichever is later (23.3.1) — and how many of those
+     * nothing else holds a copy of (23.3.1a).
      *
      * Counted across the whole tablet rather than for the selected profile,
      * because the backup file is the whole database: a housemate's rides and a
-     * guest's ride are equally in it and equally lost without it.
+     * guest's ride are equally in it and equally lost without it. **Both counts
+     * travel together and neither is derived from the other**, because the
+     * difference between them is what lets the card say an account holds the
+     * rest — a claim it must not make from a sign-in flag, since a rider can be
+     * signed in with nothing uploaded yet.
      */
     private val backupReminder = settingsRepository.settings
         .map { it.backupMarkAtMs to it.hasEverBackedUp }
         .distinctUntilChanged()
         .flatMapLatest { (markedAt, everBackedUp) ->
-            workoutRepository.observeCompletedSince(markedAt ?: 0L).map { count ->
-                BackupReminder(ridesSinceMark = count, hasEverBackedUp = everBackedUp)
+            val since = markedAt ?: 0L
+            combine(
+                workoutRepository.observeCompletedSince(since),
+                workoutRepository.observeOnTabletOnlySince(since)
+            ) { all, onTabletOnly ->
+                BackupReminder(
+                    ridesSinceMark = all,
+                    ridesOnTabletOnly = onTabletOnly,
+                    hasEverBackedUp = everBackedUp
+                )
             }
         }
 

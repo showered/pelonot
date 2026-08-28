@@ -1025,6 +1025,13 @@ class WorkoutRepository(
         workoutDao.observeCompletedSince(sinceEpochMs)
 
     /**
+     * Of those, the ones nothing else holds a copy of — the count the reminder
+     * actually decides on (23.3.1a).
+     */
+    fun observeOnTabletOnlySince(sinceEpochMs: Long): Flow<Int> =
+        workoutDao.observeOnTabletOnlySince(sinceEpochMs)
+
+    /**
      * How much and how often, over whole weeks (PLAN 16.3.2, 16.3.5).
      *
      * The window is a few days wider than the weeks asked for, because the

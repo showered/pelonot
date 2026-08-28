@@ -1157,6 +1157,30 @@ interface WorkoutDao {
     fun observeCompletedSince(sinceEpochMs: Long): Flow<Int>
 
     /**
+     * Of [observeCompletedSince]'s rides, the ones **nothing else holds a copy
+     * of** (23.3.1a).
+     *
+     * `synced_at IS NULL` is the whole test and it is deliberately the only
+     * one. It answers correctly for every case without asking about any of
+     * them: a guest ride has no profile and can never sync, a housemate with no
+     * account never syncs, a signed-in rider with backup switched off never
+     * syncs, and a ride still climbing has not arrived yet — all four are
+     * on this tablet and nowhere else, and all four have a null column.
+     *
+     * **It errs towards warning, never away from it.** A ride whose `synced_at`
+     * was cleared — 2.5a.5's distance pass does exactly that — is counted
+     * again, which is honest: it *is* waiting to go back up. The failure this
+     * shape cannot produce is the dangerous one, telling a rider they are safe.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM workouts
+        WHERE is_complete = 1 AND timestamp > :sinceEpochMs AND synced_at IS NULL
+        """
+    )
+    fun observeOnTabletOnlySince(sinceEpochMs: Long): Flow<Int>
+
+    /**
      * Ride timestamps per rider, for [com.pelonot.domain.social.StreakCalculator].
      *
      * The streak arithmetic is not done in SQL: "consecutive local calendar
