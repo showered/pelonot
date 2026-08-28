@@ -46,7 +46,7 @@ paragraph of write-up behind, and thirteen handled entries make a long section
 that reads exactly like a backlog. The live inbox is now the last heading on
 this page and nothing else.
 
-**Sixty-six entries have passed through it.** In order: standing and seated
+**Sixty-eight entries have passed through it.** In order: standing and seated
 riding (**Phase 25**), max panel width (**22.4**), the initial FTP (**20.3**),
 in-ride targets (**11.7**), resuming an interrupted ride (**8.3d**), the zone
 ladder's bounce (**11.6.11**), whole watts (**11.6.12**), the beating heart
@@ -186,7 +186,16 @@ the record), and **free OTA updates so the friend does not need adb**
 mechanism is easy and free, and underneath it sits a **signing key that does
 not exist yet**, so the first release-signed APK cannot update what is on that
 bike and the changeover costs a database. It gets more expensive every day the
-friend rides, which makes 30.1 the one item in this plan with a deadline).
+friend rides, which makes 30.1 the one item in this plan with a deadline), and
+**the leaderboard that never shows a rider their own last thirty minutes**
+(**24.5** — three separate rules each defeat the note on their own, and the
+first of them means a rider alone on a bike will never see a board at all,
+whatever they ride), and **whether signing in actually backed anything up**
+(**23.3.1a**, which had been parked on Phase 15 existing and now does, plus
+**23.3.1b** for the sentence that has become false and **23.3.1c** for the
+screen with no evidence on it — and the answer to the owner's literal question
+is *yes, deliberately*: a guest ride can never sync, so it really does live on
+that tablet and nowhere else).
 
 ---
 

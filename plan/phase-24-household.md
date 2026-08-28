@@ -1288,3 +1288,108 @@ item quotes it rather than quietly overruling it.
       ride with a single non-measured sample — including a `NULL` one, since a
       ride recorded before the column existed cannot be *shown* to be
       measurement. 7.10.7 and 16.1.6 are closed by the same change
+
+### 24.5 A rider alone sees no board at all — the owner's note, 28 August 2026
+
+***The owner's words, verbatim, under `Leaderboard`:*** *"I've done 3 rides
+(Simon on the Peloton bike) at 30 mins but I can't see my previous 30-min time
+on the leaderboard. This should be the case, even if the rides were on
+different classes"*
+
+**Three separate rules each defeat this on their own, and that is the finding.**
+It would be easy to read the note as one missing feature; it is three, stacked,
+and any one of them alone is enough to show the owner nothing:
+
+1. **A household of one draws no card** — `ClassLeaderboard.isWorthShowing` is
+   `entries.size >= 2` (24.1.6). The owner rides that bike alone. **He will
+   never see a leaderboard on it, whatever he rides and however often.** The
+   twenty-eighth sitting observed exactly this and recorded it as the rule
+   working: *"no leaderboard card beside it, because only one rider has ridden
+   that class"*. It was right about the mechanism and wrong about the
+   consequence, which is that the bike with the most riding on it is the bike
+   with no board.
+2. **One row per rider, not per ride** — `householdLeaderboard` is
+   `MAX(total_output_kj) … GROUP BY p.local_user_id` (24.1.1), on the argument
+   that *"a board listing somebody's six attempts is a personal history, not a
+   comparison"*. So even in a household of four, a rider's **previous** ride is
+   not on the board. The owner is asking for precisely the thing that sentence
+   rules out.
+3. **Keyed on `class_id`** — `WHERE w.class_id = :classId`. Two 30-minute
+   classes are two different boards, and the note says plainly that they should
+   not be.
+
+**What the owner is actually asking for is not this board.** It is *"how did
+this ride compare with the last time I did thirty minutes"* — a question about
+one rider over time, which the household board is constitutionally unable to
+answer because every one of its three shaping rules is about comparing
+**people**. Bolting a duration mode onto it would mean undoing 24.1.1 and
+24.1.6 for everybody, and 24.1.6 in particular is a rule worth keeping: a
+single row with a rosette on it is not a comparison.
+
+**And there is a real objection to comparing by duration that the note does not
+address**, which has to be written down here rather than discovered on the
+screen. Total output over two different 30-minute classes mostly measures
+**which class it was**: a 30-minute recovery ride and a 30-minute Sprints class
+are both thirty minutes and are not the same effort. 16.3.3 rejected exactly
+this framing when it chose mean-maximal power — *"Not 'best total output for a
+45-minute ride' — that is the leaderboard's question and it mostly measures how
+long the class was"* — and 27.2.1 says the same from the other side: *"X should
+usually be a class, because a class is the only thing in this app that makes two
+rides genuinely comparable"*. 23.2's own library note is the third voice: *"two
+classes of the same length are not the same class"*.
+
+**The objection does not kill the note, it shapes it.** The owner is not wrong
+that he wants to see his thirty-minute rides beside each other; what he is owed
+alongside them is enough to tell a recovery spin from a race. So the answer is
+a board of his **own rides**, grouped by length, showing what makes them
+comparable and what makes them not.
+
+- [ ] **24.5.1** **Your own previous rides of *this* class, on the ride summary
+      and on class detail.** The cheapest and least arguable half, and it is
+      strictly like-for-like: same intervals, same prescription, same length, so
+      27.2.1's rule is satisfied rather than bent. It is a different card from
+      the household board and must not be folded into it — the household board
+      compares people and this compares occasions, and 24.1.1's *"per rider and
+      not per ride"* stays true of the thing it was written about. **A rider
+      with one ride of the class sees nothing**, the same rule as 24.1.6 and for
+      the same reason
+- [ ] **24.5.2** **Then by length, across classes — the note's actual ask.**
+      Every completed ride of the same nominal duration, the rider's own,
+      best first. No schema change: `class_templates.duration_sec` is the
+      class's length and `workouts.class_id` points at it, so the bucket comes
+      off the **class** rather than off `workouts.duration_sec`, which is how
+      long the rider happened to pedal. The distinction is load-bearing — a
+      30-minute class the rider stopped at 26 minutes belongs in the
+      thirty-minute bucket and would otherwise land in one it did not earn.
+      **Buckets, not exact seconds**: a 1795-second class and an 1800-second one
+      are the same thirty minutes to a rider and different integers to SQL. A
+      free ride has no `class_id` at all and therefore no bucket, which is
+      correct — it had no prescribed length to be measured against
+- [ ] **24.5.3** **Every row says which class it was, and that is what makes
+      24.5.2 honest rather than misleading.** The objection above is real and
+      the answer is not to hide it: a row reading *`Sprints · 246 kJ`* beside
+      *`Recovery · 148 kJ`* is a comparison the rider can actually make, and one
+      reading `246 kJ` over `148 kJ` is a scoreboard that says the recovery ride
+      was a bad ride. This is the same argument 24.1.3 made for showing kJ and
+      kJ/kg together when they disagree: **show the second number rather than
+      picking a winner**
+- [ ] **24.5.4** **The measured-power rule applies unchanged** —
+      `w.power_provenance = 'Measured'` (24.4.2). A simulated ride's watts are
+      `PowerModel`'s output at RMSE 137 W, and ranking one against a real ride
+      is as wrong for one rider over time as it is between two riders. The
+      consequence to expect on the AVD: **this draws nothing there** until the
+      column is set by hand, exactly like the household board
+- [ ] **24.5.5** **What this does not become: a personal-best feature.** 16.3.3
+      already owns *"the rider's best twenty minutes"* and it is a stronger claim
+      than anything here — mean-maximal power is comparable across every ride
+      ever done, where a 30-minute bucket is comparable across the ones that
+      happened to be thirty minutes. These two must not grow into each other:
+      this is *your last few thirty-minutes*, on the screen where a rider has
+      just finished one
+- [ ] **24.5.6** **A question for the owner, and it is the one 24.5.3 cannot
+      settle alone: should a ride the rider did not finish be on this board?**
+      An abandoned 30-minute class is a real occasion and a bad comparison. The
+      instinct here is to exclude it — `is_complete = 1` already does, since an
+      abandoned ride is discarded rather than kept — but if 8.3d's recovery path
+      ever keeps a short ride as a short ride, this board is one of the places
+      it would appear unlabelled

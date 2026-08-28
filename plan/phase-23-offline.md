@@ -220,6 +220,85 @@ no cloud dependency**, which is the good news in this phase.
       in still has everybody else's rides in one place only. The likely answer
       is that the reminder counts *unsynced* rides rather than all of them, and
       it belongs to whoever builds 15
+
+      ***It has stopped being a question and become a report.*** *The owner, 28
+      August 2026, under `Login`, verbatim:* **"I managed to log in, but I'm not
+      sure if the classes are actually backed up online. Instead i received a
+      notice on the dashboard asking me to back up. But i'm not sure if that's
+      because there were some old guest rides. Is Simon being asked to back up
+      Guest rides?"**
+
+      *Phase 15 is built, so the condition this item was parked on is met. Three
+      things are true of what the owner saw and they should be separated,
+      because only one of them is a defect:*
+
+      - ***The direct answer to the direct question is yes, and it is
+        deliberate.*** `WorkoutDao.observeCompletedSince` *is*
+        `SELECT COUNT(*) FROM workouts WHERE is_complete = 1 AND timestamp > ?`
+        *— no join to* `profiles`*, no account, no* `synced_at`*. A guest ride
+        has no profile and can never sync (rule 1 of the connectivity model), so
+        it genuinely does live on that tablet and nowhere else, and it is
+        genuinely in the backup file. Counting it is the reminder being right.
+        What is missing is that nothing on the screen says so, which is why the
+        owner had to ask.*
+      - ***The sentence is now false, which is 23.3.1b below.***
+      - ***And the real question underneath — "are my rides actually up there?"
+        — is answered on a screen the owner did not open.*** `FromYourAccount`
+        *on the account screen asks the cloud for its own count (15.3.2) and*
+        `ridesWaiting` *says how many are still climbing. The dashboard says
+        neither. The rider who most needs that sentence is the one who has just
+        signed in for the first time and is looking for evidence it worked;
+        23.3.1c is that.*
+- [ ] **23.3.1b** **The reminder's sentence is false for a signed-in rider, and
+      it is the exact sentence 23.3.2 already fixed one screen along.**
+      `BackupReminder.message` says *"They live on this tablet and nowhere
+      else."* — unconditionally, because the object knows a count and a flag and
+      nothing about accounts. For a rider whose rides have gone up, that is not
+      a nag, it is a **wrong claim about where their data is**, and it is the
+      worst kind to be wrong about: it is the sentence a rider reads *instead
+      of* checking. 15.2.8 met this same shape on the Settings card and the note
+      it left is the precedent — *"the old copy said 'Backed up to your account'
+      here, which is a claim the app cannot support"* — and 23.3.2's own tick
+      records the wording being repaired for a signed-in rider **on that screen
+      only**.
+
+      **The fix is not to hide the card.** A signed-in rider still wants the
+      backup file: it carries the housemates, the guest rides, the profile
+      photos and the class library, and cloud backup carries one profile's
+      rides. So the card stays and the sentence changes — it should say what is
+      unprotected rather than claim everything is. Which makes this and
+      23.3.1a one change rather than two: **the count that drives the sentence
+      has to know which rides are already up**, and once it does, the sentence
+      writes itself.
+
+      Three things to get right when it is picked up:
+      - **The threshold still counts rides, not days** (23.3.1's first rule),
+        and the mark is still device-wide. What changes is *which* rides are
+        counted, not the shape of the reminder
+      - **A guest ride is always unprotected**, whoever is signed in, because it
+        can never sync. It is the clearest case for the card continuing to exist
+        on a fully signed-in bike
+      - **`synced_at` is not a promise the row keeps forever.** 2.5a.5's
+        distance pass clears it on every row it touches, and a restore does not
+        set it — so a count of unsynced rides can jump for reasons that have
+        nothing to do with the rider. That is honest (those rides *are* waiting)
+        but it means the sentence must never say *"since your last backup"* about
+        a number that did not come from the backup mark
+- [ ] **23.3.1c** **The dashboard never says the cloud is working, and that is
+      what the owner's note is really about.** *"I'm not sure if the classes are
+      actually backed up online"* is a rider looking for evidence and finding
+      none on the screen he was on. The evidence exists — `RestoreState` carries
+      the cloud's **own** count of what it holds, not this tablet's memory of
+      what it posted — but it is on the account screen, which is two taps away
+      and which a rider has no reason to revisit after signing in.
+
+      **This is not a licence to add a fourth card to the dashboard.** 26.1's
+      rule is *less is more*, and 15.8.5 already worked hard to make sure the
+      account offer and the backup reminder cannot both appear. The likely shape
+      is that the **existing** reminder card carries it — a card that says *"3
+      rides are on this tablet only"* on a signed-in bike is simultaneously the
+      nag and the evidence, because the rider can read from it that the others
+      are not
 - [x] **23.3.2** The Backup section says it: *copy it somewhere safe and it can
       be restored onto any tablet running Pelonot*. Reworded for a signed-in
       rider too, where "your rides live on this tablet and nowhere else" had
