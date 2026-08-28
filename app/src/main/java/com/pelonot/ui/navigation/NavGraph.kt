@@ -48,6 +48,7 @@ import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.ui.screen.UpdateOfferDialog
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.core.Features
 import com.pelonot.data.repository.UpdateInstallState
 import com.pelonot.domain.social.ClassRival
@@ -92,6 +93,8 @@ fun PelonotNavGraph(
     /** Put back the FTP an auto change replaced (7.10.4). */
     onRevertFtpChange: (Int) -> Unit = {},
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
+    onLoadRidesOfThisLength: suspend (classDurationSec: Int, youId: Int?) -> RidesOfThisLength =
+        { _, _ -> RidesOfThisLength(0) },
     onLoadLeaderboard: suspend (classId: String, youId: Int?) -> ClassLeaderboard =
         { classId, _ -> ClassLeaderboard(classId) },
     /** Rides of this class that can be raced live (24.3.3). Always a Room read. */
@@ -400,6 +403,14 @@ fun PelonotNavGraph(
                 value = classId?.let { onLoadLeaderboard(it, youId) }
             }
 
+            // 24.5, read the same way. Keyed on the class's **length** rather
+            // than its id, which is the whole of the owner's note: two
+            // thirty-minute classes belong on one board.
+            val lengthSec = plan?.durationSec
+            val ridesOfThisLength by produceState<RidesOfThisLength?>(null, lengthSec, youId) {
+                value = lengthSec?.let { onLoadRidesOfThisLength(it, youId) }
+            }
+
             // 24.3.3, read the same way and for the same reason — and off by
             // default since 24.3.11. The live leaderboard needs nothing chosen
             // here: it is everybody who qualifies, assembled when the ride
@@ -430,6 +441,7 @@ fun PelonotNavGraph(
                     showIntentPrompt = true
                 },
                 leaderboard = leaderboard,
+                ridesOfThisLength = ridesOfThisLength,
                 rivals = rivals,
                 selectedRivalId = selectedRivalId,
                 onPickRival = { selectedRivalId = it }

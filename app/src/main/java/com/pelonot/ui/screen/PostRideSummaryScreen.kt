@@ -47,7 +47,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.core.Formatters
 import com.pelonot.data.local.entity.UserEntity
+import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.RidesOfThisLengthCard
 import com.pelonot.ui.components.EffortQuestion
 import com.pelonot.ui.components.RideChartsSection
 import com.pelonot.ui.components.RideFigures
@@ -217,9 +220,32 @@ fun PostRideSummaryScreen(
                     // here would leave the RPE card at half width beside an
                     // empty half of screen.
                     val board = state.leaderboard?.takeIf { it.isWorthShowing }
-                    val sideBySide = maxWidth >= SIDE_BY_SIDE_BREAKPOINT && board != null
+                    val yourLength = state.ridesOfThisLength?.takeIf { it.isWorthShowing }
+
+                    // 24.5, and it is what the comment above was complaining
+                    // about. The household board is the rarer card by a long
+                    // way — it needs two riders on one bike who have ridden the
+                    // same class — so "most nights this is the RPE card and
+                    // half a screen of air" describes the owner's bike every
+                    // night. The rider's own rides of this length fill that
+                    // slot when there is no board to put in it, which is
+                    // exactly the bike the note was written from. When both
+                    // exist the household one takes the slot and this goes
+                    // below: a comparison with somebody else is the thing the
+                    // rider has not already seen.
+                    val beside = board ?: yourLength
+                    val below = yourLength.takeIf { board != null }
+                    val sideBySide = maxWidth >= SIDE_BY_SIDE_BREAKPOINT && beside != null
 
                     if (sideBySide) {
+                      // A column around the row, because `below` is a third
+                      // card and a `BoxWithConstraints` stacks its children
+                      // rather than laying them out.
+                      Column(
+                        verticalArrangement = Arrangement.spacedBy(
+                            MaterialTheme.spacing.medium
+                        )
+                      ) {
                         Row(
                             // 24.1.8. Two cards of different heights beside
                             // each other read as a mistake rather than as a
@@ -240,10 +266,20 @@ fun PostRideSummaryScreen(
                                 isTonight = true,
                                 suggested = state.suggestedEffort
                             )
-                            board?.let {
-                                ClassLeaderboardCard(it, Modifier.weight(1f).fillMaxHeight())
+                            when (beside) {
+                                is ClassLeaderboard -> ClassLeaderboardCard(
+                                    beside,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
+                                is RidesOfThisLength -> RidesOfThisLengthCard(
+                                    beside,
+                                    Modifier.weight(1f).fillMaxHeight()
+                                )
+                                else -> Unit
                             }
                         }
+                        below?.let { RidesOfThisLengthCard(it, Modifier.loneCard()) }
+                      }
                     } else {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(
@@ -259,9 +295,13 @@ fun PostRideSummaryScreen(
                                 isTonight = true,
                                 suggested = state.suggestedEffort
                             )
-                            board?.let { ClassLeaderboardCard(it, Modifier.fillMaxWidth()) }
+                            board?.let { ClassLeaderboardCard(it, Modifier.loneCard()) }
+                            yourLength?.let {
+                                RidesOfThisLengthCard(it, Modifier.loneCard())
+                            }
                         }
                     }
+
                 }
 
                 // 12.7.3. Above the charts, and below the effort question by

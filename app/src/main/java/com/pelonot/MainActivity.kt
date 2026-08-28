@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                             onDismissAccountOffer = viewModel::dismissAccountOffer,
                             onRevertFtpChange = viewModel::revertFtpChange,
                             onLoadLeaderboard = viewModel::householdLeaderboard,
+                            onLoadRidesOfThisLength = viewModel::ridesOfThisLength,
                             onLoadRivals = viewModel::classRivals,
                             updateInstallState = updateInstallState,
                             onInstallUpdate = viewModel::installUpdate,

@@ -40,6 +40,7 @@ import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.model.RideInterruption
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -557,6 +558,21 @@ class AppViewModel(
      * with no account, or no wifi, gets the household board and no delay worth
      * noticing — `SyncOutcome.Disabled` returns without a request.
      */
+    /**
+     * The rider's own rides of one length (24.5).
+     *
+     * Read here rather than held on [AppUiState] for [householdLeaderboard]'s
+     * reason: it belongs to the class on screen, not to the app. **No cloud
+     * half**, unlike the board above — these are the rider's own rides and the
+     * tablet has all of them it is going to have; a second bike's copy of the
+     * same ride would put the same occasion on the board twice.
+     */
+    suspend fun ridesOfThisLength(classDurationSec: Int, youId: Int?): RidesOfThisLength =
+        workoutRepository.ridesOfThisLength(
+            userId = youId,
+            classDurationSec = classDurationSec
+        )
+
     suspend fun householdLeaderboard(classId: String, youId: Int?): ClassLeaderboard =
         workoutRepository.classLeaderboard(
             classId = classId,

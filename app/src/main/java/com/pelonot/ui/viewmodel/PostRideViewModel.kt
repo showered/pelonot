@@ -16,6 +16,7 @@ import com.pelonot.data.worker.WorkoutSyncWorker
 import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.chart.RideCharts
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PerceivedEffort
 import com.pelonot.domain.progress.SuggestedEffort
@@ -54,6 +55,8 @@ data class PostRideUiState(
      * can have ridden.
      */
     val leaderboard: ClassLeaderboard? = null,
+    /** The rider's own rides of this length, best first (24.5). */
+    val ridesOfThisLength: RidesOfThisLength? = null,
     /**
      * The ride's own time series, reduced to what can be drawn (12.6.1).
      *
@@ -213,6 +216,19 @@ class PostRideViewModel(
 
             val plan = workout?.classId?.let { id -> classRepository.getPlan(id) }
 
+            // 24.5. Keyed on the **class's** length rather than on how long
+            // this ride ran, so a class stopped early is still filed under the
+            // length it prescribed. A free ride has no plan and no length, and
+            // gets no card — which is right: there was no prescription to
+            // compare occasions of.
+            val ridesOfThisLength = plan?.let { p ->
+                workoutRepository.ridesOfThisLength(
+                    userId = workout?.userId,
+                    classDurationSec = p.durationSec,
+                    thisRideId = workout?.id
+                )
+            }
+
             // 12.6.1. The same reduction ride detail does, off the main thread
             // for the same reason (16.2.3): a 45-minute ride is a few thousand
             // samples and this screen appears the moment a rider stops
@@ -236,6 +252,7 @@ class PostRideViewModel(
                     proposedFtp = proposed,
                     ftpReduction = reduction,
                     leaderboard = leaderboard,
+                    ridesOfThisLength = ridesOfThisLength,
                     charts = charts,
                     canResume = workout != null &&
                         workoutRepository.interruptionFor(workout.id)?.isResumable == true,

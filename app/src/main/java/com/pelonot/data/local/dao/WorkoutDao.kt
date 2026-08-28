@@ -52,6 +52,15 @@ data class ClassLeaderboardRow(
     val authUserId: String?
 )
 
+/** One of the rider's own rides of a given length — see [WorkoutDao.ridesOfLength]. */
+data class RideOfLengthRow(
+    val workoutId: String,
+    val classId: String,
+    val classTitle: String,
+    val recordedAt: Long,
+    val outputKj: Double
+)
+
 /** A housemate's ride of the same class, ready to draw behind yours (24.3.1). */
 /** A ride whose power came off the board, for the personal-best scan (16.3.3). */
 data class MeasuredRideRow(
@@ -536,6 +545,56 @@ interface WorkoutDao {
         """
     )
     suspend fun householdLeaderboard(classId: String): List<ClassLeaderboardRow>
+
+    /**
+     * The rider's **own** rides of one length, across classes (24.5).
+     *
+     * The owner's note asked for their previous thirty minutes and could not
+     * find it, because [householdLeaderboard] answers a different question in
+     * three different ways — a household of one draws nothing, it keeps one row
+     * per rider rather than per ride, and it is keyed on a class id. This is one
+     * row **per ride** and keyed on a length, which is why it is a second query
+     * rather than a parameter on that one.
+     *
+     * **The length comes off `class_templates`, never off `workouts`.** A
+     * 30-minute class the rider stopped at 26 minutes is still thirty minutes
+     * of prescription, and grouping on how long somebody actually pedalled
+     * would file it under a length it never had. The join is also the filter
+     * that drops a free ride: it has no `class_id`, so it had no prescribed
+     * length to be measured against.
+     *
+     * **Exact seconds, not a window.** The bundled library authors five lengths
+     * — 900, 1200, 1800, 2700, 3600 — so "the same length" is a fact the
+     * library states rather than a tolerance to be guessed at, and a window
+     * wide enough to be useful is wide enough to put a 20-minute class in a
+     * rider's half-hours.
+     *
+     * The measured-power rule (24.4.2) and the guest exclusion (24.1.4, here by
+     * `user_id`) are the same as every other board's, deliberately: a rider
+     * comparing themselves across occasions is owed exactly what a rider
+     * comparing themselves against a housemate is owed.
+     *
+     * Ranking is left to [com.pelonot.domain.model.RidesOfThisLength] and only
+     * the tie-break is done here, so two rides on identical output come back in
+     * a stable order rather than whichever SQLite reached first.
+     */
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.class_id AS classId,
+               c.title AS classTitle,
+               w.timestamp AS recordedAt,
+               w.total_output_kj AS outputKj
+        FROM workouts w
+        JOIN class_templates c ON c.id = w.class_id
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.power_provenance = 'Measured'
+          AND c.duration_sec = :classDurationSec
+        ORDER BY w.total_output_kj DESC, w.timestamp DESC
+        """
+    )
+    suspend fun ridesOfLength(userId: Int, classDurationSec: Int): List<RideOfLengthRow>
 
     /**
      * The same riders and the same rules, but carrying the **ride** rather than

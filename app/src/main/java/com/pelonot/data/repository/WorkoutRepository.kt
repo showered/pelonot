@@ -20,6 +20,7 @@ import com.pelonot.domain.chart.RideDistributions
 import com.pelonot.domain.chart.TimeInZone
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RoadSpeed
 import com.pelonot.domain.model.PowerZone
@@ -520,6 +521,42 @@ class WorkoutRepository(
         youId = youId,
         yourAccountId = yourAccountId
     )
+
+    /**
+     * The rider's own rides of one length, best first (24.5).
+     *
+     * The length is the **class's**, so the caller passes the class it is
+     * asking about rather than a number: a screen that had to look the duration
+     * up first would be a second place for the rule in
+     * [WorkoutDao.ridesOfLength] to be got wrong.
+     *
+     * Empty is an ordinary answer and never an error — a rider who has not
+     * ridden this length before, or whose rides of it were simulated. The card
+     * draws nothing for it (`isWorthShowing`).
+     */
+    suspend fun ridesOfThisLength(
+        userId: Int?,
+        classDurationSec: Int,
+        thisRideId: String? = null
+    ): RidesOfThisLength {
+        // A guest has no rider to file rides against, so there is no history to
+        // show them — the same exclusion 24.1.4 makes on the household board,
+        // and for the same reason rather than by the same mechanism.
+        if (userId == null) return RidesOfThisLength(classDurationSec)
+        return RidesOfThisLength.of(
+            classDurationSec = classDurationSec,
+            rides = workoutDao.ridesOfLength(userId, classDurationSec).map { row ->
+                RidesOfThisLength.Ride(
+                    workoutId = row.workoutId,
+                    classId = row.classId,
+                    classTitle = row.classTitle,
+                    recordedAt = row.recordedAt,
+                    outputKj = row.outputKj
+                )
+            },
+            thisRideId = thisRideId
+        )
+    }
 
     private suspend fun householdStandings(classId: String) =
         workoutDao.householdLeaderboard(classId).map { row ->

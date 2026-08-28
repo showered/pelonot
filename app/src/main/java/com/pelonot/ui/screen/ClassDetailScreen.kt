@@ -60,7 +60,9 @@ import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.targetPowerRange
 import com.pelonot.domain.social.ClassRival
+import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.RidesOfThisLengthCard
 import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.PositionChip
 import com.pelonot.ui.theme.WideGrid
@@ -93,6 +95,8 @@ fun ClassDetailScreen(
      * read, and drawn as nothing when there is nothing worth drawing.
      */
     leaderboard: ClassLeaderboard? = null,
+    /** The rider's own rides of this length, across classes (24.5). */
+    ridesOfThisLength: RidesOfThisLength? = null,
     /**
      * Rides of this class that can be raced live (24.3.3). Empty is the
      * ordinary answer and draws nothing at all.
@@ -304,7 +308,13 @@ fun ClassDetailScreen(
                 // must not lose a third of the panel on a night nobody has
                 // ridden this — which is why the whole column is absent when
                 // there is nothing on it (24.1.6's rule, one level up).
-                val showPeople = leaderboard?.isWorthShowing == true || rivals.isNotEmpty()
+                // 24.5 joins the same column, and it is the reason the column
+                // now appears at all on a bike with one rider: the board needs
+                // two people and this needs two rides.
+                val yourLength = ridesOfThisLength?.takeIf { it.isWorthShowing }
+                val showPeople = leaderboard?.isWorthShowing == true ||
+                    rivals.isNotEmpty() ||
+                    yourLength != null
                 if (showPeople) {
                     Column(
                         modifier = Modifier
@@ -320,6 +330,14 @@ fun ClassDetailScreen(
                     ) {
                         leaderboard?.let {
                             ClassLeaderboardCard(leaderboard = it, modifier = Modifier.fillMaxWidth())
+                        }
+
+                        // Under the household board when there is one: a
+                        // housemate's number is the thing the rider has not
+                        // already lived through, and their own history is the
+                        // thing they have.
+                        yourLength?.let {
+                            RidesOfThisLengthCard(board = it, modifier = Modifier.fillMaxWidth())
                         }
 
                         // 24.3.3. Under the board, because the board is what
