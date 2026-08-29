@@ -1267,7 +1267,7 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       own power chart afterwards drew the standing section as a jagged band and
       the seated section as a smooth line, which is 11.6.20c holding where it
       can be seen rather than asserted.*
-- [ ] **11.6.20d Whether the overlay smooths too: yes, and it is free.** Both
+- [x] **11.6.20d Whether the overlay smooths too: yes, and it is free.** Both
       surfaces render from `displayReading`, so this lands on the strip in the
       same commit without a second decision — which is the whole reason 11.6.7
       was put on the repository rather than in a ViewModel.
@@ -1279,11 +1279,35 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       **That is no longer true** — `appops get com.pelonot
       SYSTEM_ALERT_WINDOW` says `allow`, and the seventy-third sitting drove
       the overlay over the launcher for half an hour while measuring 8.16.2.
-      So this is now a five-minute check on the emulator rather than a line on
-      22.2.5's trip: raise the strip over a simulated ride and read its watts
-      against `workout_metrics`, which records the **raw** reading — the
-      smoothing is display-only, so the two disagreeing in the right direction
-      is the whole observation.*
+      So this became a five-minute check on the emulator rather than a line on
+      22.2.5's trip, and the seventy-third sitting made it.*
+
+      **Observed, and it is the arithmetic that makes it evidence rather than
+      the screenshot.** The strip was raised over a simulated ride on the
+      launcher and captured with its own clock in frame, so each frame maps to
+      a ride second exactly; `workout_metrics` holds the **raw** reading for
+      those same seconds, because nothing recorded goes through
+      `displayReading`. Three of them:
+
+      | Ride second | On the strip | Recorded raw | 3 s trailing mean of the raw |
+      |---|---|---|---|
+      | 47 | 206 W | 229.1 W | 209.5 W |
+      | 49 | 223 W | 219.1 W | 226.5 W |
+      | 52 | 256 W | 260.1 W | 260.7 W |
+
+      The mean column is the three recorded seconds ending at that one — for
+      row 49, `mean(229.1, 231.2, 219.1)`.
+
+      **The strip equals the raw at none of the three and lands within a few
+      watts of `PowerSmoother`'s three-second trailing mean at all three**,
+      which is the observation: the smoothing really is on the overlay, and it
+      is the same smoother, since `displayReading` is shared eagerly and there
+      is one instance of it. A one-second timing slip between screenshot and
+      row cannot explain it — at second 49 the raws either side are 231.2 and
+      257.7 and the strip said 223, which is no second's value at all. The few
+      watts of residual are the samples the board sends *between* the
+      recorder's once-a-second tick, which the mean includes and the table
+      cannot show.
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 

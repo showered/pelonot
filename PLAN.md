@@ -304,12 +304,25 @@ an opacity drag mid-ride that is one per frame. Now mapped and made distinct,
 raising at the right dock and opacity afterwards, since that collector is the
 sole writer of both fields.
 
-**A free confirmation came off the same afternoon: the AVD has been granted
-`SYSTEM_ALERT_WINDOW`.** Everything above needed the overlay up over the
-launcher, and `appops get` says the permission has been there for fifteen
-hours. **11.6.20d has been waiting on exactly that** — the smoothed
-`displayReading` on the strip, unseen because nobody could raise it here — and
-it is now a look rather than a trip.
+**A free item came off the same afternoon, and it is the better story.**
+Everything above needed the overlay up over the launcher, and `appops get`
+says `SYSTEM_ALERT_WINDOW` has been granted on this AVD for fifteen hours.
+**11.6.20d had been waiting on exactly that** — the smoothed `displayReading`
+on the strip, structurally certain and never once seen, because the strip could
+not be raised here and granting the permission is the rider's to do. So it was
+closed the same afternoon rather than carried to the bike: the strip captured
+with its own clock in frame, and its watts read against the **raw** figures
+`workout_metrics` holds for those same ride seconds. **206, 223 and 256 W on
+screen against 229.1, 219.1 and 260.1 recorded**, and 209.5, 226.5 and 260.7
+for `PowerSmoother`'s three-second trailing mean — equal to the raw at none of
+the three and within a few watts of the mean at all three. A one-second timing
+slip cannot explain it: at second 49 the neighbouring raws are 231.2 and 257.7
+and the strip said 223, which is no second's value at all.
+
+**What that is really an example of is an expired blocker nobody went back to
+check.** The item said what stood in its way and the way had cleared; the
+seventy-third sitting only found out because it wanted the overlay for
+something else. 19.1.7a was the same shape three sittings ago.
 
 **And four rows of the box-count table had drifted, with Phase 30 missing from
 it entirely.** Counted across every phase file rather than the one being
@@ -436,12 +449,15 @@ code. **27.2.4 is the one that is a job** — the record a rider does not know
 they are near, knowable at class-selection time, and it belongs behind 24.3.3's
 explicit choice to race rather than on every class card.
 
-**8.16.2 and 8.16.3 are done, and what they leave behind is one look rather
-than a job.** **11.6.20d** — the smoothed `displayReading` on the overlay,
-never seen because nobody could raise the strip on this AVD — is unblocked:
-`SYSTEM_ALERT_WINDOW` has been granted here, and this sitting drove the
-overlay over the launcher for half an hour on the strength of it. It is now a
-five-minute check on the emulator instead of a line on 22.2.5's trip.
+**8.16.2, 8.16.3 and 11.6.20d are done, and the third of those was a free
+consequence of the first two.** The overlay had to be raised over the launcher
+for half an hour to measure 8.16.2, which is when `SYSTEM_ALERT_WINDOW` turned
+out to have been granted on this AVD — and 11.6.20d had been waiting years of
+sittings for exactly that, unable to confirm the smoothing was on the strip
+because the strip could not be raised here. It was then read off the screen
+against `workout_metrics` and closed the same afternoon. **The lesson is about
+where blocked items are hiding rather than about smoothing**: an item's stated
+blocker had quietly expired, and nothing goes back to check.
 
 **And the method is the part worth carrying, not the fix.** Both of 8.16.2's
 own guesses were wrong, in opposite directions, and the code read exactly the
@@ -519,7 +535,9 @@ change.** **11.6.20d** is the overlay: it renders from `displayReading`, so the
 smoothing is already on it and what is missing is somebody having seen it —
 **not on this AVD**, which has never been granted `SYSTEM_ALERT_WINDOW`, and
 granting it is the rider's to do (CLAUDE.md). One look on the bike closes it.
-**2.5a.6** is whether a distance still wants two decimals now that it means
+*(Closed in the seventy-third sitting, on the AVD rather than the bike: the
+permission had been granted here since, and the strip's watts were read against
+`workout_metrics` for the same ride seconds.)* **2.5a.6** is whether a distance still wants two decimals now that it means
 something: a hundredth of a kilometre is ten metres of a road that does not
 exist, and the argument against one decimal is the *live* tile, which would then
 sit at `0.0` for the first minute of every ride.
@@ -759,7 +777,7 @@ warned about itself in a parenthesis for two sittings.
 | 7 | 31 of 36 | 13 | 8 of 8 | 23 | 37 of 44 |
 | 8 | **42 of 60** | 14 | 34 of 44 | 24 | 55 of 59 |
 | 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |
-| 11 | **67 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
+| 11 | **68 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
 | | | 17/18 | 31 of 44 | 27 | **20 of 24** |
 | | | 19 | 12 of 23 | 28 | 0 of 24 |
 | | | 20 | 43 of 62 | 29 | 0 of 12 |
