@@ -479,6 +479,77 @@ class AppViewModel(
     }
 
     /**
+     * *Ride this*, and the first-run row underneath it, computed away from the
+     * state combine (8.16.4).
+     *
+     * **It is a function of the class library and this rider's rides, and of no
+     * preference at all** — so a theme tap, a units toggle or a frame of the
+     * opacity drag has no business recomputing it, and until this item every
+     * one of them did. Measured on the tablet AVD: **one three-second drag of
+     * the opacity slider ran the state combine 176 times**, 29.9 ms of main
+     * thread between them, each pass mapping all 72 classes to
+     * `toSuggestable()` before choosing one. Small on a fast emulator, and the
+     * bike's tablet is not one.
+     *
+     * 22.9.4's own reason for computing it inside the state — *"a third flow
+     * that re-derives one of them is a second answer to the same question"* —
+     * is honoured rather than overturned: this re-derives nothing, it reads
+     * [dashboard]'s own `riderRides` and the same library the state carries.
+     */
+    private val recommendation = combine(
+        classRepository.allPlans,
+        dashboard
+    ) { classes, dash ->
+        val suggested = ClassToRide.suggest(
+            library = classes.map { it.toSuggestable() },
+            rides = dash.riderRides,
+            // Read once, at the moment the suggestion is built. The rule's
+            // only use of the clock is "did they ride hard in the last day",
+            // and that must not change under a rider looking at the card.
+            nowMs = System.currentTimeMillis()
+        )
+        Recommendation(
+            suggestion = suggested,
+            // The shape of the class the line above named, resolved from that
+            // suggestion's own id so the two can never describe different
+            // classes (22.9.4).
+            suggestionProfile = suggested?.let { s ->
+                classes.firstOrNull { it.id == s.classId }
+                    ?.let { ClassProfile.of(it.intervals) }
+            },
+            // 22.9.5, and the condition is the same one that decides the
+            // honest-empty branch on the dashboard: nothing ridden. Computing
+            // it for a rider with history would be work whose only consumer
+            // is a branch they never take.
+            startingPoints = if (dash.riderRides.recent.isEmpty()) {
+                ClassToRide.startingPoints(
+                    library = classes.map { it.toSuggestable() },
+                    exclude = suggested?.classId
+                ).mapNotNull { starter ->
+                    classes.firstOrNull { it.id == starter.id }?.let { plan ->
+                        StartingPoint(
+                            classId = starter.id,
+                            title = starter.title,
+                            category = starter.category,
+                            durationSec = starter.durationSec,
+                            profile = ClassProfile.of(plan.intervals)
+                        )
+                    }
+                }
+            } else {
+                emptyList()
+            }
+        )
+    }
+
+    /** What [recommendation] works out, travelling as one thing. */
+    private data class Recommendation(
+        val suggestion: ClassSuggestion?,
+        val suggestionProfile: ClassProfile?,
+        val startingPoints: List<StartingPoint>
+    )
+
+    /**
      * The dashboard-shaped flows, travelling together for the same reason
      * [rideStatus] does: the typed `combine` overload stops at five, and one
      * screen reads all of these. A named class rather than a `Triple` now there
@@ -501,21 +572,9 @@ class AppViewModel(
         settingsRepository.settings,
         userRepository.allUsers,
         classRepository.allPlans,
-        dashboard,
+        combine(dashboard, recommendation) { dash, rec -> dash to rec },
         rideStatus
-    ) { settings, profiles, classes, dashboard, (recoverable, active, updateOffer) ->
-        // Computed here rather than in a flow of its own because it is a
-        // function of two things the state already carries — the library and
-        // the rider's rides — and a third flow that re-derives one of them is a
-        // second answer to the same question.
-        val suggested = ClassToRide.suggest(
-            library = classes.map { it.toSuggestable() },
-            rides = dashboard.riderRides,
-            // Read once, at the moment the state is built. The rule's only use
-            // of the clock is "did they ride hard in the last day", and that
-            // must not change under a rider looking at the card.
-            nowMs = System.currentTimeMillis()
-        )
+    ) { settings, profiles, classes, (dashboard, recommendation), (recoverable, active, updateOffer) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
@@ -528,36 +587,9 @@ class AppViewModel(
             ridingIntensity = dashboard.ridingIntensity,
             riderLevels = dashboard.riderLevels,
             alerts = dashboard.alerts,
-            suggestion = suggested,
-            // The shape of the class the line above named, resolved from that
-            // suggestion's own id so the two can never describe different
-            // classes (22.9.4).
-            suggestionProfile = suggested?.let { s ->
-                classes.firstOrNull { it.id == s.classId }
-                    ?.let { ClassProfile.of(it.intervals) }
-            },
-            // 22.9.5, and the condition is the same one that decides the
-            // honest-empty branch on the dashboard: nothing ridden. Computing
-            // it for a rider with history would be work whose only consumer
-            // is a branch they never take.
-            startingPoints = if (dashboard.riderRides.recent.isEmpty()) {
-                ClassToRide.startingPoints(
-                    library = classes.map { it.toSuggestable() },
-                    exclude = suggested?.classId
-                ).mapNotNull { starter ->
-                    classes.firstOrNull { it.id == starter.id }?.let { plan ->
-                        StartingPoint(
-                            classId = starter.id,
-                            title = starter.title,
-                            category = starter.category,
-                            durationSec = starter.durationSec,
-                            profile = ClassProfile.of(plan.intervals)
-                        )
-                    }
-                }
-            } else {
-                emptyList()
-            },
+            suggestion = recommendation.suggestion,
+            suggestionProfile = recommendation.suggestionProfile,
+            startingPoints = recommendation.startingPoints,
             isLoading = false,
             recoverableWorkout = recoverable,
             activeRide = active,

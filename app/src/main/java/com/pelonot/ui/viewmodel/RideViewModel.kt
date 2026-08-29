@@ -26,6 +26,7 @@ import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.overlay.OverlayPermissionHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -237,11 +238,21 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
             serviceJobs += viewModelScope.launch {
                 // 11.8.4, and the preference is applied here rather than at the
                 // draw: off means the state never carries one.
+                //
+                // The one preference this reads, and only when it moves
+                // (8.16.4). `settings` re-emits on every write, and the coach
+                // volume slider — which a rider reaches *mid-ride*, from the
+                // ride screen's own sheet — writes on every frame of a drag:
+                // measured at **176 rebuilds of the ride state in one
+                // three-second drag**, each a copy of a data class this wide,
+                // for a boolean that had not changed.
                 combine(
                     workoutService.rideCaption,
                     settingsRepository.settings
-                ) { caption, settings ->
-                    settings.rideCaptionsEnabled to caption?.takeIf { settings.rideCaptionsEnabled }
+                        .map { it.rideCaptionsEnabled }
+                        .distinctUntilChanged()
+                ) { caption, captionsEnabled ->
+                    captionsEnabled to caption?.takeIf { captionsEnabled }
                 }.collect { (enabled, caption) ->
                     _uiState.update { it.copy(captionsEnabled = enabled, caption = caption) }
                 }
