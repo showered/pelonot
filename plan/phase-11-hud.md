@@ -1272,11 +1272,18 @@ is **11.4**, and the cross-reference in 5.4 is stale.)*
       same commit without a second decision — which is the whole reason 11.6.7
       was put on the repository rather than in a ViewModel.
 
-      *Structurally true since the sixty-eighth sitting and **not observed**:
-      the tablet AVD has never been granted `SYSTEM_ALERT_WINDOW`, so the strip
-      cannot be raised on it without a session granting a permission that
-      CLAUDE.md says is the rider's to give. One look on the bike, where it is
-      already granted, closes this.*
+      *Structurally true since the sixty-eighth sitting and **not observed**.
+      The reason used to be that the tablet AVD had never been granted
+      `SYSTEM_ALERT_WINDOW`, so the strip could not be raised on it without a
+      session granting a permission CLAUDE.md says is the rider's to give.
+      **That is no longer true** — `appops get com.pelonot
+      SYSTEM_ALERT_WINDOW` says `allow`, and the seventy-third sitting drove
+      the overlay over the launcher for half an hour while measuring 8.16.2.
+      So this is now a five-minute check on the emulator rather than a line on
+      22.2.5's trip: raise the strip over a simulated ride and read its watts
+      against `workout_metrics`, which records the **raw** reading — the
+      smoothing is display-only, so the two disagreeing in the right direction
+      is the whole observation.*
 
 ### 11.7 One instruction at a time — what the rider is actually being asked to do
 

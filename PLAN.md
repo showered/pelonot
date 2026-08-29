@@ -253,7 +253,75 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
+### Latest session — 29 August 2026 (seventy-third sitting): the cheap follow-on was wrong in both directions, and only a probe could say which
+
+**8.16.2 was picked because it was the one item on *What to do next* that a
+session could finish**, and it came with a written warning about itself: *"the
+reasoning that said it would be nothing was wrong once already"*. It was wrong
+again, twice, in opposite directions — and the whole of this sitting is the
+difference between reading the code and putting a counter in it.
+
+**The item's own three fields cost nothing, and that is a measurement rather
+than a shrug.** The overlay writes
+`settings.map { it.unitSystem }.collectAsStateWithLifecycle(…)` inline in
+`setContent`, four times over with `coachVolume` and `hudOpacity` — a **new
+`Flow` object on every recomposition**, which by 8.16.1's own argument should
+restart a `DataStore` collection several times a second on the one surface in
+this app that has to stay smooth. It looked like the worst instance of the
+defect in the project. It is not an instance of it at all: a probe on the
+flow's `onStart` and a second on the root composable's body, over a live
+simulated ride with the strip raised and the numbers changing every second,
+recorded **zero flow restarts and zero root compositions in twenty seconds** —
+with the overlay screenshotted mid-count showing 81 rpm and 123 W, so the
+absence is Compose skipping the scope rather than a ride that had stopped.
+
+**The reader that does cost something is one the item does not name, and it
+costs a database read per frame of a slider drag (8.16.3).**
+`SettingsViewModel.cloudSync` combines the backlog, `settings` and the account
+session, and its transform asks `CloudAccess.isAllowedFor` and
+`UserRepository.getUser` a question apiece — both Room reads of the profile
+row. `settings` re-emits on every preference write, and **the overlay opacity
+slider writes on every frame**, on the one screen that slider lives on.
+Measured: **one three-second drag produced 178 transform runs and 178 reads of
+the profile row**; ten unrelated units toggles produced nine. After: **nought
+and nought**, with the slider watched moving 97% → 83% so the drag is known to
+have happened. So the item's second guess — *"nothing downstream of them is a
+database query"* — was wrong as well, by a reader it had not counted.
+
+**One of the four fields in the new key is read by nothing and is load-bearing
+anyway.** `cloudSyncEnabled` is the rider's own backup switch; `isAllowedFor`
+folds it in, so a key that stopped watching it would leave the card saying
+*backed up* after the rider switched backup off. That is the failure narrowing
+invites, and the reason is written on the field rather than in the plan, where
+the next person deleting an unused property will not be reading.
+
+**`coachStyle` and `hudDock`'s reader — the one the item *did* name — was
+firing on every write, and the cost is on the main thread.**
+`WorkoutService`'s settings collector applies four preferences and ends in
+`syncHudVisibility()`, which launches a coroutine on `Dispatchers.Main`. During
+an opacity drag mid-ride that is one per frame. Now mapped and made distinct,
+8.16.1's fix one layer down. The evidence that it still works is the overlay
+raising at the right dock and opacity afterwards, since that collector is the
+sole writer of both fields.
+
+**A free confirmation came off the same afternoon: the AVD has been granted
+`SYSTEM_ALERT_WINDOW`.** Everything above needed the overlay up over the
+launcher, and `appops get` says the permission has been there for fifteen
+hours. **11.6.20d has been waiting on exactly that** — the smoothed
+`displayReading` on the strip, unseen because nobody could raise it here — and
+it is now a look rather than a trip.
+
+**And four rows of the box-count table had drifted, with Phase 30 missing from
+it entirely.** Counted across every phase file rather than the one being
+edited. `tools/status-figures.sh` keeps `STATUS.md` honest and does not know
+this table exists, which is why it is the one set of figures on this page that
+goes quietly stale.
+
+**960 JVM tests, 0 failures**, unchanged — this sitting removed work rather
+than adding rules, and the 56-ride fixture was left byte-for-byte as found.
+
+
+### The sitting before — 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
 
 **Phase 27 is built, offline half and all**, at the owner's own weighting of
 *low priority* — which is why it was picked on merit rather than off the
@@ -353,165 +421,6 @@ records re-fire at their new values.
 **960 JVM tests, 0 failures**, up from 945.
 
 
-### The sitting before — 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
-
-**The inbox had two entries and both are written up**, which is the part that
-was urgent; one of them was then built, which is the part that was not.
-
-**`Leaderboard` became 24.5, and the write-up's finding is that the note is
-three faults rather than one.** The owner has done three thirty-minute rides
-and cannot see his previous time. It would be easy to read that as a missing
-duration filter; it is three rules stacked, and **any one of them alone shows
-him nothing**. `ClassLeaderboard.isWorthShowing` is `entries.size >= 2`, so a
-rider alone on a bike sees no board at all, whatever he rides and however often
-— the twenty-eighth sitting observed exactly this and recorded it as the rule
-working, which it was, but the consequence is that the bike with the most
-riding on it is the bike with no board. `householdLeaderboard` is one row per
-rider, so a rider's own previous ride is never on it by construction. And it is
-keyed on `class_id`. **The objection the note does not address is carried into
-the item rather than left to be met on the screen**: total output across two
-different thirty-minute classes mostly measures *which class it was*, which is
-what 16.3.3 said when it chose mean-maximal power and what 27.2.1 says from the
-other side. That shapes the answer instead of killing it — 24.5.3 puts the
-class name beside the number, the way 24.1.3 shows kJ and kJ/kg together when
-they disagree. **Six items, and all six then built and watched.**
-
-**Two decisions came out of building it that the write-up had not made.**
-24.5.1 and 24.5.2 are **one card rather than two** — two lists on one screen,
-the second containing the first, is the over-stuffing 22.7.3 and 26.1 both
-complain about, and 24.5.3's class name on every row is what makes one list
-safe. And **`MAX_ROWS` is four where the household board takes six**, which was
-found by looking at the screen and could not have been found any other way: a
-row here is two lines (the class, and the date that tells one of a rider's own
-rides from another) where the board's is one, so six of them ran to the fold
-and left about 400 dp of air in *how did that feel* beside it — 24.1.8's own
-complaint arriving from the opposite direction. It compiled and tested green at
-six.
-
-**Watched on class detail and on the post-ride summary**, the second reached
-through 8.3d's recovery path so the card had a *this ride* to mark. Class
-detail drew the people column for the first time on a bike with one rider.
-The summary showed the finished ride at rank 3 in bold, and then — with the
-other rides raised above it — ranks **1, 2, 2, 4**, the tie sharing a rank with
-rank 3 correctly absent, the `⋮` break, and the ride kept at **rank 9**: the
-case that would make the card useless on the night it matters most. The
-measured-power gate cost the usual fixture edit, and the recovery path needed
-1800 hand-written measured samples, which is a small free confirmation that the
-finalise computes provenance from the samples rather than trusting the column.
-
-**`Login` landed on an item that was already open and waiting for it.**
-23.3.1a was written in the twenty-third sitting, parked explicitly on Phase 15
-existing, and Phase 15 has existed for a while — so the owner's note is not a
-new question but the report that turns an old one into a due item. Two items
-were added beside it and then all three were built.
-
-**The defect is that the app was telling a rider something untrue about where
-their data is.** `BackupReminder.message` said *"They live on this tablet and
-nowhere else"* to every rider unconditionally, because the object knew a count
-and a flag and nothing about accounts. For a rider whose rides had gone up that
-is not an over-eager nag, it is **a wrong claim about the location of their
-data** — and it is the worst kind to be wrong about, because it is the sentence
-a rider reads *instead of* checking. The same sentence had already been
-repaired twice one screen along (15.2.8, 23.3.2); this was the third and last
-place it was said.
-
-**One rule fixes both halves, which is why 23.3.1a and 23.3.1b are one change:
-a ride the cloud already holds is not at stake and is not counted.**
-`WorkoutDao.observeOnTabletOnlySince` is `synced_at IS NULL` and deliberately
-nothing else — it answers correctly for a guest ride, a housemate with no
-account, a signed-in rider with backup switched off, and a ride still climbing,
-**without asking about any of them**. It errs towards warning: 2.5a.5's distance
-pass clears that column, so those rides get counted again, which is honest, and
-the failure this shape cannot produce is the dangerous one.
-
-**Both counts travel to the card rather than one replacing the other**, because
-the difference between them is what licenses the second sentence. `someRidesAreUp`
-is derived from the two counts and **never from a sign-in flag** — a rider can
-be signed in with nothing uploaded yet, and telling them an account holds the
-others is the same false claim pointing the other way.
-
-**The card stays on a signed-in bike, and that is the point rather than a
-compromise.** Cloud backup covers one profile's rides; the file covers the
-tablet — the housemates, the profile photos, and the guest rides, which can
-never sync at all. So the direct answer to the owner's direct question is
-**yes, Simon is being asked to back up guest rides, and deliberately**: a guest
-ride really does live on that tablet and nowhere else. What was missing is that
-nothing said so, which is why he had to ask.
-
-**Watched on the AVD in four states, each read out of `uiautomator` rather than
-off a screenshot**, on the 55-ride five-profile fixture, restored byte-for-byte
-afterwards. The fixture as found, all 55 unsynced, drawing the **unchanged**
-offline sentence — the regression check that mattered most, since the offline
-tier is the ordinary case and its wording was already right. Then 43 marked
-synced: *"12 rides live on this tablet and nowhere else, and no backup yet…"*,
-three lines, the longest of the four branches, layout held. Then all but three
-marked synced and **the card vanished** with 55 rides still on the tablet,
-which is the behaviour change put as plainly as it can be — the old count drew
-it on all 55. Then a **real** backup through Settings' own picker, which wrote
-the mark and `has_ever_backed_up` (a free re-confirmation of 23.3.1's
-mark-on-success), and rides staged either side of it for the fourth branch.
-
-**One limit is written into the item rather than left to be found.** A rider
-whose rides are all up sees no card and therefore no evidence either — which is
-23.3.1's own rule working, since the card measures risk and there is none of
-the kind it measures. Drawing a card to say everything is fine is exactly the
-nag the item forbids.
-
-**And 15.8.5 is not unblocked, though it names 23.3.1a as what it waits for.**
-It was waiting for the count to move *per profile*; this moved it *per ride*
-and left it device-wide. Its objection stands unchanged and both files now say
-so.
-
-**Then the owner pushed back on all of it, and they were right.** *"I'm fairly
-sure we have discussed, somewhere in the PLAN, about showing various milestones
-or ghosts to chase … I 100% expect my 30-min PB to show up as a target, at the
-very least."* Checking the history first — as they asked — turned up **24.3.18,
-built and switched on**: `Your best`, `Your best this year`, `Your recent
-best`, `Your usual`, `Just past your best`, `Class target` and an infinite
-milestone ladder, all live on the ride screen, none of it behind
-`Features.singleRivalGhost`, which hides only the superseded single-rival
-presentation. So the feature existed and the sitting's first answer should have
-said so.
-
-**What did not exist is the thing actually asked for, and it was the same fault
-a third time: every one of those rows is keyed on `class_id`**, through
-`previousBestOfClass` and `ownTotalsForClass`. A rider's thirty-minute PB was
-therefore only ever a target on the class it was set on — and with 72 classes
-and a rider who does not repeat them, the ordinary outcome is a personal best
-that is never once raced. That is worse here than on the two screens 24.5 had
-just fixed, because this is the surface where a target is *chaseable*.
-
-**24.5.7 adds the length rows rather than substituting them**, and
-`oneRowPerRide` is what stops that doubling the board: `Kind.widerThan` already
-existed and only needed the two new kinds slotted in the right place — the time
-window dominates, the length breaks the tie inside it — so they separate only
-when they are genuinely two different rides. The *year average* the owner asked
-for by name is a **generated** row, because an average is a number this app
-computed and 24.3.18a says a rider must never come away thinking they chased a
-real ride.
-
-**Watched mid-ride on exactly the case the note describes** — Robin starting
-`Rolling Climbs`, a thirty-minute class she has never ridden, with nine
-measured thirty-minutes behind her on two others. Logcat: `Racing 4 on CLB-04
-(2 generated, measured): Your best 30 minutes 261, Your best 30 this year 254,
-Class target 195, Your average 30 minutes 221`. Six rows on screen, `○` marking
-the three the app invented, no truncation. **The first attempt drew only the
-generated rows and the failure was the fixture, not the feature** — the seeded
-rides have totals and no `workout_metrics`, and `loadRaceBoard` correctly drops
-a competitor with no trace to race against. The log line is what proved the
-query right; the screen could not have.
-
-**945 JVM tests, 0 failures**, up from 919 — six on the backup reminder,
-twelve on the new board, nine on the length targets.
-
-**One CI failure, and it was this sitting's own.** `STATUS.md`'s figures move on
-any new test **or any new plan box, ticked or not**, and the 24.5.7 commit added
-nine of the first and two of the second without regenerating the page. The step
-that fails lives in the same job as the unit tests, so it reaches the owner's
-inbox looking like a failing suite when the suite is green. The rule that
-prevents it is wider than CLAUDE.md's *"tick a box, run the script"*: run it
-before any push that touches `app/src/test` or `plan/`.
-
 ### What to do next, in order
 
 **This sitting left four items open in Phase 27 and three of them are one
@@ -527,12 +436,21 @@ code. **27.2.4 is the one that is a job** — the record a rider does not know
 they are near, knowable at class-selection time, and it belongs behind 24.3.3's
 explicit choice to race rather than on every class card.
 
-**8.16.2 is the cheap follow-on and it is deliberately not ticked.** The same
-non-distinct shape almost certainly exists for `unitSystem`, `coachStyle` and
-`hudDock`, whose readers are also woken by every unrelated write. Nothing
-downstream of those is a database query, so the cost is recomposition rather
-than I/O and it may be nothing — but the measurement above took twenty minutes
-and the reasoning that said it would be nothing was wrong once already.
+**8.16.2 and 8.16.3 are done, and what they leave behind is one look rather
+than a job.** **11.6.20d** — the smoothed `displayReading` on the overlay,
+never seen because nobody could raise the strip on this AVD — is unblocked:
+`SYSTEM_ALERT_WINDOW` has been granted here, and this sitting drove the
+overlay over the launcher for half an hour on the strength of it. It is now a
+five-minute check on the emulator instead of a line on 22.2.5's trip.
+
+**And the method is the part worth carrying, not the fix.** Both of 8.16.2's
+own guesses were wrong, in opposite directions, and the code read exactly the
+same either way: the inline `.map` in the overlay's `setContent` is textbook
+8.16.1 and costs nothing, while a combine nobody had looked at was making 178
+database reads per slider drag. A probe and a counter settled both in an hour.
+The remaining `settings`-shaped readers have **not** been swept — `RideViewModel`'s
+caption combine and `AppViewModel`'s top-level state are the two left — and the
+honest thing to say about them is that nobody has counted.
 
 **And Phase 27's power alerts have never fired on a real bike**, for the reason
 27.1.2 wrote down before any of it existed: the AVD cannot produce a measured
@@ -838,14 +756,21 @@ warned about itself in a parenthesis for two sittings.
 | Phase | | Phase | | Phase | |
 |---|---|---|---|---|---|
 | 2 | **54 of 61** | 12 | 33 of 40 | 22 | 51 of 56 |
-| 7 | 31 of 36 | 13 | 8 of 8 | 23 | 34 of 42 |
-| 8 | 39 of 56 | 14 | 34 of 44 | 24 | 47 of 51 |
+| 7 | 31 of 36 | 13 | 8 of 8 | 23 | 37 of 44 |
+| 8 | **42 of 60** | 14 | 34 of 44 | 24 | 55 of 59 |
 | 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |
 | 11 | **67 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
-| | | 17/18 | 31 of 44 | 27 | **19 of 23** |
+| | | 17/18 | 31 of 44 | 27 | **20 of 24** |
 | | | 19 | 12 of 23 | 28 | 0 of 24 |
 | | | 20 | 43 of 62 | 29 | 0 of 12 |
-| | | 21 | 19 of 37 | | |
+| | | 21 | 19 of 37 | 30 | 17 of 22 |
+
+**Four of these rows had drifted and Phase 30 was not in the table at all**,
+found by counting every phase file rather than the one being edited — 23, 24
+and 27 were each behind by the sitting that last touched them, and 8 by two.
+`tools/status-figures.sh` counts boxes for `STATUS.md` and does not know about
+this table, which is the whole reason it goes stale: it is the one set of
+figures on this page that a script does not keep honest.
 
 **Phase 15 is still the outlier and got further from the rest this sitting** —
 **28** boxes open where it was 22, because 15.6.16's six items are all things
@@ -1681,7 +1606,7 @@ Two notes worth carrying into the next bike session:
 | 5 | HUD Compose UI & power zones | ✅ Complete |
 | 6 | Main app UI | ✅ Complete |
 | 7 | Auto-FTP, workload JSON, cloud sync | 🔶 **An FTP can go down, which it never could (7.11).** The owner asked *"can it go down? It should go down"*, and the answer was no by construction: the breakthrough gate is `proposal >= currentFtp × 1.02`, above the number by definition, so a peak below it produced nothing rather than a downward proposal. `FtpReductionRule` is the trend the item said this had to be — three consecutive rides at which the rider was **working** all coming in more than 5% short, one good ride among them ending it — and it needed **no new estimator and no migration**: the number offered is the upward path's own `P₂₀ × 0.95`, so it is always something the rider has demonstrably ridden, and `workout_power_bests` has held each measured ride's twenty minutes since 16.3.3a in the one form 23.4's trimmer cannot falsify. `FtpChangeSource.AutoReduction` (not `AutoDecline` — two neighbouring identifiers already spend that word on the rider saying *no*), a dialog that shows the three rides rather than stating a verdict about somebody's body, and **the cooldown the upward path has never had**: answering restarts the evidence. Watched on the tablet AVD on three doctored measured rides, with a negative control — a second ride, same evidence, no dialog. Open underneath it: the 5% bar is the one number still guessed (7.11.7), the two directions now disagree about cooldowns (7.11.8), and a downward change wears amber nobody chose (7.11.9). Previously: **the RPE proposal is gone and had never once fired (7.11.6)** — `suggestFtpFromRpe` returned `currentFtp × 1.03` for a hard class rated easy and `analyze` fed it straight into `proposedFtp`, but the one call site passed no `rpe` because the parameter had a default, **so the whole of auto-FTP that had ever run was the twenty-minute peak**. `maxHr` lost its default with it, which is the general form: a signal optional at the call site is a signal nobody notices is missing. `detectBiometricDecoupling` survives and is now the odd one out — 7.11 shipped without it — so it is either wired into the breakthrough's copy or deleted. See [AUTO_FTP.md](AUTO_FTP.md) for both directions in full. Otherwise: detection, the update flow, the FTP a ride was ridden at (7.8), the history of every change (7.9), both ways of showing it — the dashboard card (7.10.2) and the full trend (7.10.1) — and both halves of *the app must not edit the rider's record behind them*: a declined breakthrough stays declined (7.10.5) and an accepted change of either direction can be put back in one action that appends rather than erases (7.10.4). A simulated ride cannot propose an FTP at all, in either direction (7.10.7, 7.11.2). Open otherwise only where it depends on phases that do not exist: the simulated-watts mark on the trend (7.10.6) and whether the history syncs (7.10.8, with 15) |
-| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md |
+| 8 | Polish, testing, edge cases | 🔶 Functional items done; cosmetic backlog remains. **8.3d is closed: an interrupted ride can be resumed, not merely kept** — the owner asked for it and it contested 8.3a, whose reasoning did not survive being checked (the gap is arithmetic, and `timestamp_sec` has meant *seconds of riding* since Phase 3). The break is written down rather than smoothed over — `resume_count` / `interrupted_sec`, migration 10 → 11 — because a resumed series comes back contiguous and cannot show it. Observed on the tablet AVD over two resumes of one ride, with the series and the row's own averages cross-checked against the samples. It also found the defect in 8.3d.4 that **the finalise writes defaults over anything `WorkoutSession` does not carry**, which is now a rule in CLAUDE.md. **8.16 is the performance thread and it is closed but for one unswept corner**: 8.16.1 stopped eleven `flatMapLatest`s rebuilding a Room subscription on every preference write, and 8.16.2 / 8.16.3 found that the shape's real cost was not where the item guessed — the overlay's inline `.map` in `setContent` measured **zero** restarts over a live ride, while the Settings screen's cloud combine was making **178 database reads per three-second slider drag**. Both settled with a counter rather than by reading the code, which is the lesson 8.16.4 exists to keep |
 | 9 | Ride integration | ✅ Complete — a class runs |
 | 10 | Hardware validation | 🔶 A **full 20-minute ride is done** — and it is what found 2.7. 10.6's remaining questions (battery, thermals, memory) are unanswered because the ride's telemetry was the story |
 | 11 | **HUD-first experience — the current priority** | 🔶 **The coach's cues are on the ride screen now, for a rider who asks (11.8.4)** — the subtitle space the owner offered as *"possibly a bad idea"*, built as captions and only as captions: every line is a rendering of a cue `RideCoachPolicy` had already decided to deliver, so no text exists to fill the slot. A caption is not a transcript — the speech string spells *"R P M"* for a synthesiser — and it is a *band* whose height is reserved, so a sentence arriving mid-block moves nothing above it. Off by default, silenced by `CoachStyle.Off`, and on its own `StateFlow` so it can never reach the overlay (24.1.5). **62 of 73.** Previously: **The overlay prompt now says which of its buttons is permanent (11.6.15)** — three buttons, one writing `hudEnabled = false` for good, and nothing telling the rider that or where it comes back, which on a first ride is the app's primary surface declined by somebody answering a different question. Settings already offered it back under the same name, so the fix is one sentence at the moment of the decision and no new screen; the obvious alternative, a line on the ride screen, is the same defect mirrored at a rider who meant it. **The ride screen's bottom row is a fixed point now (11.6.16–11.6.19).** The owner's three notes of 5 August, and two of them turned out to be one change: the rest of the class **scrolls** and holds every remaining block instead of three, and it is the weighted child of the effort column — so the countdown growing above it is paid for by the list getting shorter rather than by OUTPUT, DISTANCE and AVG POWER falling off the bottom in silence, which a `Column` does without complaining. `NextUpBlock` reserves the taller of its two states as well, measured rather than typed in. The totals **shrink rather than clip** (`ShrinkToFitText`, a `TextMeasurer` deciding the size once so a number changing twice a second does not pulse) — seen at four digits, `OUTPUT 1083 kJ` and `AVG POWER 1195 W`, on the same tile 11.6.12 caught rendering `63.`. And tapping the distance reads it the other way for one ride only, writing nothing, so Settings stays the single writer of the preference. **The line across the film is gone (11.1b.10)** — the owner reported the same hairline twice, once grey and once orange, which is the answer rather than two reports: a rule drawn edge to edge across somebody's film is a rule whatever colour it is. It still thickens and pulses before an interval change, which is the only part of it that was earning its place. **And the first ride nobody had watched is fixed (11.6.14)**: the overlay permission was raised by `startRide` on the far side of the countdown, so a rider's ten seconds of clipping in bought them a modal, a trip to Android's settings and a class already running. It is asked inside the countdown now and the count stops while the question is outstanding — including while the rider is away answering it, which the obvious implementation got wrong. 11.1 and 11.1a complete; volume (11.5) done. The HUD is now chips on a transparent band with the timeline on the opposite edge (11.1b.1, 11.1b.2, 11.1b.7), and **it docks to all four screen edges (11.1b.4)** — a vertical dock re-flows rather than rotating (11.1b.5): a fixed 244 dp column, **132 dp once collapsed (11.1b.11, the owner's own report on it)** with the transport buttons stacked and each readout's unit on its own line — `143 BPM` had drawn as `143 BP` with a lone `M` under it, and the clock wrapped at `03:14` having fitted at `01:51`, because a `1` is half the width of a `3`; the four live numbers in two rows of two, the timeline staying horizontal along the top because time runs left to right, and a pure `HudDock.dragTarget` deciding which edge a two-dimensional drag is asking for. The choice persists (11.1b.6) and 11.1b.4a's corners came free once the vertical strip stopped spanning its edge; **resizing (11.1b.3), the alignment along a horizontal edge (11.1b.4b) and the rest of 11.2 remain**. **Three of the ride screen's own snags closed in the twentieth sitting**: the zone ladder is one continuous bar rather than seven that each bounce at their boundary (11.6.11), watts and kilojoules are whole numbers (11.6.12 — the tile was literally rendering `63.`), and a ride now starts on a ten-second countdown that sits **before** `startRide` rather than over a ride already running (11.6.13) |

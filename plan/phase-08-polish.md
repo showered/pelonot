@@ -428,12 +428,84 @@
       class and `PowerProvenance` being one enum: a question this app asks in a
       dozen places gets one answer
 
-- [ ] **8.16.2** **The same shape probably exists for the other fields of
+- [x] **8.16.2** **The same shape probably exists for the other fields of
       `AppSettings` and has not been looked for.** `unitSystem`, `coachStyle`
       and `hudDock` are each read by something that rebuilds when they change,
       and each of those readers is also woken by every unrelated write. Nothing
       downstream of them is a database query, so the cost is recomposition
       rather than I/O and it may be nothing at all — but the measurement above
       took twenty minutes and the reasoning that said it would be nothing was
-      wrong once already
+      wrong once already.
+
+      **Looked for, and the item's own guess was wrong in both directions.**
+      The three fields it names cost nothing; a reader it does not name costs a
+      database read per frame of a slider drag, which is 8.16.3.
+
+      **`unitSystem`'s reader is clean, and that is a measurement rather than a
+      reading of the code.** The overlay writes
+      `settings.map { it.unitSystem }.collectAsStateWithLifecycle(…)` inline in
+      `setContent`, four times over with `coachVolume` and `hudOpacity` — a new
+      `Flow` object on every recomposition, which by the argument that fixed
+      8.16.1 should restart a `DataStore` collection several times a second on
+      the one surface that must stay smooth. **It does not.** A probe on the
+      flow's `onStart` and a second on the root composable's body, over a live
+      simulated ride with the strip raised and the numbers changing every
+      second: **zero flow restarts and zero root compositions in twenty
+      seconds**, with the overlay screenshotted mid-count showing 81 rpm and
+      123 W. Compose is skipping the root scope, and `collectAsState`'s
+      structural-equality write means an equal value recomposes nothing either.
+      *The reasoning that said this would be expensive was as wrong as the
+      reasoning the item warns about, in the opposite direction, and only the
+      probe could tell which.*
+
+      **`coachStyle` and `hudDock`'s reader is `WorkoutService`'s settings
+      collector, and it was firing on every write.** `_coachStyle` is a
+      `MutableStateFlow` and `RideCoach.style` is a plain field, so applying
+      them costs nothing — but the collector ends in `syncHudVisibility()`,
+      which launches a coroutine on the **main** thread, and a rider can reach
+      the opacity slider mid-ride. Now mapped to the four preferences it
+      actually applies and made distinct, the same fix as 8.16.1 one layer
+      down. Watched: the overlay still raises at the right dock and opacity
+      afterwards, which is the only evidence that matters, since that collector
+      is the sole writer of both fields
+
+- [x] **8.16.3** **And the reader that does cost I/O is the cloud section of
+      the Settings screen, which 8.16.2 did not name.**
+      `SettingsViewModel.cloudSync` combines the backlog, `settings` and the
+      account session, and its transform asks `CloudAccess.isAllowedFor` and
+      `UserRepository.getUser` a question apiece — both Room reads of the
+      profile row. `settings` re-emits on every preference write, and **the
+      overlay opacity slider writes on every frame of a drag**, on the one
+      screen that slider lives on.
+
+      **Measured with a probe, the way 8.16.1 was.** One three-second drag:
+      **178 transform runs and 178 reads of the profile row**. Ten unrelated
+      units toggles: nine. After narrowing the settings input to a `CloudMarks`
+      of four fields and making it distinct: **nought and nought**, with the
+      slider watched moving 97% → 83% so the drag is known to have happened.
+
+      `UserRepository.getUser` measured **zero** either way, and that is worth
+      knowing rather than tidying away: it sits behind `session.accountIdOrNull
+      != null`, so a signed-*out* tablet short-circuits past it. A signed-in
+      rider pays twice what this measured.
+
+      **One of the four fields is read by nothing below the
+      `distinctUntilChanged` and is load-bearing anyway.** `cloudSyncEnabled`
+      is the rider's own backup switch; `isAllowedFor` folds it in, so a key
+      that stopped watching it would leave the card saying *backed up* after
+      the rider switched backup off. That is the failure narrowing invites, and
+      it is written on the field rather than in this item, where the next
+      person deleting an unused property will not be reading
+
+- [ ] **8.16.4** **Two `settings`-shaped readers are left and nobody has
+      counted them.** `RideViewModel` combines `settings` with the ride
+      caption, and `AppViewModel`'s top-level state combines it with four other
+      flows. Both re-run on every preference write and both end in
+      `_uiState.update { it.copy(…) }`, which a `MutableStateFlow` drops when
+      the result is equal — so the cost is an allocation rather than a
+      subscription or a query, and the honest expectation is that it is
+      nothing. **That expectation is exactly the one 8.16.2 got wrong twice**,
+      which is the only reason this is written down rather than closed: the way
+      to settle it is a counter in the transform and the units toggle as a
+      one-write-per-tap lever, twenty minutes, not a reading of the code
 

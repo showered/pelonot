@@ -6,6 +6,106 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
+
+**Phase 27 is built, offline half and all**, at the owner's own weighting of
+*low priority* — which is why it was picked on merit rather than off the
+numbered list, whose top four entries still cannot be advanced by a session at
+all. Fourteen of its eighteen boxes, and the four left are the two families that
+need somebody else (27.2.3, 27.2.4) and the two surfaces only those families
+use.
+
+**The gap the phase existed to close is that nothing was remembered.** Every
+number this app draws — the mean-maximal curve, the household board, the streak
+on the dashboard — is recomputed from the whole history on every load, which is
+exactly right for a chart and useless for an alert: **an alert is a claim about
+a change, and a number recomputed from scratch cannot tell you it moved.**
+`rider_alerts` is that memory and everything else in the phase hangs off it.
+
+**The items set four questions and left them open, and answering them was most
+of the design.** The floors are five prior rides for a whole-history claim, two
+for a class record, and a two-percent margin — about 5 W on a 250 W twenty
+minutes, which is under a rider's day-to-day variation, and calling that an
+improvement is exactly how an alert becomes a caption. The ranking could not be
+arithmetic, because 8 weeks and 412 kJ do not compare, so it is by what the
+claim *is*: a streak first (it can only fire at a milestone, and it is the only
+one about the rider's life rather than one ride), then a class record (27.2.1's
+own argument), then power windows longest-first, then most output, then longest
+ride — last, because riding longer is a choice rather than a performance. The
+switch is honoured **by not detecting**, because a rider who does not want to be
+graded is not asking for a quieter version of it. And there is no back-fill,
+though for once one was genuinely available: forty alerts dated tonight would
+tell a rider they set forty records this evening.
+
+**Then the tablet said five things the suite could not, and one of them was that
+the feature only worked on half the rides.** `finaliseWorkout` is not the choke
+point it looks like — `recoverWorkout` finishes a crashed ride with its own
+`updateWorkout` and a direct call to `recordPowerFacts` — so **a recovered ride
+was judged for records by nothing at all**, with 959 green tests and correct
+rules above it. It was found by recovering a ride on the AVD and finding an
+empty table. `recordRideFacts` is the real shared place now and both callers use
+it. **The dashboard's card then disagreed with the summary about the same ride**
+— five alerts share one `recorded_at`, so `id DESC` made the tie-break *last
+written wins* and the card said *"Your biggest ride yet"* under a summary that
+had just said *"Your best ride of Zone 2 Steady"*. And a **full stop on a card**
+among three without one, which is why `AlertWording` now has a sentence and a
+label rather than one string and a `trimEnd`.
+
+**A fifth is about the fences rather than the feature.**
+`PowerModelFenceTest`'s regex is `.watts(`, aimed at `PowerCurve.watts(cadence,
+resistance)` — and `Formatters.watts(` had **no callers anywhere in the app**
+until this sitting wanted to print `261 W`. So the first use of a formatter that
+has sat in `core` for months failed a fence about the power model. Excluded by
+name and narrowly: a fence that fires on formatting teaches the next person to
+route around it, which is the one failure a source scan cannot recover from.
+
+**And the card turns out to be 22.9.4's answer.** With the backup reminder
+answered, four glance cards sit abreast of the household panel with no scroll —
+it fills the ~110 dp the dashboard has been honestly empty since 22.8, and it is
+conditional, so a rider who has earned nothing still sees the same three cards
+they always did.
+
+**Watched against two hand-built fixtures on the 56-ride database, restored
+byte-for-byte, with the migration seen arriving empty on a real history twice.**
+A measured thirty minutes through the crash path: five alerts in rank order,
+only the headline seen, and **two correct absences** that are the better
+evidence — the 5-second window, which the ride did not beat, and the duration
+record at 1799 s against an 1800 s best, the margin refusing a tie. Then a
+**modelled** ride in a rider's fourth consecutive week: *"Four weeks in a row."*,
+one row, no records — the gate letting a clock reading through while refusing
+every watt, and the floor holding at three rides. The FTP breakthrough dialog
+appeared on the first and not the second, which is 7.10.7 confirming itself from
+the same gate.
+
+**A sixth thing came off the same afternoon and it is not Phase 27's at all
+(8.16.1).** `SettingsRepository.settings` emits a whole new `AppSettings` on
+**every** preference write, and eleven places across six view models wrote
+`settings.map { it.lastProfileId }.flatMapLatest { … }` with nothing distinct in
+between — so every theme tap, units toggle and frame of an opacity drag tore
+down five Room subscriptions and built them again. The expensive one reads
+`workout_metrics` for every ride in the last thirty days. **Measured with a
+probe and the units toggle as a one-write-per-tap lever: ten unrelated writes,
+ten full recomputations; after the fix, ten writes and zero.** One flow —
+`SettingsRepository.selectedProfileId` — rather than eleven
+`distinctUntilChanged()` calls, because eleven copies of a rule is how ten of
+them stay right and the eleventh does not.
+
+**And the last defect of the sitting was found by reading an existing rule
+rather than by looking at anything.** `resumeInterruptedWorkout` already clears
+`synced_at`, `power_bests_at`, `power_provenance` and the stored efforts, each
+with a written reason that applies to alerts word for word — the ride is about
+to get longer, so every derived fact about it is the short version's — and the
+alerts were the one derived fact nobody had added to the list. Watched: five
+alerts and a headline on screen, *Carry on riding*, **zero** in the table. The
+second finalise then wrote nothing at all, because the **one** simulated second
+the emulator recorded turned an 1800-sample `Measured` ride into a `Mixed` one.
+That is 27.1.2 refusing every watt over a single modelled sample, exactly as it
+says it will; on a real bike the resumed minutes are measured too and the
+records re-fire at their new values.
+
+**960 JVM tests, 0 failures**, up from 945.
+
+
 ## 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
 
 **The inbox had two entries and both are written up**, which is the part that
