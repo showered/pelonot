@@ -103,6 +103,12 @@ sealed class Destination(val route: String) {
     data object Riding : Destination("riding")
 
     /**
+     * Everything the app has told this rider about themselves (27.4.1),
+     * reached from the dashboard's progress section beside the two above.
+     */
+    data object Records : Destination("records")
+
+    /**
      * A finished ride, opened from history — distinct from [PostRide], which is
      * the same figures wrapped in the RPE prompt, the FTP breakthrough dialog
      * and the guest-filing flow. None of those belong on a ride from March.

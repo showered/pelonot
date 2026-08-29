@@ -7,8 +7,10 @@ import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.domain.model.NewProfile
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
+import com.pelonot.data.repository.AlertRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.StoredAlert
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.data.service.PostWorkoutAnalyzer
@@ -82,7 +84,17 @@ data class PostRideUiState(
      * and one whose gap has grown past half an hour is a new ride wearing the
      * old one's interval clock.
      */
-    val canResume: Boolean = false
+    val canResume: Boolean = false,
+    /**
+     * The one thing this ride earned that is worth saying (PLAN 27.3.1).
+     *
+     * **One, never a stack**: 27.1.5's rule, and the reason is that a rider who
+     * is handed three congratulations reads none of them. Everything else the
+     * ride earned is on the records screen. Null is the ordinary case and this
+     * screen has to look right without it — which is why it is a line above the
+     * figures rather than a card among them.
+     */
+    val headlineAlert: StoredAlert? = null
 ) {
     val hasBreakthrough: Boolean get() = proposedFtp != null
 
@@ -123,6 +135,7 @@ class PostRideViewModel(
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
     private val classRepository: ClassRepository,
+    private val alertRepository: AlertRepository,
     private val analyzer: PostWorkoutAnalyzer = PostWorkoutAnalyzer()
 ) : ViewModel() {
 
@@ -261,6 +274,13 @@ class PostRideViewModel(
                     // selected: a guest ride has none, and saying the wrong
                     // name over a ride is worse than saying no name at all.
                     riderName = workout?.userId?.let { id -> userRepository.getUser(id)?.name },
+                    // 27.3.1. Asked *after* the ride is on disk and judged, and
+                    // asked of the ledger rather than recomputed: this screen is
+                    // reopenable from history, and a record re-derived on each
+                    // visit would congratulate the rider again every time.
+                    // Reading it is what marks it seen, so the records screen
+                    // can tell what the rider has already been shown.
+                    headlineAlert = workout?.let { alertRepository.headlineFor(it.id) },
                     isLoading = false
                 )
             }
@@ -454,7 +474,8 @@ class PostRideViewModel(
                 workoutRepository = ServiceLocator.workoutRepository,
                 userRepository = ServiceLocator.userRepository,
                 settingsRepository = ServiceLocator.settingsRepository,
-                classRepository = ServiceLocator.classRepository
+                classRepository = ServiceLocator.classRepository,
+                alertRepository = ServiceLocator.alertRepository
             )
         }
     }

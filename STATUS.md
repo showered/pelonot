@@ -12,7 +12,7 @@ keeps its sitting.
 
 | Measured | |
 |---|---|
-| JVM tests | **945**, 0 failures |
+| JVM tests | **959**, 0 failures |
 | Plan boxes ticked | **707 of 939** — 75% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented

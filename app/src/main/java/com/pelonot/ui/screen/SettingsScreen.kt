@@ -272,6 +272,11 @@ fun SettingsScreen(
                 onDynamicColorChange = viewModel::setDynamicColor
             )
 
+            RecordsSection(
+                enabled = state.settings.alertsEnabled,
+                onEnabledChange = viewModel::setAlertsEnabled
+            )
+
             RideHudSection(
                 hudEnabled = state.settings.hudEnabled,
                 dock = state.settings.hudDock,
@@ -587,6 +592,41 @@ fun RideSettingsSheet(
 
             Spacer(Modifier.size(MaterialTheme.spacing.extraLarge))
         }
+    }
+}
+
+/**
+ * Whether the app says anything about records and streaks (PLAN 27.4.2).
+ *
+ * **One switch and it is honoured everywhere**, including the dashboard's card
+ * — which is the half of 27.4.2 that is easy to get wrong, because that card is
+ * on the first screen anybody sees and hiding only the post-ride line would
+ * leave it there.
+ *
+ * Off means *nothing is judged*, not *nothing is shown*: a rider who does not
+ * want to be graded is not asking for a quieter version of being graded. The
+ * second sentence says what that costs, because it is a real cost and the rider
+ * is the one paying it — records set while this is off are not written down and
+ * turning it back on does not go and find them.
+ */
+@Composable
+private fun RecordsSection(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    SettingsSection("Records") {
+        SettingsToggle(
+            title = "Tell me when I beat something",
+            description = "One line after a ride, when it was your best.",
+            checked = enabled,
+            onCheckedChange = onEnabledChange
+        )
+        Text(
+            text = if (enabled) {
+                "Never during a ride, and never more than one thing at a time."
+            } else {
+                "Pelonot won't keep score. Nothing is recorded while this is off."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

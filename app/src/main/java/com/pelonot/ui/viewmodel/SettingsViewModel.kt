@@ -467,6 +467,11 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setRideCaptionsEnabled(enabled) }
     }
 
+    /** PLAN 27.4.2 — and the switch is honoured by not judging, not by not drawing. */
+    fun setAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAlertsEnabled(enabled) }
+    }
+
     fun setHudEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setHudEnabled(enabled) }
     }

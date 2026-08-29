@@ -10,6 +10,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.repository.AppSettings
 import com.pelonot.data.repository.ClassPlan
+import com.pelonot.data.repository.AlertRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.backup.BackupReminder
@@ -27,6 +28,7 @@ import com.pelonot.domain.suggest.RiderRides
 import com.pelonot.domain.suggest.SuggestableClass
 import android.content.Intent
 import com.pelonot.data.repository.SettingsRepository
+import com.pelonot.data.repository.StoredAlert
 import com.pelonot.data.repository.UpdateCheck
 import com.pelonot.data.repository.UpdateInstallCoordinator
 import com.pelonot.data.repository.UpdateInstallState
@@ -101,6 +103,16 @@ data class AppUiState(
     val ftpTrend: FtpTrend = FtpTrend(),
     /** How much and how often, for the dashboard's card and its screen (16.3.2, 16.3.5). */
     val ridingHistory: RidingHistory = RidingHistory(),
+
+    /**
+     * Everything the app has told this rider about themselves, newest first
+     * (PLAN 27.4.1).
+     *
+     * Empty for a guest and empty for a rider who has earned nothing, and those
+     * two are the same on screen for once: neither has a record book, and the
+     * card that opens one is not drawn (22.2.3 — never an empty panel).
+     */
+    val alerts: List<StoredAlert> = emptyList(),
     /**
      * How hard the last 30 days were (21.4.3), for the third card on the same
      * screen.
@@ -220,6 +232,7 @@ class AppViewModel(
     private val userRepository: UserRepository,
     classRepository: ClassRepository,
     private val workoutRepository: WorkoutRepository,
+    private val alertRepository: AlertRepository,
     private val syncRepository: SupabaseSyncRepository,
     private val updateRepository: UpdateRepository,
     private val updateInstallCoordinator: UpdateInstallCoordinator
@@ -401,6 +414,25 @@ class AppViewModel(
         }
 
     /**
+     * What this rider has been told about themselves (27.4.1).
+     *
+     * A guest gets an empty list rather than everybody's, which is the same
+     * fact three flows above already turn on: a guest's rides are filed against
+     * nobody, so there is no record of theirs to keep.
+     *
+     * **Not gated on the switch here.** The rows exist or they do not — the
+     * switch decides whether anything new is ever written (27.4.2) — and a flow
+     * that emptied itself when the rider turned alerts off would take their
+     * history away rather than stop grading them.
+     */
+    private val riderAlerts = settingsRepository.settings
+        .map { it.lastProfileId }
+        .flatMapLatest { profileId ->
+            if (profileId == null) flowOf(emptyList())
+            else alertRepository.observeFor(profileId)
+        }
+
+    /**
      * The flows about the rider's own riding, travelling together for the same
      * reason [rideStatus] is a pair: the typed `combine` overload stops at five
      * and [dashboard] is already at it.
@@ -409,9 +441,10 @@ class AppViewModel(
         ridingHistory,
         ridingIntensity,
         riderRides,
-        workoutRepository.observeRiderLevels()
-    ) { history, intensity, rides, levels ->
-        RiderState(history, intensity, rides, levels)
+        workoutRepository.observeRiderLevels(),
+        riderAlerts
+    ) { history, intensity, rides, levels, alerts ->
+        RiderState(history, intensity, rides, levels, alerts)
     }
 
     /** [riding]'s three flows, named rather than nested in a `Pair` (see [DashboardState]). */
@@ -426,7 +459,9 @@ class AppViewModel(
          * the same question, and two answers is how two screens on one tablet
          * come to show a rider two different numbers.
          */
-        val riderLevels: Map<Int, RiderLevel>
+        val riderLevels: Map<Int, RiderLevel>,
+        /** Everything this rider has been told about themselves (27.4.1). */
+        val alerts: List<StoredAlert>
     )
 
     private val dashboard = combine(
@@ -444,7 +479,8 @@ class AppViewModel(
             rider.ridingHistory,
             rider.ridingIntensity,
             rider.riderRides,
-            rider.riderLevels
+            rider.riderLevels,
+            rider.alerts
         )
     }
 
@@ -463,7 +499,8 @@ class AppViewModel(
         val ridingHistory: RidingHistory,
         val ridingIntensity: RidingIntensity,
         val riderRides: RiderRides,
-        val riderLevels: Map<Int, RiderLevel>
+        val riderLevels: Map<Int, RiderLevel>,
+        val alerts: List<StoredAlert>
     )
 
     val uiState: StateFlow<AppUiState> = combine(
@@ -496,6 +533,7 @@ class AppViewModel(
             ridingHistory = dashboard.ridingHistory,
             ridingIntensity = dashboard.ridingIntensity,
             riderLevels = dashboard.riderLevels,
+            alerts = dashboard.alerts,
             suggestion = suggested,
             // The shape of the class the line above named, resolved from that
             // suggestion's own id so the two can never describe different
@@ -773,6 +811,7 @@ class AppViewModel(
                 userRepository = ServiceLocator.userRepository,
                 classRepository = ServiceLocator.classRepository,
                 workoutRepository = ServiceLocator.workoutRepository,
+                alertRepository = ServiceLocator.alertRepository,
                 syncRepository = ServiceLocator.syncRepository,
                 updateRepository = ServiceLocator.updateRepository,
                 updateInstallCoordinator = ServiceLocator.updateInstallCoordinator

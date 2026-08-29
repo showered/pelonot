@@ -9,6 +9,8 @@ import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.LastRide
 import com.pelonot.domain.progress.RideStanding
 import com.pelonot.domain.progress.RiderLevel
+import com.pelonot.data.repository.StoredAlert
+import com.pelonot.domain.alerts.AlertWording
 import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingWindow
 import com.pelonot.data.local.entity.FtpChangeSource
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -174,6 +177,15 @@ fun MainDashboardScreen(
     /** The full-size trend behind the card's sparkline (16.3.1). */
     onFtpProgress: () -> Unit = {},
     onRiding: () -> Unit = {},
+    /**
+     * Everything the app has told this rider about themselves (27.4.1), newest
+     * first, and **empty when the switch is off** — 27.4.2's rule is that a
+     * rider who does not want to be graded is not offered a quieter version of
+     * it, so the caller passes nothing rather than this screen hiding a card it
+     * was given.
+     */
+    records: List<StoredAlert> = emptyList(),
+    onRecords: () -> Unit = {},
     /** The last ride, opened on the same detail screen history uses (22.1.5). */
     onLastRide: (String) -> Unit = {},
     onDismissBackupReminder: () -> Unit = {}
@@ -372,6 +384,9 @@ fun MainDashboardScreen(
                     // so the card does not invite a tap that lands on an empty
                     // screen. Nothing is disabled — it simply is not a door.
                     onFtpProgress = onFtpProgress.takeIf { ftpTrend.current != null },
+                    latestRecord = records.firstOrNull(),
+                    recordCount = records.size,
+                    onRecords = onRecords,
                     household = household,
                     youId = youId
                 )
@@ -1039,7 +1054,7 @@ private fun AccountOfferCard(
  * two ways — down a column beside the household, or abreast when there is no
  * household — and `WideGrid` takes items rather than content (22.8.4).
  */
-private enum class OwnCard { Ftp, Recent, Last }
+private enum class OwnCard { Ftp, Recent, Last, Records }
 
 /**
  * The rider's own three glance cards, and the household beside them.
@@ -1063,6 +1078,10 @@ private fun ProgressSection(
     ftp: Int,
     ftpTrend: FtpTrend,
     onFtpProgress: (() -> Unit)?,
+    /** The newest thing this rider has been told about themselves, or null (27.4.1). */
+    latestRecord: StoredAlert?,
+    recordCount: Int,
+    onRecords: () -> Unit,
     /** Null when there is nobody to show — never an empty panel (22.2.3). */
     household: List<HouseholdRider>?,
     youId: Int?
@@ -1084,7 +1103,13 @@ private fun ProgressSection(
     val own = listOfNotNull(
         OwnCard.Ftp,
         OwnCard.Recent,
-        OwnCard.Last.takeIf { stats.lastRide != null }
+        OwnCard.Last.takeIf { stats.lastRide != null },
+        // 27.4.1. Fourth and conditional: a rider who has earned nothing does
+        // not get a card telling them so — 22.2.3's rule, and the reason there
+        // is no empty state on the screen behind it. It is also why this is not
+        // a fixed member of the set the way the three above are: on a new bike
+        // this section is the same three cards it has always been.
+        OwnCard.Records.takeIf { latestRecord != null }
     )
 
     @Composable
@@ -1098,6 +1123,9 @@ private fun ProgressSection(
         )
         OwnCard.Last -> stats.lastRide?.let { ride ->
             LastRideCard(ride, { onLastRide(ride.workoutId) }, modifier)
+        } ?: Unit
+        OwnCard.Records -> latestRecord?.let { alert ->
+            RecordsGlanceCard(alert, recordCount, onRecords, modifier)
         } ?: Unit
     }
 
@@ -1400,6 +1428,104 @@ private fun LastRideCard(
                 )
                 Text(
                     text = detailText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * The newest thing this rider has been told about themselves (PLAN 27.4.1).
+ *
+ * **The card says the most recent one and nothing else.** A count of records
+ * would be a score, which is what 28.1.6 and Phase 26 both refuse — and the
+ * question this card answers is the same one the other three answer: *what
+ * happened*, not *how many*. The number of others is a subtitle rather than a
+ * headline for the same reason.
+ *
+ * The label is *Your records* and the door behind it is the screen of the same
+ * name, so a rider who taps it lands somewhere they were already looking at.
+ */
+@Composable
+private fun RecordsGlanceCard(
+    latest: StoredAlert,
+    total: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val headline = remember(latest.id) { AlertWording.headline(latest.alert) }
+    val whenText = remember(latest.recordedAt) {
+        when (RideDayGrouping.relativeTo(latest.recordedAt)) {
+            RideDayGrouping.Relative.Today -> "Today"
+            RideDayGrouping.Relative.Yesterday -> "Yesterday"
+            RideDayGrouping.Relative.Earlier ->
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(latest.recordedAt))
+        }
+    }
+    // "and 4 more" rather than "5 records": the card is about the one it is
+    // showing, and the rest are the reason there is a screen behind it.
+    val others = (total - 1).takeIf { it > 0 }?.let { "and $it more" }
+    val detail = listOfNotNull(whenText, others).joinToString(" · ")
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics {
+                contentDescription = "Your records: $headline $detail. Opens your records."
+            },
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = MaterialTheme.elevationTokens.level1
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.expressiveShapes.pill)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.size(MaterialTheme.spacing.large))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Your records",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = detail,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

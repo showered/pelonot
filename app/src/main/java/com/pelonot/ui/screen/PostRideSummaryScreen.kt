@@ -50,6 +50,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.ui.components.ClassLeaderboardCard
+import com.pelonot.ui.components.RideAlertLine
 import com.pelonot.ui.components.RidesOfThisLengthCard
 import com.pelonot.ui.components.EffortQuestion
 import com.pelonot.ui.components.RideChartsSection
@@ -205,6 +206,15 @@ fun PostRideSummaryScreen(
                     )
                 }
             } else {
+                // 27.3.1. Above the figures and nowhere else — the rider is
+                // already looking at what they just did, so the sentence goes
+                // where their eye already is. Absent on most nights, which is
+                // what makes it worth reading on the nights it is not.
+                state.headlineAlert?.let { alert ->
+                    RideAlertLine(alert)
+                    Spacer(Modifier.size(MaterialTheme.spacing.medium))
+                }
+
                 RideFigures(workout)
 
                 Spacer(Modifier.size(MaterialTheme.spacing.large))

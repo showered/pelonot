@@ -70,9 +70,21 @@ class PowerModelFenceTest {
             "the prescribed resistance band, which is a suggestion (11.2.1)"
     )
 
-    /** Every way of getting a number out of a curve, by whatever route. */
+    /**
+     * Every way of getting a number out of a curve, by whatever route.
+     *
+     * `Formatters.watts(` is excluded by name, and the exclusion is narrow on
+     * purpose. `PowerCurve.watts(cadence, resistance)` derives a watt;
+     * `Formatters.watts(value)` puts a `W` after one that already exists. The
+     * two had never collided because `Formatters.watts` had no callers at all
+     * until 27.3.1 wanted to say `261 W` on the records screen — so the first
+     * use of a formatter that has been in `core` for months failed a fence
+     * about the power model. A fence that fires on formatting teaches the next
+     * person to route around it, which is the one failure mode a source scan
+     * cannot recover from.
+     */
     private val asksTheCurve = Regex(
-        """\b(estimateWatts|resistanceForWatts)\(|\.watts\("""
+        """\b(estimateWatts|resistanceForWatts)\(|(?<!Formatters)\.watts\("""
     )
 
     private fun sources(): List<Pair<String, String>> = sourceRoot.walkTopDown()

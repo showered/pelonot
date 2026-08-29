@@ -32,6 +32,7 @@ import com.pelonot.ui.screen.AccountScreen
 import com.pelonot.ui.screen.ClassDetailScreen
 import com.pelonot.ui.screen.ClassLibraryScreen
 import com.pelonot.ui.screen.FtpProgressScreen
+import com.pelonot.ui.screen.RecordsScreen
 import com.pelonot.ui.screen.HistoryScreen
 import com.pelonot.ui.screen.MainDashboardScreen
 import com.pelonot.ui.screen.PostRideSummaryScreen
@@ -318,6 +319,12 @@ fun PelonotNavGraph(
                 ridingHistory = uiState.ridingHistory,
                 onFtpProgress = { navController.navigate(Destination.FtpProgress.route) },
                 onRiding = { navController.navigate(Destination.Riding.route) },
+                // 27.4.2. The switch is honoured by handing the screen nothing
+                // rather than by the screen deciding: a rider who has turned
+                // records off has no card, no door and nothing to tap, which is
+                // what "one switch, honoured everywhere" has to mean.
+                records = if (uiState.settings.alertsEnabled) uiState.alerts else emptyList(),
+                onRecords = { navController.navigate(Destination.Records.route) },
                 // The same destination history and the FTP trend use (22.1.5):
                 // a ride opened from the dashboard is the ride, not a third
                 // rendering of one.
@@ -337,6 +344,13 @@ fun PelonotNavGraph(
                     navController.navigate(Destination.RideDetail.of(workoutId))
                 },
                 onRevert = { change -> onRevertFtpChange(change.from) }
+            )
+        }
+
+        composable(Destination.Records.route) {
+            RecordsScreen(
+                alerts = uiState.alerts,
+                onBack = navController::popBackStack
             )
         }
 
