@@ -42,6 +42,7 @@ import com.pelonot.domain.model.MaxHeartRate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -171,6 +172,26 @@ class SettingsViewModel(
     private val cloudConfigured: Boolean
 ) : ViewModel() {
 
+    /**
+     * The four preferences the cloud section's answer can turn on (8.16.2).
+     *
+     * Named rather than read off `AppSettings` in the combine, so that a write
+     * to any *other* preference — a theme tap, a frame of the opacity drag —
+     * does not re-ask [CloudAccess] and the profile row a question whose answer
+     * cannot have moved.
+     */
+    private data class CloudMarks(
+        /**
+         * Read by nothing below and load-bearing anyway: it is what makes the
+         * combine re-ask [CloudAccess] when the rider turns backup off, since
+         * the gate folds this in and would otherwise keep its old answer.
+         */
+        val backupEnabled: Boolean,
+        val lastSyncAtMs: Long?,
+        val lastError: String?,
+        val lastErrorAtMs: Long?
+    )
+
     /** The three cloud facts this screen needs, gathered in one place. */
     private data class CloudState(
         val status: CloudSyncStatus = CloudSyncStatus.Off,
@@ -206,6 +227,18 @@ class SettingsViewModel(
      * is how a screen comes to say "backed up" for a rider the gate would
      * refuse, and `isAllowedFor` already folds in the build's credentials and
      * the rider's own backup switch.
+     *
+     * **It reads [CloudMarks] rather than the whole of `AppSettings`, and that
+     * is 8.16.2** — 8.16.1's shape with a database read on the end of it. This
+     * transform asks [CloudAccess] and [UserRepository] a question apiece, and
+     * `settings` re-emits on every preference write, so it ran for a theme tap
+     * and for each frame of the opacity slider. Measured on the tablet AVD:
+     * **one three-second drag of that slider produced 178 runs and 178 reads
+     * of the profile row**, on the one screen the slider lives on. The four
+     * fields are the four this answer can actually turn on — the rider's own
+     * backup switch among them, because `isAllowedFor` folds it in and a card
+     * that stopped watching it would keep saying *backed up* after the rider
+     * switched backup off.
      */
     private val cloudSync = settingsRepository.selectedProfileId
         .flatMapLatest { id ->
@@ -214,17 +247,24 @@ class SettingsViewModel(
             } else {
                 combine(
                     workoutRepository.observeBacklog(id),
-                    settingsRepository.settings,
+                    settingsRepository.settings.map {
+                        CloudMarks(
+                            backupEnabled = it.cloudSyncEnabled,
+                            lastSyncAtMs = it.lastCloudSyncAtMs,
+                            lastError = it.lastCloudSyncError,
+                            lastErrorAtMs = it.lastCloudSyncErrorAtMs
+                        )
+                    }.distinctUntilChanged(),
                     accountRepository.accountState
-                ) { backlog, settings, session ->
+                ) { backlog, marks, session ->
                     CloudState(
                         status = CloudSyncStatus.from(
                             hasAccount = cloudAccess.isAllowedFor(id),
                             pending = backlog.pending,
                             oldestRideAtMs = backlog.oldestTimestamp,
-                            lastSyncAtMs = settings.lastCloudSyncAtMs,
-                            lastError = settings.lastCloudSyncError,
-                            lastErrorAtMs = settings.lastCloudSyncErrorAtMs
+                            lastSyncAtMs = marks.lastSyncAtMs,
+                            lastError = marks.lastError,
+                            lastErrorAtMs = marks.lastErrorAtMs
                         ),
                         // 15.2.8, and driving the AVD is what showed this was
                         // needed: the section read `hasAccount` off the profile

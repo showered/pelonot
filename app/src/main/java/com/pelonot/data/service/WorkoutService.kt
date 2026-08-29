@@ -67,6 +67,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -215,6 +217,14 @@ class WorkoutService : Service() {
      */
     private var raceDiscredited = false
 
+    /** The four preferences the settings collector applies (8.16.2). */
+    private data class RideSettings(
+        val coachStyle: CoachStyle,
+        val coachVolume: Float,
+        val hudEnabled: Boolean,
+        val hudDock: HudDock
+    )
+
     /** True while the in-app ride screen is on top; the HUD stands down. */
     private var rideScreenVisible = false
     private var hudEnabled = true
@@ -245,14 +255,23 @@ class WorkoutService : Service() {
             _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
         }
         serviceScope.launch {
-            settingsRepository.settings.collect { settings ->
-                _coachStyle.value = settings.coachStyle
-                coach?.style = settings.coachStyle
-                coach?.volume = settings.coachVolume
-                hudEnabled = settings.hudEnabled
-                hudDock = settings.hudDock
-                syncHudVisibility()
-            }
+            // Only the four preferences this collector actually applies, and
+            // only when one of them moves (8.16.2). `settings` re-emits on
+            // *every* preference write — including each frame of the opacity
+            // slider, which is a slider a rider can reach mid-ride — and
+            // `syncHudVisibility` launches a coroutine on the main thread each
+            // time it is called. Same rule as 8.16.1 one layer down.
+            settingsRepository.settings
+                .map { RideSettings(it.coachStyle, it.coachVolume, it.hudEnabled, it.hudDock) }
+                .distinctUntilChanged()
+                .collect { (style, volume, enabled, dock) ->
+                    _coachStyle.value = style
+                    coach?.style = style
+                    coach?.volume = volume
+                    hudEnabled = enabled
+                    hudDock = dock
+                    syncHudVisibility()
+                }
         }
         Log.d(TAG, "WorkoutService created")
     }
