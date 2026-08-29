@@ -6,6 +6,165 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+## 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
+
+**The inbox had two entries and both are written up**, which is the part that
+was urgent; one of them was then built, which is the part that was not.
+
+**`Leaderboard` became 24.5, and the write-up's finding is that the note is
+three faults rather than one.** The owner has done three thirty-minute rides
+and cannot see his previous time. It would be easy to read that as a missing
+duration filter; it is three rules stacked, and **any one of them alone shows
+him nothing**. `ClassLeaderboard.isWorthShowing` is `entries.size >= 2`, so a
+rider alone on a bike sees no board at all, whatever he rides and however often
+— the twenty-eighth sitting observed exactly this and recorded it as the rule
+working, which it was, but the consequence is that the bike with the most
+riding on it is the bike with no board. `householdLeaderboard` is one row per
+rider, so a rider's own previous ride is never on it by construction. And it is
+keyed on `class_id`. **The objection the note does not address is carried into
+the item rather than left to be met on the screen**: total output across two
+different thirty-minute classes mostly measures *which class it was*, which is
+what 16.3.3 said when it chose mean-maximal power and what 27.2.1 says from the
+other side. That shapes the answer instead of killing it — 24.5.3 puts the
+class name beside the number, the way 24.1.3 shows kJ and kJ/kg together when
+they disagree. **Six items, and all six then built and watched.**
+
+**Two decisions came out of building it that the write-up had not made.**
+24.5.1 and 24.5.2 are **one card rather than two** — two lists on one screen,
+the second containing the first, is the over-stuffing 22.7.3 and 26.1 both
+complain about, and 24.5.3's class name on every row is what makes one list
+safe. And **`MAX_ROWS` is four where the household board takes six**, which was
+found by looking at the screen and could not have been found any other way: a
+row here is two lines (the class, and the date that tells one of a rider's own
+rides from another) where the board's is one, so six of them ran to the fold
+and left about 400 dp of air in *how did that feel* beside it — 24.1.8's own
+complaint arriving from the opposite direction. It compiled and tested green at
+six.
+
+**Watched on class detail and on the post-ride summary**, the second reached
+through 8.3d's recovery path so the card had a *this ride* to mark. Class
+detail drew the people column for the first time on a bike with one rider.
+The summary showed the finished ride at rank 3 in bold, and then — with the
+other rides raised above it — ranks **1, 2, 2, 4**, the tie sharing a rank with
+rank 3 correctly absent, the `⋮` break, and the ride kept at **rank 9**: the
+case that would make the card useless on the night it matters most. The
+measured-power gate cost the usual fixture edit, and the recovery path needed
+1800 hand-written measured samples, which is a small free confirmation that the
+finalise computes provenance from the samples rather than trusting the column.
+
+**`Login` landed on an item that was already open and waiting for it.**
+23.3.1a was written in the twenty-third sitting, parked explicitly on Phase 15
+existing, and Phase 15 has existed for a while — so the owner's note is not a
+new question but the report that turns an old one into a due item. Two items
+were added beside it and then all three were built.
+
+**The defect is that the app was telling a rider something untrue about where
+their data is.** `BackupReminder.message` said *"They live on this tablet and
+nowhere else"* to every rider unconditionally, because the object knew a count
+and a flag and nothing about accounts. For a rider whose rides had gone up that
+is not an over-eager nag, it is **a wrong claim about the location of their
+data** — and it is the worst kind to be wrong about, because it is the sentence
+a rider reads *instead of* checking. The same sentence had already been
+repaired twice one screen along (15.2.8, 23.3.2); this was the third and last
+place it was said.
+
+**One rule fixes both halves, which is why 23.3.1a and 23.3.1b are one change:
+a ride the cloud already holds is not at stake and is not counted.**
+`WorkoutDao.observeOnTabletOnlySince` is `synced_at IS NULL` and deliberately
+nothing else — it answers correctly for a guest ride, a housemate with no
+account, a signed-in rider with backup switched off, and a ride still climbing,
+**without asking about any of them**. It errs towards warning: 2.5a.5's distance
+pass clears that column, so those rides get counted again, which is honest, and
+the failure this shape cannot produce is the dangerous one.
+
+**Both counts travel to the card rather than one replacing the other**, because
+the difference between them is what licenses the second sentence. `someRidesAreUp`
+is derived from the two counts and **never from a sign-in flag** — a rider can
+be signed in with nothing uploaded yet, and telling them an account holds the
+others is the same false claim pointing the other way.
+
+**The card stays on a signed-in bike, and that is the point rather than a
+compromise.** Cloud backup covers one profile's rides; the file covers the
+tablet — the housemates, the profile photos, and the guest rides, which can
+never sync at all. So the direct answer to the owner's direct question is
+**yes, Simon is being asked to back up guest rides, and deliberately**: a guest
+ride really does live on that tablet and nowhere else. What was missing is that
+nothing said so, which is why he had to ask.
+
+**Watched on the AVD in four states, each read out of `uiautomator` rather than
+off a screenshot**, on the 55-ride five-profile fixture, restored byte-for-byte
+afterwards. The fixture as found, all 55 unsynced, drawing the **unchanged**
+offline sentence — the regression check that mattered most, since the offline
+tier is the ordinary case and its wording was already right. Then 43 marked
+synced: *"12 rides live on this tablet and nowhere else, and no backup yet…"*,
+three lines, the longest of the four branches, layout held. Then all but three
+marked synced and **the card vanished** with 55 rides still on the tablet,
+which is the behaviour change put as plainly as it can be — the old count drew
+it on all 55. Then a **real** backup through Settings' own picker, which wrote
+the mark and `has_ever_backed_up` (a free re-confirmation of 23.3.1's
+mark-on-success), and rides staged either side of it for the fourth branch.
+
+**One limit is written into the item rather than left to be found.** A rider
+whose rides are all up sees no card and therefore no evidence either — which is
+23.3.1's own rule working, since the card measures risk and there is none of
+the kind it measures. Drawing a card to say everything is fine is exactly the
+nag the item forbids.
+
+**And 15.8.5 is not unblocked, though it names 23.3.1a as what it waits for.**
+It was waiting for the count to move *per profile*; this moved it *per ride*
+and left it device-wide. Its objection stands unchanged and both files now say
+so.
+
+**Then the owner pushed back on all of it, and they were right.** *"I'm fairly
+sure we have discussed, somewhere in the PLAN, about showing various milestones
+or ghosts to chase … I 100% expect my 30-min PB to show up as a target, at the
+very least."* Checking the history first — as they asked — turned up **24.3.18,
+built and switched on**: `Your best`, `Your best this year`, `Your recent
+best`, `Your usual`, `Just past your best`, `Class target` and an infinite
+milestone ladder, all live on the ride screen, none of it behind
+`Features.singleRivalGhost`, which hides only the superseded single-rival
+presentation. So the feature existed and the sitting's first answer should have
+said so.
+
+**What did not exist is the thing actually asked for, and it was the same fault
+a third time: every one of those rows is keyed on `class_id`**, through
+`previousBestOfClass` and `ownTotalsForClass`. A rider's thirty-minute PB was
+therefore only ever a target on the class it was set on — and with 72 classes
+and a rider who does not repeat them, the ordinary outcome is a personal best
+that is never once raced. That is worse here than on the two screens 24.5 had
+just fixed, because this is the surface where a target is *chaseable*.
+
+**24.5.7 adds the length rows rather than substituting them**, and
+`oneRowPerRide` is what stops that doubling the board: `Kind.widerThan` already
+existed and only needed the two new kinds slotted in the right place — the time
+window dominates, the length breaks the tie inside it — so they separate only
+when they are genuinely two different rides. The *year average* the owner asked
+for by name is a **generated** row, because an average is a number this app
+computed and 24.3.18a says a rider must never come away thinking they chased a
+real ride.
+
+**Watched mid-ride on exactly the case the note describes** — Robin starting
+`Rolling Climbs`, a thirty-minute class she has never ridden, with nine
+measured thirty-minutes behind her on two others. Logcat: `Racing 4 on CLB-04
+(2 generated, measured): Your best 30 minutes 261, Your best 30 this year 254,
+Class target 195, Your average 30 minutes 221`. Six rows on screen, `○` marking
+the three the app invented, no truncation. **The first attempt drew only the
+generated rows and the failure was the fixture, not the feature** — the seeded
+rides have totals and no `workout_metrics`, and `loadRaceBoard` correctly drops
+a competitor with no trace to race against. The log line is what proved the
+query right; the screen could not have.
+
+**945 JVM tests, 0 failures**, up from 919 — six on the backup reminder,
+twelve on the new board, nine on the length targets.
+
+**One CI failure, and it was this sitting's own.** `STATUS.md`'s figures move on
+any new test **or any new plan box, ticked or not**, and the 24.5.7 commit added
+nine of the first and two of the second without regenerating the page. The step
+that fails lives in the same job as the unit tests, so it reaches the owner's
+inbox looking like a failing suite when the suite is green. The rule that
+prevents it is wider than CLAUDE.md's *"tick a box, run the script"*: run it
+before any push that touches `app/src/test` or `plan/`.
+
 ## 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
 
 **The inbox was empty**, so this sitting picked up where the sixty-ninth left

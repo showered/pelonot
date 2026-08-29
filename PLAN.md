@@ -253,7 +253,81 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
+### Latest session — 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
+
+**Phase 27 is built, offline half and all**, at the owner's own weighting of
+*low priority* — which is why it was picked on merit rather than off the
+numbered list, whose top four entries still cannot be advanced by a session at
+all. Fourteen of its eighteen boxes, and the four left are the two families that
+need somebody else (27.2.3, 27.2.4) and the two surfaces only those families
+use.
+
+**The gap the phase existed to close is that nothing was remembered.** Every
+number this app draws — the mean-maximal curve, the household board, the streak
+on the dashboard — is recomputed from the whole history on every load, which is
+exactly right for a chart and useless for an alert: **an alert is a claim about
+a change, and a number recomputed from scratch cannot tell you it moved.**
+`rider_alerts` is that memory and everything else in the phase hangs off it.
+
+**The items set four questions and left them open, and answering them was most
+of the design.** The floors are five prior rides for a whole-history claim, two
+for a class record, and a two-percent margin — about 5 W on a 250 W twenty
+minutes, which is under a rider's day-to-day variation, and calling that an
+improvement is exactly how an alert becomes a caption. The ranking could not be
+arithmetic, because 8 weeks and 412 kJ do not compare, so it is by what the
+claim *is*: a streak first (it can only fire at a milestone, and it is the only
+one about the rider's life rather than one ride), then a class record (27.2.1's
+own argument), then power windows longest-first, then most output, then longest
+ride — last, because riding longer is a choice rather than a performance. The
+switch is honoured **by not detecting**, because a rider who does not want to be
+graded is not asking for a quieter version of it. And there is no back-fill,
+though for once one was genuinely available: forty alerts dated tonight would
+tell a rider they set forty records this evening.
+
+**Then the tablet said five things the suite could not, and one of them was that
+the feature only worked on half the rides.** `finaliseWorkout` is not the choke
+point it looks like — `recoverWorkout` finishes a crashed ride with its own
+`updateWorkout` and a direct call to `recordPowerFacts` — so **a recovered ride
+was judged for records by nothing at all**, with 959 green tests and correct
+rules above it. It was found by recovering a ride on the AVD and finding an
+empty table. `recordRideFacts` is the real shared place now and both callers use
+it. **The dashboard's card then disagreed with the summary about the same ride**
+— five alerts share one `recorded_at`, so `id DESC` made the tie-break *last
+written wins* and the card said *"Your biggest ride yet"* under a summary that
+had just said *"Your best ride of Zone 2 Steady"*. And a **full stop on a card**
+among three without one, which is why `AlertWording` now has a sentence and a
+label rather than one string and a `trimEnd`.
+
+**A fifth is about the fences rather than the feature.**
+`PowerModelFenceTest`'s regex is `.watts(`, aimed at `PowerCurve.watts(cadence,
+resistance)` — and `Formatters.watts(` had **no callers anywhere in the app**
+until this sitting wanted to print `261 W`. So the first use of a formatter that
+has sat in `core` for months failed a fence about the power model. Excluded by
+name and narrowly: a fence that fires on formatting teaches the next person to
+route around it, which is the one failure a source scan cannot recover from.
+
+**And the card turns out to be 22.9.4's answer.** With the backup reminder
+answered, four glance cards sit abreast of the household panel with no scroll —
+it fills the ~110 dp the dashboard has been honestly empty since 22.8, and it is
+conditional, so a rider who has earned nothing still sees the same three cards
+they always did.
+
+**Watched against two hand-built fixtures on the 56-ride database, restored
+byte-for-byte, with the migration seen arriving empty on a real history twice.**
+A measured thirty minutes through the crash path: five alerts in rank order,
+only the headline seen, and **two correct absences** that are the better
+evidence — the 5-second window, which the ride did not beat, and the duration
+record at 1799 s against an 1800 s best, the margin refusing a tie. Then a
+**modelled** ride in a rider's fourth consecutive week: *"Four weeks in a row."*,
+one row, no records — the gate letting a clock reading through while refusing
+every watt, and the floor holding at three rides. The FTP breakthrough dialog
+appeared on the first and not the second, which is 7.10.7 confirming itself from
+the same gate.
+
+**960 JVM tests, 0 failures**, up from 945.
+
+
+### The sitting before — 28 August 2026 (seventy-first sitting): the inbox had two entries, and one of them was the app telling a rider something untrue
 
 **The inbox had two entries and both are written up**, which is the part that
 was urgent; one of them was then built, which is the part that was not.
@@ -412,108 +486,27 @@ inbox looking like a failing suite when the suite is green. The rule that
 prevents it is wider than CLAUDE.md's *"tick a box, run the script"*: run it
 before any push that touches `app/src/test` or `plan/`.
 
-### The sitting before — 26 August 2026 (seventieth sitting): Phase 30's install half, rehearsed for real rather than reasoned about
-
-**The inbox was empty**, so this sitting picked up where the sixty-ninth left
-the numbered list: **30.1.1** is the owner's own — a keystore needs a password
-a session must not hold — so the two items that were actually buildable were
-**30.1.4a** and **30.4**, in that order, and both are done.
-
-**30.1.4a first, because it was the smaller rehearsal and the one the
-sixty-ninth sitting had explicitly not done.** 30.1.6 proved the changeover's
-*shape* with `run-as` and `tar`; this proved the route the owner will actually
-take — Settings' own *Back up now* and *Restore from a backup*, through the
-SAF pickers, on the same 55-ride five-profile fixture. A real file went into
-Downloads (709 kB), `pm clear` stood in for the uninstall, and the restore
-came back **5 profiles, 55 workouts, 5278 metrics, 72 classes** — counted out
-of `sqlite3`, not read off a screen. **One thing came back different rather
-than missing**: Robin's photo reverted to her derived-colour `R`, because
-`DatabaseBackup` copies the SQLite file and nothing else — a photo lives
-beside it in `files/avatars/`. This is not a new fault. 20.2.4 named this exact
-gap in the twentieth sitting and watched the same fallback by deleting a photo
-file by hand; this sitting's finding is a second confirmation of a decision
-already made, not a discovery, and it is worth carrying forward one sentence:
-the friend's changeover will lose a profile photo the same way, and that is by
-design.
-
-**Then 30.4, all six items, and the whole thing was watched working rather
-than merely compiled.** `PackageInstaller`'s session API rather than the old
-`ACTION_INSTALL_PACKAGE` intent, exactly as the phase's own write-up specified
-— a session takes a plain `OutputStream`, so there is no `FileProvider` and
-nothing for Android 11's scoped storage to refuse. `REQUEST_INSTALL_PACKAGES`
-went into the manifest first, on the standing rule that an undeclared
-permission is denied instantly with nothing in logcat (`VIBRATE`,
-`ACCESS_FINE_LOCATION`). `UpdateDownloader` streams the APK into the cache dir
-and hashes it in the same pass, so a 24 MB file is never held twice over.
-`UpdateInstaller` opens the session, writes the file, and commits with a
-`PendingIntent` aimed at a new `UpdateInstallReceiver`, which does the one job
-a commit needs done outside the app's own foreground: forwarding the system's
-confirmation `Intent` with `FLAG_ACTIVITY_NEW_TASK`. `UpdateInstallCoordinator`
-is the one piece of shared state — download, permission, install, failure —
-so the automatic prompt and Settings' own *Check for updates now* cannot each
-think they own the download, the same reasoning `volumeController` already
-gets in `ServiceLocator` for a different shared value.
-
-**30.4.4's gate is a withholding, not a filter.** `AppViewModel.uiState
-.updateOffer` is the manifest or null, and it is null whenever
-`RideInProgress.active` is non-null — the live, process-scoped answer 8.3d's
-`recoverableWorkout` already asks for, not a second read of the database. A
-screen reaching into the state directly sees the same *no* the dialog would,
-which is the point of doing it there rather than in the composable that draws
-the prompt.
-
-**30.4.6 is the item worth reading in full, because "watched working" turned
-out to mean something more literal than usual.** Rather than stop at the
-mechanics, the whole channel was rehearsed end to end with a genuine second
-build: `version.properties` bumped to `2` / `1.0.1`, `assembleDebug`, the real
-APK served over **actual HTTPS** from a local server — a self-signed
-certificate installed as a user-trusted CA on the AVD alone, and
-`pelonot.webUrl` pointed at it for one rebuild, both reverted before anything
-in this sitting was committed. 30.3.1's rule that the real manifest stays
-unpublished until `tools/release.sh` exists was not touched at any point; the
-live site never saw a request built for it. What came back, screen by screen:
-the automatic prompt at launch, unprompted, reading *"Pelonot 1.0.1 is
-ready"*; **Install** correctly detecting the missing *install unknown apps*
-grant and naming it rather than failing silently; returning from that system
-settings screen **retried on its own** — the dialog does not make the rider
-tap Install twice; the download, the checksum and the `PackageInstaller`
-session all succeeding, raising the system's own *Update this app?*
-confirmation; Play Protect's scan gate afterwards, which is the platform's
-own addition and was simply navigated, not built for. **The database
-survived** — Settings' own Storage card read 55 rides and 724 kB afterwards,
-the same figures as before, and the about line read `Pelonot 1.0.1 (2)`,
-both numbers the update check itself compares. 30.4.3's checksum path and
-30.4.2's permission path were each watched failing before they were watched
-working, the same discipline `UpdateChannelFenceTest` held for 30.5.1.
-
-**One finding fell out of the rehearsal that no item had asked for.** With
-the AVD's build and `pelonot.webUrl` back to normal, Settings' manual *Check
-for updates now* was tried once more against the **real** production
-endpoint — and came back *"Couldn't check just now — try again in a
-moment."* That is correct: `web/update.json` is still deliberately
-unpublished (30.3.1), so the live site answers 404, and `UpdateCheck
-.Unreachable` is 30.3.4's honest answer to exactly that. It is a second,
-free confirmation of 30.3.4, on the actual endpoint rather than an assumption
-about it.
-
-**Cleaning up the AVD after the rehearsal was itself informative.** A plain
-reinstall of the clean `versionCode 1` build was refused — `INSTALL_FAILED
-_VERSION_DOWNGRADE` — because Android will not downgrade a same-signature
-APK, which is 30.2.3's whole argument for refusing a downgrade manifest,
-observed rather than merely reasoned about from the other direction. The fix
-was an uninstall and a plain reinstall, and the fixture went back through
-30.1.4a's own restore path — an incidental second rehearsal of that item, on
-a tablet it had not been tried against since being written.
-
-**919 JVM tests, 0 failures — unchanged.** Nothing this sitting built is pure:
-`UpdateDownloader` and `UpdateInstaller` both need a real `Context` and a real
-`PackageInstaller`, the same shape as `UpdateRepository.fetch()`, which has
-never had a JVM test of its own either. What is testable already was —
-`UpdatePolicy` and `UpdateChannelFenceTest` — and neither changed. The
-coverage this sitting relies on is the AVD rehearsal above, in the same spirit
-as 8.14.1's standing answer for anything that draws a screen.
-
 ### What to do next, in order
+
+**This sitting left four items open in Phase 27 and three of them are one
+decision the owner has not been asked.** **27.2.3** — *your friend just beat
+your high score* — is the owner's own first example and the only family here
+that needs the network. The item says *"off by default is likely the right
+answer and should be decided rather than defaulted"*, and it is still
+undecided: being told you have been beaten is a different message from being
+told you did well, and on a shared bike it is read out loud. **27.3.2**'s
+dashboard card exists only to carry it, and **27.3.3**'s system notifications
+are a *probably no* until somebody misses them. Nothing here is blocked on
+code. **27.2.4 is the one that is a job** — the record a rider does not know
+they are near, knowable at class-selection time, and it belongs behind 24.3.3's
+explicit choice to race rather than on every class card.
+
+**And Phase 27's power alerts have never fired on a real bike**, for the reason
+27.1.2 wrote down before any of it existed: the AVD cannot produce a measured
+ride, so every record here was watched against a hand-edited fixture. **The
+owner's own bike is the first honest instance** — the class record and the
+twenty-minute window are the two most likely to arrive first, and *Your records*
+on the dashboard is where they will show up.
 
 **The top of this list is still one item and it still has a deadline.**
 **30.1.1** — the release keystore — is the owner's to run, because it needs a
@@ -816,7 +809,7 @@ warned about itself in a parenthesis for two sittings.
 | 8 | 39 of 56 | 14 | 34 of 44 | 24 | 47 of 51 |
 | 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |
 | 11 | **67 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
-| | | 17/18 | 31 of 44 | 27 | 0 of 18 |
+| | | 17/18 | 31 of 44 | 27 | **19 of 23** |
 | | | 19 | 12 of 23 | 28 | 0 of 24 |
 | | | 20 | 43 of 62 | 29 | 0 of 12 |
 | | | 21 | 19 of 37 | | |
@@ -1648,7 +1641,7 @@ Two notes worth carrying into the next bike session:
 | Phase | Area | State |
 |-------|------|-------|
 | 0 | Scaffolding & build system | ✅ Complete |
-| 1 | Local database (Room) + Supabase | 🔶 Room at schema version **21**, every step an explicit migration (12.5) with an exported schema and a `MigrationTest` each. The newest are 19 → 20, the trimmer's `metrics_detail_sec` and `distributions_json` (23.4.3), and 20 → 21, `workouts.max_hr_source` — where a ride's maximum heart rate came from, which the row has never recorded (21.4.2c). The class library is bundled, not fetched (23.2), and the cloud is gated behind an account — which Phase 15 now grants, so the gate is load-bearing rather than theoretical (23.1) |
+| 1 | Local database (Room) + Supabase | 🔶 Room at schema version **23**, every step an explicit migration (12.5) with an exported schema and a `MigrationTest` each. The newest are 21 → 22, `profiles.avatar` — a rider's face, nullable and not back-filled so the app can still tell a rider who chose that colour from one who never looked (20.2.2) — and 22 → 23, `rider_alerts`, the memory that makes an alert an alert (27.1.1) and the one migration in this project that refused a back-fill it *could* have written. The number and its prose had drifted by two before this line was corrected, which is the same failure `AppDatabase.schemaVersion()` exists to stop one level down. The class library is bundled, not fetched (23.2), and the cloud is gated behind an account — which Phase 15 now grants, so the gate is load-bearing rather than theoretical (23.1) |
 | 2 | Telemetry engine (sensor service, BLE, simulated) | ✅ **2.7 solved and verified on the bike (2.7c).** The board's own frame decides the metric, so the service's positional `msg.what` can no longer mislabel anything; the raw-resistance intruder is dropped by identity. 1609 + 464 messages captured with zero mislabels, a recorded ride with zero impossible values and zero gaps. The three rides recorded before the fix are marked rather than rewritten (2.7.5). Open underneath it: the exclusive serial port leaks (2.7d → 2.7.7, 2.7.8). **And the calibration scope argument is now a test rather than a paragraph (2.2a.8)** — `PowerModelFenceTest` fails the build on a fourth consumer of the power curve, on a modelled watt labelled measured, on the measured source falling back to the model, and on a third writer of the process-global `PowerModel.curve`. Writing it found the argument had gone stale by one: two documents said the curve has *"exactly two consumers"* and there are three, `SerialSensorSource` being the simulator's twin on a board that does not report power — so what keeps a modelled watt out of the record is that both flag it modelled, not that they are few. **49 of 55** |
 | 3 | Foreground service & workout lifecycle | ✅ Complete |
 | 4 | Floating HUD overlay | ✅ **Exonerated.** It never corrupted anything: 464 messages captured with the overlay up and a rider pedalling, zero mislabels and zero dropouts (2.7c). What it correlated with was *leaving the app*, and on this tablet that can mean a second bike app taking the sensor's serial port (2.7d) |
@@ -1674,7 +1667,7 @@ Two notes worth carrying into the next bike session:
 | 24 | Household social — the tier that needs no cloud | 🔶 **The board says less, and it is bounded on every screen (24.3.17, 24.1.8).** The owner cut three things from the live board at once — the signed gap (*a gap is arithmetic the rider did not ask for*), the unit label, and the ranking entirely, including `4TH OF 6`. The last is a claim about the product rather than the pixels: four of the board's row kinds are the rider's own past rides, so a position describes a field that is mostly one person. The ranking still orders the board and picks the window and is simply not drawn. What goes with it — a rider cannot tell whether there are two more rows or twenty — is accepted rather than solved. **And the static board has a ceiling now**: `ClassLeaderboard.visible` keeps the podium and the rider's own neighbourhood, marks the skip and counts what is hidden, because 18.11 means the row count is *how many people use this app*. The two boards differ in which window and should. **The live leaderboard is built (24.3.10–24.3.13b) and it supersedes the single rival.** Start a class anybody on the bike has ridden and a board appears, ranked live on the class total in kilojoules, showing **three rows: the one you are chasing, you, and the one chasing you**. Nobody picks anybody. Four kinds of row — your best ever, your best of the last twelve months, your best of the last thirty days, and every housemate's — and the two windows are **rolling rather than calendar**, which is 22.5.1 applied: a month resets on the 1st and would take the reachable ghost away on the day a rider most wants one. One ride appears once, at its widest label. The window **slides rather than shrinking**, so leading and last are both three rows and the card never changes size under a rider. `RIVAL_GHOST` hides the picker and the single-gap card — off, and almost nothing is behind it, because the board is built on the ghost's own foundations. **24.3.6 is finally ticked**: the *finished* state seen both ways round, found cheaply by seeding a 90-second rival. Everything before it still stands — 24.1, 24.2 and 24.3.1, the per-class board, the household's thirty rolling days with streaks and an opt-out, and a housemate's trace behind your own on ride detail. **Seen on the real bike too** — `Racing 1 on END-03: Your best 238` with real measured watts and no lever, and the two-row `2ND OF 2` case the AVD could not produce. **What is owed is watching it move under somebody actually pedalling.** **A modelled ride narrows the board rather than emptying it (24.3.7a)**, on the owner's rule: *"There should ALWAYS be a leaderboard even if it's only CPU ghosts you're up against."* 24.3.7 is right about what it was written for — a comparison between a modelled number and a measured one — and was applied wider than its own argument, taking *the plan* and the milestone ladder down with the real rides for no reason anybody could state. `generatedOnly()` keeps what this app computed from the rider's own FTP and drops every real ride **including the rider's own**, which is the rule rather than an exception to it; the pacer's floor is recomputed from what survives, or the first rung sits above everything left on the board. The ordering was a defect in waiting — `loadRaceBoard` is asynchronous, so gating the flag on a race already existing let a board landing a tick later arrive un-narrowed and stay that way — and nothing written down changes, so the ride is still excluded afterwards from every static board, FTP proposal and calibration fit. **Not yet seen on a simulated ride.** **And the row is now the owner's own picture** (24.3.19): a face inside its progress ring with the level on it, the name, `FTP 190 W` under the name, the output on the right — on the rows that are **people**, and on nothing else. *A ghost is not a person, so it gets no face and no level*, which is what 20.2.6a left open and what a board carrying invented targets forces an answer to; the rider's own past rides fall on the same side. The card's ceiling did not move — 24.3.18c measured a *height* and six was only how it was counted, so a board with faces on it shows fewer rows and scrolls the rest. It is the second and last screen allowed to draw the level and the FTP about one rider, and **26.4.8 is where that narrowing is written down** rather than left in a diff: the household panel publishes a measurement of somebody who was never asked, a board is the one surface every row has opted into. Watched on the tablet AVD with Robin racing Alex. **Two open items, and both are the owner's**: 24.3.19d, whether the rank comes back (their own picture has one and their own argument nine days earlier deleted it), and 24.3.16, the leaderboard on the overlay, which overrules 24.1.5 and 18.6. `LEADERBOARD.md` describes it all in plain English |
 | 25 | Out of the saddle | 🔶 **The field, the ride screen, the spoken coach, the overlay's cue and the library's own use of it are done and observed (25.1–25.4.2).** The titles no longer claim a position the intervals do not give. What is left is how the cue reads over a playing film (25.3.4, needs the rider). **25.4.3 is closed**: the two near-twins the rename exposed are separated by their work as well as their titles, as `SWT-13` rather than an edited `SWT-05` — the id is the foreign key |
 | 26 | The app's voice — less is more | 🔶 **The level badge stops covering the face it rides on (26.4.9), on the owner's note and their own fix.** *"Too big, too much padding… obscuring too much of that avatar."* The measurement made the case: the compact pill was **44 dp across a 58 dp disc**, holding a word set at **5.5 sp** that nobody can read at arm's length. The compact form draws the number alone in a disc, 18 dp instead of 44, **and the digit got larger** (0.44 → 0.58 of the height) because it is no longer the smaller half of a pair — *make it smaller* and *make the number bigger* turned out to be the same instruction. Padding is a fraction of the badge's own height, not a 4 dp token that was a quarter of the budget at this size. **Rule 1 is narrowed rather than broken** (26.4.9a): the rule forbids a label *richer* than *has ridden more* and this is less — but the word was also saying *what kind of number this is*, so the three places a bare number gets that from instead are written down, because if any goes the badge is ambiguous again (the progress **ring**, the untouched screen reader, and the FTP's own unit on the same row). **The pill beside a name keeps the word** and has none of those three things. **26.4.9b is the finding and is left open**: a bare number is safe on the live leaderboard only because 24.3.17c took the rank off it, so this **raises 24.3.19d's price** rather than answering it — restore a rank and every row carries two unlabelled small integers on the one surface where a small number in a list means position. **And the component's four rules are now held by something other than their own KDoc (26.4.10)**, which is 2.2a.8 repeating one sitting later: rule 2 was stated **four times in prose and enforced by nobody**, with the level kept off five `RiderAvatar` call sites only because nobody had passed the argument — and one `level = rider.level` on the household panel is a plausible three-word diff that would publish a level beside a housemate's FTP on a *presence* card. `RiderScoreFenceTest` is six checks: the allowlisted pair of screens with a reason each, the three named surfaces checked *from the other end*, the three files that may draw the badge at all, `LVL` spelled in exactly one file (also the fence against the private copy this component was extracted to prevent), no amber token, and **rule 4, which had no test at all** — a guest has no badge, an unridden profile is level 1, two absences that must stay different claims. A JVM source scan and not a Compose UI test, because this project has **no Compose test infrastructure at all** (twelve instrumented tests, every one Room) and adding the category is a larger call than one component's rules justify — written down rather than done. `RiderAvatar` calls are read by **balanced paren rather than by line**, since a fence depending on somebody's line breaks stops matching silently. **What it deliberately does not claim is 26.4.9a**: a text scan cannot know which branch a literal sits in, and one saying it could would pass for the wrong reason. **Each check watched failing against its own violation** (26.4.10a) — two of the five had to be rewritten to compile before they could fail for the right reason. Previously: **The kilojoule audit is decided, and its own premise was the thing that needed correcting first (26.1.3).** The item called kJ *the one genuinely obscure unit in the app*; for an audience who all own Peloton bikes it is close to the opposite — Total Output in kilojoules is the number Peloton's own leaderboard has ranked them on since the day they bought the bike, so an audit run on that premise would have removed the one figure they already read fluently. The rule that decides it is CLAUDE.md's instead: kJ stays where a measurement is **read or compared** (the ride screen, the overlay, the ride figures, chart captions, every leaderboard and rival chip) and goes from the **history list row**, which carried five facts on a screen whose only question is *which ride to open* — the same failure case CLAUDE.md names for a profile tile reading `150 W FTP` under a name. A third of the item needed no work at all: the dashboard has carried no kilojoule total since 22.1.2 replaced two of them with rides and minutes, and nobody had crossed it off. **A standing rule rather than a backlog**, and it is in CLAUDE.md: a unit belongs where a measurement is being read, not where a choice is being made. Landed: the profile tile is a name and a face (26.1.1), the post-ride summary reads as a screen rather than a spec sheet (26.1.2), the effort question is three answers instead of ten with the column still 1–10 — **the owner has now settled the wording as written (26.3.3)**, and their reason is the good one: a rider who stops a class early does not rate it at all — and **Settings has been audited row by row (26.1.4)**: nine cuts, each one a sentence answering a question nobody standing on that row was asking. *Units* defended not offering calories, *Use wallpaper colours* opened with Android's name for the mechanism, the maximum-heart-rate row printed the Tanaka formula, the opacity slider explained why it stops where it visibly stops, *Position* justified its own default rather than saying which edge to pick, *Backup* repeated the sentence on the card above it, and *Show me to the others* had two paragraphs where only the second answers the question a rider has. **One row was audited and left alone**, which is the other half of doing it honestly: the FTP field keeps both lines, because Settings is the one screen where that number is *typed*. A naming fault fell out of the opacity cut — it said *"strip"*, which is never the rider-facing word for the overlay. **26.4, the owner's "score like a lvl", is built** — and the recommendation to leave the FTP out of it survived contact: `RiderLevel` is lifetime rides, minutes and kilojoules through a square-law curve, so it only ever goes up, is earned by riding rather than measured, and is comparable without a unit — the three properties a game level has and the FTP has none of. One component, `RiderScore`, with four rules in its KDoc; three placements (the greeting, the household panel, and the profile selector, which is the one that is the owner's to overrule); and a guest gets **no badge at all**, because a guest's rides are filed against nobody and a badge promising a ladder they cannot climb is worse than no badge. Open: 26.1.6 (no way to ride a class at the zones it was authored with — the owner's own *"leave it entirely"*), 26.2.2, **26.4.6** (the badge does not exist on the web app — 17.15.2 arriving as predicted) and **26.4.7** (nothing writes a level down, so nothing can say *"you reached level 8"*) |
-| 27 | Being told something worth knowing | ⬜ **Not started, and that is the owner's own weighting** — *"definitely nice-to-have and low priority for now"*. Promoted out of 19.3.2's one line the way Phase 21 was promoted out of 19.3.3's, because the one line is not one job: nothing in this app *remembers* anything, and an alert is a claim about a change, so 27.1.1's table is what everything else waits on. Three families that are not the same feature — your own record, your own consistency, and somebody else beating you, which is the only one needing the network. The rules were the point of writing it: `PowerProvenance` gates every power record (**no alert can fire on the emulator**, and that cost is worth paying); records are built on absolutes rather than on anything relative to a moving FTP or maximum heart rate (7.8, 21.2.3); **the first ten rides are all records**, which is the design problem rather than a detail; one per ride; nothing on the overlay and nothing spoken; and 16.3.3a is a hard prerequisite because retention would otherwise congratulate a rider for beating a record that only fell because its ride was trimmed |
+| 27 | Being told something worth knowing | 🔶 **The offline half is built and watched (29 August 2026).** `rider_alerts` is the memory this app did not have — every other number here is recomputed from the whole history on every load, which is right for a chart and useless for an alert, because an alert is a claim about a *change*. Your own record and your own consistency both fire: five families, ranked by what the claim is rather than by arithmetic (8 weeks and 412 kJ do not compare), at most one told per ride and the rest on *Your records*. **The floors are the design** — five prior rides for a whole-history claim, two for a class record, and a 2% margin, so a rider's first ten rides say nothing. `PowerProvenance` gates every watt and lets a clock reading through, which is why the streak was observable on the emulator and no record was. **What is left is the two families that need somebody else**: 27.2.3 is the owner's own first example and is waiting on a decision rather than on code, 27.2.4 belongs behind 24.3.3's choice to race. Originally filed as ⬜, and the owner's weighting was and is *"definitely nice-to-have and low priority for now"*. Promoted out of 19.3.2's one line the way Phase 21 was promoted out of 19.3.3's, because the one line is not one job: nothing in this app *remembers* anything, and an alert is a claim about a change, so 27.1.1's table is what everything else waits on. Three families that are not the same feature — your own record, your own consistency, and somebody else beating you, which is the only one needing the network. The rules were the point of writing it: `PowerProvenance` gates every power record (**no alert can fire on the emulator**, and that cost is worth paying); records are built on absolutes rather than on anything relative to a moving FTP or maximum heart rate (7.8, 21.2.3); **the first ten rides are all records**, which is the design problem rather than a detail; one per ride; nothing on the overlay and nothing spoken; and 16.3.3a is a hard prerequisite because retention would otherwise congratulate a rider for beating a record that only fell because its ride was trimmed |
 | 28 | Achievements | ⬜ **Not started, at the owner's own weighting** — *"one for the backlog"* — and written at length for Phase 27's reason: the one sentence is not one job. **The opening section is the part that matters most and it is not a badge list.** An alert is an *event* and fails on frequency; an achievement is a *possession* and fails on meaning — which makes Phase 27 the delivery mechanism and this phase forbidden from building a second one, or it grows its own toast, its own dashboard card and its own one-per-ride rule before 27 arrives. It is also **the honest form of the thing 26.4 was right to refuse**: the owner asked to *"gamify it all even further"* and separately agreed to leave a game-style score, and those two only disagree if a score is what gamifying means — an achievement is a discrete, nameable, **true sentence about something the rider actually did**, with nothing in it to round off. Six rules underneath it, and the sharp ones are: **never revoked** (7.11 lets auto-FTP fall, 23.4 trims old rides, and a badge derived live would un-earn itself — the award is *recorded*, not derived); `PowerProvenance` gates anything from watts and **most of the catalogue is on the free side of that line**, since a count of rides and a duration are the same quantity whoever measured them; **no achievement may reward what a coach would advise against**, which rules out day-streaks and rode-twice-today and is 22.5's weekly-streak decision arriving as a rule; the set is finite and the unearned ones are visible, so nothing may depend on equipment the rider does not own; offline throughout, with the across-bikes family **absent** rather than greyed out (rule 3, not a trial of the paid tier); and prose names with no points, no levels, no total. The catalogue is ordered by how much already exists — volume and consistency need no new data, and **breadth is the family this app is unusually well placed for**, because 72 authored classes make *every class in this collection* and *the same class five times* joins onto `class_templates`; that last one rewards the behaviour that makes 24.1's per-class ranking work at all. Also settled in advance: the back-fill awards a year of history but **announces none of it** (forty badges through 27.3's path would poison the feature on day one), two devices earning one badge resolve to the **earlier** date, and the dashboard's share is one line — the nearest *unearned* badge, because **three rides to fifty** is the only thing in the phase that answers *should I ride today* (22.8.8, 28.5.2) |
 | 29 | Health Connect and Apple Health | ⬜ **Written up, nothing built, and the owner's question answered.** Their note: *"Is that something we can integrate with? If so it's REALLY HIGH importance. But i wonder if we need to register an app."* **Health Connect: yes, and it needs nothing from them** — no account, no registration, no API key, no fee; the Play declaration form binds an app distributed on Play and this is not one. What it needs is the **bike**: Health Connect is in the platform only from Android 14 and the tablet is Android 11, so 29.1.1's three adb commands decide whether the phase is a feature or an essay, and 29.1.2 is a real decision about minSdk (`connect-client` floors at 26; this app claims 24). **Apple Health: no, and not for want of effort** — HealthKit has no Android SDK and no server API, because the data lives on the rider's iPhone; the honest route is the `.tcx` already written (12.4.3) carried across once, which is 29.2.2. Two of this project's rules carry straight over: **never write a modelled watt into a health record as measured** (`PowerProvenance` gates it) and **a trimmed ride cannot write seconds it no longer has** (23.4) |
 | 30 | Getting a version onto somebody else's bike | 🔶 **The whole mechanism is built and watched working on the AVD; what is left needs a password a session must not hold.** The owner's note asked for free OTA updates so their friend does not need adb. `PackageInstaller`'s session API, `UpdateRepository`/`UpdatePolicy`/`UpdateManifest` for the check, and `UpdateDownloader`/`UpdateInstaller`/`UpdateInstallReceiver`/`UpdateInstallCoordinator` for the install are all built, and 30.4.6 rehearsed the entire chain end to end with a genuine second APK over real HTTPS: the automatic prompt, the *install unknown apps* grant asked for and retried on return, the download, the checksum, the system's own confirmation, and **the database surviving** the replace. **Underneath it is still the prerequisite nobody had noticed.** Android refuses an update whose signing certificate changed; every copy of this app that exists is a **debug** build signed with the laptop's `debug.keystore`, and `release` has no `signingConfig` of its own yet — **30.1.1**, a release keystore, is the one item left that only the owner can do, because it needs a password a session must not handle, and it is the only thing in this plan with a deadline: every ride the friend takes before it exists is a ride that has to survive a backup and a restore across the changeover (30.1.4a rehearsed that route too, this sitting, and it works). 30.5.1 settled the connectivity-model question — an update check is the first network request this app makes for a rider with **no account**, and the owner allowed it because it is about the app rather than the rider and carries nothing about either. Play Store, F-Droid and Firebase App Distribution are each considered and each rejected with the reason attached (30.6) |

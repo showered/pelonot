@@ -13,7 +13,7 @@ keeps its sitting.
 | Measured | |
 |---|---|
 | JVM tests | **960**, 0 failures |
-| Plan boxes ticked | **707 of 939** — 75% |
+| Plan boxes ticked | **726 of 944** — 76% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
@@ -343,9 +343,18 @@ for.
   owner** at their own request: what the rows on the leaderboard should be
   called, since `12 months` and `30 days` are placeholders and the owner has
   said the first is *"no good at all"*.
-- **Phase 27 alerts** — records, streaks, and being beaten. Written out at full
-  length and deferred on the owner's own weighting: *"definitely nice-to-have
-  and low priority for now"*.
+- **Phase 27 alerts** — *being beaten by somebody else*, which is the family
+  that needs the network and is the last of the three. **The other two are
+  built** (29 August 2026): a ride that beats a class record, a mean-maximal
+  window, the rider's biggest ride or their longest one, or crosses a weekly
+  streak milestone, now says so — one line on the post-ride summary, everything
+  else on *Your records* off the dashboard. The floors are the design rather
+  than a setting: five prior rides before any claim about a rider's whole
+  history, two before a class record, and a 2% margin, so a new rider's first
+  ten rides say nothing at all. **27.2.3 is waiting on a decision rather than on
+  code** — being told you have been beaten is a different message from being
+  told you did well, and the item's own recommendation is that off-by-default
+  should be *decided*.
 
 ### Nice to have, and honestly labelled as such
 
