@@ -497,7 +497,7 @@
       it is written on the field rather than in this item, where the next
       person deleting an unused property will not be reading
 
-- [ ] **8.16.4** **Two `settings`-shaped readers are left and nobody has
+- [x] **8.16.4** **Two `settings`-shaped readers are left and nobody has
       counted them.** `RideViewModel` combines `settings` with the ride
       caption, and `AppViewModel`'s top-level state combines it with four other
       flows. Both re-run on every preference write and both end in
@@ -507,5 +507,40 @@
       nothing. **That expectation is exactly the one 8.16.2 got wrong twice**,
       which is the only reason this is written down rather than closed: the way
       to settle it is a counter in the transform and the units toggle as a
-      one-write-per-tap lever, twenty minutes, not a reading of the code
+      one-write-per-tap lever, twenty minutes, not a reading of the code.
+
+      **Counted the same afternoon it was written, and the expectation was
+      wrong for the third time in one sitting.** The state combine does not
+      only assemble: it runs `ClassToRide.suggest`, which maps **all 72
+      classes** to `toSuggestable()` before choosing one, and it does so on the
+      **main** thread because `stateIn(viewModelScope)` collects there. Two
+      levers, both one write per frame:
+
+      | | Before | After |
+      |---|---|---|
+      | `AppViewModel.uiState`, one 3 s opacity drag | 176 runs, **29.9 ms** of main thread | 175 runs, **0.9 ms** |
+      | `ClassToRide.suggest` in those runs | **176** | **0** |
+      | `RideViewModel` caption state, one 3 s coach-volume drag mid-ride | **176** rebuilds | **0** |
+
+      **The suggestion is a function of the class library and the rider's
+      rides, and of no preference at all**, so it moved into a
+      `recommendation` flow off `dashboard`. That does not overturn 22.9.4's
+      reason for having put it in the state — *"a third flow that re-derives
+      one of them is a second answer to the same question"* — because it
+      re-derives nothing: it reads `dashboard`'s own `riderRides` and the same
+      library the state already carries. **The top combine still watches
+      `settings` and should**, since the screen genuinely shows them; what it
+      no longer does is 72 objects and a ranking pass for a theme tap.
+
+      **`RideViewModel` is the one-liner and is the more interesting of the
+      two**, because its lever is *inside a ride*: the coach volume slider is
+      on the ride screen's own sheet, so the reader was rebuilding the whole
+      `RideUiState` 60 times a second while a rider was pedalling, to carry a
+      boolean that had not moved.
+
+      **What is not measured is the caption path itself.** Captions are off on
+      this AVD deliberately (21.6.1), and turning a rider's preference on for
+      them is the thing that item spent a morning refusing to do — so the
+      *count* is measured and the *drawing* is not. A ride with captions on
+      would close that, and it belongs on 22.2.5's trip rather than here
 

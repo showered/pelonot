@@ -253,13 +253,16 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 29 August 2026 (seventy-third sitting): the cheap follow-on was wrong in both directions, and only a probe could say which
+### Latest session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 
 **8.16.2 was picked because it was the one item on *What to do next* that a
 session could finish**, and it came with a written warning about itself: *"the
-reasoning that said it would be nothing was wrong once already"*. It was wrong
-again, twice, in opposite directions — and the whole of this sitting is the
-difference between reading the code and putting a counter in it.
+reasoning that said it would be nothing was wrong once already"*. **It was
+wrong three more times before the afternoon was out, in both directions** —
+and the whole of this sitting is the difference between reading the code and
+putting a counter in it. Four items closed, one of them written and then
+measured an hour later, and the code read the same before and after every
+single guess.
 
 **The item's own three fields cost nothing, and that is a measurement rather
 than a shrug.** The overlay writes
@@ -304,6 +307,26 @@ an opacity drag mid-ride that is one per frame. Now mapped and made distinct,
 raising at the right dock and opacity afterwards, since that collector is the
 sole writer of both fields.
 
+**Then the item this sitting had *just written* was wrong in the same way
+(8.16.4).** It was put down as an open sweep with an honest expectation
+attached — the two remaining `settings` readers end in
+`_uiState.update { it.copy(…) }`, a `MutableStateFlow` drops an equal value,
+so *"the cost is an allocation rather than a subscription or a query"*. It was
+counted an hour later out of suspicion rather than duty, and the state combine
+does not only assemble: it runs `ClassToRide.suggest`, mapping **all 72
+classes** to `toSuggestable()` before choosing one, on the **main** thread
+because `stateIn(viewModelScope)` collects there. **176 runs and 29.9 ms per
+three-second opacity drag; 0.9 ms and zero suggestions after.** The suggestion
+moved to a flow of its own off `dashboard`, which re-derives nothing and so
+keeps 22.9.4's reason for having put it in the state intact.
+
+**Its twin is the one that was happening inside a ride.** `RideViewModel`
+combined the whole of `AppSettings` with the ride caption to carry one boolean,
+and the coach volume slider — which a rider reaches mid-ride, from the ride
+screen's own sheet — writes on every frame: **176 rebuilds of the entire
+`RideUiState` in one drag, of a value that had not changed**. One line, and
+zero after.
+
 **A free item came off the same afternoon, and it is the better story.**
 Everything above needed the overlay up over the launcher, and `appops get`
 says `SYSTEM_ALERT_WINDOW` has been granted on this AVD for fifteen hours.
@@ -331,7 +354,14 @@ this table exists, which is why it is the one set of figures on this page that
 goes quietly stale.
 
 **960 JVM tests, 0 failures**, unchanged — this sitting removed work rather
-than adding rules, and the 56-ride fixture was left byte-for-byte as found.
+than adding rules, and the 56-ride fixture was left byte-for-byte as found,
+checked with `sqlite3` after each of the three rides it needed.
+
+**The one thing worth taking to the next sitting is where the wrong guesses
+came from.** Each was a reading of a shape rather than of a cost: an inline
+`.map` *looks* like 8.16.1, a `combine` on `settings` *looks* cheap, a
+`copy()` *looks* free. None of the three could be told apart from its
+opposite without a counter, and each counter took about twenty minutes.
 
 
 ### The sitting before — 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
@@ -459,14 +489,21 @@ against `workout_metrics` and closed the same afternoon. **The lesson is about
 where blocked items are hiding rather than about smoothing**: an item's stated
 blocker had quietly expired, and nothing goes back to check.
 
-**And the method is the part worth carrying, not the fix.** Both of 8.16.2's
-own guesses were wrong, in opposite directions, and the code read exactly the
-same either way: the inline `.map` in the overlay's `setContent` is textbook
-8.16.1 and costs nothing, while a combine nobody had looked at was making 178
-database reads per slider drag. A probe and a counter settled both in an hour.
-The remaining `settings`-shaped readers have **not** been swept — `RideViewModel`'s
-caption combine and `AppViewModel`'s top-level state are the two left — and the
-honest thing to say about them is that nobody has counted.
+**And the method is the part worth carrying, not the fix.** Every guess this
+sitting made about where the cost was turned out wrong — three times, in both
+directions, and the code read exactly the same either way. The inline `.map` in
+the overlay's `setContent` is textbook 8.16.1 and costs nothing; a combine
+nobody had looked at was making 178 database reads per slider drag; and the
+state combine that was expected to be *"an allocation rather than a query"* was
+running `ClassToRide.suggest` over 72 classes 176 times per drag, on the main
+thread. **A counter in the transform settled each one in about twenty
+minutes.** All four of 8.16's items are now closed and the readers are swept.
+
+**What is left unmeasured is one screen rather than one reader.** The ride
+screen's caption path is counted but never *drawn* here, because captions are
+off on this AVD deliberately (21.6.1) and turning a rider's preference on for
+them is what that item refused. One ride with captions on closes it, and it
+belongs on 22.2.5's trip.
 
 **And Phase 27's power alerts have never fired on a real bike**, for the reason
 27.1.2 wrote down before any of it existed: the AVD cannot produce a measured
@@ -775,7 +812,7 @@ warned about itself in a parenthesis for two sittings.
 |---|---|---|---|---|---|
 | 2 | **54 of 61** | 12 | 33 of 40 | 22 | 51 of 56 |
 | 7 | 31 of 36 | 13 | 8 of 8 | 23 | 37 of 44 |
-| 8 | **42 of 60** | 14 | 34 of 44 | 24 | 55 of 59 |
+| 8 | **43 of 60** | 14 | 34 of 44 | 24 | 55 of 59 |
 | 10 | 5 of 6 | 15 | **42 of 70** | 25 | 12 of 13 |
 | 11 | **68 of 81** | 16 | 19 of 19 | 26 | 19 of 24 |
 | | | 17/18 | 31 of 44 | 27 | **20 of 24** |
