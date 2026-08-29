@@ -398,3 +398,42 @@
       **This is the owner's to overrule and it is cheap to.** One job in
       `ci.yml`, and the argument above is about a constant rather than about
       anything structural
+
+### 8.16 One preference write, five Room subscriptions rebuilt — measured 29 August 2026
+
+- [x] **8.16.1** **`settings.map { it.lastProfileId }.flatMapLatest { … }` was
+      written eleven times across six view models, and not one of them was
+      distinct.** `SettingsRepository.settings` emits a whole new `AppSettings`
+      on **every** preference write — a theme tap, a units toggle, each frame of
+      an opacity drag, `setLastProfileId` itself, the backup mark, the cloud-sync
+      timestamp — so the mapped profile id re-emitted the *same* value and every
+      `flatMapLatest` tore down its Room subscription and built a new one. The
+      expensive one is `observeRidingIntensity`, which reads
+      `workout_metrics` for every ride in the last thirty days.
+
+      **Measured rather than reasoned about**, with a probe in the `.map` that
+      does the work and the units toggle as a deterministic one-write-per-tap
+      lever: **ten unrelated settings writes, ten full recomputations** of the
+      thirty-day zone breakdown on a 56-ride database, with nothing having
+      happened to any ride. After the fix, **ten writes, zero**. Profile
+      switching still re-subscribes — checked by switching riders and watching
+      Robin's *340 min · 17 weeks in a row* become Alex's *219 min · 5 weeks*,
+      which is the one thing `distinctUntilChanged` is most likely to break.
+
+      **The fix is one flow rather than eleven `distinctUntilChanged()` calls**
+      — `SettingsRepository.selectedProfileId`. Eleven copies of a rule is how
+      ten of them stay right and the eleventh does not, and the next
+      `flatMapLatest` on this question will be written by somebody who has not
+      read the paragraph explaining it. Same instinct as `CloudAccess` being one
+      class and `PowerProvenance` being one enum: a question this app asks in a
+      dozen places gets one answer
+
+- [ ] **8.16.2** **The same shape probably exists for the other fields of
+      `AppSettings` and has not been looked for.** `unitSystem`, `coachStyle`
+      and `hudDock` are each read by something that rebuilds when they change,
+      and each of those readers is also woken by every unrelated write. Nothing
+      downstream of them is a database query, so the cost is recomposition
+      rather than I/O and it may be nothing at all — but the measurement above
+      took twenty minutes and the reasoning that said it would be nothing was
+      wrong once already
+

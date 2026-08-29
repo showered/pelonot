@@ -293,8 +293,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         // maximum from the ride screen's own settings sheet (11.6.10) sees the
         // zones appear without leaving the class.
         viewModelScope.launch {
-            settingsRepository.settings
-                .map { it.lastProfileId }
+            settingsRepository.selectedProfileId
                 .flatMapLatest { id ->
                     if (id == null) flowOf(null) else userRepository.observeUser(id)
                 }
@@ -308,8 +307,7 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         // by definition somebody the app knows nothing about, so they are shown
         // the explanation too.
         viewModelScope.launch {
-            settingsRepository.settings
-                .map { it.lastProfileId }
+            settingsRepository.selectedProfileId
                 .flatMapLatest { id ->
                     if (id == null) flowOf(0) else workoutRepository.observeCompletedCount(id)
                 }

@@ -19,6 +19,7 @@ import com.pelonot.domain.model.UnitSystem
 import com.pelonot.domain.retention.RetentionAge
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
@@ -246,6 +247,27 @@ class SettingsRepository(context: Context) {
                 retentionAge = RetentionAge.fromName(prefs[Keys.RETENTION_AGE])
             )
         }
+
+    /**
+     * Which profile is selected, and **only when it changes** (PLAN 8.16.1).
+     *
+     * [settings] emits a whole new `AppSettings` on **every** preference write —
+     * a theme tap, a units toggle, each frame of an opacity drag — so eleven
+     * places across six view models were writing
+     * `settings.map { it.lastProfileId }.flatMapLatest { … }` and rebuilding a
+     * Room subscription each time the rider touched anything at all. Measured on
+     * the tablet AVD with a probe: **ten unrelated settings writes produced ten
+     * full recomputations** of the thirty-day zone breakdown, which scans
+     * `workout_metrics` for every ride in the window. Ten times nothing had
+     * happened to any ride.
+     *
+     * A flow here rather than a `distinctUntilChanged()` at each call site,
+     * because eleven copies of a rule is how ten of them stay right and the
+     * eleventh does not — and the next `flatMapLatest` on this question will be
+     * written by somebody who has not read this paragraph.
+     */
+    val selectedProfileId: Flow<Int?> =
+        settings.map { it.lastProfileId }.distinctUntilChanged()
 
     suspend fun setThemeMode(mode: ThemeMode) = edit { it[Keys.THEME_MODE] = mode.name }
 

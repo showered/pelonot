@@ -183,8 +183,7 @@ class SettingsViewModel(
      * already at the width of its typed overload and these two are read as one
      * thing: what the number is now, and when it last moved (7.10.3).
      */
-    private val profile = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val profile = settingsRepository.selectedProfileId
         .flatMapLatest { id ->
             if (id == null) {
                 flowOf<Pair<UserEntity?, List<FtpHistoryEntity>>>(null to emptyList())
@@ -208,8 +207,7 @@ class SettingsViewModel(
      * refuse, and `isAllowedFor` already folds in the build's credentials and
      * the rider's own backup switch.
      */
-    private val cloudSync = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val cloudSync = settingsRepository.selectedProfileId
         .flatMapLatest { id ->
             if (id == null) {
                 flowOf(CloudState())

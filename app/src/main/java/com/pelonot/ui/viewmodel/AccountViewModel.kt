@@ -218,14 +218,12 @@ class AccountViewModel(
 
     private var pollJob: Job? = null
 
-    private val profile = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val profile = settingsRepository.selectedProfileId
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else userRepository.observeUser(id)
         }
 
-    private val backlog = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val backlog = settingsRepository.selectedProfileId
         .flatMapLatest { id ->
             if (id == null) flowOf(0) else workoutRepository.observeBacklog(id).map { it.pending }
         }

@@ -84,7 +84,7 @@ class HistoryViewModel(
     private val windowSize = MutableStateFlow(INITIAL_WINDOW)
     private val heldBack = MutableStateFlow<WorkoutListItem?>(null)
 
-    private val userId = settingsRepository.settings.map { it.lastProfileId }
+    private val userId = settingsRepository.selectedProfileId
 
     val uiState: StateFlow<HistoryUiState> = userId
         .flatMapLatest { id ->

@@ -304,8 +304,7 @@ class AppViewModel(
         }
     }
 
-    private val dashboardStats = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val dashboardStats = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             // A guest has no history to summarise.
             if (profileId == null) flowOf(DashboardStats())
@@ -326,8 +325,7 @@ class AppViewModel(
     ) { recoverable, active, updateOffer -> Triple(recoverable, active, updateOffer) }
 
     /** The selected rider's FTP over time (7.10.2, and 16.3.1's screen). */
-    private val ftpTrend = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val ftpTrend = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             // A guest has no profile, so no FTP and no history of one.
             if (profileId == null) flowOf(FtpTrend())
@@ -351,16 +349,14 @@ class AppViewModel(
      * A guest gets an empty one for [ridingHistory]'s reason: a guest's rides
      * are filed against nobody, so there is no month of theirs to divide up.
      */
-    private val ridingIntensity = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val ridingIntensity = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             if (profileId == null) flowOf(RidingIntensity())
             else workoutRepository.observeRidingIntensity(profileId)
         }
 
     /** The selected rider's weeks (16.3.2, 16.3.5), for the same card-then-screen pair. */
-    private val ridingHistory = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val ridingHistory = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             // A guest's ride is not filed against anybody, so there is no
             // "their riding" to draw — the same reason the FTP trend is empty.
@@ -376,8 +372,7 @@ class AppViewModel(
      * suggestion, so a guest — and a brand-new profile — still gets an answer to
      * *what should I ride*. It is the rider who most needs one.
      */
-    private val riderRides = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val riderRides = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             if (profileId == null) flowOf(RiderRides())
             else workoutRepository.observeRiderRides(profileId)
@@ -425,8 +420,7 @@ class AppViewModel(
      * that emptied itself when the rider turned alerts off would take their
      * history away rather than stop grading them.
      */
-    private val riderAlerts = settingsRepository.settings
-        .map { it.lastProfileId }
+    private val riderAlerts = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
             if (profileId == null) flowOf(emptyList())
             else alertRepository.observeFor(profileId)
