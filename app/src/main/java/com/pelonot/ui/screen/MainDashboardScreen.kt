@@ -1460,7 +1460,7 @@ private fun RecordsGlanceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val headline = remember(latest.id) { AlertWording.headline(latest.alert) }
+    val headline = remember(latest.id) { AlertWording.phrase(latest.alert) }
     val whenText = remember(latest.recordedAt) {
         when (RideDayGrouping.relativeTo(latest.recordedAt)) {
             RideDayGrouping.Relative.Today -> "Today"

@@ -260,21 +260,15 @@ class WorkoutRepository(
      * and `power_bests_at` on the same row, and `WorkoutSession` carries
      * neither, so either one written first would be handed back as its default
      * by the finalise (8.3d.4).
+     *
+     * **This method is not that shared place, and the paragraph above says so
+     * without saying it loudly enough.** `recoverWorkout` finishes a ride
+     * without coming through here at all — see [recordRideFacts], which is where
+     * anything new belongs.
      */
     suspend fun finaliseWorkout(workout: WorkoutEntity) {
         workoutDao.updateWorkout(workout.copy(isComplete = true))
-        recordPowerFacts(workout.id)
-        // Strictly last, and that ordering is the whole of it (27.1.7): the
-        // detector reads `power_provenance` and `workout_power_bests`, both of
-        // which `recordPowerFacts` has just written. Run first, it would judge
-        // every ride as unmeasured and with no efforts in it — which fires
-        // nothing, so the fault would be a feature that quietly never works.
-        // Caught rather than allowed to escape: this runs inside the service's
-        // `scope.launch`, where an uncaught throw takes the process with it
-        // (2.7.7) — and the ride is already on disk by this line. A
-        // congratulation is the cheapest thing in the app to lose.
-        runCatching { alertRepository?.judge(workout.id) }
-            .onFailure { Log.w(TAG, "Could not judge ${workout.id} for records", it) }
+        recordRideFacts(workout.id)
     }
 
     suspend fun recordMetrics(metrics: List<WorkoutMetricEntity>) {
@@ -377,7 +371,7 @@ class WorkoutRepository(
             wasRecovered = true
         )
         workoutDao.updateWorkout(recovered)
-        recordPowerFacts(workoutId)
+        recordRideFacts(workoutId)
         return recovered
     }
 
@@ -746,6 +740,39 @@ class WorkoutRepository(
             repaired++
         }
         return repaired
+    }
+
+    /**
+     * Everything a ride only gets to have written down once it is finished.
+     *
+     * **There are two of these methods and not one, which is the whole reason
+     * this exists.** `finaliseWorkout` is not the choke point it looks like:
+     * `recoverWorkout` completes a ride the app was killed in the middle of by
+     * doing its own `updateWorkout` and calling [recordPowerFacts] directly,
+     * and 12.6.2's resume is a third route. A new after-the-ride step added to
+     * one of them silently does nothing on the others — which is exactly what
+     * happened to 27.1.1: the JVM tests were green, the rules were right, and a
+     * recovered ride was judged for records by nobody. Found by watching the
+     * screen rather than by reading the diff, which is what the house rule about
+     * ticking boxes is for.
+     *
+     * So: anything that has to happen when a ride becomes complete goes **here**,
+     * and the two callers call this.
+     */
+    private suspend fun recordRideFacts(workoutId: String) {
+        recordPowerFacts(workoutId)
+        // Strictly after, and the ordering is the whole of it (27.1.7): the
+        // detector reads `power_provenance` and `workout_power_bests`, both of
+        // which the line above has just written. Run first, it would judge every
+        // ride as unmeasured and with no efforts in it — which fires nothing, so
+        // the fault would be a feature that quietly never works.
+        //
+        // Caught rather than allowed to escape: this runs inside the service's
+        // `scope.launch`, where an uncaught throw takes the process with it
+        // (2.7.7) — and the ride is already on disk by this line. A
+        // congratulation is the cheapest thing in the app to lose.
+        runCatching { alertRepository?.judge(workoutId) }
+            .onFailure { Log.w(TAG, "Could not judge $workoutId for records", it) }
     }
 
     /**

@@ -280,4 +280,18 @@ class AlertRulesTest {
             )
         )
     }
+
+    /**
+     * The dashboard's card is a label under `Your records`, sitting beside
+     * `Last ride` → `Zone 2 Steady` and `Last 30 days` → `13 rides · 340 min`,
+     * neither of which is punctuated. One card with a full stop among three
+     * without reads as a mistake before it reads as anything else — seen on the
+     * AVD, which is the only place it could have been.
+     */
+    @Test
+    fun `the card gets the same words without the sentence`() {
+        val record = RiderAlert(AlertKind.RideDuration, "", 3_600.0, 1_800.0)
+        assertEquals("Your longest ride yet", AlertWording.phrase(record))
+        assertEquals("Your longest ride yet.", AlertWording.headline(record))
+    }
 }

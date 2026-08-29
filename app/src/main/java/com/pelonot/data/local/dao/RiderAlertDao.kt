@@ -23,12 +23,23 @@ interface RiderAlertDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(alerts: List<RiderAlertEntity>)
 
-    /** Everything this rider has ever earned, newest first (27.4.1). */
+    /**
+     * Everything this rider has ever earned, newest first (27.4.1).
+     *
+     * **`id ASC` inside a moment, and it is not a detail.** One ride writes its
+     * whole set in a single insert with one timestamp, so the tie-break decides
+     * which of them is *the* thing that ride is remembered for — and the rules
+     * wrote them in rank order, which the autoincrement preserves. Ordered the
+     * other way, the dashboard's card said *"Your biggest ride yet"* about a
+     * ride whose summary had just said *"Your best ride of Zone 2 Steady"*: the
+     * same ride, two headlines, and the app disagreeing with itself one screen
+     * apart. Seen on the AVD, not reasoned about.
+     */
     @Query(
         """
         SELECT * FROM rider_alerts
         WHERE user_id = :userId
-        ORDER BY recorded_at DESC, id DESC
+        ORDER BY recorded_at DESC, id ASC
         """
     )
     fun observeFor(userId: Int): Flow<List<RiderAlertEntity>>
@@ -60,6 +71,8 @@ interface RiderAlertDao {
      *
      * Not a `Flow`: the two callers want one answer at one moment.
      */
-    @Query("SELECT * FROM rider_alerts WHERE user_id = :userId ORDER BY recorded_at DESC")
+    @Query(
+        "SELECT * FROM rider_alerts WHERE user_id = :userId ORDER BY recorded_at DESC, id ASC"
+    )
     suspend fun allFor(userId: Int): List<RiderAlertEntity>
 }

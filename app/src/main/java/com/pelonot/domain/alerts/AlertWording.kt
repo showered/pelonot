@@ -19,21 +19,38 @@ import com.pelonot.core.Formatters
  */
 object AlertWording {
 
-    /** The one line the rider is shown after a ride (27.3.1). */
-    fun headline(alert: RiderAlert): String = when (alert.kind) {
+    /**
+     * The one line the rider is shown after a ride (27.3.1) — a whole sentence,
+     * with its full stop.
+     */
+    fun headline(alert: RiderAlert): String = "${phrase(alert)}."
+
+    /**
+     * The same words without the stop, for the dashboard's card.
+     *
+     * **Two forms rather than a `trimEnd`**, because the difference is real and
+     * a caller should not have to know which one it is holding. On the summary
+     * this is a sentence the app says to the rider and it ends; on a card it is
+     * a label, sitting under `Your records` beside `Last ride` → `Zone 2
+     * Steady` and `Last 30 days` → `13 rides · 340 min`, none of which is
+     * punctuated. Seen on the AVD: one card with a full stop among three
+     * without is the kind of thing that reads as a mistake before it is read as
+     * anything else.
+     */
+    fun phrase(alert: RiderAlert): String = when (alert.kind) {
         AlertKind.WeeklyStreak -> streakLine(alert.value.toInt())
 
         AlertKind.ClassOutput ->
             alert.subjectTitle
-                ?.let { "Your best ride of $it." }
-                ?: "Your best ride of this class."
+                ?.let { "Your best ride of $it" }
+                ?: "Your best ride of this class"
 
         AlertKind.PowerWindow ->
-            "Your best ${window(alert.subjectKey.toIntOrNull() ?: 0)}."
+            "Your best ${window(alert.subjectKey.toIntOrNull() ?: 0)}"
 
-        AlertKind.RideOutput -> "Your biggest ride yet."
+        AlertKind.RideOutput -> "Your biggest ride yet"
 
-        AlertKind.RideDuration -> "Your longest ride yet."
+        AlertKind.RideDuration -> "Your longest ride yet"
     }
 
     /**
@@ -80,11 +97,11 @@ object AlertWording {
     private fun streakLine(weeks: Int): String = when {
         weeks >= WEEKS_IN_YEAR && weeks % WEEKS_IN_YEAR == 0 -> {
             val years = weeks / WEEKS_IN_YEAR
-            if (years == 1) "A whole year, every week."
-            else "${spelled(years)} years, every week."
+            if (years == 1) "A whole year, every week"
+            else "${spelled(years)} years, every week"
         }
-        weeks == 26 -> "Half a year, every week."
-        else -> "${spelled(weeks)} weeks in a row."
+        weeks == 26 -> "Half a year, every week"
+        else -> "${spelled(weeks)} weeks in a row"
     }
 
     private const val WEEKS_IN_YEAR = 52
