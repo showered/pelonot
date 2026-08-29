@@ -98,6 +98,17 @@ data class AppSettings(
      */
     val rideCaptionsEnabled: Boolean = false,
 
+    /**
+     * Whether the app says anything about records and streaks (PLAN 27.4.2).
+     *
+     * **One switch, honoured everywhere**, and it is honoured by not *detecting*
+     * rather than by not drawing: a rider who does not want to be graded is not
+     * asking for a quieter version of being graded. On by default, because the
+     * whole of Phase 27's design — a floor, a margin, and at most one per ride —
+     * is what earns it that default.
+     */
+    val alertsEnabled: Boolean = true,
+
     /** Whether the floating HUD is raised over other apps during a ride. */
     val hudEnabled: Boolean = true,
 
@@ -219,6 +230,7 @@ class SettingsRepository(context: Context) {
                 coachVolume = (prefs[Keys.COACH_VOLUME] ?: AppSettings.DEFAULT_COACH_VOLUME)
                     .coerceIn(0f, 1f),
                 rideCaptionsEnabled = prefs[Keys.RIDE_CAPTIONS] ?: false,
+                alertsEnabled = prefs[Keys.ALERTS_ENABLED] ?: true,
                 hudEnabled = prefs[Keys.HUD_ENABLED] ?: true,
                 hudDock = HudDock.fromName(prefs[Keys.HUD_DOCK]),
                 hudOpacity = (prefs[Keys.HUD_OPACITY] ?: HudOpacity.DEFAULT).coerceIn(0f, 1f),
@@ -270,6 +282,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setRideCaptionsEnabled(enabled: Boolean) = edit {
         it[Keys.RIDE_CAPTIONS] = enabled
+    }
+
+    suspend fun setAlertsEnabled(enabled: Boolean) = edit {
+        it[Keys.ALERTS_ENABLED] = enabled
     }
 
     suspend fun setHudEnabled(enabled: Boolean) = edit { it[Keys.HUD_ENABLED] = enabled }
@@ -362,6 +378,7 @@ class SettingsRepository(context: Context) {
         val COACH_STYLE = stringPreferencesKey("coach_style")
         val COACH_VOLUME = floatPreferencesKey("coach_volume")
         val RIDE_CAPTIONS = booleanPreferencesKey("ride_captions")
+        val ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
         val HUD_ENABLED = booleanPreferencesKey("hud_enabled")
         val HUD_DOCK = stringPreferencesKey("hud_dock")
         val HUD_OPACITY = floatPreferencesKey("hud_opacity")

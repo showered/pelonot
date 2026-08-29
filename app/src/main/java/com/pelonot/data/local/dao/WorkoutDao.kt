@@ -1534,4 +1534,65 @@ interface WorkoutDao {
      */
     @Query("DELETE FROM workouts WHERE is_complete = 0 AND (:excludingId IS NULL OR id != :excludingId)")
     suspend fun deleteIncompleteWorkouts(excludingId: String?)
+
+    /**
+     * This rider's history as it stood before one ride (PLAN 27.2.1).
+     *
+     * `COALESCE` on the count because `SUM` over no rows is null and the column
+     * is not nullable; the two `MAX`es are left nullable on purpose, since
+     * "this rider has never had a longest ride" is a different answer from
+     * zero and the rules branch on it.
+     *
+     * The provenance is asked of `workouts.power_provenance` and never of the
+     * samples (23.4.12) — a ride 23.4 has condensed still has rows in
+     * `workout_metrics`, so a scan there returns a wrong number rather than
+     * nothing.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) AS rides,
+               COALESCE(SUM(CASE WHEN power_provenance = 'Measured' THEN 1 ELSE 0 END), 0)
+                   AS measured_rides,
+               MAX(CASE WHEN power_provenance = 'Measured' THEN total_output_kj END)
+                   AS best_output_kj,
+               MAX(duration_sec) AS longest_sec
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1 AND id != :excludingWorkoutId
+        """
+    )
+    suspend fun historyBefore(userId: Int, excludingWorkoutId: String): HistoryBeforeRow
+
+    /** The same for one class, measured rides only (PLAN 27.2.1). */
+    @Query(
+        """
+        SELECT COUNT(*) AS rides, MAX(total_output_kj) AS best_output_kj
+        FROM workouts
+        WHERE user_id = :userId AND class_id = :classId AND is_complete = 1
+          AND id != :excludingWorkoutId AND power_provenance = 'Measured'
+        """
+    )
+    suspend fun classHistoryBefore(
+        userId: Int,
+        classId: String,
+        excludingWorkoutId: String
+    ): ClassHistoryBeforeRow
+
+    /**
+     * Every ride timestamp this rider has **except** one, newest first.
+     *
+     * The pair with the ride's own timestamp is what turns a streak into a
+     * *crossing*: the run counted with this ride and the run counted without it
+     * differ only when this ride is what extended it, and a rider's second ride
+     * in one week therefore fires nothing. Excluding by id rather than by
+     * timestamp because two rides can share a millisecond and dropping the
+     * wrong one would end a streak that is still running.
+     */
+    @Query(
+        """
+        SELECT w.timestamp FROM workouts w
+        WHERE w.user_id = :userId AND w.is_complete = 1 AND w.id != :excludingWorkoutId
+        ORDER BY w.timestamp DESC
+        """
+    )
+    suspend fun rideTimestampsExcluding(userId: Int, excludingWorkoutId: String): List<Long>
 }

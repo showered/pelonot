@@ -569,12 +569,72 @@ object AppMigrations {
         }
     }
 
+    /**
+     * 22 → 23: the things worth telling a rider about (PLAN 27.1.1).
+     *
+     * A table and **no backfill**, and here the reason is not the usual one.
+     * The numbers themselves are all still on disk — every record this phase
+     * fires on is derivable from `workouts` and `workout_power_bests` today —
+     * so a backfill is not impossible the way 17 → 18's was. It is refused
+     * because of what an alert *is*: a claim about a change, at the moment it
+     * happened. Filing forty of them dated tonight would say a rider set forty
+     * records this evening, and the screen that exists to show the shape of a
+     * year would draw a single stripe. 28.4.2 reaches the same conclusion about
+     * badges from the other direction — the back-fill may happen, but it must
+     * never be announced — and a rider's first alert here is simply their next
+     * one.
+     *
+     * The two foreign keys differ on purpose. The profile cascades, because an
+     * alert about a rider who no longer exists is about nobody. The ride sets
+     * null, because an alert is never revoked: deleting the ride afterwards
+     * does not undo the week they rode.
+     */
+    val MIGRATION_22_23 = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `rider_alerts` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `user_id` INTEGER NOT NULL,
+                    `workout_id` TEXT,
+                    `kind` TEXT NOT NULL,
+                    `subject_key` TEXT NOT NULL,
+                    `subject_title` TEXT,
+                    `value_num` REAL NOT NULL,
+                    `previous_num` REAL,
+                    `recorded_at` INTEGER NOT NULL,
+                    `seen_at` INTEGER,
+                    FOREIGN KEY(`user_id`) REFERENCES `profiles`(`local_user_id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`workout_id`) REFERENCES `workouts`(`id`)
+                        ON UPDATE NO ACTION ON DELETE SET NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_rider_alerts_user_id` " +
+                    "ON `rider_alerts` (`user_id`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_rider_alerts_workout_id` " +
+                    "ON `rider_alerts` (`workout_id`)"
+            )
+            // The "never fires twice" of 27.1.1, held by the database rather
+            // than by the caller remembering to ask first.
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                    "`index_rider_alerts_user_id_kind_subject_key_workout_id` " +
+                    "ON `rider_alerts` (`user_id`, `kind`, `subject_key`, `workout_id`)"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
         MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
         MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-        MIGRATION_20_21, MIGRATION_21_22
+        MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23
     )
 }

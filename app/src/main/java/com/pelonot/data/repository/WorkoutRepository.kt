@@ -1,5 +1,6 @@
 package com.pelonot.data.repository
 
+import android.util.Log
 import com.pelonot.data.local.dao.ActiveRideRivalDao
 import com.pelonot.data.local.dao.HouseholdRivalRow
 import com.pelonot.data.local.dao.LastRideRow
@@ -107,7 +108,16 @@ class WorkoutRepository(
     private val workoutDao: WorkoutDao,
     private val metricDao: WorkoutMetricDao,
     private val activeRideRivalDao: ActiveRideRivalDao,
-    private val workoutPowerBestDao: WorkoutPowerBestDao
+    private val workoutPowerBestDao: WorkoutPowerBestDao,
+    /**
+     * What a finished ride was worth telling the rider (PLAN 27.1.1).
+     *
+     * Optional, and null in the instrumented tests that build this repository
+     * directly: judging a ride is a read of five tables and none of those tests
+     * is about Phase 27. Absent means no alert is ever written, which is the
+     * same state a rider who has turned them off is in.
+     */
+    private val alertRepository: AlertRepository? = null
 ) {
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
@@ -254,6 +264,17 @@ class WorkoutRepository(
     suspend fun finaliseWorkout(workout: WorkoutEntity) {
         workoutDao.updateWorkout(workout.copy(isComplete = true))
         recordPowerFacts(workout.id)
+        // Strictly last, and that ordering is the whole of it (27.1.7): the
+        // detector reads `power_provenance` and `workout_power_bests`, both of
+        // which `recordPowerFacts` has just written. Run first, it would judge
+        // every ride as unmeasured and with no efforts in it — which fires
+        // nothing, so the fault would be a feature that quietly never works.
+        // Caught rather than allowed to escape: this runs inside the service's
+        // `scope.launch`, where an uncaught throw takes the process with it
+        // (2.7.7) — and the ride is already on disk by this line. A
+        // congratulation is the cheapest thing in the app to lose.
+        runCatching { alertRepository?.judge(workout.id) }
+            .onFailure { Log.w(TAG, "Could not judge ${workout.id} for records", it) }
     }
 
     suspend fun recordMetrics(metrics: List<WorkoutMetricEntity>) {
@@ -1374,6 +1395,8 @@ class WorkoutRepository(
     }
 
     companion object {
+        private const val TAG = "WorkoutRepository"
+
         /**
          * Rides drained per pass of the backlog (14.2.5).
          *

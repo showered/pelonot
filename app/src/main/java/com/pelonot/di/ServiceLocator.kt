@@ -11,6 +11,7 @@ import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.DeviceLinkRepository
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.AccountRepository
+import com.pelonot.data.repository.AlertRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.RestoreRepository
@@ -221,12 +222,32 @@ object ServiceLocator {
         ClassRepository(database.classTemplateDao())
     }
 
+    /**
+     * What a finished ride was worth telling the rider about (27.1.1).
+     *
+     * Its own owner rather than a method on [workoutRepository], for the reason
+     * [retentionRepository] has one: this is the only thing in the app that
+     * writes a congratulation, and every caller of it should be findable in one
+     * grep. The switch is read here, once per ride, from the same DataStore the
+     * rest of the app reads.
+     */
+    val alertRepository: AlertRepository by lazy {
+        AlertRepository(
+            alertDao = database.riderAlertDao(),
+            workoutDao = database.workoutDao(),
+            powerBestDao = database.workoutPowerBestDao(),
+            classTemplateDao = database.classTemplateDao(),
+            alertsEnabled = { settingsRepository.settings.first().alertsEnabled }
+        )
+    }
+
     val workoutRepository: WorkoutRepository by lazy {
         WorkoutRepository(
             database.workoutDao(),
             database.workoutMetricDao(),
             database.activeRideRivalDao(),
-            database.workoutPowerBestDao()
+            database.workoutPowerBestDao(),
+            alertRepository
         )
     }
 

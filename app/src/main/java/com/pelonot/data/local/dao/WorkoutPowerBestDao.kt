@@ -69,4 +69,39 @@ interface WorkoutPowerBestDao {
         """
     )
     suspend fun bestsFor(userId: Int): List<PowerBestRow>
+
+    /**
+     * The best this rider had held at each window before one ride (27.1.7).
+     *
+     * **Read from here and never re-scanned from samples**, which is the whole
+     * of 27.1.7: 23.4 condenses old rides, so a scan would watch a record fall
+     * because the ride holding it had been trimmed — and would then congratulate
+     * the rider for beating it. A stored best survives the trim; the samples it
+     * came from do not.
+     *
+     * No provenance clause, for `bestsFor`'s reason: a row only exists for a
+     * ride whose watts the board measured, so the existence of these rows is
+     * itself the claim.
+     */
+    @Query(
+        """
+        SELECT b.window_sec AS window_sec, MAX(b.watts) AS watts
+        FROM workout_power_bests b
+        JOIN workouts w ON w.id = b.workout_id
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.id != :excludingWorkoutId
+        GROUP BY b.window_sec
+        """
+    )
+    suspend fun bestsBefore(userId: Int, excludingWorkoutId: String): List<WindowBestRow>
+
+    /** What one ride held, for the same comparison from the other side. */
+    @Query(
+        """
+        SELECT window_sec AS window_sec, watts AS watts
+        FROM workout_power_bests WHERE workout_id = :workoutId
+        """
+    )
+    suspend fun bestsOf(workoutId: String): List<WindowBestRow>
 }

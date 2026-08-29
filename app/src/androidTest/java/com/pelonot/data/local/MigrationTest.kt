@@ -6,6 +6,8 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.pelonot.data.local.entity.RiderAlertEntity
+import com.pelonot.domain.alerts.AlertKind
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.runBlocking
@@ -1419,6 +1421,106 @@ class MigrationTest {
             // What the screen draws for them, which is the same disc it drew
             // before the upgrade — derived, not stored.
             assertEquals(Avatar.defaultFor(1), Avatar.parse(row?.avatar, 1))
+        } finally {
+            migrated.close()
+        }
+    }
+
+    /**
+     * 22 → 23: the ledger arrives empty, and the rides that predate it keep
+     * their silence (PLAN 27.1.1).
+     *
+     * **The assertion that matters is the empty one.** Every record this phase
+     * fires on is derivable from rows that are already here, so a back-fill was
+     * available and is refused: an alert is a claim about a change *at the
+     * moment it happened*, and forty of them dated tonight would tell a rider
+     * they set forty records this evening. What is checked besides is that the
+     * two foreign keys differ — deleting the ride leaves the alert standing
+     * with a null ride, because an alert is never revoked, while deleting the
+     * rider takes it, because it was about nobody else.
+     */
+    @Test
+    fun migrate22To23_addsAnEmptyLedgerAndNeverRevokesWhatTheRideHeld() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed, max_hr_bpm)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0, 190)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (id, user_id, duration_sec, total_output_kj,
+                                      timestamp, is_complete)
+                VALUES ('ride-1', 1, 1800, 300.0, 1000, 1)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 23, true, AppMigrations.MIGRATION_22_23)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+            TEST_DB
+        )
+            .addMigrations(*AppMigrations.ALL)
+            .build()
+
+        try {
+            val dao = migrated.riderAlertDao()
+            assertEquals(
+                "a rider with a history arrives with nothing to be told",
+                0,
+                runBlocking { dao.allFor(1) }.size
+            )
+
+            runBlocking {
+                dao.insertAll(
+                    listOf(
+                        RiderAlertEntity(
+                            userId = 1,
+                            workoutId = "ride-1",
+                            kind = AlertKind.RideOutput.name,
+                            subjectKey = "",
+                            value = 300.0,
+                            previousValue = 250.0,
+                            recordedAt = 2000
+                        )
+                    )
+                )
+                // The same alert a second time — the second finalise of a
+                // resumed ride — is dropped by the unique index rather than
+                // duplicated (27.1.1).
+                dao.insertAll(
+                    listOf(
+                        RiderAlertEntity(
+                            userId = 1,
+                            workoutId = "ride-1",
+                            kind = AlertKind.RideOutput.name,
+                            subjectKey = "",
+                            value = 300.0,
+                            previousValue = 250.0,
+                            recordedAt = 3000
+                        )
+                    )
+                )
+            }
+            assertEquals("written once", 1, runBlocking { dao.allFor(1) }.size)
+
+            runBlocking { migrated.workoutDao().deleteWorkout("ride-1") }
+            val survivor = runBlocking { dao.allFor(1) }
+            assertEquals("the ride goes and the alert stays", 1, survivor.size)
+            assertNull("with nothing left to point at", survivor.first().workoutId)
+
+            runBlocking { migrated.userDao().deleteUser(1) }
+            assertEquals(
+                "but an alert about nobody is not an alert",
+                0,
+                runBlocking { dao.allFor(1) }.size
+            )
         } finally {
             migrated.close()
         }

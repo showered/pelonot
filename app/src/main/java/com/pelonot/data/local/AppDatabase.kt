@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import com.pelonot.data.local.dao.ActiveRideRivalDao
 import com.pelonot.data.local.dao.ClassTemplateDao
 import com.pelonot.data.local.dao.FtpHistoryDao
+import com.pelonot.data.local.dao.RiderAlertDao
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.dao.WorkoutDao
 import com.pelonot.data.local.dao.WorkoutMetricDao
@@ -15,6 +16,7 @@ import com.pelonot.data.local.dao.WorkoutPowerBestDao
 import com.pelonot.data.local.entity.ActiveRideRivalEntity
 import com.pelonot.data.local.entity.ClassTemplateEntity
 import com.pelonot.data.local.entity.FtpHistoryEntity
+import com.pelonot.data.local.entity.RiderAlertEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
@@ -28,9 +30,10 @@ import com.pelonot.data.local.entity.WorkoutPowerBestEntity
         WorkoutMetricEntity::class,
         FtpHistoryEntity::class,
         ActiveRideRivalEntity::class,
-        WorkoutPowerBestEntity::class
+        WorkoutPowerBestEntity::class,
+        RiderAlertEntity::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -43,6 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ftpHistoryDao(): FtpHistoryDao
     abstract fun activeRideRivalDao(): ActiveRideRivalDao
     abstract fun workoutPowerBestDao(): WorkoutPowerBestDao
+    abstract fun riderAlertDao(): RiderAlertDao
 
     /**
      * The schema version this database is actually open at (12.4.4).
