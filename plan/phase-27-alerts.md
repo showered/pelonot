@@ -245,6 +245,30 @@ stripe. 28.4.2 arrives at the same conclusion about badges from the other side.
       narrowly. A fence that fires on formatting teaches the next person to route
       around it, which is the one failure a source scan cannot recover from
 
+- [x] **27.5.6** **A ride resumed under 12.6.2 kept the records its first half
+      earned.** `resumeInterruptedWorkout` already clears `synced_at`,
+      `power_bests_at`, `power_provenance` and the stored efforts, each with a
+      written reason that applies here word for word — the ride is about to get
+      longer, so every derived fact about it is the short version's — and the
+      alerts were the one derived fact nobody had added to the list. Without it,
+      a rider who ends a 25-minute ride by accident is told about their best
+      twenty minutes, carries on to 45, and is never told again about the ride
+      they actually did. **This is the one place an alert is deleted, and it is
+      deliberately allowed to take back something already shown**: the longer
+      ride's twenty minutes can only be as good or better, so the rider ends up
+      told once about one ride rather than once about its first half. It is not
+      28.1.1's *never revoked* in miniature — that rule is about a ride the
+      rider finished
+
+      *Watched: five alerts and the headline on screen, `Carry on riding`,
+      **zero** in the table, `resume_count` at 1.* And then the second finalise
+      wrote **nothing**, because the one simulated second the emulator recorded
+      turned a 1800-sample `Measured` ride into a `Mixed` one — 27.1.2's gate
+      refusing every watt over a single modelled sample, which is what it says
+      it does. **On a real bike the resumed minutes are measured too**, so
+      provenance stays `Measured` and the records re-fire at their new values;
+      the untelling seen here is the simulator, not the rule
+
 ### What it was watched doing
 
 Two hand-built fixtures on the 56-ride five-profile database, restored

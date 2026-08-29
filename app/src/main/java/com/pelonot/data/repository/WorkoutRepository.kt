@@ -469,6 +469,12 @@ class WorkoutRepository(
         )
         workoutDao.updateWorkout(reopened)
         workoutPowerBestDao.clearFor(workoutId)
+        // And the records it earned, for the same reason as the two lines above
+        // (27.1.1): they are the short ride's. The longer ride is judged again
+        // at its own finalise, against a history that still does not contain it,
+        // so the rider is told once about one ride rather than once about its
+        // first half.
+        alertRepository?.clearFor(workoutId)
 
         return ResumedRide(workout = reopened, aggregates = aggregates)
     }

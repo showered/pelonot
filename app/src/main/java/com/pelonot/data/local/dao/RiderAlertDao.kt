@@ -59,6 +59,18 @@ interface RiderAlertDao {
     @Query("SELECT COUNT(*) FROM rider_alerts WHERE workout_id = :workoutId")
     suspend fun countForWorkout(workoutId: String): Int
 
+    /**
+     * Everything one ride earned, thrown away because the ride is not over
+     * after all (12.6.2).
+     *
+     * The only place an alert is ever deleted, and it is the same clause the
+     * resume already applies to `synced_at`, `power_bests_at`,
+     * `power_provenance` and the stored efforts: the ride is about to get
+     * longer, so every derived fact about it is the short version's.
+     */
+    @Query("DELETE FROM rider_alerts WHERE workout_id = :workoutId")
+    suspend fun clearFor(workoutId: String)
+
     @Query("UPDATE rider_alerts SET seen_at = :at WHERE id = :id AND seen_at IS NULL")
     suspend fun markSeen(id: Long, at: Long)
 

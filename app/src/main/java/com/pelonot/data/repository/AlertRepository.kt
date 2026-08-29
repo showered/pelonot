@@ -123,6 +123,24 @@ class AlertRepository(
     }
 
     /**
+     * Un-judges a ride that turned out not to be over (12.6.2).
+     *
+     * **The one place an alert is deleted, and it is deliberately allowed to
+     * take back something the rider has already been told.** A ride ended by
+     * accident has been judged and its headline shown; carrying on makes it a
+     * longer ride, whose twenty-minute effort can only be as good or better, so
+     * the second finalise says the same thing or a bigger one. The rider is
+     * therefore told **once about one ride**, which is 27.1.5, rather than told
+     * about the first half and never about the whole.
+     *
+     * It is not 28.1.1's "never revoked" in miniature. That rule is about a
+     * ride the rider actually finished; this is about a ride that has not
+     * finished yet, and it is the same clause the resume already applies to
+     * `synced_at`, `power_bests_at` and the stored efforts.
+     */
+    suspend fun clearFor(workoutId: String) = alertDao.clearFor(workoutId)
+
+    /**
      * The one line a rider is shown after a ride, and the act of showing it
      * (27.1.5, 27.3.1).
      *

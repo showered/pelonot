@@ -324,6 +324,32 @@ every watt, and the floor holding at three rides. The FTP breakthrough dialog
 appeared on the first and not the second, which is 7.10.7 confirming itself from
 the same gate.
 
+**A sixth thing came off the same afternoon and it is not Phase 27's at all
+(8.16.1).** `SettingsRepository.settings` emits a whole new `AppSettings` on
+**every** preference write, and eleven places across six view models wrote
+`settings.map { it.lastProfileId }.flatMapLatest { … }` with nothing distinct in
+between — so every theme tap, units toggle and frame of an opacity drag tore
+down five Room subscriptions and built them again. The expensive one reads
+`workout_metrics` for every ride in the last thirty days. **Measured with a
+probe and the units toggle as a one-write-per-tap lever: ten unrelated writes,
+ten full recomputations; after the fix, ten writes and zero.** One flow —
+`SettingsRepository.selectedProfileId` — rather than eleven
+`distinctUntilChanged()` calls, because eleven copies of a rule is how ten of
+them stay right and the eleventh does not.
+
+**And the last defect of the sitting was found by reading an existing rule
+rather than by looking at anything.** `resumeInterruptedWorkout` already clears
+`synced_at`, `power_bests_at`, `power_provenance` and the stored efforts, each
+with a written reason that applies to alerts word for word — the ride is about
+to get longer, so every derived fact about it is the short version's — and the
+alerts were the one derived fact nobody had added to the list. Watched: five
+alerts and a headline on screen, *Carry on riding*, **zero** in the table. The
+second finalise then wrote nothing at all, because the **one** simulated second
+the emulator recorded turned an 1800-sample `Measured` ride into a `Mixed` one.
+That is 27.1.2 refusing every watt over a single modelled sample, exactly as it
+says it will; on a real bike the resumed minutes are measured too and the
+records re-fire at their new values.
+
 **960 JVM tests, 0 failures**, up from 945.
 
 
@@ -500,6 +526,13 @@ are a *probably no* until somebody misses them. Nothing here is blocked on
 code. **27.2.4 is the one that is a job** — the record a rider does not know
 they are near, knowable at class-selection time, and it belongs behind 24.3.3's
 explicit choice to race rather than on every class card.
+
+**8.16.2 is the cheap follow-on and it is deliberately not ticked.** The same
+non-distinct shape almost certainly exists for `unitSystem`, `coachStyle` and
+`hudDock`, whose readers are also woken by every unrelated write. Nothing
+downstream of those is a database query, so the cost is recomposition rather
+than I/O and it may be nothing — but the measurement above took twenty minutes
+and the reasoning that said it would be nothing was wrong once already.
 
 **And Phase 27's power alerts have never fired on a real bike**, for the reason
 27.1.2 wrote down before any of it existed: the AVD cannot produce a measured
