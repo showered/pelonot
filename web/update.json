@@ -1,7 +1,7 @@
 {
-  "version_code": 2,
-  "version_name": "1.0.1",
-  "notes": "First signed release with in-app updates.",
-  "url": "https://github.com/showered/pelonot/releases/download/v1.0.1/pelonot-1.0.1.apk",
-  "sha256": "a9025f804315d4d626d892c795fc42a79eeec6e84470744bfc1c2752f04432bd"
+  "version_code": 3,
+  "version_name": "1.0.2",
+  "notes": "Sign in to an existing Pelonot account from a fresh install, then bring your saved rides to this bike.",
+  "url": "https://github.com/showered/pelonot/releases/download/v1.0.2/pelonot-1.0.2.apk",
+  "sha256": "41a47a2467654d162ee84d3ed9a78ba5a45f39904b453aed38d8a1afe1f8473e"
 }
