@@ -85,7 +85,10 @@ sealed class Destination(val route: String) {
      * No argument: it always acts for the selected profile, because an account
      * attaches to *one* rider (15.2.1) and there is no view of somebody else's.
      */
-    data object Account : Destination("account")
+    data object Account : Destination("account?$ARG_NEW_BIKE={$ARG_NEW_BIKE}") {
+        fun normal() = "account"
+        fun onNewBike() = "account?$ARG_NEW_BIKE=true"
+    }
 
     /**
      * The FTP trend, reached from the dashboard's FTP card (16.3.1). No
@@ -121,6 +124,7 @@ sealed class Destination(val route: String) {
         const val ARG_CLASS_ID = "classId"
         const val ARG_INTENT_ID = "intentId"
         const val ARG_WORKOUT_ID = "workoutId"
+        const val ARG_NEW_BIKE = "newBike"
 
         /** 8.3d — set only when re-entering a ride rather than starting one. */
         const val ARG_RESUME_ID = "resumeId"

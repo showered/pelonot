@@ -111,6 +111,7 @@ fun ProfileSelectorScreen(
     onProfileSelected: (UserEntity) -> Unit,
     onGuestSelected: () -> Unit,
     onCreateProfile: () -> Unit,
+    onSignInOnNewBike: () -> Unit = {},
     modifier: Modifier = Modifier,
     /**
      * Each rider's level (26.4), keyed by profile — absent means level 1.
@@ -320,6 +321,10 @@ fun ProfileSelectorScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            } else {
+                TextButton(onClick = onSignInOnNewBike) {
+                    Text("Already have an account? Sign in")
+                }
             }
         }
     }

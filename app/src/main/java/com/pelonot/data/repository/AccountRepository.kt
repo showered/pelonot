@@ -3,6 +3,7 @@ package com.pelonot.data.repository
 import android.util.Log
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.dao.WorkoutDao
+import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.AuthRepository
 import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.domain.cloud.AccountState
@@ -41,6 +42,9 @@ class AccountRepository(
     private val deleteCloudCopy: suspend (localUserId: Int) -> SyncOutcome<CloudDeletion>
 ) {
 
+    /** The result of signing an existing rider into a bike with no profiles. */
+    data class NewBikeSignIn(val attempt: AuthAttempt, val localUserId: Int? = null)
+
     val accountState: Flow<AccountState> = authRepository.accountState
 
     val cloudConfigured: Boolean get() = authRepository.cloudConfigured
@@ -55,6 +59,36 @@ class AccountRepository(
      */
     suspend fun signIn(localUserId: Int, email: String, password: String): AuthAttempt =
         attachAfter(localUserId) { authRepository.signIn(email, password) }
+
+    /**
+     * Signs an existing rider into a fresh bike.
+     *
+     * A profile remains the local owner of a session, even on a new tablet.
+     * Creating its small local shell only after authentication means the first
+     * screen can offer a real sign-in route without asking an existing rider to
+     * complete new-rider setup first. Restore replaces the temporary email name
+     * with the account profile when the rider brings their history down.
+     */
+    suspend fun signInOnNewBike(email: String, password: String): NewBikeSignIn {
+        val attempt = authRepository.signIn(email, password)
+        val success = attempt as? AuthAttempt.Success ?: return NewBikeSignIn(attempt)
+
+        val alreadyHeldBy = userDao.getUserByAuthId(success.accountId)
+        if (alreadyHeldBy != null) {
+            authRepository.signOut()
+            return NewBikeSignIn(
+                AuthAttempt.Failed(
+                    "That account is already backing up ${alreadyHeldBy.name} on this bike"
+                )
+            )
+        }
+
+        val local = userRepository.save(
+            UserEntity(name = success.email?.substringBefore('@')?.takeIf { it.isNotBlank() } ?: "Rider")
+        )
+        val attached = attach(local.localUserId, success)
+        return NewBikeSignIn(attached, local.localUserId.takeIf { attached is AuthAttempt.Success })
+    }
 
     /**
      * Creates an account and attaches it, when the project hands back a session.

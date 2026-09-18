@@ -88,6 +88,7 @@ import com.pelonot.ui.viewmodel.RestoreState
 @Composable
 fun AccountScreen(
     onBack: () -> Unit,
+    isNewBikeSignIn: Boolean = false,
     modifier: Modifier = Modifier,
     viewModel: AccountViewModel = viewModel(factory = AccountViewModel.Factory)
 ) {
@@ -148,6 +149,14 @@ fun AccountScreen(
         ) {
             when {
                 !state.cloudConfigured -> ReadablePanel { NoCloudHere() }
+                isNewBikeSignIn -> ReadablePanel {
+                    NewBikeSignIn(
+                        state = state,
+                        viewModel = viewModel,
+                        onDone = onBack
+                    )
+                }
+
                 state.isGuest -> ReadablePanel { GuestCannotBackUp() }
 
                 // Before the session check, because deleting the cloud copy
@@ -232,6 +241,54 @@ fun AccountScreen(
             onConfirm = viewModel::deleteCloudData,
             onDismiss = viewModel::dismissDeletion
         )
+    }
+}
+
+/** The first-run route for an account that already exists. */
+@Composable
+private fun NewBikeSignIn(
+    state: AccountUiState,
+    viewModel: AccountViewModel,
+    onDone: () -> Unit
+) {
+    Text("Sign in", style = MaterialTheme.typography.headlineMedium)
+    Text(
+        "Bring your saved rides and profile to this bike.",
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    OutlinedTextField(
+        value = state.email,
+        onValueChange = viewModel::setEmail,
+        label = { Text("Email") },
+        singleLine = true,
+        isError = state.emailProblem != null,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            imeAction = ImeAction.Next
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+    OutlinedTextField(
+        value = state.password,
+        onValueChange = viewModel::setPassword,
+        label = { Text("Password") },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = ImeAction.Done
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+    state.problem?.let { ProblemLine(it) }
+    Button(
+        onClick = { viewModel.submitOnNewBike(onDone) },
+        enabled = state.canSubmit,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (state.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        else Text("Sign in")
     }
 }
 

@@ -267,6 +267,9 @@ fun PelonotNavGraph(
                     onSelectProfile(null)
                     navController.navigate(Destination.Dashboard.route)
                 },
+                onSignInOnNewBike = {
+                    navController.navigate(Destination.Account.onNewBike())
+                },
                 onCreateProfile = { showProfileDialog = true },
                 onSaveProfile = onSaveProfile,
                 onDeleteProfile = onDeleteProfile
@@ -300,7 +303,7 @@ fun PelonotNavGraph(
                 backupReminder = uiState.backupReminder,
                 onDismissBackupReminder = onDismissBackupReminder,
                 showAccountOffer = showAccountOffer,
-                onAccountOffer = { navController.navigate(Destination.Account.route) },
+                onAccountOffer = { navController.navigate(Destination.Account.normal()) },
                 onDismissAccountOffer = onDismissAccountOffer,
                 onJustRide = {
                     pendingClassId = null
@@ -366,8 +369,20 @@ fun PelonotNavGraph(
             )
         }
 
-        composable(Destination.Account.route) {
-            AccountScreen(onBack = navController::popBackStack)
+        composable(
+            route = Destination.Account.route,
+            arguments = listOf(
+                navArgument(Destination.ARG_NEW_BIKE) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
+        ) { backStackEntry ->
+            AccountScreen(
+                onBack = navController::popBackStack,
+                isNewBikeSignIn = backStackEntry.arguments
+                    ?.getBoolean(Destination.ARG_NEW_BIKE) == true
+            )
         }
 
         composable(Destination.History.route) {
@@ -532,7 +547,7 @@ fun PelonotNavGraph(
         composable(Destination.Settings.route) {
             SettingsScreen(
                 onBack = navController::popBackStack,
-                onOpenAccount = { navController.navigate(Destination.Account.route) }
+                onOpenAccount = { navController.navigate(Destination.Account.normal()) }
             )
         }
 

@@ -329,6 +329,29 @@ class AccountViewModel(
         }
     }
 
+    /** The first-run route creates its local profile only after authentication succeeds. */
+    fun submitOnNewBike(onSignedIn: () -> Unit) {
+        val snapshot = form.value
+        val problem = CredentialCheck.emailProblem(snapshot.email)
+            ?: CredentialCheck.passwordProblem(snapshot.password)
+        if (problem != null) {
+            form.update { it.copy(problem = problem) }
+            return
+        }
+
+        form.update { it.copy(busy = true, problem = null) }
+        viewModelScope.launch {
+            val result = accountRepository.signInOnNewBike(snapshot.email, snapshot.password)
+            val localUserId = result.localUserId
+            if (result.attempt is AuthAttempt.Success && localUserId != null) {
+                settingsRepository.setLastProfileId(localUserId)
+                resolve(result.attempt, localUserId, onSignedIn)
+            } else {
+                resolve(result.attempt, localUserId ?: 0, onSignedIn)
+            }
+        }
+    }
+
     fun resendConfirmation() {
         val address = form.value.awaitingConfirmationFor ?: return
         form.update { it.copy(busy = true) }
