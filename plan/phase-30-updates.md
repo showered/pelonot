@@ -413,3 +413,40 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       the rider does not administer, is a thing to be uneasy about — and the
       one-off *install unknown apps* grant makes it impossible anyway, which is
       the platform agreeing
+
+### 30.7 Release-readiness pass — 14 September 2026
+
+- [x] **30.7.1 Bound the manifest while reading it.** The old `readText().take`
+      allocated the entire response first. The reader now stops after 8,193
+      characters and refuses an oversized manifest. JVM tests cover an endless
+      reader and the exact limit. APK streaming is capped at 100 MiB and honours
+      cancellation. Malformed HTTPS URLs are refused before an offer.
+- [x] **30.7.2 Keep installer state until the system answers.** Committing a
+      session previously reset the dialog to idle immediately; failures only
+      reached logcat, and synchronous installer exceptions could escape the
+      ViewModel. The shared coordinator now prevents duplicate downloads,
+      catches failures, exposes cancellation/failure callbacks and checks for
+      an active ride before download and again before committing. Session I/O
+      runs off the main thread; failed sessions are abandoned. Five JVM tests
+      exercise the coordinator, including a ride starting during download.
+- [ ] **30.7.3 Rehearse the revised system installer callbacks with the permanent
+      signing key.** The earlier 30.4.6 rehearsal predates these changes. This
+      pass compiled both variants and tested coordinator failures but did not
+      publish or install a new production release. API 24–25 permission calls
+      are now guarded; that older platform was not available for this pass.
+- [ ] **30.7.4 Finish the publishing rehearsal.** `tools/release.sh prepare`
+      now bumps the version, builds and verifies a release APK, rejects the
+      debug certificate and prepares its checksum and manifest locally.
+      `publish` verifies the artifact/source again, uploads to GitHub, and only
+      then writes `web/update.json`. Five isolated Python tests cover the
+      ordering and failure paths; the real debug APK was rejected by certificate.
+      No GitHub release or live manifest was created. See `RELEASE.md` for the
+      commands. This implements 30.3.2's tooling but leaves its production
+      observation outstanding.
+- [ ] **30.7.5 Manual checks can retry a declined update.** Automatic checks
+      still respect the declined version. Settings now has a real in-flight
+      flag, blocks repeated taps and checks during a ride, and says “Checking…”.
+      The disabled-switch copy no longer promises the entire app is offline
+      while account backup may still be enabled. Build and source checks pass;
+      the no-manifest production endpoint remains an unavailable-check case.
+      Re-offering a declined production version awaits a real manifest.

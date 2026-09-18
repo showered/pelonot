@@ -94,6 +94,14 @@
 - [x] **6.8** `SettingsScreen` — FTP, weight, theme, telemetry source, BLE, overlay permission, cloud sync, all persisted
 - [x] **6.9** Navigation via `NavHost` with typed destinations; ride screens are real destinations rather than booleans checked before the graph
 - [x] **6.10** ViewModels with `StateFlow`; no database access from composables
+- [x] **6.11** Duration filters combine with category filters; changing filters
+      starts at the top and empty combinations offer Clear filters. Checked on
+      the tablet AVD at 100% and 115% system text, 17 September 2026.
+- [x] **6.12** Keep the selected backup URI across activity recreation so the
+      restore confirmation does not disappear. Checked by selecting a local
+      backup and changing system text size; confirmation remained, then Cancel
+      dismissed it. No backup was restored by that UI check.
+
 
 ---
 

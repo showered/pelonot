@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
                             onDismissBackupReminder = viewModel::snoozeBackupReminder,
                             onDismissAccountOffer = viewModel::dismissAccountOffer,
                             onRevertFtpChange = viewModel::revertFtpChange,
+                            onApplyFtpAssessment = viewModel::applyFtpAssessment,
                             onLoadLeaderboard = viewModel::householdLeaderboard,
                             onLoadRidesOfThisLength = viewModel::ridesOfThisLength,
                             onLoadRivals = viewModel::classRivals,

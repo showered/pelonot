@@ -1671,3 +1671,16 @@ developer never sits in.
       no history to draw, no level badge (26.4's rule holding), and about 280 dp
       of nothing under the cards. The never-ridden *profile* is the same layout
       with a badge on it.
+
+
+### 22.10 Let the rider choose — owner's request, 17 September 2026
+
+The owner does not want the app to pre-empt the class they will ride. The
+suggested-class hero was optimising a shortcut they do not use.
+
+- [x] **22.10.1 Replace the hero with Choose a class.** A primary library door
+      sits beside Just Ride, without a redundant All Classes action. The
+      category/duration filters do the choosing. Verified on the tablet emulator:
+      opens the library, filters to 20 minutes, returns to dashboard. Primary
+      actions remain visible at 130% text alongside the enlarged FTP evidence
+      card. The old suggested-class card is removed.

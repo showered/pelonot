@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -140,26 +141,27 @@ fun ProfileCreationScreen(
     suggestedAvatar: Avatar = Avatar.defaultFor(1),
     nowMillis: Long = System.currentTimeMillis()
 ) {
-    var step by remember { mutableStateOf(Step.Name) }
+    var step by rememberSaveable { mutableStateOf(Step.Name) }
 
-    var name by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf<Long?>(null) }
-    var level by remember { mutableStateOf<FitnessLevel?>(null) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var weight by rememberSaveable { mutableStateOf("") }
+    var birthDate by rememberSaveable { mutableStateOf<Long?>(null) }
+    var level by rememberSaveable { mutableStateOf<FitnessLevel?>(null) }
 
     // **Null until the rider touches the picker** (20.6.2). The step shows
     // [suggestedAvatar] from the first frame, so there is always a face on
     // screen — but a face that was merely *shown* is a different claim from one
     // that was *chosen*, and `profiles.avatar` keeps the two apart for the life
     // of the profile (20.2.2).
-    var chosenAvatar by remember { mutableStateOf<Avatar?>(null) }
+    var chosenAvatarValue by rememberSaveable { mutableStateOf<String?>(null) }
+    val chosenAvatar = chosenAvatarValue?.let { Avatar.parse(it, 1) }
     val shownAvatar = chosenAvatar ?: suggestedAvatar
 
     // Opens on whatever the rest of the app is using, which on a fresh install
     // is the locale's guess. 13.8: the unit is asked, not assumed — a 77 kg
     // rider was once stored as 34.9 kg by this screen's ancestor.
     val preferredUnits = MaterialTheme.units
-    var weightUnits by remember(preferredUnits) { mutableStateOf(preferredUnits) }
+    var weightUnits by rememberSaveable { mutableStateOf(preferredUnits) }
 
     val weightKg = weight.toDoubleOrNull()
         ?.takeIf { it > 0.0 }
@@ -170,7 +172,7 @@ fun ProfileCreationScreen(
     // The escape hatch of 20.3.2, and it is deliberately null until the rider
     // opens it: a typed value that merely *equals* the estimate is still a
     // different claim about where the number came from.
-    var typedFtp by remember { mutableStateOf<String?>(null) }
+    var typedFtp by rememberSaveable { mutableStateOf<String?>(null) }
     val typedWatts = typedFtp?.toIntOrNull()?.takeIf { it in MIN_TYPED_FTP..MAX_TYPED_FTP }
 
     val resolvedFtp = typedWatts ?: estimate ?: UserEntity.DEFAULT_FTP
@@ -230,7 +232,7 @@ fun ProfileCreationScreen(
             Step.Face -> FaceStep(
                 name = name,
                 avatar = shownAvatar,
-                onAvatar = { chosenAvatar = it },
+                onAvatar = { chosenAvatarValue = it.store() },
                 onContinue = { step = Step.Result }
             )
 
@@ -784,7 +786,12 @@ private fun ResultStep(
 
         Spacer(Modifier.height(MaterialTheme.spacing.extraLarge))
 
-        Button(onClick = onCreate, modifier = Modifier.width(PRIMARY_BUTTON_WIDTH)) {
+        Button(
+            onClick = onCreate,
+            enabled = typedFtp == null ||
+                typedFtp.toIntOrNull()?.let { it in MIN_TYPED_FTP..MAX_TYPED_FTP } == true,
+            modifier = Modifier.width(PRIMARY_BUTTON_WIDTH)
+        ) {
             Text(createLabel, style = MaterialTheme.typography.titleMedium)
         }
     }

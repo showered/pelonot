@@ -83,9 +83,12 @@ object RideExport {
      * Everything outside `[A-Za-z0-9-_]` goes: class titles are free text, and
      * a stray slash is the difference between a saved file and a silent failure.
      */
-    fun filename(ride: ExportRide, format: ExportFormat): String {
-        val stamp = FILE_STAMP.format(Date(ride.startedAtMillis))
-        val slug = ride.title
+    fun filename(ride: ExportRide, format: ExportFormat): String =
+        filename(ride.title, ride.startedAtMillis, format)
+
+    fun filename(title: String, startedAtMillis: Long, format: ExportFormat): String {
+        val stamp = SimpleDateFormat("yyyy-MM-dd-HHmm", Locale.US).format(Date(startedAtMillis))
+        val slug = title
             .replace(UNSAFE, "-")
             .trim('-')
             .take(48)
@@ -211,7 +214,6 @@ object RideExport {
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
-    private val FILE_STAMP = SimpleDateFormat("yyyy-MM-dd-HHmm", Locale.US)
 
     private val UNSAFE = Regex("[^A-Za-z0-9-_]+")
 }

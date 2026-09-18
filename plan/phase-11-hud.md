@@ -1719,3 +1719,16 @@ and no amount of getting 11.7 right produces it.
       network.** A rider being taught what a zone is has by definition just met
       the app, and rule 1 of the connectivity model says that rider makes no
       request at all
+
+### 11.9 Emulator release pass — 14 September 2026
+
+- [x] **11.9.1 Fit the totals' labels at larger system text.** The ride screen
+      clipped the final letter of “AVG POWER” at 115% text despite the value
+      already shrinking. Use `ShrinkToFitText` for the label too, within its
+      share of the icon row. The complete label was observed on the same class ride at 115% text
+      after rebuilding and reinstalling.
+- [x] **11.9.2 Make the overlay's mapped preference flows stable.** Remember
+      the four mapped flows so Compose lint can enforce its rule without
+      exceptions. This is a lifecycle/lint improvement, not a claim that the
+      performance measurement in 8.16.2 was wrong. The live overlay was watched
+      over the launcher during a simulated ride.

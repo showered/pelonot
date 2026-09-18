@@ -598,3 +598,38 @@ same standard 2.2a was held to. What the note does settle is emphasis
 *What to do next*, because the triage rule an earlier sitting wrote down is
 that an inbox entry is weighed like any other plan item, not promoted for
 arriving twice.
+
+
+### 7.12 FTP as earned progress — owner's request, 17 September 2026
+
+The owner's 200 has remained indistinguishable from the number typed at signup.
+They want a number earned through riding, visible movement in both directions,
+and an honest indication when recent efforts question it. A typed million must
+not earn recognition. This is evidence about a training estimate, not a claim
+that one measure ranks a rider's overall fitness.
+
+- [x] **7.12.1 Starting versus ride-supported.** `FtpAssessment` derives status
+      from measured, stored twenty-minute bests and FTP history. An unchanged
+      200 can earn support; a typed value cannot. A separate strongest-effort
+      query preserves old support beyond the latest 20 rides and 90-day review
+      window. Existing measured-source history retains provenance if its ride
+      is deleted. JVM cases cover manually entered values, unchanged support,
+      aging, edits, rejected proposals, future/invalid evidence and easy rides.
+- [x] **7.12.2 Visible review and movement.** Dashboard labels and a redesigned
+      FTP detail screen show the evidence, progress toward the existing
+      three-hard-ride reduction rule, supporting ride and an explicit Use … W
+      action. New suggestions use up to 20 qualifying rides in 90 days, after
+      the latest setting/declined proposal. Acceptance rechecks evidence and
+      atomically guards the expected setting and timestamp. Emulator fixtures
+      verified 200 → 209 and 200 → 185, including source/ride links in SQLite.
+      Layout checked at 100% and 130% text on the 1280 × 720 dp tablet AVD.
+- [x] **7.12.3 Recheck after the effort answer.** `setRpe` now reassesses the
+      reduction after persisting the answer. It previously assessed before RPE
+      existed and never asked again. Instrumented ViewModel regression:
+      two hard rides plus an unanswered third gives no proposal; answering
+      Everything I had produces 171; changing it to Comfortable withdraws it.
+- [x] **7.12.4 Explain what auto-FTP actually does.** The detail screen's
+      expandable explanation names measured power, continuous twenty-minute
+      efforts, upward/downward gates and explicit acceptance. Breakthrough
+      copy identifies the estimate's evidence rather than declaring improved
+      fitness as fact. `AUTO_FTP.md` and architecture now describe both paths.

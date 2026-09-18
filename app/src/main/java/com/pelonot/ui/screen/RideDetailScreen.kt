@@ -113,23 +113,31 @@ fun RideDetailScreen(
     // share sheet would be an empty list.
     val scope = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
-    var pendingExport by remember { mutableStateOf<Pair<String, String>?>(null) }
+    // Save only the format, not thousands of samples in Android's saved-state bundle.
+    var pendingExport by rememberSaveable { mutableStateOf<ExportFormat?>(null) }
     val context = LocalContext.current
 
     val saveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("*/*")
     ) { uri ->
-        val export = pendingExport
+        val format = pendingExport
         pendingExport = null
         // A cancelled picker is not a failure and does not deserve a message.
-        if (uri == null || export == null) return@rememberLauncherForActivityResult
+        if (uri == null || format == null) return@rememberLauncherForActivityResult
 
         scope.launch {
             val written = withContext(Dispatchers.IO) {
-                runCatching {
-                    context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        stream.write(export.second.toByteArray())
-                    } ?: error("could not open $uri for writing")
+                try {
+                    val export = viewModel.buildExport(workoutId, format)
+                        ?: error("This ride is no longer available.")
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+                        stream.write(export.second.toByteArray(Charsets.UTF_8))
+                    } ?: error("Could not open the destination for writing.")
+                    Result.success(export.first)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    Result.failure<String>(error)
                 }
             }
             // Said out loud either way. A silent export is indistinguishable
@@ -137,7 +145,7 @@ fun RideDetailScreen(
             // has shipped eleven times.
             snackbarHost.showSnackbar(
                 written.fold(
-                    onSuccess = { "Saved ${export.first}" },
+                    onSuccess = { "Saved $it" },
                     onFailure = { "Could not save the file: ${it.message}" }
                 )
             )
@@ -145,13 +153,11 @@ fun RideDetailScreen(
     }
 
     val export: (ExportFormat) -> Unit = { format ->
-        scope.launch {
-            val built = viewModel.buildExport(format)
-            if (built == null) {
-                snackbarHost.showSnackbar("There is nothing to export from this ride.")
-            } else {
-                pendingExport = built
-                saveLauncher.launch(built.first)
+        if (pendingExport == null) {
+            val filename = viewModel.exportFilename(format)
+            if (filename != null) {
+                pendingExport = format
+                saveLauncher.launch(filename)
             }
         }
     }

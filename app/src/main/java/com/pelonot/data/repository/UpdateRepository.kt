@@ -91,7 +91,7 @@ class UpdateRepository(
         // no wifi does not silently consume the daily allowance every launch.
         settings.markUpdateCheckedAt(nowMs)
         return UpdateCheck.Decided(
-            UpdatePolicy.decide(installedVersionCode, manifest, current.declinedUpdateVersionCode)
+            UpdatePolicy.decide(installedVersionCode, manifest, if (force) null else current.declinedUpdateVersionCode)
         )
     }
 
@@ -109,8 +109,10 @@ class UpdateRepository(
             // Capped, because a captive portal answers every request with a
             // login page and this must not read a megabyte of it into memory.
             val body = connection.inputStream.bufferedReader()
-                .use { it.readText().take(MAX_MANIFEST_CHARS) }
+                .use { com.pelonot.domain.update.readBoundedManifest(it, MAX_MANIFEST_CHARS) }
             json.decodeFromString<UpdateManifest>(body)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Every failure here is "no update today" (30.3.4). Logged at debug
             // because a rider must never see it and a session sometimes must.

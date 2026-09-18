@@ -12,6 +12,7 @@ import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.domain.progress.FtpReductionRule
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -119,6 +120,51 @@ class FtpReductionTest {
         )
         repository.finaliseWorkout(workout)
         return workout
+    }
+
+    @Test
+    fun answeringTheEffortQuestionRechecksTheReduction() = runBlocking<Unit> {
+        ride("rpe-a", 1000, heartRate = null, maxHr = null)
+        ride("rpe-b", 2000, heartRate = null, maxHr = null)
+        ride("rpe-c", 3000, heartRate = null, maxHr = null)
+        repository.setRpe("rpe-a", 10)
+        repository.setRpe("rpe-b", 10)
+        val settings = SettingsRepository(ApplicationProvider.getApplicationContext())
+        val previous = settings.settings.first().lastProfileId
+        val store = androidx.lifecycle.ViewModelStore()
+        try {
+            settings.setLastProfileId(riderId)
+            val vm = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                com.pelonot.ui.viewmodel.PostRideViewModel(repository, users, settings,
+                    ClassRepository(database.classTemplateDao()),
+                    AlertRepository(database.riderAlertDao(), database.workoutDao(),
+                        database.workoutPowerBestDao(), database.classTemplateDao(), { false }))
+                    .also { store.put("rpe-test", it); it.load("rpe-c") }
+            }
+            kotlinx.coroutines.withTimeout(10000) { vm.uiState.first { !it.isLoading } }
+            assertEquals(null, vm.uiState.value.ftpReduction)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { vm.setRpe(10) }
+            val assessed = kotlinx.coroutines.withTimeout(10000) { vm.uiState.first { it.ftpReduction != null } }
+            assertEquals(171, assessed.ftpReduction!!.proposedFtp)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { vm.setRpe(2) }
+            kotlinx.coroutines.withTimeout(10000) { vm.uiState.first { it.rpe == 2 && it.ftpReduction == null } }
+        } finally {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { store.clear() }
+            settings.setLastProfileId(previous)
+        }
+    }
+
+    @Test
+    fun evidenceFlowIncludesOnlyMeasuredRidesAndSurvivesTrimming() = runBlocking {
+        ride("measured", 1000)
+        ride("simulated", 2000, measured = false)
+        ride("unknown", 3000, measured = null)
+        assertEquals(listOf("measured"), repository.observeFtpEvidence(riderId).first().map { it.workoutId })
+        database.openHelper.writableDatabase.execSQL("DELETE FROM workout_metrics WHERE workout_id = 'measured'")
+        assertEquals(180.0, repository.observeFtpEvidence(riderId).first().single().peak20MinWatts, 0.01)
+        assertEquals("measured", repository.observeStrongestFtpEvidence(riderId, 0, null).first()!!.workoutId)
+        assertEquals(null, repository.observeStrongestFtpEvidence(riderId, 4000, null).first())
+        assertEquals("measured", repository.observeStrongestFtpEvidence(riderId, 4000, "measured").first()!!.workoutId)
     }
 
     private suspend fun threeHardRides(watts: Double = 180.0) {

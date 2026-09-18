@@ -62,6 +62,31 @@ class FtpHistoryTest {
         repository.save(UserEntity(name = "Test Rider", weightKg = 72.0, ftpWatts = ftp))
 
     @Test
+    fun reviewedChangeIsAtomicAndRecordsItsSource() = runBlocking {
+        val rider = newRider()
+        now = 2000L
+        assertEquals(true, repository.applyReviewedFtp(rider.localUserId, 200, 1000, 209,
+            FtpChangeSource.AutoBreakthrough, null))
+        assertEquals(209, repository.getUser(rider.localUserId)!!.ftpWatts)
+        assertEquals(FtpChangeSource.AutoBreakthrough.name, repository.ftpHistory(rider.localUserId).last().source)
+        assertEquals(false, repository.applyReviewedFtp(rider.localUserId, 200, 1000, 215,
+            FtpChangeSource.AutoBreakthrough, null))
+        assertEquals(2, repository.ftpHistory(rider.localUserId).size)
+    }
+
+    @Test
+    fun returningToTheSameNumberDoesNotReviveAnOldReview() = runBlocking {
+        val rider = newRider()
+        now = 2000L
+        repository.updateFtp(rider.localUserId, 210)
+        now = 3000L
+        repository.updateFtp(rider.localUserId, 200)
+        assertEquals(false, repository.applyReviewedFtp(rider.localUserId, 200, 1000, 209,
+            FtpChangeSource.AutoBreakthrough, null))
+        assertEquals(200, repository.getUser(rider.localUserId)!!.ftpWatts)
+    }
+
+    @Test
     fun creatingAProfileRecordsTheFtpItStartedAt() = runBlocking {
         val rider = newRider(ftp = 205)
 

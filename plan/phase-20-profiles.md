@@ -1606,3 +1606,20 @@ adds is that the web app is not merely *also* a place to do it; it is the
       Robin** (`photo:avatar-1-1786964382388.jpg`), and it is now the *only* way
       to see this path work at all — worth leaving in place rather than tidying
       away
+
+### 20.8 Emulator UX pass — 14 September 2026
+
+- [x] **20.8.1 Reject an invalid typed FTP at profile creation.** The field
+      already showed an error, but Continue silently accepted the estimate.
+      Continue is now disabled while an explicit value is blank or outside
+      40–600. Observed with `999`, including a tap that stayed on the result
+      screen; choosing the estimate then continued normally.
+- [x] **20.8.2 Keep onboarding answers across recreation.** Step, name, weight,
+      birth year, fitness choice, units, chosen avatar and typed FTP now use
+      saved state. A system font-size change on the tablet AVD preserved the
+      result step, the name/weight-derived estimate and `999`; the chosen face
+      appeared on the resulting profile.
+- [x] **20.8.3 Keep “Not now” visible on the account offer.** At 115% system
+      text the QR/form pair pushed the old footer below the viewport. Move
+      the choice into the introductory row above that pair. Both states were screenshotted at 115% text; the new button was
+      visible at the top and tapping it reached the dashboard.

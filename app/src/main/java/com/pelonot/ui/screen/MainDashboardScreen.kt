@@ -80,9 +80,7 @@ import com.pelonot.ui.theme.expressiveShapes
 import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.loneCard
 import com.pelonot.data.repository.DashboardStats
-import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.social.HouseholdRider
-import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.HouseholdPanelCard
 import com.pelonot.ui.components.RideDaysCard
@@ -148,20 +146,6 @@ fun MainDashboardScreen(
     onDismissAccountOffer: () -> Unit = {},
     onJustRide: () -> Unit,
     onBeginClass: () -> Unit,
-    /**
-     * The class this screen is offering, and why (22.8.6). Null only while the
-     * library is loading, which is the one state in which the app cannot name a
-     * class — a rider who has ridden nothing still gets one.
-     */
-    suggestion: ClassSuggestion? = null,
-    /**
-     * The shape of that class (22.9.4) — derived beside the suggestion from its
-     * own id, never looked up here, so the card cannot name one class and draw
-     * another.
-     */
-    suggestionProfile: ClassProfile? = null,
-    /** How many classes there are to browse, for the door beside the offer. */
-    classCount: Int? = null,
     /**
      * A few more places to start (22.9.5), and **empty for anybody who has
      * ridden** — the state that fills this screen and the state this row exists
@@ -252,75 +236,24 @@ fun MainDashboardScreen(
                 // level, because it is what somebody already sitting on the
                 // bike reaches for and it should be hittable without reading.
                 //
-                // **And the primary card names a class** (22.8.6). *Begin
-                // Class* was a door to a list: the screen's own question is
-                // *should I ride today, **and what should I ride*** (22.1.1),
-                // and a door answers the first half by inviting a choice it
-                // does not help with. The card is the suggestion itself, the
-                // library keeps a full-size door of its own beside it, and
-                // nothing has moved down a level — the row is the same row.
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
                 ) {
-                    if (suggestion != null) {
-                        SuggestedClassCard(
-                            suggestion = suggestion,
-                            profile = suggestionProfile,
-                            onClick = { onRideSuggestion(suggestion.classId) },
-                            modifier = Modifier
-                                .weight(2f)
-                                .fillMaxHeight()
-                        )
-                    } else {
-                        // No library — a fresh install whose seed has not landed
-                        // yet, and the only state in which this app cannot name
-                        // a class. The door still works.
-                        PrimaryActionCard(
-                            title = "Begin Class",
-                            subtitle = "Pick one and ride it with a plan",
-                            icon = Icons.Default.FitnessCenter,
-                            onClick = onBeginClass,
-                            modifier = Modifier
-                                .weight(2f)
-                                .fillMaxHeight()
-                        )
-                    }
-                    // **The two doors stack rather than stand beside it**
-                    // (22.9.1). The offer card is taller now that it carries the
-                    // class's own shape, and a row equalises heights — so left
-                    // abreast, *All Classes* and *Just Ride* would have grown to
-                    // 180 dp each to hold two words and an icon, which is
-                    // exactly the 152-dp-card-for-43-dp-of-text that 22.8.2 was
-                    // written to delete. Stacked, the same height carries two
-                    // cards instead of one and neither of them gains any air.
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
-                    ) {
-                        SecondaryActionCard(
-                            title = "All Classes",
-                            subtitle = classCount?.let { "$it to choose from" } ?: "Browse them all",
-                            icon = Icons.AutoMirrored.Filled.List,
-                            onClick = onBeginClass,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        )
-                        SecondaryActionCard(
-                            title = "Just Ride",
-                            subtitle = "No plan — pedal",
-                            icon = Icons.AutoMirrored.Filled.DirectionsBike,
-                            onClick = onJustRide,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        )
-                    }
+                    PrimaryActionCard(
+                        title = "Choose a class",
+                        subtitle = "Find your pace, pick your length",
+                        icon = Icons.Default.FitnessCenter,
+                        onClick = onBeginClass,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    SecondaryActionCard(
+                        title = "Just Ride",
+                        subtitle = "Your own pace, no class",
+                        icon = Icons.AutoMirrored.Filled.DirectionsBike,
+                        onClick = onJustRide,
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
                 }
 
                 // ── 2️⃣a The account offer or the backup reminder ────────
@@ -652,6 +585,15 @@ private fun FtpGlanceCard(
                         modifier = Modifier.padding(bottom = 3.dp)
                     )
                 }
+                Text(
+                    text = trend.assessment?.label ?: "Starting value",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                trend.assessment?.summary?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 FtpTrendLine(trend)
             }
             if (onClick != null) {
@@ -729,151 +671,6 @@ private fun PrimaryActionCard(
 // =========================================================================
 // The class this screen is offering (22.8.6)
 // =========================================================================
-/**
- * *What should I ride?* — answered with a class rather than with a door.
- *
- * **It sits exactly where *Begin Class* sat**, in the primary colour, at the
- * same weight, in the same row: the owner's instruction that beginning a class
- * is the primary action (22.8.1) is honoured more directly by naming one than
- * by pointing at a list. The library keeps a full-size card of its own beside
- * it, because a rider who wants a different class must not have to go through
- * this one.
- *
- * **It opens the class, it does not start it.** The class screen is the last
- * screen between a rider and a ride (22.7.2) — the shape of the workout, the
- * board, and a Start button — and a dashboard that could begin a class on one
- * tap would be a dashboard that begins one by accident.
- *
- * **The reason is the third fact on the line and it is never decoration.**
- * Every phrase here is an observation about this rider's own history, drawn
- * from `ClassSuggestion.Reason` so that what is *said* and what was *decided*
- * cannot drift apart.
- *
- * **And the card shows the ride rather than a dumbbell** (22.9.4). Where the
- * right-hand half of it held a 40 dp gym glyph — a decoration that said nothing
- * about this class and nothing this rider could act on — it now carries the
- * class's own shape: its blocks, at their zone, across its length, in the same
- * component the class detail screen draws (22.7.2). It is the one candidate in
- * 22.9.4 that **works from ride zero**, which matters because the emptiest
- * dashboard in the app belongs to the rider who has never ridden, and the
- * question they cannot answer is precisely *what is this class like*.
- */
-@Composable
-private fun SuggestedClassCard(
-    suggestion: ClassSuggestion,
-    /** The shape of this same class, resolved from its own id (22.9.4). */
-    profile: ClassProfile?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val reason = when (val reason = suggestion.reason) {
-        ClassSuggestion.Reason.FirstRide -> "a good place to start"
-        ClassSuggestion.Reason.EasyAfterHard -> "easy after a hard one"
-        ClassSuggestion.Reason.NewToYou -> "new to you"
-        is ClassSuggestion.Reason.NotSince ->
-            "not since " + DateFormat.getDateInstance(DateFormat.MEDIUM)
-                .format(Date(reason.atEpochMs))
-    }
-    val detail = "${suggestion.minutes} min · ${suggestion.category} · $reason"
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics {
-                contentDescription = "Ride ${suggestion.title}, $detail. Opens the class."
-            },
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = MaterialTheme.elevationTokens.level1
-        ),
-        onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(MaterialTheme.spacing.large)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Ride this",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = suggestion.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = detail,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (profile == null || profile.blocks.isEmpty()) {
-                    // No shape to draw — a class whose intervals would not
-                    // decode, or a library still loading. The glyph is what the
-                    // card carried before and it keeps the card from being a
-                    // half-empty rectangle in the only state that has nothing
-                    // to show.
-                    Icon(
-                        imageVector = Icons.Default.FitnessCenter,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            if (profile != null && profile.blocks.isNotEmpty()) {
-                // **Under the words, across the whole card, not beside them.**
-                // Time is the horizontal axis, so the wide-and-short aspect is
-                // the one that reads — the same argument 22.7.2 made for giving
-                // this drawing the full panel on the class screen, at a third
-                // of the size. Beside the text it was 250 dp of squashed
-                // recovery blocks and looked like a progress bar.
-                //
-                // The clock labels stay off: the line above already says how
-                // long the class is, and three more times under it is one
-                // question answered twice (Phase 26).
-                Spacer(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
-                ClassProfileChart(
-                    profile = profile,
-                    height = 72.dp,
-                    showClock = false
-                )
-            }
-        }
-    }
-}
-
-// =========================================================================
-// Secondary Action Card
-// =========================================================================
-/**
- * A door, in the shape the rest of this screen uses for a row of one thing.
- *
- * **Icon beside the words rather than above them** (22.9.1). Stacked above, the
- * card's shortest honest height is about 136 dp — a 32 dp glyph, a title and a
- * caption in a column — and two of those stacked set the whole action row to
- * 296 dp, which stretched the offer card beside them into a field of teal with
- * its shape marooned at the bottom. **That is the exact fault 22.8.2 named**,
- * reached from the opposite direction: not a card given too much room, but a
- * card *demanding* it. Sideways it is about 92 dp, which is the same shape and
- * nearly the same height as the FTP and last-ride cards below, so the screen
- * has one idiom for *a card that is one line of meaning* instead of two.
- */
 @Composable
 private fun SecondaryActionCard(
     title: String,
@@ -1605,8 +1402,7 @@ private fun FtpTrendLine(trend: FtpTrend) {
             style = MaterialTheme.typography.bodySmall,
             color = accent,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            modifier = Modifier.weight(1f)
         )
     }
 }

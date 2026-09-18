@@ -121,7 +121,12 @@ object ServiceLocator {
      * now* cannot each think they own the download.
      */
     val updateInstallCoordinator: UpdateInstallCoordinator by lazy {
-        UpdateInstallCoordinator(updateDownloader, updateInstaller)
+        UpdateInstallCoordinator(
+            download = updateDownloader::download,
+            commit = updateInstaller::install,
+            canInstall = updateInstaller::canInstall,
+            permissionIntent = updateInstaller::unknownSourcesSettingsIntent
+        )
     }
 
     /**

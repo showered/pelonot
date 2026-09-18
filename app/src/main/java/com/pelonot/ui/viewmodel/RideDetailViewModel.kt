@@ -24,6 +24,7 @@ import com.pelonot.domain.export.RideExport
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerProvenance
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,13 +101,31 @@ class RideDetailViewModel(
     private val _uiState = MutableStateFlow(RideDetailUiState())
     val uiState: StateFlow<RideDetailUiState> = _uiState.asStateFlow()
 
+    private var loadedWorkoutId: String? = null
+    private var loadJob: Job? = null
+    private var ghostJob: Job? = null
+
+    init {
+        // Collect once per ViewModel; screen recreation must not add collectors.
+        viewModelScope.launch {
+            userRepository.allUsers.collect { users ->
+                _uiState.update { it.copy(profiles = users) }
+            }
+        }
+    }
+
     fun load(workoutId: String) {
+        if (loadedWorkoutId == workoutId) return
+        loadedWorkoutId = workoutId
+        loadJob?.cancel()
+        ghostJob?.cancel()
+        _uiState.update { RideDetailUiState(profiles = it.profiles) }
         if (workoutId.isBlank()) {
             _uiState.update { it.copy(isLoading = false) }
             return
         }
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             val workout = workoutRepository.getWorkout(workoutId)
             // The whole plan, not just its title: 16.1.5 draws the intervals it
             // prescribed under the trace of what was actually ridden.
@@ -126,16 +145,6 @@ class RideDetailViewModel(
             if (workout != null) buildCharts(workout, plan?.intervals.orEmpty())
         }
 
-        // Who could claim this ride, if nobody has (12.4.1). Collected in its
-        // own coroutine rather than read inside the one above, because the two
-        // must not be ordered: this flow emits once and then only when a
-        // profile is written, so a version that asked "is the ride unclaimed?"
-        // before the ride had loaded would answer no and never be asked again.
-        viewModelScope.launch {
-            userRepository.allUsers.collect { users ->
-                _uiState.update { it.copy(profiles = users) }
-            }
-        }
     }
 
     /**
@@ -214,13 +223,14 @@ class RideDetailViewModel(
      * and it is a second few-thousand-row series through the same reduction.
      */
     fun showGhost(workoutId: String?) {
+        ghostJob?.cancel()
         if (workoutId == null || workoutId == _uiState.value.ghost?.workoutId) {
             _uiState.update { it.copy(ghost = null) }
             return
         }
         val rival = _uiState.value.rivals.firstOrNull { it.workoutId == workoutId } ?: return
 
-        viewModelScope.launch {
+        ghostJob = viewModelScope.launch {
             val trace = withContext(Dispatchers.Default) {
                 RideChartBuilder.build(
                     samples = workoutRepository.getMetrics(workoutId).map { metric ->
@@ -254,6 +264,11 @@ class RideDetailViewModel(
         }
     }
 
+    fun exportFilename(format: ExportFormat): String? {
+        val workout = _uiState.value.workout ?: return null
+        return RideExport.filename(_uiState.value.displayTitle, workout.timestamp, format)
+    }
+
     /**
      * Builds the file the rider asked for (12.4.3).
      *
@@ -263,9 +278,10 @@ class RideDetailViewModel(
      * silently produces nothing is exactly the failure shape the *Corrections*
      * table exists to stop.
      */
-    suspend fun buildExport(format: ExportFormat): Pair<String, String>? {
-        val workout = _uiState.value.workout ?: return null
-        val title = _uiState.value.displayTitle
+    // Resolve by ID after the picker returns, including after process recreation.
+    suspend fun buildExport(workoutId: String, format: ExportFormat): Pair<String, String>? {
+        val workout = workoutRepository.getWorkout(workoutId) ?: return null
+        val title = workout.classId?.let { classRepository.getPlan(it)?.title } ?: "Just Ride"
 
         return withContext(Dispatchers.Default) {
             val ride = ExportRide(

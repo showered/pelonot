@@ -72,6 +72,8 @@ private const val TRANSITION_MS = 300
  * straight out of the app mid-workout, and the state was lost on rotation.
  */
 @Composable
+// Kotlin 2 lint misses these producer value assignments; each is explicit below.
+@android.annotation.SuppressLint("ProduceStateDoesNotAssignValue")
 fun PelonotNavGraph(
     navController: NavHostController,
     uiState: AppUiState,
@@ -93,6 +95,7 @@ fun PelonotNavGraph(
     onDismissAccountOffer: () -> Unit = {},
     /** Put back the FTP an auto change replaced (7.10.4). */
     onRevertFtpChange: (Int) -> Unit = {},
+    onApplyFtpAssessment: suspend (com.pelonot.domain.progress.FtpAssessment) -> String = { "Unable to update FTP" },
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
     onLoadRidesOfThisLength: suspend (classDurationSec: Int, youId: Int?) -> RidesOfThisLength =
         { _, _ -> RidesOfThisLength(0) },
@@ -304,9 +307,9 @@ fun PelonotNavGraph(
                     showIntentPrompt = true
                 },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
-                suggestion = uiState.suggestion,
-                suggestionProfile = uiState.suggestionProfile,
-                classCount = uiState.classes.size.takeIf { it > 0 },
+
+
+
                 startingPoints = uiState.startingPoints,
                 // The class's own screen, which is where the library lands too
                 // (22.7.2). One tap fewer than browsing, and not one fewer than
@@ -337,6 +340,7 @@ fun PelonotNavGraph(
         composable(Destination.FtpProgress.route) {
             FtpProgressScreen(
                 trend = uiState.ftpTrend,
+                onApplyAssessment = onApplyFtpAssessment,
                 onBack = navController::popBackStack,
                 // The same destination history uses, so a ride opened from a
                 // breakthrough is the ride, not a second rendering of one.

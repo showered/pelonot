@@ -139,6 +139,26 @@ class UserRepository(
         save(user.copy(ftpWatts = ftpWatts), ftpSource = source, ftpWorkoutId = workoutId)
     }
 
+    /** A review cannot overwrite a setting edited while the screen was open. */
+    suspend fun applyReviewedFtp(
+        userId: Int, expectedWatts: Int, expectedChangedAt: Long, watts: Int,
+        source: FtpChangeSource, workoutId: String?
+    ): Boolean {
+        val saved = database.withTransaction {
+            val user = userDao.getUserById(userId) ?: return@withTransaction null
+            if (user.ftpWatts != expectedWatts || ftpHistoryDao.lastChangeAt(userId) != expectedChangedAt) {
+                return@withTransaction null
+            }
+            val updated = user.copy(ftpWatts = watts)
+            userDao.insertUser(updated)
+            ftpHistoryDao.insert(FtpHistoryEntity(localUserId = userId, ftpWatts = watts,
+                changedAt = clock(), source = source.name, workoutId = workoutId))
+            updated
+        } ?: return false
+        syncRepository.syncProfile(saved)
+        return true
+    }
+
     suspend fun updateWeight(userId: Int, weightKg: Double) {
         val user = userDao.getUserById(userId) ?: return
         save(user.copy(weightKg = weightKg))

@@ -206,15 +206,17 @@ class HudOverlayManager(private val context: Context) {
                 val volumeController = ServiceLocator.volumeController
                 val mediaVolume by volumeController.mediaVolume.collectAsStateWithLifecycle()
                 val volumeError by volumeController.lastError.collectAsStateWithLifecycle()
-                val coachVolume by ServiceLocator.settingsRepository.settings
-                    .map { it.coachVolume }
+                val coachVolume by androidx.compose.runtime.remember {
+                    ServiceLocator.settingsRepository.settings.map { it.coachVolume }
+                }
                     .collectAsStateWithLifecycle(AppSettings.DEFAULT_COACH_VOLUME)
 
                 // 11.1b.1. Collected rather than passed in at show(): a rider
                 // who moves the slider in Settings during a ride sees the strip
                 // change behind them, which is the only way to judge it.
-                val opacity by ServiceLocator.settingsRepository.settings
-                    .map { it.hudOpacity }
+                val opacity by androidx.compose.runtime.remember {
+                    ServiceLocator.settingsRepository.settings.map { it.hudOpacity }
+                }
                     .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
 
                 // Telemetry is collected separately from the ride snapshot: it
@@ -224,8 +226,9 @@ class HudOverlayManager(private val context: Context) {
 
                 // 13.5: the strip shows distance, so it reads the same
                 // preference as every other surface rather than a second one.
-                val units by ServiceLocator.settingsRepository.settings
-                    .map { it.unitSystem }
+                val units by androidx.compose.runtime.remember {
+                    ServiceLocator.settingsRepository.settings.map { it.unitSystem }
+                }
                     .collectAsStateWithLifecycle(UnitSystem.DEFAULT)
 
                 PelonotTheme(darkTheme = true, useDynamicColor = false, units = units) {
@@ -282,8 +285,9 @@ class HudOverlayManager(private val context: Context) {
                 // timeline follows a collapse rather than making room for a
                 // strip that is no longer that wide.
                 val isCollapsed by _collapsed.collectAsStateWithLifecycle()
-                val opacity by ServiceLocator.settingsRepository.settings
-                    .map { it.hudOpacity }
+                val opacity by androidx.compose.runtime.remember {
+                    ServiceLocator.settingsRepository.settings.map { it.hudOpacity }
+                }
                     .collectAsStateWithLifecycle(HudOpacity.DEFAULT)
 
                 PelonotTheme(darkTheme = true, useDynamicColor = false) {

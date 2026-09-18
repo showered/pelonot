@@ -529,15 +529,22 @@ every call threw and was swallowed by `runCatching`.
 
 ### To the analyser
 
-On ride end, `PostWorkoutAnalyzer` reads the full metric series and looks for:
+On ride end, `PostWorkoutAnalyzer` estimates FTP from the best continuous
+20-minute effort (`P₂₀ × 0.95`). Only measured power can propose a change; an
+upward proposal must exceed the current setting by at least 2%. Heart-rate
+context is computed, but RPE does not invent an upward percentage bump.
 
-- **20-minute peak power** → `FTP ≈ P₂₀ × 0.95`, via an O(n) sliding window over
-  full-length windows only
-- **Biometric decoupling** — sustained Zone 4 at under 80% of max HR
-- **RPE** — a hard class rated ≤ 4 suggests a 3% bump
+`FtpReductionRule` requires three qualifying hard rides at least 5% below the
+setting, and offers the strongest estimate among them. The post-ride ViewModel
+rechecks this after an effort answer is saved. Both directions require rider
+acceptance; see `AUTO_FTP.md` for the gates.
 
-A proposal only surfaces if it beats the current FTP by more than 2%; below that
-it is inside the noise of the power model.
+`AppViewModel` combines FTP history with bounded Room queries over stored
+`workout_power_bests` to build `FtpAssessment`. The dashboard and FTP detail show
+starting versus ride-supported values, recent review evidence, and optional
+adjustments. An older strongest effort preserves support without being reused
+for new adjustments. Reviewed changes are guarded against stale settings and
+append to history in the same transaction as the profile update.
 
 ---
 

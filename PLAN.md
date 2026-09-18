@@ -253,7 +253,20 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
+### Latest session — 17 September 2026: rider choice and earned FTP
+
+The dashboard's suggested-class hero is replaced by **Choose a class**, beside
+Just Ride (**22.10**). FTP now distinguishes a starting value from ride-supported
+progress, explains recent evidence, and offers reviewable changes outside the
+post-ride dialog (**7.12**). Unchanged values can earn support; older support is
+retained. New reviews use recent measured twenty-minute efforts. The missed
+reassessment after an effort answer is fixed. Emulator fixtures verified both
+200 → 209 and 200 → 185 with correct database history. **983 JVM tests** pass;
+**132 instrumented tests** pass, including the effort-answer regression.
+`REVIEW.md` records final checks.
+No hardware touched, no APK published, no real rider's FTP changed.
+
+### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 
 **8.16.2 was picked because it was the one item on *What to do next* that a
 session could finish**, and it came with a written warning about itself: *"the
@@ -465,6 +478,12 @@ records re-fire at their new values.
 
 
 ### What to do next, in order
+
+**Release preparation now has a command:** read `RELEASE.md`, supply the
+permanent signing configuration locally, and rehearse **30.7.3–30.7.4** on an
+emulator before distributing the first APK. The code-side pass and its limits
+are in `REVIEW.md`. The older priorities below remain the feature backlog.
+
 
 **This sitting left four items open in Phase 27 and three of them are one
 decision the owner has not been asked.** **27.2.3** — *your friend just beat

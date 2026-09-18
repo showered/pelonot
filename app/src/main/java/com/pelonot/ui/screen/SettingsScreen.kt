@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -133,6 +134,8 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val updateInstallState by viewModel.installState.collectAsStateWithLifecycle()
+    val checkingForUpdates by viewModel.checkingForUpdates.collectAsStateWithLifecycle()
+    val activeRide by viewModel.activeRide.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // The media volume is a system value; anything on the device may have moved
@@ -150,7 +153,7 @@ fun SettingsScreen(
     // no FileProvider or storage permission is involved on any API level.
     val scope = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
-    var pendingRestore by remember { mutableStateOf<Uri?>(null) }
+    var pendingRestore by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val say: (String) -> Unit = { message -> scope.launch { snackbarHost.showSnackbar(message) } }
 
@@ -364,6 +367,8 @@ fun SettingsScreen(
                 enabled = state.settings.updateChecksEnabled,
                 onEnabledChange = viewModel::setUpdateChecksEnabled,
                 manualCheck = state.manualUpdateCheck,
+                checking = checkingForUpdates,
+                riding = activeRide != null,
                 onCheckNow = viewModel::checkForUpdatesNow
             )
 
@@ -371,7 +376,7 @@ fun SettingsScreen(
 
             state.manualUpdateCheck?.let { check ->
                 val offer = (check as? UpdateCheck.Decided)?.decision as? UpdateDecision.Offer
-                if (offer != null) {
+                if (offer != null && activeRide == null) {
                     UpdateOfferDialog(
                         manifest = offer.manifest,
                         installState = updateInstallState,
@@ -407,6 +412,8 @@ private fun UpdatesSection(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     manualCheck: UpdateCheck?,
+    checking: Boolean,
+    riding: Boolean,
     onCheckNow: () -> Unit
 ) {
     SettingsSection("Updates") {
@@ -425,7 +432,7 @@ private fun UpdatesSection(
                 "Nothing about you or your rides is sent, and nothing installs " +
                     "without you saying yes."
             } else {
-                "Pelonot won't contact anything. New versions have to be installed by hand."
+                "Automatic update checks are off. Your backup settings are unchanged."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -435,8 +442,11 @@ private fun UpdatesSection(
             // Disabled mid-check rather than turned into a spinner — one tap
             // to ask and the answer arrives as the snackbar or dialog above,
             // which is enough for a request this small.
-            enabled = manualCheck == null
-        ) { Text("Check for updates now") }
+            enabled = enabled && !checking && !riding && manualCheck == null
+        ) { Text(if (checking) "Checking…" else "Check for updates now") }
+        if (riding) {
+            Text("Finish your ride before checking for updates.", style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 

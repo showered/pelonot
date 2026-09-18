@@ -74,7 +74,8 @@ object UpdatePolicy {
         manifest: UpdateManifest,
         declinedVersionCode: Int? = null
     ): UpdateDecision {
-        if (!manifest.url.startsWith("https://")) {
+        val uri = runCatching { java.net.URI(manifest.url) }.getOrNull()
+        if (uri?.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
             return UpdateDecision.Rejected(UpdateDecision.Rejected.Reason.InsecureUrl)
         }
         if (!CHECKSUM.matches(manifest.sha256)) {

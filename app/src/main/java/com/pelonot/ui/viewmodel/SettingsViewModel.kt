@@ -297,6 +297,9 @@ class SettingsViewModel(
 
     /** *Check for updates now* (30.4), asked for rather than observed like the rest of this group. */
     private val _manualUpdateCheck = MutableStateFlow<UpdateCheck?>(null)
+    private val _checkingForUpdates = MutableStateFlow(false)
+    val checkingForUpdates: StateFlow<Boolean> = _checkingForUpdates
+    val activeRide = com.pelonot.data.service.RideInProgress.active
 
     /** The things this screen looks up rather than observes. */
     private data class OnDemand(
@@ -460,7 +463,15 @@ class SettingsViewModel(
 
     /** *Check for updates now* — skips the daily interval, still obeys the switch (PLAN 30.3.3). */
     fun checkForUpdatesNow() {
-        viewModelScope.launch { _manualUpdateCheck.value = updateRepository.check(force = true) }
+        if (_checkingForUpdates.value || activeRide.value != null) return
+        _checkingForUpdates.value = true
+        viewModelScope.launch {
+            try {
+                _manualUpdateCheck.value = updateRepository.check(force = true)
+            } finally {
+                _checkingForUpdates.value = false
+            }
+        }
     }
 
     fun dismissManualUpdateCheck() {

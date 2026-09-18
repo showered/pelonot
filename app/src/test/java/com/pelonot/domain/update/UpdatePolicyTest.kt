@@ -10,6 +10,16 @@ import org.junit.Test
  * 30.3.3, 30.4.5).
  */
 class UpdatePolicyTest {
+    @Test fun rejectsHttpsWithoutAHostAndEmbeddedCredentials() {
+        listOf("https://", "https:///app.apk", "https://user:password@example.org/app.apk").forEach { url ->
+            val manifest = UpdateManifest(2, "1.0.1", "Fixes", url, "a".repeat(64))
+            assertEquals(
+                UpdateDecision.Rejected(UpdateDecision.Rejected.Reason.InsecureUrl),
+                UpdatePolicy.decide(1, manifest)
+            )
+        }
+    }
+
 
     private val goodSha = "a".repeat(64)
 

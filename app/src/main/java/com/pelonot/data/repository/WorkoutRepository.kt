@@ -816,6 +816,24 @@ class WorkoutRepository(
         workoutDao.markPowerBestsScanned(workoutId, System.currentTimeMillis())
     }
 
+    fun observeFtpAnswerAt(userId: Int): Flow<Long?> = workoutDao.observeLastDeclinedProposalAt(userId)
+
+    fun observeFtpEvidence(userId: Int): Flow<List<FtpEvidenceRide>> =
+        workoutDao.observeFtpEvidenceRides(userId, 1200, 0L, 20).map { rows ->
+            rows.map { row ->
+                FtpEvidenceRide(row.workoutId, row.recordedAt, row.peak20MinWatts,
+                    row.avgHr, row.rideMaxHrBpm, row.rpeRating)
+            }
+        }
+
+    fun observeStrongestFtpEvidence(userId: Int, sinceMs: Long, acceptedRideId: String?): Flow<FtpEvidenceRide?> =
+        workoutDao.observeStrongestFtpEvidence(userId, 1200, sinceMs, acceptedRideId).map { rows ->
+            rows.firstOrNull()?.let { row ->
+                FtpEvidenceRide(row.workoutId, row.recordedAt, row.peak20MinWatts,
+                    row.avgHr, row.rideMaxHrBpm, row.rpeRating)
+            }
+        }
+
     /**
      * Whether the rider's recent hard rides say their FTP is set too high
      * (PLAN 7.11).

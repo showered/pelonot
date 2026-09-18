@@ -10,12 +10,32 @@ Wired in: [`PostRideViewModel.load`](app/src/main/java/com/pelonot/ui/viewmodel/
 Shown by: [`FtpBreakthroughDialog`](app/src/main/java/com/pelonot/ui/screen/FtpBreakthroughDialog.kt),
 raised from [`PostRideSummaryScreen`](app/src/main/java/com/pelonot/ui/screen/PostRideSummaryScreen.kt).
 
-## The one place it runs
+## Where it runs
 
-`PostRideViewModel.load()` runs once, when the post-ride summary screen opens.
-There is no background job, no notification, nothing that fires later. If the
-rider never opens the summary for a ride — they swipe the app away, or the ride
-gets picked up on another screen — no proposal is ever computed for it.
+The post-ride summary still checks for a breakthrough and a downward proposal.
+Since 17 September 2026, answering the effort question also rechecks the downward
+proposal; previously it ran before that answer existed and was never revisited.
+
+The dashboard and **Your FTP** also observe stored, measured twenty-minute bests.
+`FtpAssessment` distinguishes a starting value from a ride-supported estimate,
+shows progress toward a downward review, and exposes adjustments that can be
+accepted later. Acceptance re-reads the evidence and uses a transaction guarded
+by the expected FTP and last-change timestamp. It records the source and the
+supporting ride in `ftp_history`; it never rewrites past rides' FTP snapshots.
+
+This review checks the latest 20 qualifying rides within 90 days for new
+adjustments, after the most recent setting change or declined proposal. The
+90-day window is a product definition of recent evidence, not a physiological
+expiry. A separate one-row strongest-effort query preserves older support for
+an unchanged setting. Historical support cannot propose a fresh adjustment.
+An accepted ride-based setting also retains its provenance if its ride is deleted.
+
+A number becomes **ride-supported** when its 95%-of-20-minute estimate reaches
+the setting at whole-watt display precision. It does not have to increase.
+A typed or initial estimated number alone never earns this label. The label
+means evidence supports a training estimate, not laboratory confirmation.
+
+The remaining sections describe the post-ride path specifically.
 
 ## The gate, in order
 
@@ -118,23 +138,9 @@ path* below.
 
 If `hasBreakthrough` (i.e. `proposedFtp != null`), `PostRideSummaryScreen`
 raises `FtpBreakthroughDialog` — a plain Material `AlertDialog`, unconditionally,
-on top of the summary. Current copy, verbatim:
-
-> **FTP Breakthrough!**
->
-> New estimated FTP: 165W (current: 150W)
->
-> Your fitness has improved! Update your FTP?
->
-> `[Keep Current]` `[Update FTP]`
-
-Worth flagging for the UX review directly: this is the **least designed
-dialog in the app** by the same standard 20.3 just fixed elsewhere — a generic
-`AlertDialog`, no explanation of *why* (no mention of the 20-minute effort that
-triggered it, no "measured, not modelled" provenance mark despite that being
-the whole gate), and "improved" stated as fact rather than as an estimate. It
-predates 26.1's "less is more" pass and 20.3.4's rule that an estimate must say
-where it came from — neither has reached this screen yet.
+on top of the summary. The dialog now says **A stronger FTP**, shows the old and proposed values,
+and explains that the estimate comes from the best measured twenty-minute
+effort. Its choices name the two values: **Use … W** and **Keep … W**.
 
 ## Accept
 
@@ -286,8 +292,6 @@ samples, and then ride and end anything at all.
 
 ## Summary of things worth a UX pass
 
-- The dialog itself: generic `AlertDialog`, no provenance mark, states
-  "improved" as fact, doesn't explain the 20-minute-peak method.
 - `biometricDecoupling` is computed from real inputs since 7.11.6 and still
   reaches no screen. It is no longer *7.11's seed* — 7.11 shipped without it,
   on a rule that reads stored twenty-minute efforts rather than one ride's
@@ -298,6 +302,5 @@ samples, and then ride and end anything at all.
   same prompt ride after ride. **The downward path has one and this does not**,
   which is now an asymmetry rather than an omission; PLAN 7.11.8 is where that
   is written down.
-- No messaging anywhere explains *why* the dialog never appears for a rider on
-  Hardware mode who rides under 20 minutes, or on Simulated mode at all — a
-  rider could reasonably conclude the feature is broken.
+- The FTP evidence card now explains the qualifying effort, measured-power
+  requirement, and why short or simulated rides cannot count.

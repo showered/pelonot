@@ -27,8 +27,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +51,7 @@ import com.pelonot.ui.theme.columnsFor
 import com.pelonot.ui.theme.spacing
 
 /**
- * Browsable class library with category filtering — PLAN.md item 6.5, which
+ * Browsable class library with category and duration filtering — PLAN.md item 6.5, which
  * called for a filterable list but shipped as a flat unfiltered one.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -62,12 +64,17 @@ fun ClassLibraryScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
+    var selectedDuration by rememberSaveable { mutableStateOf<Int?>(null) }
+    val durations = remember(classes) { classes.map { it.durationSec }.distinct().sorted() }
+
     val categories = remember(classes) {
         classes.map { it.category }.distinct().sorted()
     }
-    val visibleClasses = remember(classes, selectedCategory) {
-        selectedCategory?.let { category -> classes.filter { it.category == category } }
-            ?: classes
+    val visibleClasses = remember(classes, selectedCategory, selectedDuration) {
+        classes.filter {
+            (selectedCategory == null || it.category == selectedCategory) &&
+                (selectedDuration == null || it.durationSec == selectedDuration)
+        }
     }
 
     Scaffold(
@@ -120,8 +127,34 @@ fun ClassLibraryScreen(
                 Spacer(Modifier.size(MaterialTheme.spacing.small))
             }
 
+            if (durations.size > 1) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.large),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    FilterChip(
+                        selected = selectedDuration == null,
+                        onClick = { selectedDuration = null },
+                        label = { Text("Any length") }
+                    )
+                    durations.forEach { duration ->
+                        FilterChip(
+                            selected = selectedDuration == duration,
+                            onClick = {
+                                selectedDuration = if (selectedDuration == duration) null else duration
+                            },
+                            label = { Text(Formatters.minutes(duration)) }
+                        )
+                    }
+                }
+            }
+
             if (visibleClasses.isEmpty()) {
-                EmptyLibraryMessage(hasFilter = selectedCategory != null)
+                EmptyLibraryMessage(
+                    hasFilter = selectedCategory != null || selectedDuration != null,
+                    onClearFilters = { selectedCategory = null; selectedDuration = null }
+                )
             } else {
                 BoxWithConstraints(Modifier.fillMaxSize()) {
                     val columns = columnsFor(
@@ -131,30 +164,32 @@ fun ClassLibraryScreen(
                     )
                     val rows = visibleClasses.chunked(columns)
 
-                    LazyColumn(
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = MaterialTheme.spacing.large,
-                            vertical = MaterialTheme.spacing.small
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                    ) {
-                        // Row-major: the order across a row is the order down a
-                        // phone's single column, so the library reads the same
-                        // way at every width (see `WideGrid`).
-                        items(rows, key = { row -> row.first().id }) { row ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(
-                                    MaterialTheme.spacing.small
-                                )
-                            ) {
-                                row.forEach { plan ->
-                                    ClassCard(
-                                        plan = plan,
-                                        onClick = { onClassSelected(plan) },
-                                        modifier = Modifier.weight(1f)
+                    key(selectedCategory, selectedDuration) {
+                        LazyColumn(
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = MaterialTheme.spacing.large,
+                                vertical = MaterialTheme.spacing.small
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                        ) {
+                            // Row-major: the order across a row is the order down a
+                            // phone's single column, so the library reads the same
+                            // way at every width (see `WideGrid`).
+                            items(rows, key = { row -> row.first().id }) { row ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        MaterialTheme.spacing.small
                                     )
+                                ) {
+                                    row.forEach { plan ->
+                                        ClassCard(
+                                            plan = plan,
+                                            onClick = { onClassSelected(plan) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                                 }
-                                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
                     }
@@ -165,24 +200,28 @@ fun ClassLibraryScreen(
 }
 
 @Composable
-private fun EmptyLibraryMessage(hasFilter: Boolean) {
+private fun EmptyLibraryMessage(hasFilter: Boolean, onClearFilters: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(MaterialTheme.spacing.doubleExtraLarge),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (hasFilter) {
-                "No classes in this category yet."
-            } else {
-                "No classes are installed. They are seeded from the bundled " +
-                    "library on first launch."
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = if (hasFilter) {
+                    "No classes match these filters."
+                } else {
+                    "No classes are available yet."
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            if (hasFilter) {
+                TextButton(onClick = onClearFilters) { Text("Clear filters") }
+            }
+        }
     }
 }
 

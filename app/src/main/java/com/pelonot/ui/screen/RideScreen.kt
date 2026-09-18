@@ -1700,12 +1700,14 @@ private fun SmallStat(
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(Modifier.width(4.dp))
-                Text(
+                ShrinkToFitText(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                    minFontSize = 8.sp,
+                    fontWeight = MaterialTheme.typography.labelSmall.fontWeight ?: FontWeight.Normal,
+                    letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false
+                    modifier = Modifier.weight(1f)
                 )
             }
             Row(verticalAlignment = Alignment.Bottom) {

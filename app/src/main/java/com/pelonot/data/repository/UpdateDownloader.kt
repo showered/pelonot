@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import com.pelonot.domain.update.UpdateManifest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -60,9 +62,13 @@ class UpdateDownloader(private val context: Context) {
             connection.inputStream.use { input ->
                 target.outputStream().use { output ->
                     val buffer = ByteArray(BUFFER_BYTES)
+                    var total = 0L
                     while (true) {
+                        coroutineContext.ensureActive()
                         val read = input.read(buffer)
                         if (read < 0) break
+                        total += read
+                        require(total <= MAX_APK_BYTES) { "Update is too large" }
                         output.write(buffer, 0, read)
                         digest.update(buffer, 0, read)
                     }
@@ -75,6 +81,9 @@ class UpdateDownloader(private val context: Context) {
                 return@withContext DownloadOutcome.ChecksumMismatch
             }
             DownloadOutcome.Success(target)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            target.delete()
+            throw e
         } catch (e: Exception) {
             Log.d(TAG, "Update download failed: ${e.message}")
             target.delete()
@@ -88,6 +97,7 @@ class UpdateDownloader(private val context: Context) {
         const val TAG = "PelonotUpdate"
         const val TARGET_FILE_NAME = "pelonot-update.apk"
         const val TIMEOUT_MS = 15_000
+        const val MAX_APK_BYTES = 100L * 1024 * 1024
         const val BUFFER_BYTES = 8192
     }
 }

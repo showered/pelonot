@@ -467,3 +467,18 @@ cannot be scrolled away from is a question being demanded rather than offered.
       *Written into both files at the call site rather than into a document
       nobody opens while adding a card. What is left below the charts on either
       screen is* Export*, which is a door rather than a question.*
+
+
+### 12.8 Export across Android's document picker — 17 September 2026
+
+- [x] **12.8.1** Persist the pending export format across activity/process
+      recreation, and read the ride by ID after the picker returns. Do not put
+      the whole sample series into saved instance state. On the tablet emulator,
+      opened Save, killed the background app with `am kill`, then chose SAVE:
+      the resulting CSV contained all 297 samples, each checked against the
+      original database (numbers to CSV precision, nullable heart rate intact).
+- [x] **12.8.2** Collect claimable profiles once per ViewModel and retain loaded
+      ride state on recreation. Cancel obsolete ride and comparison loads so
+      they cannot overwrite a later choice. Ride detail and its charts reloaded
+      correctly through the process-death export check; the full 128-test
+      instrumented suite passed afterwards.

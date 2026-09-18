@@ -21,7 +21,8 @@ package com.pelonot.domain.progress
  */
 data class FtpTrend(
     /** Oldest first. Empty when nothing has ever been recorded. */
-    val points: List<FtpPoint> = emptyList()
+    val points: List<FtpPoint> = emptyList(),
+    val assessment: FtpAssessment? = null
 ) {
 
     val current: Int? get() = points.lastOrNull()?.watts

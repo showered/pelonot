@@ -31,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,6 +101,7 @@ fun FtpProgressScreen(
     onOpenRide: (String) -> Unit,
     /** Put back the value an auto change replaced (7.10.4). */
     onRevert: (FtpChange) -> Unit = {},
+    onApplyAssessment: suspend (com.pelonot.domain.progress.FtpAssessment) -> String = { "Unable to update FTP" },
     modifier: Modifier = Modifier,
     bestsViewModel: PersonalBestsViewModel = viewModel(factory = PersonalBestsViewModel.Factory)
 ) {
@@ -140,7 +143,21 @@ fun FtpProgressScreen(
                 return@Column
             }
 
-            CurrentValue(current, trend)
+            BoxWithConstraints {
+                if (maxWidth >= TWO_CARD_BREAKPOINT) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)) {
+                        Column(Modifier.weight(1f)) { CurrentValue(current, trend) }
+                        Column(Modifier.weight(1f)) {
+                            trend.assessment?.let { FtpEvidenceCard(it, onOpenRide, onApplyAssessment) }
+                        }
+                    }
+                } else {
+                    Column {
+                        CurrentValue(current, trend)
+                        trend.assessment?.let { FtpEvidenceCard(it, onOpenRide, onApplyAssessment) }
+                    }
+                }
+            }
 
             Spacer(Modifier.size(MaterialTheme.spacing.large))
 
@@ -187,8 +204,8 @@ private fun CurrentValue(current: Int, trend: FtpTrend) {
     // *read*, never spelled the acronym out at all. Phase 26's rule about where
     // a unit belongs is the same rule about where a definition belongs.
     Text(
-        text = "Functional Threshold Power — the hardest you could hold for an " +
-            "hour, and the basis of every zone target.",
+        text = "Your sustained power, estimated from riding. " +
+            "This sets the targets in your classes.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         // A paragraph loose on a screen that is otherwise charts, which is
@@ -202,7 +219,7 @@ private fun CurrentValue(current: Int, trend: FtpTrend) {
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
             text = "$current",
-            style = MaterialTheme.typography.displayMedium,
+            style = MaterialTheme.typography.displayLarge,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -725,3 +742,48 @@ private fun BestRow(effort: PersonalBest, peakWatts: Double, onOpenRide: (String
 
 /** Below this the trend chart and the bests table are both too narrow; they stack. */
 private val TWO_CARD_BREAKPOINT = 900.dp
+
+
+@Composable
+private fun FtpEvidenceCard(
+    assessment: com.pelonot.domain.progress.FtpAssessment,
+    onOpenRide: (String) -> Unit,
+    onApply: suspend (com.pelonot.domain.progress.FtpAssessment) -> String
+) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var applying by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var explain by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var message by androidx.compose.runtime.remember(assessment) { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    Card(Modifier.loneCard().padding(top = 16.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(assessment.label, style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary)
+            Text(assessment.summary, style = MaterialTheme.typography.titleMedium)
+            Text(assessment.detail, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                assessment.suggestedWatts?.let { watts ->
+                    androidx.compose.material3.Button(enabled = !applying, onClick = {
+                        applying = true
+                        scope.launch {
+                            try { message = onApply(assessment) }
+                            finally { applying = false }
+                        }
+                    }) { Text(if (applying) "Updating…" else "Use $watts W") }
+                }
+                assessment.evidenceRideId?.let { id ->
+                    TextButton(onClick = { onOpenRide(id) }) { Text("View supporting ride") }
+                }
+            }
+            message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            TextButton(onClick = { explain = !explain }) { Text(if (explain) "Less detail" else "How FTP is assessed") }
+            if (explain) Text("FTP changes are suggested after rides; they are not applied silently. " +
+                "Upward changes need a measured 20-minute effort at least 2% above your setting. " +
+                "Downward changes need three qualifying hard rides at least 5% below it. " +
+                "Estimates use 95% of your best continuous 20-minute power. Shorter rides, simulated " +
+                "power and power of unknown origin do not count. Recent means the last 90 days; " +
+                "we check up to 20 qualifying rides. A number you accepted remains part of your history.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

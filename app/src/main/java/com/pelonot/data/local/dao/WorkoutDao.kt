@@ -877,6 +877,58 @@ interface WorkoutDao {
         limit: Int
     ): List<FtpEvidenceRow>
 
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.timestamp AS recordedAt,
+               b.watts AS peak20MinWatts,
+               w.avg_hr AS avgHr,
+               w.max_hr_bpm AS rideMaxHrBpm,
+               w.rpe_rating AS rpeRating
+        FROM workouts w
+        JOIN workout_power_bests b
+          ON b.workout_id = w.id AND b.window_sec = :windowSec
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.power_provenance = 'Measured'
+          AND w.timestamp > :sinceMs
+        ORDER BY w.timestamp DESC
+        LIMIT :limit
+        """
+    )
+    fun observeFtpEvidenceRides(
+        userId: Int,
+        windowSec: Int,
+        sinceMs: Long,
+        limit: Int
+    ): Flow<List<FtpEvidenceRow>>
+
+    @Query(
+        """
+        SELECT w.id AS workoutId,
+               w.timestamp AS recordedAt,
+               b.watts AS peak20MinWatts,
+               w.avg_hr AS avgHr,
+               w.max_hr_bpm AS rideMaxHrBpm,
+               w.rpe_rating AS rpeRating
+        FROM workouts w
+        JOIN workout_power_bests b
+          ON b.workout_id = w.id AND b.window_sec = :windowSec
+        WHERE w.user_id = :userId
+          AND w.is_complete = 1
+          AND w.power_provenance = 'Measured'
+          AND (w.timestamp > :sinceMs OR w.id = :acceptedRideId)
+        ORDER BY b.watts DESC, w.timestamp DESC
+        LIMIT 1
+        """
+    )
+    fun observeStrongestFtpEvidence(
+        userId: Int,
+        windowSec: Int,
+        sinceMs: Long,
+        acceptedRideId: String?
+    ): Flow<List<FtpEvidenceRow>>
+
     /**
      * When this rider last answered an FTP proposal, or 0 if they never have.
      *
@@ -893,6 +945,10 @@ interface WorkoutDao {
         """
     )
     suspend fun lastDeclinedProposalAt(userId: Int): Long?
+
+    @Query("SELECT MAX(timestamp) FROM workouts WHERE user_id = :userId AND is_complete = 1 AND ftp_proposal_declined = 1")
+    fun observeLastDeclinedProposalAt(userId: Int): Flow<Long?>
+
 
     /**
      * Writes where a ride's watts came from onto the ride (23.4.12).

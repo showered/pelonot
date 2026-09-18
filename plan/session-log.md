@@ -6,6 +6,34 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+### Latest session — 17 September 2026: export recovery and class discovery
+
+Continued the emulator-only bugfix pass. Exports now survive process destruction
+behind Android's file picker; all 297 CSV samples matched the original database.
+Ride detail avoids duplicate profile collectors and cancels obsolete loads.
+The class library now combines duration and category filters with a clear-filter
+empty state. Backup confirmation survives activity recreation. New items are
+**6.11–6.12 and 12.8**. Debug/release builds, lint, **968 JVM tests** and **128
+instrumented tests** pass. `REVIEW.md` holds the evidence and release limitations.
+No production release was published; emulator data was backed up and restored.
+
+---
+
+### Latest session — 14 September 2026: emulator bugfix and release-readiness pass
+
+A broad pass found and fixed onboarding validation/state loss, the account
+skip choice falling below the fold at larger text, a clipped ride-total label,
+and update download/install failure handling. Release preparation/publishing
+tools now exist; **no release was published and no permanent signing key was
+created or inspected**. `REVIEW.md` records scope, evidence and remaining
+verification; `RELEASE.md` gives the owner's release commands. New items live
+at **20.8, 11.9 and 30.7**. The existing migration test failed before its
+migration because its fixture omitted required columns; corrected, the full
+emulator suite passed **128 tests**. The APK builds, JVM tests and lint were
+also run. All device commands explicitly targeted `emulator-5554`.
+
+---
+
 ## 29 August 2026 (seventy-second sitting): the app can now tell a rider something worth knowing, and it spent half a day telling only half of them
 
 **Phase 27 is built, offline half and all**, at the owner's own weighting of

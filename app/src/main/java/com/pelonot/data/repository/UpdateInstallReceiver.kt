@@ -21,6 +21,7 @@ import android.util.Log
 class UpdateInstallReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        val coordinator = com.pelonot.di.ServiceLocator.updateInstallCoordinator
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 val confirmIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -29,17 +30,24 @@ class UpdateInstallReceiver : BroadcastReceiver() {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra(Intent.EXTRA_INTENT)
                 }
-                confirmIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                confirmIntent?.let {
+                if (confirmIntent == null) {
+                    coordinator.fail("Couldn't open the installer. Try again.")
+                    return
+                }
+                confirmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                confirmIntent.let {
                     try {
                         context.startActivity(it)
                     } catch (e: Exception) {
+                        coordinator.fail("Couldn't open the installer. Try again.")
                         Log.w(TAG, "Could not raise the install confirmation: ${e.message}")
                     }
                 }
             }
-            PackageInstaller.STATUS_SUCCESS -> Log.i(TAG, "Update installed")
+            PackageInstaller.STATUS_SUCCESS -> coordinator.reset()
+            PackageInstaller.STATUS_FAILURE_ABORTED -> coordinator.fail("Installation cancelled. You can try again when you're ready.")
             else -> {
+                coordinator.fail("The update couldn't replace this copy of Pelonot. Try again, or ask whoever installed it.")
                 val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                 Log.w(TAG, "Update install did not succeed (status $status): $message")
             }

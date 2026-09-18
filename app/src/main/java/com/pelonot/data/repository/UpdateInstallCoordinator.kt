@@ -26,32 +26,59 @@ sealed interface UpdateInstallState {
  * about whether an install is already running.
  */
 class UpdateInstallCoordinator(
-    private val downloader: UpdateDownloader,
-    private val installer: UpdateInstaller
+    private val download: suspend (UpdateManifest) -> DownloadOutcome,
+    private val commit: suspend (java.io.File) -> Unit,
+    private val canInstall: () -> Boolean,
+    private val permissionIntent: () -> Intent,
+    private val rideActive: () -> Boolean = { com.pelonot.data.service.RideInProgress.active.value != null }
 ) {
     private val _state = MutableStateFlow<UpdateInstallState>(UpdateInstallState.Idle)
     val state: StateFlow<UpdateInstallState> = _state
 
-    fun unknownSourcesSettingsIntent(): Intent = installer.unknownSourcesSettingsIntent()
+    fun unknownSourcesSettingsIntent(): Intent = permissionIntent()
 
     /** Called again after returning from [unknownSourcesSettingsIntent] to retry. */
     suspend fun install(manifest: UpdateManifest) {
-        if (!installer.canInstall()) {
-            _state.value = UpdateInstallState.NeedsPermission
+        if (_state.value == UpdateInstallState.Downloading ||
+            _state.value == UpdateInstallState.Installing) return
+        if (rideActive()) {
+            fail("Finish your ride before installing an update.")
             return
         }
-        _state.value = UpdateInstallState.Downloading
-        when (val outcome = downloader.download(manifest)) {
-            is DownloadOutcome.Success -> {
-                _state.value = UpdateInstallState.Installing
-                installer.install(outcome.file)
-                _state.value = UpdateInstallState.Idle
+        try {
+            if (!canInstall()) {
+                _state.value = UpdateInstallState.NeedsPermission
+                return
             }
-            DownloadOutcome.Unreachable -> _state.value =
-                UpdateInstallState.Failed("Couldn't download that. Check the connection and try again.")
-            DownloadOutcome.ChecksumMismatch -> _state.value =
-                UpdateInstallState.Failed("That download didn't come through whole — try again.")
+            _state.value = UpdateInstallState.Downloading
+            when (val outcome = download(manifest)) {
+                is DownloadOutcome.Success -> {
+                    try {
+                        // A ride may have started while the network was busy.
+                        if (rideActive()) {
+                            fail("Finish your ride before installing an update.")
+                            return
+                        }
+                        _state.value = UpdateInstallState.Installing
+                        commit(outcome.file)
+                        // PackageInstaller owns the result; committing is not success.
+                    } finally {
+                        outcome.file.delete()
+                    }
+                }
+                DownloadOutcome.Unreachable -> fail("Couldn't download that. Check the connection and try again.")
+                DownloadOutcome.ChecksumMismatch -> fail("That download didn't come through whole — try again.")
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            reset()
+            throw e
+        } catch (e: Exception) {
+            fail("Couldn't install the update. Check free storage and try again.")
         }
+    }
+
+    fun fail(message: String) {
+        _state.value = UpdateInstallState.Failed(message)
     }
 
     fun reset() {

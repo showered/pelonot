@@ -156,15 +156,21 @@ fun ProfileAccountOfferStep(
             state.pairing == PairingState.Completing -> PairingCompleting()
 
             else -> {
-                Text(
-                    // 15.8.6: the cost, in one line, at the moment of asking.
-                    text = "Your rides get copied to your account. Everything keeps " +
-                        "working without one.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.readableText()
-                )
+                // Keep the offline choice above the tall QR/form pair: at
+                // larger text sizes its old footer was below the first viewport.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    Text(
+                        text = "Your rides get copied to your account. Everything keeps working without one.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(onClick = onDone) { Text("Not now") }
+                }
 
                 Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
@@ -215,13 +221,7 @@ fun ProfileAccountOfferStep(
 
                 Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
-                // Same weight as the buttons above it, not a grey link
-                // underneath them — declining is not a failure to finish
-                // (15.8.1). It only *is* first-class if a rider can see it,
-                // which is what 20.4.4 above restores.
-                OutlinedButton(onClick = onDone, modifier = Modifier.widthIn(min = 200.dp)) {
-                    Text("Not now")
-                }
+
             }
         }
     }

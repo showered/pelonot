@@ -1453,8 +1453,9 @@ class MigrationTest {
             db.execSQL(
                 """
                 INSERT INTO workouts (id, user_id, duration_sec, total_output_kj,
-                                      timestamp, is_complete)
-                VALUES ('ride-1', 1, 1800, 300.0, 1000, 1)
+                                      timestamp, is_complete, total_distance_km, intent_modifier,
+                                      was_recovered, ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('ride-1', 1, 1800, 300.0, 1000, 1, 10.0, 1.0, 0, 0, 0, 0)
                 """.trimIndent()
             )
         }

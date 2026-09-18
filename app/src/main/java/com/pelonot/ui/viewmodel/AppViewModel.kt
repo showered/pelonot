@@ -14,6 +14,7 @@ import com.pelonot.data.repository.AlertRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.backup.BackupReminder
+import com.pelonot.domain.progress.FtpAssessment
 import com.pelonot.domain.progress.FtpPoint
 import com.pelonot.domain.progress.FtpTrend
 import com.pelonot.domain.progress.RiderLevel
@@ -329,17 +330,19 @@ class AppViewModel(
         .flatMapLatest { profileId ->
             // A guest has no profile, so no FTP and no history of one.
             if (profileId == null) flowOf(FtpTrend())
-            else userRepository.observeFtpHistory(profileId).map { entries ->
-                FtpTrend(
-                    entries.map { entry ->
-                        FtpPoint(
-                            watts = entry.ftpWatts,
-                            atEpochMs = entry.changedAt,
-                            source = entry.source,
-                            workoutId = entry.workoutId
-                        )
-                    }
-                )
+            else userRepository.observeFtpHistory(profileId).flatMapLatest { entries ->
+                val points = entries.map { entry ->
+                    FtpPoint(entry.ftpWatts, entry.changedAt, entry.source, entry.workoutId)
+                }
+                combine(
+                    workoutRepository.observeFtpEvidence(profileId),
+                    workoutRepository.observeFtpAnswerAt(profileId),
+                    workoutRepository.observeStrongestFtpEvidence(profileId,
+                        points.lastOrNull()?.atEpochMs ?: 0L, points.lastOrNull()?.workoutId)
+                ) { evidence, answeredAt, strongest ->
+                    FtpTrend(points, FtpAssessment.evaluate(points, evidence,
+                        System.currentTimeMillis(), answeredAt ?: 0L, strongest))
+                }
             }
         }
 
@@ -524,7 +527,7 @@ class AppViewModel(
             startingPoints = if (dash.riderRides.recent.isEmpty()) {
                 ClassToRide.startingPoints(
                     library = classes.map { it.toSuggestable() },
-                    exclude = suggested?.classId
+                    exclude = null
                 ).mapNotNull { starter ->
                     classes.firstOrNull { it.id == starter.id }?.let { plan ->
                         StartingPoint(
@@ -777,6 +780,36 @@ class AppViewModel(
         }
     }
 
+
+    suspend fun applyFtpAssessment(expected: FtpAssessment): String {
+        if (RideInProgress.active.value != null) return "Finish your ride before changing FTP."
+        val profileId = settingsRepository.settings.first().lastProfileId
+            ?: return "Choose a rider first."
+        val points = userRepository.observeFtpHistory(profileId).first().map {
+            FtpPoint(it.ftpWatts, it.changedAt, it.source, it.workoutId)
+        }
+        val fresh = FtpAssessment.evaluate(points,
+            workoutRepository.observeFtpEvidence(profileId).first(), System.currentTimeMillis(),
+            workoutRepository.observeFtpAnswerAt(profileId).first() ?: 0L,
+            workoutRepository.observeStrongestFtpEvidence(profileId,
+                points.lastOrNull()?.atEpochMs ?: 0L, points.lastOrNull()?.workoutId).first())
+        if (fresh != expected || fresh.suggestedWatts == null) {
+            return "Your evidence has changed. Review the latest assessment."
+        }
+        if (RideInProgress.active.value != null) return "Finish your ride before changing FTP."
+        return try {
+            val updated = userRepository.applyReviewedFtp(profileId, fresh.currentWatts,
+                points.last().atEpochMs, fresh.suggestedWatts,
+                if (fresh.isReduction) FtpChangeSource.AutoReduction else FtpChangeSource.AutoBreakthrough,
+                fresh.evidenceRideId)
+            if (updated) "FTP updated to ${fresh.suggestedWatts} W."
+            else "Your setting has changed. Review the latest assessment."
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            "Could not update FTP. Please try again."
+        }
+    }
 
     /**
      * Puts back the value an auto-FTP change replaced (7.10.4).

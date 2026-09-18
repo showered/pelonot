@@ -320,7 +320,18 @@ class PostRideViewModel(
     fun setRpe(rpe: Int) {
         val workoutId = _uiState.value.workout?.id ?: return
         _uiState.update { it.copy(rpe = rpe) }
-        viewModelScope.launch { workoutRepository.setRpe(workoutId, rpe) }
+        viewModelScope.launch {
+            workoutRepository.setRpe(workoutId, rpe)
+            val state = _uiState.value
+            val riderId = state.workout?.userId ?: return@launch
+            if (state.workout.id != workoutId || state.proposedFtp != null ||
+                state.workout.ftpProposalDeclined) return@launch
+            val reduction = workoutRepository.ftpReduction(riderId, state.currentFtp,
+                userRepository.lastFtpChangeAt(riderId))
+            _uiState.update {
+                if (it.workout?.id == workoutId && it.rpe == rpe) it.copy(ftpReduction = reduction) else it
+            }
+        }
     }
 
     fun acceptFtpProposal() {

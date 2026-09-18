@@ -17,24 +17,26 @@ fun FtpBreakthroughDialog(
         onDismissRequest = onDecline,
         title = {
             Text(
-                text = "FTP Breakthrough!",
+                text = "A stronger FTP",
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
             Text(
-                text = "New estimated FTP: ${estimatedFtp.toInt()}W (current: ${currentFtp}W)\n\nYour fitness has improved! Update your FTP?",
+                text = "$currentFtp → ${estimatedFtp.toInt()} W\n\n" +
+                    "Your best measured 20-minute effort supports a higher estimate. " +
+                    "Use it for your future class targets?",
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
         confirmButton = {
             Button(onClick = onAccept) {
-                Text("Update FTP")
+                Text("Use ${estimatedFtp.toInt()} W")
             }
         },
         dismissButton = {
             Button(onClick = onDecline) {
-                Text("Keep Current")
+                Text("Keep $currentFtp W")
             }
         }
     )
