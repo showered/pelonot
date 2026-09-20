@@ -108,6 +108,23 @@ class LiveLeaderboardTest {
         assertEquals(2, standings.window.size)
     }
 
+    @Test
+    fun `crossing a milestone keeps it visible beside the next target`() {
+        val standings = LiveLeaderboard(
+            ghosts = emptyList(),
+            pacer = LiveLeaderboard.Pacer(durationSec = 600, floor = 200.0)
+        ).standingsAt(second = 600, yourValue = 251.0)!!
+
+        val passed = standings.all.first { it.milestonePassed }
+        val next = standings.all.first {
+            it.kind == GhostKind.Milestone && !it.milestonePassed
+        }
+        assertEquals("250", passed.name)
+        assertEquals(250.0, passed.value, 0.001)
+        assertEquals("300", next.name)
+        assertTrue(next.value > passed.value)
+    }
+
     // ── The gap, and which way round it reads ───────────────────────
 
     @Test

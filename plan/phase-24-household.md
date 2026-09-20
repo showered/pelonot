@@ -1017,6 +1017,16 @@ and no amount of social plumbing fixes that.
       `PositionCallTracker` (25.3) — an event with a latch, not a state read
       every frame.
 
+- [x] **24.3.18d.1 A milestone pass remains visible.** Crossing `250` used to
+      replace that row with `300` in the same frame. The next target was right,
+      but the pass was invisible — a rider could not tell whether they had
+      achieved anything or the board had simply redrawn. The board now keeps
+      the latest crossed rung as `✓ 250` beside the animated next target. It is
+      one completed target, not a fake rider, and it is replaced only by the
+      next rung the rider crosses. `LiveLeaderboardTest` holds the 250 → 300
+      case; the active milestone keeps a stable Compose key so its label
+      cross-fades and scales rather than blinking out.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and

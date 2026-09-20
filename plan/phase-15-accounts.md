@@ -200,6 +200,16 @@ something they could have had offline.**
       throwaway account made through the admin API (nothing emailed, so 15.7.7's
       mailer is not in the way), ride twice under it on the AVD to fill the
       account, `pm clear com.pelonot`, make a profile, and sign in again
+
+      **The new-bike entry point now runs that download automatically, before
+      it returns to the profile picker.** The missing call was not in
+      `RestoreRepository`; it was the last inch of the journey: password sign-in
+      attached a temporary local profile, queued its one local ride for upload,
+      and navigated away without ever calling `restore`. QR hand-off now takes
+      the identical route: it creates and attaches the same local shell only
+      after the phone has delivered a session, then pulls the account history.
+      A failed pull leaves the successful sign-in in place, so the Account
+      screen can retry rather than making the rider authenticate again.
 - [x] **15.3.3** Idempotent by the local workout UUID, so a retry or a re-install cannot double a ride
 - [ ] **15.3.4** Conflict rule, written down and one line long: **local wins for a ride in progress, last-write-wins for RPE and profile fields, tombstones win over everything** (12.3.5)
 

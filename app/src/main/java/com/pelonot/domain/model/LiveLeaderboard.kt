@@ -102,6 +102,13 @@ data class LiveLeaderboard(
             }
             return GhostRider.nextMilestone(maxOf(floor, projected, yourValue), stepKj)
         }
+
+        /** The latest rung the rider has actually crossed, if there is one. */
+        fun passedAt(yourValue: Double): Double? {
+            if (stepKj <= 0.0) return null
+            val passed = kotlin.math.floor(yourValue / stepKj) * stepKj
+            return passed.takeIf { it > floor }
+        }
     }
 
     /**
@@ -208,6 +215,21 @@ data class LiveLeaderboard(
             // stable sort leaves it below — a round number and a real target
             // level with each other should read as the real one being ahead.
             pacer?.let { ladder ->
+                // Keep the last crossed rung beside the next one. A target
+                // that changes from 250 to 300 in one frame makes a pass feel
+                // like it vanished; this turns it into a visible achievement.
+                ladder.passedAt(yourValue)?.let { passed ->
+                    add(
+                        Placing(
+                            name = Formatters.kilojoulesValue(passed),
+                            value = passed,
+                            isYou = false,
+                            finished = false,
+                            kind = GhostKind.Milestone,
+                            milestonePassed = true
+                        )
+                    )
+                }
                 val target = ladder.targetAt(second, yourValue)
                 add(
                     Placing(
@@ -255,7 +277,8 @@ data class LiveLeaderboard(
                 finished = placing.finished,
                 gapToYou = placing.value - yourValue,
                 kind = placing.kind,
-                identity = placing.identity
+                identity = placing.identity,
+                milestonePassed = placing.milestonePassed
             )
         }
 
@@ -275,7 +298,8 @@ data class LiveLeaderboard(
         val isYou: Boolean,
         val finished: Boolean,
         val kind: GhostKind = GhostKind.Human,
-        val identity: RaceIdentity? = null
+        val identity: RaceIdentity? = null,
+        val milestonePassed: Boolean = false
     )
 
     companion object {
@@ -418,7 +442,9 @@ data class LiveStanding(
      * no level because a board that gives it one claims a person who does not
      * exist.
      */
-    val identity: RaceIdentity? = null
+    val identity: RaceIdentity? = null,
+    /** A milestone the rider just passed; it is distinct from a finished ride. */
+    val milestonePassed: Boolean = false
 ) {
     /** Whether this row was generated rather than ridden. */
     val isGhost: Boolean get() = kind.isGhost

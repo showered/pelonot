@@ -1115,7 +1115,19 @@ private fun LiveLeaderboardCard(
             // category error rather than a small overstatement. Nothing has
             // replaced it: the rows are names and numbers, best first, and
             // that is the whole card.
-            items(standings.all, key = { it.name }) { row ->
+            items(
+                standings.all,
+                // A milestone is one continuing lane: keeping its key as the
+                // rung advances lets its number animate rather than blinking
+                // out and being replaced in the next frame.
+                key = {
+                    if (it.kind == com.pelonot.domain.social.GhostKind.Milestone) {
+                        "milestone-${if (it.milestonePassed) "passed" else "next"}"
+                    } else {
+                        it.name
+                    }
+                }
+            ) { row ->
                 LeaderboardRow(row, standings.metric)
             }
         }
@@ -1247,20 +1259,32 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(
+            val label = when {
+                row.milestonePassed -> "✓ ${row.name.uppercase()}"
+                row.isGhost -> "○ ${row.name.uppercase()}"
+                else -> row.name.uppercase()
+            }
+            AnimatedContent(
+                targetState = label,
+                transitionSpec = {
+                    (fadeIn() + scaleIn(initialScale = 0.88f))
+                        .togetherWith(fadeOut() + scaleOut(targetScale = 1.08f))
+                },
+                label = "LeaderboardRowLabel"
+            ) { shown -> Text(
                 // 24.3.18a's visible half. A generated target carries a mark so
                 // a rider can never come away thinking a housemate did 300 kJ
                 // when 300 is a number this app made up. A ring rather than a
                 // word: the row is 44 dp in a 360 dp column read at two metres,
                 // and it is the same glyph 18.7 already uses for *this row is
                 // not quite what the others are*.
-                text = if (row.isGhost) "○ ${row.name.uppercase()}" else row.name.uppercase(),
+                text = shown,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Medium,
                 color = colour,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
+            ) }
             // 24.3.6. A competitor whose own ride has run out says so, once,
             // and their number stops moving — never a line extrapolated
             // forward. On its own line rather than appended to the name,
