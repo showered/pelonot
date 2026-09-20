@@ -342,13 +342,30 @@ class AccountViewModel(
         form.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             val result = accountRepository.signInOnNewBike(snapshot.email, snapshot.password)
-            val localUserId = result.localUserId
-            if (result.attempt is AuthAttempt.Success && localUserId != null) {
-                settingsRepository.setLastProfileId(localUserId)
-                resolve(result.attempt, localUserId, onSignedIn)
-            } else {
-                resolve(result.attempt, localUserId ?: 0, onSignedIn)
-            }
+            completeNewBikeSignIn(result.attempt, result.localUserId, onSignedIn)
+        }
+    }
+
+    /**
+     * The new-bike route is a restore, not merely an authentication screen.
+     *
+     * The local shell exists so the account has an owner on this tablet. Once
+     * it is attached, bring every missing ride down before returning to the
+     * profile picker. A failure to reach the cloud does not undo a successful
+     * sign-in: it leaves the rider signed in and the account screen can retry.
+     */
+    private suspend fun completeNewBikeSignIn(
+        attempt: AuthAttempt,
+        localUserId: Int?,
+        onSignedIn: () -> Unit
+    ) {
+        if (attempt is AuthAttempt.Success && localUserId != null) {
+            settingsRepository.setLastProfileId(localUserId)
+            resolve(attempt, localUserId) { }
+            restoreRepository.restore(localUserId)
+            onSignedIn()
+        } else {
+            resolve(attempt, localUserId ?: 0, onSignedIn)
         }
     }
 
@@ -385,6 +402,15 @@ class AccountViewModel(
      */
     fun startPairing(onSignedIn: () -> Unit) {
         val localUserId = uiState.value.profile?.localUserId ?: return
+        startPairing(localUserId, onSignedIn)
+    }
+
+    /** Starts the same QR journey before this bike has a local profile. */
+    fun startPairingOnNewBike(onSignedIn: () -> Unit) {
+        startPairing(localUserId = null, onSignedIn = onSignedIn)
+    }
+
+    private fun startPairing(localUserId: Int?, onSignedIn: () -> Unit) {
         pollJob?.cancel()
         pairing.value = PairingState.Starting
 
@@ -414,13 +440,17 @@ class AccountViewModel(
                         // The same attach as the typed path, deliberately: if
                         // pairing had its own copy of 15.2's rules, one of the
                         // two would drift and it would be this one.
-                        resolve(
-                            accountRepository.adoptSession(localUserId, adopted),
-                            localUserId,
-                            onSignedIn
-                        )
-                        if (adopted is AuthAttempt.Failed) {
-                            pairing.value = PairingState.Failed(adopted.message)
+                        val attached = if (localUserId != null) {
+                            accountRepository.adoptSession(localUserId, adopted).also {
+                                resolve(it, localUserId, onSignedIn)
+                            }
+                        } else {
+                            val result = accountRepository.adoptSessionOnNewBike(adopted)
+                            completeNewBikeSignIn(result.attempt, result.localUserId, onSignedIn)
+                            result.attempt
+                        }
+                        if (attached is AuthAttempt.Failed) {
+                            pairing.value = PairingState.Failed(attached.message)
                         } else {
                             pairing.value = PairingState.Idle
                         }

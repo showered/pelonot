@@ -101,11 +101,20 @@ fun AccountScreen(
     // server that nothing on the tablet will ever show. The condition lives on
     // `AccountUiState` because the offer step asks the same question and its
     // own copy was missing a clause (20.4.7).
-    val wantsCode = state.wantsPairingCode
+    val wantsCode = if (isNewBikeSignIn) {
+        state.pairingAvailable && state.cloudConfigured &&
+            state.session != AccountState.Unknown && state.session !is AccountState.SignedIn
+    } else {
+        state.wantsPairingCode
+    }
 
     LaunchedEffect(wantsCode) {
         if (wantsCode && state.pairing == PairingState.Idle) {
-            viewModel.startPairing(onSignedIn = onBack)
+            if (isNewBikeSignIn) {
+                viewModel.startPairingOnNewBike(onSignedIn = onBack)
+            } else {
+                viewModel.startPairing(onSignedIn = onBack)
+            }
         }
     }
 
@@ -149,6 +158,9 @@ fun AccountScreen(
         ) {
             when {
                 !state.cloudConfigured -> ReadablePanel { NoCloudHere() }
+                isNewBikeSignIn && state.pairing == PairingState.Completing -> ReadablePanel {
+                    PairingCompleting()
+                }
                 isNewBikeSignIn -> ReadablePanel {
                     NewBikeSignIn(
                         state = state,
@@ -257,38 +269,64 @@ private fun NewBikeSignIn(
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    OutlinedTextField(
-        value = state.email,
-        onValueChange = viewModel::setEmail,
-        label = { Text("Email") },
-        singleLine = true,
-        isError = state.emailProblem != null,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Email,
-            imeAction = ImeAction.Next
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
-    OutlinedTextField(
-        value = state.password,
-        onValueChange = viewModel::setPassword,
-        label = { Text("Password") },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Password,
-            imeAction = ImeAction.Done
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
-    state.problem?.let { ProblemLine(it) }
-    Button(
-        onClick = { viewModel.submitOnNewBike(onDone) },
-        enabled = state.canSubmit,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (state.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-        else Text("Sign in")
+    val form: @Composable ColumnScope.() -> Unit = {
+        OutlinedTextField(
+            value = state.email,
+            onValueChange = viewModel::setEmail,
+            label = { Text("Email") },
+            singleLine = true,
+            isError = state.emailProblem != null,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = state.password,
+            onValueChange = viewModel::setPassword,
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        state.problem?.let { ProblemLine(it) }
+        Button(
+            onClick = { viewModel.submitOnNewBike(onDone) },
+            enabled = state.canSubmit,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (state.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            else Text("Sign in")
+        }
+    }
+    if (state.pairingAvailable) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraLarge),
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.weight(1f)) {
+                ScanToSignIn(
+                    state = state,
+                    onRetry = { viewModel.startPairingOnNewBike(onDone) }
+                )
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                modifier = Modifier.weight(1f),
+                content = form
+            )
+        }
+    } else {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            content = form
+        )
     }
 }
 

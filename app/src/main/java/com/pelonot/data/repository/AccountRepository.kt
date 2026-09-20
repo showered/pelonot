@@ -71,6 +71,21 @@ class AccountRepository(
      */
     suspend fun signInOnNewBike(email: String, password: String): NewBikeSignIn {
         val attempt = authRepository.signIn(email, password)
+        return attachOnNewBike(attempt)
+    }
+
+    /**
+     * Attaches a session delivered by the QR hand-off to a fresh bike.
+     *
+     * Password and QR sign-in must arrive at exactly the same local shape: one
+     * small profile shell, attached to the account, ready for its history to
+     * come down. Keeping this beside [signInOnNewBike] prevents a QR-only
+     * version of the new-bike journey from quietly losing restore.
+     */
+    suspend fun adoptSessionOnNewBike(attempt: AuthAttempt): NewBikeSignIn =
+        attachOnNewBike(attempt)
+
+    private suspend fun attachOnNewBike(attempt: AuthAttempt): NewBikeSignIn {
         val success = attempt as? AuthAttempt.Success ?: return NewBikeSignIn(attempt)
 
         val alreadyHeldBy = userDao.getUserByAuthId(success.accountId)
