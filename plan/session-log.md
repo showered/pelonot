@@ -6,6 +6,20 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+### 17 September 2026: rider choice and earned FTP
+
+The dashboard's suggested-class hero is replaced by **Choose a class**, beside
+Just Ride (**22.10**). FTP now distinguishes a starting value from ride-supported
+progress, explains recent evidence, and offers reviewable changes outside the
+post-ride dialog (**7.12**). Unchanged values can earn support; older support is
+retained. New reviews use recent measured twenty-minute efforts. The missed
+reassessment after an effort answer is fixed. Emulator fixtures verified both
+200 → 209 and 200 → 185 with correct database history. **983 JVM tests** pass;
+**132 instrumented tests** pass, including the effort-answer regression.
+`REVIEW.md` records final checks.
+No hardware touched, no APK published, no real rider's FTP changed.
+
+
 ### Latest session — 17 September 2026: export recovery and class discovery
 
 Continued the emulator-only bugfix pass. Exports now survive process destruction

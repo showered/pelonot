@@ -1684,3 +1684,27 @@ suggested-class hero was optimising a shortcut they do not use.
       opens the library, filters to 20 minutes, returns to dashboard. Primary
       actions remain visible at 130% text alongside the enlarged FTP evidence
       card. The old suggested-class card is removed.
+
+
+### 22.11 A visual refresh from image-generation concepts — 21 September 2026
+
+The owner asked for ChatGPT photo generation to see the app, propose a slicker
+appearance, show the designs and then build them. Dark and light guest-dashboard
+concepts were generated from an actual tablet screenshot and shown before coding.
+The concepts, exact prompts and implementation screenshots live in
+[design/dashboard](../design/dashboard/README.md).
+
+- [x] **22.11.1 Show dark and light concepts.** Preserve Choose a class as the
+      primary action, actual class profiles, and the guest's absent level/history.
+- [x] **22.11.2 Implement the visual direction natively.** Split greeting,
+      outlined cards and navigation, clear arrows, teal track detail on the
+      primary action, quiet background glow, and a short fade instead of scaling
+      the whole dashboard. The shared household/riding cards use the same outline.
+      No bitmap text, invented measurements or new cloud access.
+- [x] **22.11.3 Check the tablet layouts and destinations.** Observed guest in
+      dark/light, new profile, household, solo activity grid, account offer,
+      backup reminder and 130% text. Choose a class opens the library; History,
+      Settings and Base Ride open their existing destinations. Standard build
+      and 984 JVM tests pass. Existing emulator signing mismatch was handled with
+      a separate preview package and synthetic offline data, leaving the installed
+      app intact. Real hardware remains untested.

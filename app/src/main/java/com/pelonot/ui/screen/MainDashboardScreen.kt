@@ -20,13 +20,21 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.Canvas
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,7 +60,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Save
@@ -91,19 +98,7 @@ import com.pelonot.ui.components.RiderAvatar
 import com.pelonot.ui.components.AVATAR_GREETING
 import com.pelonot.ui.theme.spacing
 
-/**
- * Main dashboard screen – redesigned with Material Expressive card layouts.
- *
- * Features:
- * - Expressive greeting header with gradient accent
- * - FTP hero card with elevated surface container styling
- * - Primary action card with gradient background
- * - Secondary action cards with surface tonal variants
- * - Progress section with elevated metric cards
- * - Proper elevation hierarchy (level0–level3)
- * - Surface tonal variants for visual depth
- * - Spring-animated entrance transitions
- */
+/** The dashboard keeps its decorative track separate from charts of actual riding. */
 @Composable
 fun MainDashboardScreen(
     userName: String,
@@ -180,7 +175,7 @@ fun MainDashboardScreen(
 
     AnimatedVisibility(
         visibleState = visibleState,
-        enter = fadeIn(tween(600)) + scaleIn(tween(600)),
+        enter = fadeIn(tween(250)),
         exit = fadeOut(tween(300))
     ) {
         // 22.2.1. 11.3.1 was right that there is no dead right-hand side here —
@@ -202,13 +197,14 @@ fun MainDashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .dashboardBackdrop()
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.TopCenter
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = MaterialTheme.spacing.large)
+                    .padding(horizontal = MaterialTheme.spacing.extraLarge)
             ) {
                 Spacer(modifier = Modifier.height(MaterialTheme.spacing.large))
 
@@ -243,7 +239,7 @@ fun MainDashboardScreen(
                     PrimaryActionCard(
                         title = "Choose a class",
                         subtitle = "Find your pace, pick your length",
-                        icon = Icons.Default.FitnessCenter,
+                        icon = Icons.AutoMirrored.Filled.ArrowForward,
                         onClick = onBeginClass,
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     )
@@ -398,10 +394,8 @@ private fun greetingFor(hour: Int): String = when (hour) {
  * The greeting and the two doors that are navigation rather than content
  * (22.8.2, 22.8.3).
  *
- * **Three lines became one.** The greeting was a stacked block 86 dp tall on a
- * screen carrying 993 dp of content into a 664 dp viewport, and its third line
- * — *"Ready to ride?"* — was a question under the rider's own name that neither
- * asked nor said anything (Phase 26).
+ * A quiet salutation above the name keeps identity prominent without adding
+ * a promotional line. The level stays beside the name, never on the avatar.
  *
  * **And *History* and *Settings* are here rather than in the card grid.** They
  * were two of three 405 × 111 dp cards, which gave two doors the same weight as
@@ -434,11 +428,8 @@ private fun GreetingHeader(
         // The badge sits *against the name*, not at the far end of the row, so
         // the inner row takes the space and the name gives up what it does not
         // need. 26.4.4, decided by 22.8's arithmetic as much as by taste: this
-        // screen was 993 dp of content in a 664 dp viewport, so a badge that
-        // costs a row is a badge that pushes something below the fold. Here it
-        // costs nothing — the greeting is one line tall either way — and it
-        // reads as part of *who this is*, which is the only true reading of the
-        // number.
+        // screen was 993 dp of content in a 664 dp viewport, so the badge
+        // shares the greeting's height rather than adding another row.
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
@@ -460,18 +451,22 @@ private fun GreetingHeader(
                 )
                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
             }
-            Text(
-                text = buildAnnotatedString {
-                    append("$greeting ")
-                    pushStyle(SpanStyle(fontWeight = FontWeight.ExtraBold))
-                    append(userName)
-                },
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
-            )
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(
+                    text = greeting.removeSuffix(","),
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 1.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = userName,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             if (riderLevel != null) {
                 Spacer(modifier = Modifier.width(MaterialTheme.spacing.medium))
                 RiderScore(level = riderLevel)
@@ -485,7 +480,14 @@ private fun GreetingHeader(
 
 @Composable
 private fun HeaderDoor(text: String, icon: ImageVector, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+    TextButton(
+        onClick = onClick,
+        shape = MaterialTheme.expressiveShapes.pill,
+        modifier = Modifier.border(
+            1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            MaterialTheme.expressiveShapes.pill
+        )
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -530,6 +532,7 @@ private fun FtpGlanceCard(
                 else base.clickable(onClickLabel = "See how your FTP has changed") { onClick() }
             },
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -608,7 +611,7 @@ private fun FtpGlanceCard(
 }
 
 // =========================================================================
-// Primary Action Card (Just Ride)
+// Primary Action Card (Choose a class)
 // =========================================================================
 @Composable
 private fun PrimaryActionCard(
@@ -618,52 +621,43 @@ private fun PrimaryActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val light = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val container = if (light) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
+    val ink = if (light) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = MaterialTheme.elevationTokens.level1
-        ),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+        colors = CardDefaults.cardColors(containerColor = container),
         onClick = onClick
     ) {
         Row(
             modifier = Modifier
-                // The caller stretches this card to the one beside it, and
-                // without the height here the Row wraps its content: the
-                // alignment below then centres nothing, and the title sits at
-                // the top of a 250 dp block of empty teal.
                 .fillMaxSize()
-                // `large`, not `extraLarge` (22.8.2). At the wider padding this
-                // card was 107 dp tall to hold 43 dp of text, and it is the
-                // widest card on the screen — so the emptiness showed up as a
-                // field of teal rather than as breathing room.
-                .padding(MaterialTheme.spacing.large),
+                .heightIn(min = 100.dp)
+                .drawBehind {
+                    drawRect(Brush.linearGradient(listOf(Color.Transparent, ink.copy(alpha = 0.07f))))
+                    drawDashboardTrack(ink.copy(alpha = 0.16f))
+                }
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
+                Text(title, style = MaterialTheme.typography.headlineSmall,
+                    color = ink, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(4.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium,
+                    color = ink.copy(alpha = 0.85f))
             }
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(40.dp)
-            )
+            Box(
+                modifier = Modifier.size(48.dp)
+                    .background(container, MaterialTheme.expressiveShapes.pill)
+                    .border(1.dp, ink.copy(alpha = 0.35f), MaterialTheme.expressiveShapes.pill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(28.dp))
+            }
         }
     }
 }
@@ -681,44 +675,27 @@ private fun SecondaryActionCard(
 ) {
     Card(
         modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = MaterialTheme.elevationTokens.level1
-        ),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         onClick = onClick
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(MaterialTheme.spacing.large),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxSize().heightIn(min = 100.dp).padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(MaterialTheme.spacing.large))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Icon(icon, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -751,6 +728,7 @@ private fun BackupReminderCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -804,6 +782,7 @@ private fun AccountOfferCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -1059,6 +1038,7 @@ private fun RecentRidingCard(
                 contentDescription = "Last 30 days: $detail. Opens your riding."
             },
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -1181,6 +1161,7 @@ private fun LastRideCard(
                 contentDescription = "Last ride: $title, $detail. Opens the ride."
             },
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -1279,6 +1260,7 @@ private fun RecordsGlanceCard(
                 contentDescription = "Your records: $headline $detail. Opens your records."
             },
         shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -1492,7 +1474,8 @@ private fun StartingPointsSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Somewhere to start",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
+            letterSpacing = 1.sp,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.semantics { heading() }
         )
@@ -1528,9 +1511,10 @@ private fun StartingPointCard(
             .semantics {
                 contentDescription = "Ride ${starter.title}, $detail. Opens the class."
             },
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         onClick = onClick
     ) {
@@ -1539,14 +1523,26 @@ private fun StartingPointCard(
                 .fillMaxWidth()
                 .padding(MaterialTheme.spacing.large)
         ) {
-            Text(
-                text = starter.title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = starter.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    Modifier.size(32.dp).background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.expressiveShapes.pill
+                    ), contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodyMedium,
@@ -1581,3 +1577,31 @@ private val CARDS_ABREAST_BREAKPOINT = 900.dp
  * build of this went off the bottom of the screen it exists to fill.
  */
 private val DASHBOARD_DAY_SQUARE = 22.dp
+
+/** A track, not a data trace: confined to the action, never behind a measurement. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDashboardTrack(color: Color) {
+    repeat(3) { lane ->
+        val offset = lane * size.width * 0.085f
+        val track = Path().apply {
+            moveTo(size.width * 0.50f + offset, -size.height * 0.15f)
+            cubicTo(size.width * 0.94f + offset, size.height * 0.12f,
+                size.width * 0.83f + offset, size.height * 0.7f,
+                size.width * 0.64f + offset, size.height * 1.2f)
+        }
+        drawPath(track, color, style = Stroke(width = (if (lane == 1) 12 else 1).dp.toPx()))
+    }
+}
+
+@Composable
+private fun Modifier.dashboardBackdrop(): Modifier {
+    val background = MaterialTheme.colorScheme.background
+    val glow = MaterialTheme.colorScheme.primary.copy(alpha = 0.075f)
+    return drawBehind {
+        drawRect(background)
+        drawRect(Brush.radialGradient(
+            colors = listOf(glow, Color.Transparent),
+            center = Offset(size.width * 0.65f, 0f),
+            radius = size.width * 0.6f
+        ))
+    }
+}

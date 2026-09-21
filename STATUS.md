@@ -14,7 +14,7 @@ historical; [PLAN.md](PLAN.md) is the current index.
 | Measured | |
 |---|---|
 | JVM tests | **984**, 0 failures |
-| Plan boxes ticked | **749 of 969** — 77% |
+| Plan boxes ticked | **752 of 972** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
