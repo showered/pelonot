@@ -343,6 +343,18 @@ system ducks the rider's video under it instead of the cue being drowned by it.
 
 ---
 
+### Live leaderboard targets
+
+`WorkoutService.loadRaceBoard` loads eligible historical traces once at ride
+start or resume. `LiveLeaderboard.standingsAt` ranks their cumulative values at
+the current elapsed second. `GhostRider.stretchTrace` generates **Best +5%**
+from the highest personal-best trace value at each second, including class,
+duration and recent bests. It preserves their timing instead of spreading a
+finishing total into constant pace. The generated marker distinguishes this
+target from the unchanged recorded traces. See `LEADERBOARD.md` and 24.3.18g.
+
+---
+
 ## 3. Where data comes to rest
 
 ```

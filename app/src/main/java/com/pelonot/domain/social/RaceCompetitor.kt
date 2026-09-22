@@ -96,10 +96,10 @@ data class RaceCompetitor(
         YourBestYearAtLength(""),
 
         /** Your best of the last twelve months — `12 months` until 24.3.12a. */
-        YourBestYear("Your best this year"),
+        YourBestYear("Year best"),
 
         /** Your best of the last thirty days — `30 days` until 24.3.12a. */
-        YourBestMonth("Your recent best"),
+        YourBestMonth("Recent best"),
 
         /** A housemate's best, from `householdRivals` (24.3.1's query). */
         Housemate(""),

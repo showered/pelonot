@@ -26,14 +26,27 @@ Nobody picks anybody. You start the class and the race is there.
 Kinds of row, and they are different questions rather than different formats:
 
 - **Your best** — your best ride of this class, ever.
-- **Your best this year** — your best of the last twelve months.
-- **Your recent best** — your best of the last thirty days.
+- **Year best** — your best of the last twelve months.
+- **Recent best** — your best of the last thirty days.
+- **30m best / 30m year best** — your best at this duration across classes
+  and matching-length free rides, ever or within the last twelve months. The
+  number follows the current class length.
 - **Anybody else on this bike** — their best, by name, and their last ride
   beside it, because a best is a monument and a last ride is news.
 - **Targets nobody rode** — *Class target* (the class ridden at the middle of
-  every band it asks for), *Just past your best*, *Your usual*, and a round
-  number that rises as you do. These carry a `○` and are never mistaken for
-  people. See *A row that is a person* below for the other half of that.
+  every band it asks for), *Best +5%*, *Your usual*,
+  *30m average* (your average at this duration over the last year, once
+  there are at least three rides), and a round number that rises as you do.
+  These carry a `○` and are never mistaken for people. See *A row that is a person* below for the other half of that.
+
+**Best +5% follows the recorded pace.** At each elapsed second it is five per
+cent above the highest total among your personal-best rows on this board,
+including the class, duration and recent windows. It can switch which best it
+follows, so it is explicitly a generated target, not a ride anybody completed.
+The original version spread one class's finishing total evenly across the ride;
+a fast start could put *Your best* ahead of *Just past your best*. That is fixed.
+The real rides keep their original traces, and all rows still rank by their
+actual cumulative values.
 
 The two windows are the interesting part, and they are the owner's own idea:
 *"Not only can it include your own PB as a 'ghost' to chase on the leaderboard,
@@ -148,19 +161,11 @@ number stops.** It never draws a line forward into a ride that isn't there. On
 a board this is more useful than it was as a single number: their total sits
 there while yours climbs towards it.
 
-**Both sides have to be real measured watts.** The bike's own sensor reports
-power directly. The app can also *estimate* power from cadence and resistance,
-but that estimate is badly wrong — about 137 W out on average — so a race
-against an estimate would look exact and be fiction. So rides with estimated
-power are never on the board, and if *your* current ride turns out to be
-estimated the board disappears for that ride and does not come back.
-
-That last rule is why the leaderboard shows nothing on the emulator, where
-there is no bike. There is a debug switch to look at it anyway
-(`com.pelonot.debug.RACE`) and it is careful about what it changes: it lets the
-*live* board draw, and changes nothing that gets written down. The ride still
-records honestly that its watts were estimated, and is still excluded from
-every board afterwards.
+**Real bike rides compare measured watts with measured watts.** Generated
+class targets and milestones remain available without measured history. The
+emulator's explicit debug race mode instead uses a separate modelled-history
+lane. This changes the live comparison only; recorded provenance, FTP evidence
+and the measured-only static leaderboards remain unchanged.
 
 ---
 
@@ -172,15 +177,12 @@ ride record from scratch, so anything stored there that the rebuild does not
 know about gets silently wiped. Rather than risk that, the race is not part of
 the record.
 
-**Nothing appears on the overlay yet** — the floating strip you get over a
-film. That strip has about half a second of your attention, and the rule had
-been that it belongs to the next sixty seconds of pedalling. The owner has
-since asked for a small version of the board in the *expanded* overlay and
-nothing in the collapsed strip, which overrules that rule deliberately rather
-than by accident (PLAN.md 24.3.16). It is not built.
+**The expanded overlay shows the nearest competitor**, using the same names
+and standings as the ride screen. The collapsed overlay keeps its compact form.
 
-**A class nobody has ridden draws nothing at all.** No empty board, no "be the
-first" — an empty comparison is a message about the people who are not on it.
+**A class nobody has ridden still gets generated targets**, including the
+class target and a milestone, so there can be something to chase without
+inventing another person.
 
 ---
 
@@ -197,11 +199,9 @@ this one is a household plus your own history, so *4th of 6* where four of the
 six are you is a category error rather than an overstatement. Written down
 rather than acted on in either direction (PLAN.md 24.3.19d).
 
-**Open, and also the owner's:** what to call the rows that are windows onto
-your own history. *Your best this year* and *Your recent best* replaced *12
-months* and *30 days*, which the owner called *"no good at all"*, and they
-matter more now — with the rank gone the name is the only identity a row has,
-and they are the two rows that can never carry a face.
+**Labels shortened on 22 September:** *Best +5%*, *Year best*, *Recent best*,
+*30m best*, *30m year best*, and *30m average*. *Your best*, *Your usual* and
+*Class target* retain their short, descriptive labels.
 
 **Open:** racing by **distance** instead of output. The data already works that
 way — a race is one cumulative series against another, and distance is the same

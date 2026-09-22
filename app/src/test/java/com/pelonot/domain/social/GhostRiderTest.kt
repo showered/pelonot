@@ -4,6 +4,8 @@ import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.PowerZone
 import com.pelonot.domain.model.RideIntent
+import com.pelonot.domain.model.RivalTrace
+import com.pelonot.domain.model.RaceMetric
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -149,7 +151,7 @@ class GhostRiderTest {
             intervals = listOf(block(0, 1200, zone = 3)),
             durationSec = 1200,
             ftpWatts = 200.0,
-            personalBestKj = 300.0,
+            personalBests = listOf(GhostRider.paceTrace(300.0, 1200)),
             ownTotalsKj = listOf(200.0, 250.0, 300.0)
         )
 
@@ -166,10 +168,51 @@ class GhostRiderTest {
             intervals = emptyList(),
             durationSec = 1200,
             ftpWatts = 200.0,
-            personalBestKj = 300.0
+            personalBests = listOf(GhostRider.paceTrace(300.0, 1200))
         )
 
         assertEquals(315.0, ghosts.single().trace.finalValue, 0.001)
+    }
+
+    @Test
+    fun `stretch stays above both class and length bests throughout an uneven ride`() {
+        val classBest = RivalTrace(listOf(0 to 0.0, 1 to 0.3, 419 to 56.0, 900 to 160.0, 1800 to 240.0))
+        val lengthBest = RivalTrace(listOf(0 to 0.0, 1 to 0.2, 419 to 60.0, 900 to 140.0, 1800 to 280.0))
+        val bests = listOf(classBest, lengthBest)
+        val generated = GhostRider.ghostsFor(
+            intervals = emptyList(), durationSec = 1800, ftpWatts = 200.0,
+            personalBests = bests
+        )
+        val stretch = generated.single()
+        val board = LiveLeaderboard(bests.mapIndexed { index, trace ->
+            LiveLeaderboard.Ghost("Best $index", trace, GhostKind.YourBest)
+        } + generated)
+
+        assertEquals("Best +5%", stretch.name)
+        assertEquals(63.0, stretch.trace.valueAt(419)!!, 0.001)
+        assertEquals(294.0, stretch.trace.finalValue, 0.001)
+        for (second in 1..1800) {
+            val standings = board.standingsAt(second, yourValue = 0.0)!!.all
+            assertEquals("stretch fell behind at $second", GhostKind.Stretch, standings.first().kind)
+            assertEquals(
+                bests.maxOf { it.valueAt(second)!! } * 1.05,
+                stretch.trace.valueAt(second)!!, 0.001
+            )
+        }
+        assertEquals(56.0, classBest.valueAt(419)!!, 0.0)
+        assertFalse(GhostKind.YourBest.isGenerated)
+        assertTrue(stretch.kind.isGenerated)
+    }
+
+    @Test
+    fun `stretch holds finished bests and ends with the current class`() {
+        val best = RivalTrace(listOf(0 to 0.0, 59 to 20.0))
+        val trace = GhostRider.stretchTrace(listOf(best), durationSec = 60)
+        assertEquals(21.0, trace.valueAt(60)!!, 0.001)
+        assertNull(trace.valueAt(61))
+        assertTrue(GhostRider.stretchTrace(emptyList(), 60).isEmpty)
+        assertTrue(GhostRider.stretchTrace(listOf(best), 0).isEmpty)
+        assertTrue(GhostRider.stretchTrace(listOf(best.copy(metric = RaceMetric.Distance)), 60).isEmpty)
     }
 
     @Test
@@ -194,7 +237,7 @@ class GhostRiderTest {
         assertEquals(210.0, ghosts.single().trace.finalValue, 0.001)
         // The label has to carry the length or it is indistinguishable from
         // *your usual*, which is the same shape of number over one class.
-        assertEquals("Your average 30 minutes", ghosts.single().name)
+        assertEquals("30m average", ghosts.single().name)
     }
 
     @Test
@@ -207,7 +250,7 @@ class GhostRiderTest {
             intervals = listOf(block(0, 1800, zone = 3)),
             durationSec = 1800,
             ftpWatts = 200.0,
-            personalBestKj = 300.0,
+            personalBests = listOf(GhostRider.paceTrace(300.0, 1200)),
             ownTotalsKj = listOf(200.0, 250.0, 300.0),
             averageAtLengthKj = 210.0,
             classDurationSec = 1800
@@ -243,7 +286,7 @@ class GhostRiderTest {
             intervals = listOf(block(0, 1200, zone = 3)),
             durationSec = 1200,
             ftpWatts = 200.0,
-            personalBestKj = 300.0,
+            personalBests = listOf(GhostRider.paceTrace(300.0, 1200)),
             ownTotalsKj = listOf(200.0, 250.0, 300.0)
         )
 

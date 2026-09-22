@@ -1,3 +1,24 @@
+# Live leaderboard pace and labels — 23 September 2026
+
+Reproduced the owner's paused Rolling Climbs board: Your best 56 was above
+Just past your best 48. The stretch used a steady pace derived from a class-only
+finishing total. It now takes the strongest of the board's personal-best traces
+at each elapsed second and adds 5%. This includes duration and recent bests,
+keeps the generated marker, and leaves actual ride traces and ranking intact.
+
+Shortened the stretch to Best +5%, the rolling windows to Year best and Recent
+best, and duration labels to 30m best, 30m year best and 30m average.
+
+Verification: 989 JVM tests and the debug build pass. New tests follow two
+uneven bests through all 1,800 seconds, cover their crossover and final total,
+and check finished and missing traces. The existing tablet preview was updated
+in place: at 06:56 Best +5% was 59 above Your best 56; at 130% text it was 61
+above 58, with all displayed labels whole. Evidence is temporarily in
+`/tmp/pelonot-board-after.png` and `/tmp/pelonot-board-large-text.png`.
+No production release or physical bike was touched.
+
+---
+
 # Update preparation safeguard — 22 September 2026
 
 A ride starting while the downloaded APK is copied into PackageInstaller now

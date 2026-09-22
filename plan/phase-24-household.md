@@ -1037,6 +1037,22 @@ and no amount of social plumbing fixes that.
       chosen, **the two questions have to be answered together** or the board
       ends up with two families of made-up name on it.
 
+- [x] **24.3.18g A stretch target stays ahead of the bests it names.** The
+      owner's 22 September report: *“Your best” is higher on the live
+      leaderboard than “Just past your best”*, and the labels need shortening.
+      Reproduced on the tablet emulator at 06:59: the recorded best was 56,
+      the stretch 48. The stretch had flattened a class-only finishing total
+      into steady pace; a fast start or a stronger duration best defeated it.
+      It now follows the greatest cumulative value among the personal-best
+      traces already loaded for the board, plus 5%, at each elapsed second.
+      Real traces and numeric ranking are untouched. The generated `○` remains.
+      Labels are **Best +5%**, **Year best**, **Recent best**, **30m best**,
+      **30m year best** and **30m average**, with the duration following the
+      class. Observed at 06:56: **59 above 56**; at 130% text: **61 above 58**,
+      with the average label whole. JVM regressions cover every second of
+      crossing class/length traces, final totals and finished rides. The
+      existing emulator preview was updated in place; production was untouched.
+
 - [x] **24.3.18f Where it lives.** Live leaderboard only, on the owner's own
       boundary. Nothing on the post-ride summary, nothing synced, nothing on
       the overlay — 24.3.16 is unresolved and a ghost is not the thing to

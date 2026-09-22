@@ -1,5 +1,22 @@
 > Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
 
+### Session — 22 September 2026: keep a new ride ahead of an update
+
+The update guard checked after downloading but before copying the APK into
+Android's installer session. A ride starting during that disk copy could still
+be interrupted by installation. The installer now checks cancellation and asks
+the coordinator to check the ride again immediately before committing; a refusal
+abandons the session and deletes the cached APK. The rider gets the existing
+finish-your-ride message and can retry afterwards.
+
+Two JVM regressions exercise a ride starting during installation preparation
+and cancellation during that preparation, including cleanup and retry. **987
+JVM tests and the debug build pass.** The new ride-race test also fails with the
+final guard deliberately removed. Production installer callbacks and signing
+remain the open emulator rehearsal in **30.7.3**; this session did not perform
+an actual package replacement.
+
+
 ### Session — 22 September 2026: a live board that includes the rides it says it does
 
 The emulator had Alex's fourteen completed, modelled thirty-minute free rides,

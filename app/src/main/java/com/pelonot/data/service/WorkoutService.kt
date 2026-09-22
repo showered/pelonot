@@ -699,7 +699,7 @@ class WorkoutService : Service() {
         // gives up when nobody has ridden the class. With 72 classes and a
         // four-person household, "nobody has ridden this one" is the ordinary
         // case, and *the plan* is a real target on a first attempt.
-        val generated = runCatching { generatedGhosts(classId, youId, RaceDebug.raceProvenance) }
+        val generated = runCatching { generatedGhosts(classId, youId, RaceDebug.raceProvenance, ghosts) }
             .onFailure { Log.w(TAG, "Could not generate ghosts for $classId", it) }
             .getOrDefault(emptyList())
 
@@ -781,7 +781,8 @@ class WorkoutService : Service() {
     private suspend fun generatedGhosts(
         classId: String,
         youId: Int?,
-        provenance: PowerProvenance
+        provenance: PowerProvenance,
+        ridden: List<LiveLeaderboard.Ghost>
     ): List<LiveLeaderboard.Ghost> {
         val session = _currentSession.value ?: return emptyList()
         // Read here rather than depending on `loadClass` having landed: the two
@@ -818,7 +819,9 @@ class WorkoutService : Service() {
             durationSec = duration,
             ftpWatts = session.ftpWatts.toDouble(),
             intent = session.intent,
-            personalBestKj = ownTotals.maxOrNull(),
+            personalBests = ridden.filter {
+                !it.kind.isPerson && !it.kind.isGenerated
+            }.map { it.trace },
             ownTotalsKj = ownTotals,
             averageAtLengthKj = averageAtLength,
             classDurationSec = classPlan.durationSec

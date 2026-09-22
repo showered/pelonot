@@ -1191,8 +1191,8 @@ class WorkoutRepository(
     private fun lengthLabel(kind: RaceCompetitor.Kind, classDurationSec: Int): String {
         val minutes = classDurationSec / 60
         return when (kind) {
-            RaceCompetitor.Kind.YourBestYearAtLength -> "Your best $minutes this year"
-            else -> "Your best $minutes minutes"
+            RaceCompetitor.Kind.YourBestYearAtLength -> "${minutes}m year best"
+            else -> "${minutes}m best"
         }
     }
 

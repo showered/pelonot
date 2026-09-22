@@ -99,6 +99,20 @@ object GhostRider {
     }
 
     /**
+     * Five per cent ahead of every personal best shown on the board at each
+     * elapsed second. A steady pace from a finishing total can fall behind a
+     * fast start, and a class-only best can sit below the rider's length best.
+     * The envelope is generated; the recorded traces themselves stay intact.
+     */
+    fun stretchTrace(bests: List<RivalTrace>, durationSec: Int): RivalTrace {
+        val usable = bests.filter { !it.isEmpty && it.metric == RaceMetric.Output }
+        if (durationSec <= 0 || usable.isEmpty()) return RivalTrace(emptyList())
+        return RivalTrace((0..durationSec).map { second ->
+            second to usable.maxOf { it.valueAt(second) ?: it.finalValue } * STRETCH_FACTOR
+        })
+    }
+
+    /**
      * The kilojoules a rider would finish with by riding every block at the
      * **middle of the band the class prescribes** — the class as it was
      * written.
@@ -176,7 +190,7 @@ object GhostRider {
      * ladder is not in this list at all — it is [LiveLeaderboard.pacer],
      * because unlike these three it has to move when the rider does.
      *
-     * @param personalBestKj the rider's best ever on this class, or null.
+     * @param personalBests the real personal-best traces shown on this board.
      * @param ownTotalsKj every total this rider has recorded on this class.
      */
     fun ghostsFor(
@@ -184,21 +198,21 @@ object GhostRider {
         durationSec: Int,
         ftpWatts: Double,
         intent: RideIntent = RideIntent.DEFAULT,
-        personalBestKj: Double? = null,
+        personalBests: List<RivalTrace> = emptyList(),
         ownTotalsKj: List<Double> = emptyList(),
         averageAtLengthKj: Double? = null,
         classDurationSec: Int = durationSec
     ): List<LiveLeaderboard.Ghost> {
         if (durationSec <= 0) return emptyList()
 
+        val stretch = stretchTrace(personalBests, durationSec)
         val candidates = buildList {
             prescribedTotalKj(intervals, ftpWatts, intent)
                 .takeIf { it > 0 }
                 ?.let { add(GhostKind.Prescribed to it) }
 
-            personalBestKj
-                ?.takeIf { it > 0 }
-                ?.let { add(GhostKind.Stretch to it * STRETCH_FACTOR) }
+            stretch.takeUnless { it.isEmpty || it.finalValue <= 0 }
+                ?.let { add(GhostKind.Stretch to it.finalValue) }
 
             // 24.5.7, and it is placed above *your usual* rather than below it
             // because the cap bites exactly where the two overlap. A rider who
@@ -221,10 +235,14 @@ object GhostRider {
                     // here rather than sitting on the enum — same reason
                     // `WorkoutRepository.lengthLabel` exists one layer up.
                     GhostKind.AverageAtLength ->
-                        "Your average ${classDurationSec / 60} minutes"
+                        "${classDurationSec / 60}m average"
                     else -> kind.label
                 },
-                trace = paceTrace(total, durationSec),
+                trace = if (kind == GhostKind.Stretch) {
+                    stretch
+                } else {
+                    paceTrace(total, durationSec)
+                },
                 kind = kind
             )
         }
@@ -242,7 +260,7 @@ object GhostRider {
  * of invented name on a board that already had `12 MONTHS` and `30 DAYS`
  * sitting among real people. The owner's brief was *"self-explanatory but also
  * personal and not too geeky"*, so every non-human row is now written from the
- * rider's point of view — *Your best*, *Your recent best*, *Your usual* — and
+ * rider's point of view — *Your best*, *Recent best*, *Your usual* — and
  * the two that were durations are people-shaped sentences about the rider
  * rather than spans of time.
  */
@@ -274,16 +292,16 @@ enum class GhostKind(
     YourBest("Your best", isPerson = false, isGenerated = false),
 
     /** Their best of the last twelve months — `12 MONTHS` until 24.3.12a. */
-    YourBestThisYear("Your best this year", isPerson = false, isGenerated = false),
+    YourBestThisYear("Year best", isPerson = false, isGenerated = false),
 
     /** Their best of the last thirty days — `30 DAYS` until 24.3.12a. */
-    YourRecentBest("Your recent best", isPerson = false, isGenerated = false),
+    YourRecentBest("Recent best", isPerson = false, isGenerated = false),
 
     /** The class ridden exactly as prescribed (24.3.18b, candidate 3). */
     Prescribed("Class target", isPerson = false, isGenerated = true),
 
     /** Their own best plus five per cent (24.3.18b, candidate 2). */
-    Stretch("Just past your best", isPerson = false, isGenerated = true),
+    Stretch("Best +5%", isPerson = false, isGenerated = true),
 
     /** The median of their own rides of this class (24.3.18b, candidate 4). */
     Usual("Your usual", isPerson = false, isGenerated = true),

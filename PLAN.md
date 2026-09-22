@@ -253,21 +253,21 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 22 September 2026: keep a new ride ahead of an update
+### Latest session — 23 September 2026: a stretch target that stays ahead
 
-The update guard checked after downloading but before copying the APK into
-Android's installer session. A ride starting during that disk copy could still
-be interrupted by installation. The installer now checks cancellation and asks
-the coordinator to check the ride again immediately before committing; a refusal
-abandons the session and deletes the cached APK. The rider gets the existing
-finish-your-ride message and can retry afterwards.
+The owner's live-board report reproduced directly: **Your best 56**, but
+**Just past your best 48**. The generated target spread a class-only finishing
+total evenly across the ride, so it could fall behind a fast start and ignored
+a better ride at the same duration. It now tracks the strongest personal-best
+trace on the board at each second, plus 5%, without changing recorded rides or
+forcing the sort order. **Best +5% 59** appeared above **Your best 56** in the
+same simulated class. Labels are shorter, including **30m average**, **Year
+best** and **Recent best**; checked at normal and 130% system text.
 
-Two JVM regressions exercise a ride starting during installation preparation
-and cancellation during that preparation, including cleanup and retry. **987
-JVM tests and the debug build pass.** The new ride-race test also fails with the
-final guard deliberately removed. Production installer callbacks and signing
-remain the open emulator rehearsal in **30.7.3**; this session did not perform
-an actual package replacement.
+**24.3.18g** records the change. **989 JVM tests and the debug build pass.**
+The preview app was updated in place, with completed history preserved. The
+preceding update-install safeguard is committed separately; its real
+permanent-certificate rehearsal remains open at **30.7.3**.
 
 ### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 
