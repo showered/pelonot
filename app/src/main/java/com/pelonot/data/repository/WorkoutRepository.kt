@@ -25,6 +25,7 @@ import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RoadSpeed
 import com.pelonot.domain.model.PowerZone
+import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
@@ -968,7 +969,8 @@ class WorkoutRepository(
         classDurationSec: Int,
         youId: Int?,
         excludingWorkoutId: String,
-        nowMs: Long
+        nowMs: Long,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): List<RaceCompetitor> {
         val yours = youId?.let { id ->
             val ofClass = listOf(
@@ -981,7 +983,8 @@ class WorkoutRepository(
                     userId = id,
                     excludingWorkoutId = excludingWorkoutId,
                     beforeMs = Long.MAX_VALUE,
-                    sinceMs = sinceMs
+                    sinceMs = sinceMs,
+                    provenance = provenance
                 )?.let { row ->
                     RaceCompetitor(
                         workoutId = row.workoutId,
@@ -1013,7 +1016,8 @@ class WorkoutRepository(
                     userId = id,
                     excludingWorkoutId = excludingWorkoutId,
                     beforeMs = Long.MAX_VALUE,
-                    sinceMs = sinceMs
+                    sinceMs = sinceMs,
+                    provenance = provenance
                 )?.let { row ->
                     RaceCompetitor(
                         workoutId = row.workoutId,
@@ -1129,8 +1133,12 @@ class WorkoutRepository(
      * Every measured total this rider has recorded on one class, for *your
      * usual* (24.3.18b).
      */
-    suspend fun ownTotalsForClass(classId: String, userId: Int): List<Double> =
-        workoutDao.ownTotalsForClass(userId = userId, classId = classId)
+    suspend fun ownTotalsForClass(
+        classId: String,
+        userId: Int,
+        provenance: PowerProvenance = PowerProvenance.Measured
+    ): List<Double> =
+        workoutDao.ownTotalsForClass(userId = userId, classId = classId, provenance = provenance)
 
     /**
      * What the rider has averaged at this length over the last year (24.5.7).
@@ -1151,13 +1159,15 @@ class WorkoutRepository(
         userId: Int,
         classDurationSec: Int,
         excludingWorkoutId: String,
-        nowMs: Long
+        nowMs: Long,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): Double? {
         val totals = workoutDao.ownTotalsOfLength(
             userId = userId,
             classDurationSec = classDurationSec,
             excludingWorkoutId = excludingWorkoutId,
-            sinceMs = nowMs - RACE_YEAR_MS
+            sinceMs = nowMs - RACE_YEAR_MS,
+            provenance = provenance
         )
         if (totals.size < AVERAGE_MIN_RIDES) return null
         return totals.average()

@@ -53,6 +53,7 @@ import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RaceMetric
+import com.pelonot.domain.model.PowerProvenance
 import com.pelonot.domain.model.RivalTrace
 import com.pelonot.domain.social.GhostRider
 import com.pelonot.ui.overlay.AppForeground
@@ -669,7 +670,8 @@ class WorkoutService : Service() {
                 classDurationSec = classLengthSec(classId),
                 youId = youId,
                 excludingWorkoutId = workoutId,
-                nowMs = System.currentTimeMillis()
+                nowMs = System.currentTimeMillis(),
+                provenance = RaceDebug.raceProvenance
             )
         }.onFailure { Log.w(TAG, "Could not build the leaderboard for $classId", it) }
             .getOrDefault(emptyList())
@@ -697,7 +699,7 @@ class WorkoutService : Service() {
         // gives up when nobody has ridden the class. With 72 classes and a
         // four-person household, "nobody has ridden this one" is the ordinary
         // case, and *the plan* is a real target on a first attempt.
-        val generated = runCatching { generatedGhosts(classId, youId) }
+        val generated = runCatching { generatedGhosts(classId, youId, RaceDebug.raceProvenance) }
             .onFailure { Log.w(TAG, "Could not generate ghosts for $classId", it) }
             .getOrDefault(emptyList())
 
@@ -776,7 +778,11 @@ class WorkoutService : Service() {
      * different questions — who rode this, and what is worth aiming at — and
      * only the first can fail on an empty database.
      */
-    private suspend fun generatedGhosts(classId: String, youId: Int?): List<LiveLeaderboard.Ghost> {
+    private suspend fun generatedGhosts(
+        classId: String,
+        youId: Int?,
+        provenance: PowerProvenance
+    ): List<LiveLeaderboard.Ghost> {
         val session = _currentSession.value ?: return emptyList()
         // Read here rather than depending on `loadClass` having landed: the two
         // are launched independently and racing them would make the ghosts
@@ -789,7 +795,7 @@ class WorkoutService : Service() {
         if (duration <= 0) return emptyList()
 
         val ownTotals = youId?.let { id ->
-            runCatching { workoutRepository.ownTotalsForClass(classId, id) }
+            runCatching { workoutRepository.ownTotalsForClass(classId, id, provenance) }
                 .getOrDefault(emptyList())
         }.orEmpty()
 
@@ -801,7 +807,8 @@ class WorkoutService : Service() {
                     userId = id,
                     classDurationSec = classPlan.durationSec,
                     excludingWorkoutId = session.workoutId,
-                    nowMs = System.currentTimeMillis()
+                    nowMs = System.currentTimeMillis(),
+                    provenance = provenance
                 )
             }.getOrNull()
         }
@@ -1297,7 +1304,7 @@ class WorkoutService : Service() {
         // un-narrowed, with real rides on it, for as long as it took the next
         // sample to notice. `loadRaceBoard` reads the flag for the other
         // ordering.
-        if (!reading.powerIsMeasured && !raceDiscredited && !RaceDebug.ignoreMeasuredGate) {
+        if (!reading.powerIsMeasured && !raceDiscredited && !RaceDebug.usesModelledLane) {
             raceDiscredited = true
             if (rivalTrace != null || raceBoard != null) {
                 Log.i(

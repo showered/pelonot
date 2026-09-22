@@ -716,7 +716,7 @@ interface WorkoutDao {
           AND w.timestamp < :beforeMs
           AND w.timestamp >= :sinceMs
           AND w.is_complete = 1
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         ORDER BY w.total_output_kj DESC
         LIMIT 1
         """
@@ -726,7 +726,8 @@ interface WorkoutDao {
         userId: Int,
         excludingWorkoutId: String,
         beforeMs: Long,
-        sinceMs: Long
+        sinceMs: Long,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): PreviousBestRow?
 
     /**
@@ -740,8 +741,9 @@ interface WorkoutDao {
      * that is the ordinary case rather than the edge one: a rider who does not
      * repeat classes has a personal best and never once races it.
      *
-     * **The length is the class's, exactly as in [ridesOfLength]**, and the
-     * join is again what drops a free ride. Everything else is
+     * A free ride carries its actual duration rather than a class template, so
+     * it belongs here when that duration is exactly the requested length.
+     * Everything else is
      * [previousBestOfClass]'s clause verbatim — the same `beforeMs` /
      * `sinceMs` pair that turns one query into *best ever* and *best this
      * year*, and the same measured-power gate, because two sides of one
@@ -754,14 +756,17 @@ interface WorkoutDao {
                w.total_output_kj AS outputKj,
                w.timestamp AS recordedAt
         FROM workouts w
-        JOIN class_templates c ON c.id = w.class_id
-        WHERE c.duration_sec = :classDurationSec
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE (
+                c.duration_sec = :classDurationSec
+                OR (w.class_id IS NULL AND w.duration_sec = :classDurationSec)
+              )
           AND w.user_id = :userId
           AND w.id != :excludingWorkoutId
           AND w.timestamp < :beforeMs
           AND w.timestamp >= :sinceMs
           AND w.is_complete = 1
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         ORDER BY w.total_output_kj DESC
         LIMIT 1
         """
@@ -771,7 +776,8 @@ interface WorkoutDao {
         userId: Int,
         excludingWorkoutId: String,
         beforeMs: Long,
-        sinceMs: Long
+        sinceMs: Long,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): PreviousBestRow?
 
     /**
@@ -1472,10 +1478,14 @@ interface WorkoutDao {
           AND w.user_id = :userId
           AND w.is_complete = 1
           AND w.total_output_kj > 0
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         """
     )
-    suspend fun ownTotalsForClass(userId: Int, classId: String): List<Double>
+    suspend fun ownTotalsForClass(
+        userId: Int,
+        classId: String,
+        provenance: PowerProvenance = PowerProvenance.Measured
+    ): List<Double>
 
     /**
      * Every measured total the rider has recorded **at this length**, since a
@@ -1493,21 +1503,25 @@ interface WorkoutDao {
     @Query(
         """
         SELECT w.total_output_kj FROM workouts w
-        JOIN class_templates c ON c.id = w.class_id
-        WHERE c.duration_sec = :classDurationSec
+        LEFT JOIN class_templates c ON c.id = w.class_id
+        WHERE (
+                c.duration_sec = :classDurationSec
+                OR (w.class_id IS NULL AND w.duration_sec = :classDurationSec)
+              )
           AND w.user_id = :userId
           AND w.id != :excludingWorkoutId
           AND w.timestamp >= :sinceMs
           AND w.is_complete = 1
           AND w.total_output_kj > 0
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         """
     )
     suspend fun ownTotalsOfLength(
         userId: Int,
         classDurationSec: Int,
         excludingWorkoutId: String,
-        sinceMs: Long
+        sinceMs: Long,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): List<Double>
 
     /**

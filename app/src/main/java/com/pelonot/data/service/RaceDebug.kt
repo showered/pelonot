@@ -1,5 +1,8 @@
 package com.pelonot.data.service
 
+import android.os.Build
+import com.pelonot.domain.model.PowerProvenance
+
 /**
  * Lets the live leaderboard be *seen* on the emulator (PLAN 24.3.13a).
  *
@@ -44,4 +47,24 @@ object RaceDebug {
      */
     @Volatile
     var ignoreMeasuredGate: Boolean = false
+
+    /**
+     * An emulator has no board capable of producing measured watts. Keeping
+     * its modelled rides in their own lane makes the live board inspectable
+     * without ever placing a simulated number beside a bike measurement.
+     */
+    val usesModelledLane: Boolean
+        get() = ignoreMeasuredGate || isEmulator
+
+    val raceProvenance: PowerProvenance
+        get() = if (usesModelledLane) PowerProvenance.Modelled else PowerProvenance.Measured
+
+    private val isEmulator: Boolean
+        get() = Build.FINGERPRINT.startsWith("generic") ||
+            Build.FINGERPRINT.startsWith("unknown") ||
+            Build.FINGERPRINT.contains("emulator", ignoreCase = true) ||
+            Build.MODEL.contains("Emulator", ignoreCase = true) ||
+            Build.MODEL.contains("Android SDK built for", ignoreCase = true) ||
+            Build.DEVICE.contains("emu", ignoreCase = true) ||
+            Build.PRODUCT.contains("sdk", ignoreCase = true)
 }

@@ -118,7 +118,12 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.pelonot"
+        // A side-by-side emulator build can keep its fixture history while the
+        // release-signed app remains untouched. This is intentionally opt-in:
+        // production artifacts retain com.pelonot.
+        applicationId = providers.gradleProperty("previewApplicationId")
+            .orElse("com.pelonot")
+            .get()
         minSdk = 24
         targetSdk = 34
         versionCode = appVersionCode
