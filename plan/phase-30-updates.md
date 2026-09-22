@@ -205,6 +205,14 @@ being cosmetic.
       database from a dialog they tapped *yes* on. The update check compares
       `versionCode` and offers **strictly greater**, never equal and never less
 
+      **A manual check says what happened.** A manifest below the installed
+      code is now *"That update is older than the app installed here"*, rather
+      than a misleading read failure. An insecure address and an unverifiable
+      checksum have their own messages too. The automatic path remains silent:
+      only the rider who asked Settings to check is told, which is 30.3.4's
+      boundary. JVM tests cover the decision and all three messages; the
+      remaining observation is the on-device check against a lower manifest.
+
 ### 30.3 The manifest — what the bike asks, and who answers
 
 **Two hosts, one command.** The JSON lives in `web/`, because it is this app's

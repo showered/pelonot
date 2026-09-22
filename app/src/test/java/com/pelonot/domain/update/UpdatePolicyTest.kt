@@ -61,6 +61,10 @@ class UpdatePolicyTest {
             UpdateDecision.Rejected(UpdateDecision.Rejected.Reason.Downgrade),
             decision
         )
+        assertEquals(
+            "That update is older than the app installed here.",
+            (decision as UpdateDecision.Rejected).riderFacingMessage()
+        )
     }
 
     @Test
@@ -84,6 +88,18 @@ class UpdatePolicyTest {
                 UpdatePolicy.decide(installedVersionCode = 1, manifest = manifest(2, sha = bad))
             )
         }
+    }
+
+    @Test
+    fun `each unsafe-manifest refusal explains what was refused`() {
+        assertEquals(
+            "That update address isn't secure.",
+            UpdateDecision.Rejected(UpdateDecision.Rejected.Reason.InsecureUrl).riderFacingMessage()
+        )
+        assertEquals(
+            "Couldn't verify that update.",
+            UpdateDecision.Rejected(UpdateDecision.Rejected.Reason.MalformedChecksum).riderFacingMessage()
+        )
     }
 
     /**

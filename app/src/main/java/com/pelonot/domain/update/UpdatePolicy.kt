@@ -51,6 +51,22 @@ sealed interface UpdateDecision {
 }
 
 /**
+ * The answer Settings gives when a manifest was understood but refused.
+ *
+ * A downgrade is not a read failure: it is the safeguard that keeps an old APK
+ * away from Room's destructive downgrade path. Saying so lets a rider tell a
+ * safe refusal from an offline check (PLAN 30.2.3, 30.3.4).
+ */
+fun UpdateDecision.Rejected.riderFacingMessage(): String = when (reason) {
+    UpdateDecision.Rejected.Reason.Downgrade ->
+        "That update is older than the app installed here."
+    UpdateDecision.Rejected.Reason.InsecureUrl ->
+        "That update address isn't secure."
+    UpdateDecision.Rejected.Reason.MalformedChecksum ->
+        "Couldn't verify that update."
+}
+
+/**
  * The decision, made without a network, a clock or a `Context` (PLAN 30.3).
  *
  * Pure by convention — this is the same rule that keeps `PowerModel` and

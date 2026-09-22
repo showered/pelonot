@@ -84,6 +84,7 @@ import com.pelonot.data.repository.StorageFacts
 import com.pelonot.data.repository.ThemeMode
 import com.pelonot.data.repository.UpdateCheck
 import com.pelonot.domain.update.UpdateDecision
+import com.pelonot.domain.update.riderFacingMessage
 import com.pelonot.data.sensor.HeartRateStatus
 import com.pelonot.data.sensor.SensorMode
 import com.pelonot.domain.coach.CoachStyle
@@ -168,7 +169,7 @@ fun SettingsScreen(
             is UpdateCheck.Decided -> when (decision) {
                 UpdateDecision.UpToDate -> "You're on the newest version."
                 is UpdateDecision.Declined -> "You already said not now to ${decision.manifest.versionName}."
-                is UpdateDecision.Rejected -> "Couldn't read that update."
+                is UpdateDecision.Rejected -> decision.riderFacingMessage()
                 else -> null
             }
             UpdateCheck.Disabled -> "Turn on \"Tell me about new versions\" first."

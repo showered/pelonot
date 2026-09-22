@@ -264,9 +264,11 @@ real bike rides remain measured-only. A length target now includes a free ride
 whose actual duration matches the class, while a class target remains tied to
 that class. On a fresh thirty-minute ride the board visibly showed **Your best**,
 **Just past your best**, **Your average 30 minutes**, **Class target**, the
-milestone and the rider. **984 JVM tests** and debug builds pass. The emulator's
+milestone and the rider. The emulator's
 preview package was updated in place, preserving its seeded history; no real
-bike or release deployment was touched.
+bike or release deployment was touched. The update check now says when a
+manifest is older than the installed app, rather than calling that safe refusal
+a read failure; **985 JVM tests** and the standard debug build pass.
 
 ### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 

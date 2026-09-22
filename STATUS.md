@@ -5,7 +5,7 @@ matching-length free rides as well as class rides, and the emulator keeps its
 modelled simulation history in a separate lane from real bike rides' measured
 history. On a fresh 30-minute simulated class it visibly showed a previous best,
 an average, a past-best marker, the class target and the milestone together.
-**984 JVM tests and debug builds** pass. No production release was published;
+**985 JVM tests and debug builds** pass. No production release was published;
 [PLAN.md](PLAN.md) is the current index.
 
 <!-- figures:begin -->
@@ -13,7 +13,7 @@ an average, a past-best marker, the class target and the milestone together.
 
 | Measured | |
 |---|---|
-| JVM tests | **984**, 0 failures |
+| JVM tests | **985**, 0 failures |
 | Plan boxes ticked | **752 of 972** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
