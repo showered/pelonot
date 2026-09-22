@@ -253,22 +253,21 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 22 September 2026: a live board that includes the rides it says it does
+### Latest session — 22 September 2026: keep a new ride ahead of an update
 
-The emulator had Alex's fourteen completed, modelled thirty-minute free rides,
-yet showed only the class target and milestone during a simulated class. The
-race code excluded that history twice: it kept a modelled current ride apart
-from all saved rows, and its length queries joined `class_templates`, which
-dropped free rides by construction. The AVD has an explicit modelled-only lane;
-real bike rides remain measured-only. A length target now includes a free ride
-whose actual duration matches the class, while a class target remains tied to
-that class. On a fresh thirty-minute ride the board visibly showed **Your best**,
-**Just past your best**, **Your average 30 minutes**, **Class target**, the
-milestone and the rider. The emulator's
-preview package was updated in place, preserving its seeded history; no real
-bike or release deployment was touched. The update check now says when a
-manifest is older than the installed app, rather than calling that safe refusal
-a read failure; **985 JVM tests** and the standard debug build pass.
+The update guard checked after downloading but before copying the APK into
+Android's installer session. A ride starting during that disk copy could still
+be interrupted by installation. The installer now checks cancellation and asks
+the coordinator to check the ride again immediately before committing; a refusal
+abandons the session and deletes the cached APK. The rider gets the existing
+finish-your-ride message and can retry afterwards.
+
+Two JVM regressions exercise a ride starting during installation preparation
+and cancellation during that preparation, including cleanup and retry. **987
+JVM tests and the debug build pass.** The new ride-race test also fails with the
+final guard deliberately removed. Production installer callbacks and signing
+remain the open emulator rehearsal in **30.7.3**; this session did not perform
+an actual package replacement.
 
 ### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 

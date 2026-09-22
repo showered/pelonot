@@ -1,3 +1,19 @@
+# Update preparation safeguard — 22 September 2026
+
+A ride starting while the downloaded APK is copied into PackageInstaller now
+prevents commit. The coordinator supplies the final ride check; the installer
+runs it after copying and syncing, alongside a cancellation check. Its existing
+exception path abandons the uncommitted session, and the coordinator deletes the
+cached APK, displays the ride message and permits a later retry.
+
+Verification: **987 JVM tests**, debug build and diff checks pass. Two new tests
+suspend installation preparation to exercise a newly active ride and coroutine
+cancellation, including cleanup and successful retry. Removing the final ride
+check makes the new race regression fail. No package replacement was performed;
+the permanent-certificate platform rehearsal at 30.7.3 remains open.
+
+---
+
 # Rider choice and FTP evidence — 17 September 2026
 
 - Replaced the suggested-class dashboard hero with **Choose a class**, alongside

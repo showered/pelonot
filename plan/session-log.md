@@ -1,5 +1,24 @@
 > Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
 
+### Session — 22 September 2026: a live board that includes the rides it says it does
+
+The emulator had Alex's fourteen completed, modelled thirty-minute free rides,
+yet showed only the class target and milestone during a simulated class. The
+race code excluded that history twice: it kept a modelled current ride apart
+from all saved rows, and its length queries joined `class_templates`, which
+dropped free rides by construction. The AVD has an explicit modelled-only lane;
+real bike rides remain measured-only. A length target now includes a free ride
+whose actual duration matches the class, while a class target remains tied to
+that class. On a fresh thirty-minute ride the board visibly showed **Your best**,
+**Just past your best**, **Your average 30 minutes**, **Class target**, the
+milestone and the rider. The emulator's
+preview package was updated in place, preserving its seeded history; no real
+bike or release deployment was touched. The update check now says when a
+manifest is older than the installed app, rather than calling that safe refusal
+a read failure; **985 JVM tests** and the standard debug build pass.
+
+
+
 # Session log — where the work stood, sitting by sitting
 
 The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the

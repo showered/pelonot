@@ -27,7 +27,7 @@ sealed interface UpdateInstallState {
  */
 class UpdateInstallCoordinator(
     private val download: suspend (UpdateManifest) -> DownloadOutcome,
-    private val commit: suspend (java.io.File) -> Unit,
+    private val commit: suspend (java.io.File, beforeCommit: () -> Unit) -> Unit,
     private val canInstall: () -> Boolean,
     private val permissionIntent: () -> Intent,
     private val rideActive: () -> Boolean = { com.pelonot.data.service.RideInProgress.active.value != null }
@@ -60,7 +60,9 @@ class UpdateInstallCoordinator(
                             return
                         }
                         _state.value = UpdateInstallState.Installing
-                        commit(outcome.file)
+                        commit(outcome.file) {
+                            if (rideActive()) throw RideStartedDuringInstall()
+                        }
                         // PackageInstaller owns the result; committing is not success.
                     } finally {
                         outcome.file.delete()
@@ -69,6 +71,8 @@ class UpdateInstallCoordinator(
                 DownloadOutcome.Unreachable -> fail("Couldn't download that. Check the connection and try again.")
                 DownloadOutcome.ChecksumMismatch -> fail("That download didn't come through whole — try again.")
             }
+        } catch (_: RideStartedDuringInstall) {
+            fail("Finish your ride before installing an update.")
         } catch (e: kotlinx.coroutines.CancellationException) {
             reset()
             throw e
@@ -76,6 +80,8 @@ class UpdateInstallCoordinator(
             fail("Couldn't install the update. Check free storage and try again.")
         }
     }
+
+    private class RideStartedDuringInstall : Exception()
 
     fun fail(message: String) {
         _state.value = UpdateInstallState.Failed(message)

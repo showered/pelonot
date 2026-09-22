@@ -437,6 +437,13 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       an active ride before download and again before committing. Session I/O
       runs off the main thread; failed sessions are abandoned. Five JVM tests
       exercise the coordinator, including a ride starting during download.
+      **22 September follow-up:** the installer now also checks after copying
+      and syncing the APK, immediately before `session.commit`. A ride starting
+      during that copy aborts the session with the finish-your-ride message;
+      cancellation is checked at the same boundary. Two more coordinator tests
+      cover preparation-time interruption, cache cleanup and retry. The ride
+      regression fails when the final guard is removed. These use a suspended
+      fake installer; real platform abandonment remains part of 30.7.3.
 - [ ] **30.7.3 Rehearse the revised system installer callbacks with the permanent
       signing key.** The earlier 30.4.6 rehearsal predates these changes. This
       pass compiled both variants and tested coordinator failures but did not

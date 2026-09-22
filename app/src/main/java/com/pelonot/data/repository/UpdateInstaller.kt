@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import java.io.File
+import kotlinx.coroutines.ensureActive
 
 /**
  * Commits a downloaded APK through `PackageInstaller`'s session API (PLAN
@@ -38,7 +39,7 @@ class UpdateInstaller(private val context: Context) {
             Intent(Settings.ACTION_SECURITY_SETTINGS)
         }
 
-    suspend fun install(apk: File) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    suspend fun install(apk: File, beforeCommit: () -> Unit) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         val sessionId = installer.createSession(params)
@@ -59,6 +60,10 @@ class UpdateInstaller(private val context: Context) {
                         0
                     }
                 val pendingIntent = PendingIntent.getBroadcast(context, sessionId, receiverIntent, flags)
+                // Copying and syncing the APK can take seconds on tablet flash.
+                // Recheck after that work, while the session can still be abandoned.
+                kotlin.coroutines.coroutineContext.ensureActive()
+                beforeCommit()
                 session.commit(pendingIntent.intentSender)
             }
         } catch (e: Exception) {
