@@ -1442,10 +1442,12 @@ comparable and what makes them not.
       Four things to build, and the second is what keeps the board from
       doubling in size:
       - **Ask the length as well as the class.** `previousBestOfLength` is
-        `previousBestOfClass` with the `class_id` clause swapped for a join onto
-        `class_templates` and `c.duration_sec = :classDurationSec` — the same
-        rule 24.5.2 settled, so a class stopped early still belongs to the
-        length it prescribed and a free ride is dropped by the join
+        `previousBestOfClass` with the `class_id` clause swapped for the
+        recorded duration. A class stopped early belongs to the length it
+        prescribed; a completed free ride belongs when its actual duration
+        matches. The latter is not a loophole: a rider's thirty-minute PB is
+        still their thirty-minute PB, and this is the surface where they can
+        chase it
       - **Add the rows rather than substituting them, and let
         `oneRowPerRide` sort it out.** A rider who repeats one class has the
         same ride qualifying as both their class best and their length best;
@@ -1519,6 +1521,18 @@ comparable and what makes them not.
       ghost and its label and its place under the cap, the two honesty flags,
       and four on `oneRowPerRide` — the collapse when one ride is both, the
       separation when they are two, and both directions of `widerThan`
+
+      **Follow-up, 22 September: this had been correct in intent and false in
+      code.** Alex's rich AVD history was fourteen completed, modelled,
+      thirty-minute **free** rides. `previousBestOfLength` and
+      `ownTotalsOfLength` still used an inner join to `class_templates`, so the
+      exact history the owner expected was absent. The queries now use the
+      recorded duration for free rides and the prescribed duration for class
+      rides. The emulator's modelled lane is explicitly separate from the real
+      bike's measured lane; this made it observable without relaxing the
+      measured-power comparison on hardware. A fresh Rolling Climbs simulation
+      visibly showed `YOUR BEST`, `JUST PAST YOUR BEST`, `YOUR AVERAGE 30
+      MINUTES` and `CLASS TARGET` together.
 
 - [x] **24.5.8** **What this does not do, and it should be said before somebody
       "fixes" it.** The length rows are the rider's own only. There is no

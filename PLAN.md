@@ -253,17 +253,20 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 21 September 2026: dashboard visual refresh
+### Latest session — 22 September 2026: a live board that includes the rides it says it does
 
-ChatGPT image generation produced dark and light dashboard concepts from the
-actual tablet app, shown before implementation (**22.11**). The native dashboard
-now has a split greeting, outlined cards, clearer arrows and a subtle teal track
-motif. Both themes and guest/new/household/solo/account-offer states were observed
-on the tablet AVD, including 130% text. Class Library, History, Settings and a
-starter destination were exercised. **984 JVM tests** and the standard debug build
-pass. A separate preview package preserves the emulator's differently signed app;
-no real bike or release deployment was touched. Designs, prompts and screenshots:
-[design/dashboard/README.md](design/dashboard/README.md).
+The emulator had Alex's fourteen completed, modelled thirty-minute free rides,
+yet showed only the class target and milestone during a simulated class. The
+race code excluded that history twice: it kept a modelled current ride apart
+from all saved rows, and its length queries joined `class_templates`, which
+dropped free rides by construction. The AVD has an explicit modelled-only lane;
+real bike rides remain measured-only. A length target now includes a free ride
+whose actual duration matches the class, while a class target remains tied to
+that class. On a fresh thirty-minute ride the board visibly showed **Your best**,
+**Just past your best**, **Your average 30 minutes**, **Class target**, the
+milestone and the rider. **984 JVM tests** and debug builds pass. The emulator's
+preview package was updated in place, preserving its seeded history; no real
+bike or release deployment was touched.
 
 ### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 

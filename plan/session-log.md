@@ -6,6 +6,18 @@ The latest sitting lives in [PLAN.md](../PLAN.md). When it stops being the
 latest it comes here, to the top, unedited. Below that are the 31 July snag
 list and the three narratives that changed the shape of the project.
 
+### 21 September 2026: dashboard visual refresh
+
+ChatGPT image generation produced dark and light dashboard concepts from the
+actual tablet app, shown before implementation (**22.11**). The native dashboard
+now has a split greeting, outlined cards, clearer arrows and a subtle teal track
+motif. Both themes and guest/new/household/solo/account-offer states were observed
+on the tablet AVD, including 130% text. Class Library, History, Settings and a
+starter destination were exercised. **984 JVM tests** and the standard debug build
+pass. A separate preview package preserves the emulator's differently signed app;
+no real bike or release deployment was touched. Designs, prompts and screenshots:
+[design/dashboard/README.md](../design/dashboard/README.md).
+
 ### 17 September 2026: rider choice and earned FTP
 
 The dashboard's suggested-class hero is replaced by **Choose a class**, beside
