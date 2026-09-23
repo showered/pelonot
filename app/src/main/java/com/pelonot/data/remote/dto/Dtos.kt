@@ -313,6 +313,17 @@ data class LeaderboardRowDto(
     @SerialName("is_you") val isYou: Boolean
 )
 
+/** The deliberately narrow cross-bike activity row returned by `activity_feed`. */
+@Serializable
+data class ActivityFeedDto(
+    @SerialName("account_id") val accountId: String,
+    val name: String,
+    @SerialName("is_you") val isYou: Boolean,
+    val title: String? = null,
+    @SerialName("class_title") val classTitle: String? = null,
+    @SerialName("recorded_at") val recordedAt: String
+)
+
 /**
  * A rider's cloud profile, keyed by their **auth user id** (PLAN 14.2.1).
  *

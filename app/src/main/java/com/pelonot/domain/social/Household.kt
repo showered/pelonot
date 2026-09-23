@@ -59,7 +59,8 @@ data class HouseholdRider(
 
 /** One recent local ride, with only the celebratory fact that belongs to it. */
 data class HouseholdActivity(
-    val localUserId: Int,
+    /** Null for a cloud rider; cloud ids are not Room profile ids. */
+    val localUserId: Int?,
     val name: String,
     val avatar: Avatar,
     val classTitle: String?,

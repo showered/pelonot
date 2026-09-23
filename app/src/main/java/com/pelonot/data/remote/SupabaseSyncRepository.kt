@@ -5,6 +5,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.data.remote.dto.ClassTemplateDto
+import com.pelonot.data.remote.dto.ActivityFeedDto
 import com.pelonot.data.remote.dto.LeaderboardRowDto
 import com.pelonot.data.remote.dto.ProfileDto
 import com.pelonot.data.remote.dto.WorkoutDto
@@ -243,6 +244,20 @@ class SupabaseSyncRepository(
                 function = "class_leaderboard",
                 parameters = buildJsonObject { put("p_class_id", classId) }
             ).decodeList<LeaderboardRowDto>()
+        }
+
+    /**
+     * Recent rides shared by other signed-in Pelonot riders (22.8.7 / 18.2).
+     *
+     * This is a narrow RPC, not a read of somebody else's workout rows. The
+     * server's `share_activity` and hidden-ride rules remain the authority.
+     */
+    suspend fun activityFeed(forProfileId: Int?): SyncOutcome<List<ActivityFeedDto>> =
+        executeReturning("activityFeed", forProfileId) { supabase, _ ->
+            supabase.postgrest.rpc(
+                function = "activity_feed",
+                parameters = buildJsonObject { put("p_limit", 20) }
+            ).decodeList<ActivityFeedDto>()
         }
 
     private suspend inline fun execute(

@@ -42,6 +42,7 @@ import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.dto.fromIso8601
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.social.ClassRival
@@ -53,6 +54,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -383,6 +385,31 @@ class AppViewModel(
             else workoutRepository.observeRiderRides(profileId)
         }
 
+    /** The signed-in tier, fetched once when this rider's dashboard is opened. */
+    private val cloudActivity = settingsRepository.selectedProfileId
+        .flatMapLatest { profileId ->
+            if (profileId == null) flowOf(emptyList()) else flow {
+                emit(
+                    syncRepository.activityFeed(profileId).valueOrNull().orEmpty()
+                        .asSequence()
+                        .filterNot { it.isYou }
+                        .mapNotNull { row ->
+                            row.recordedAt.fromIso8601()?.let { at ->
+                                com.pelonot.domain.social.HouseholdActivity(
+                                    localUserId = null,
+                                    name = row.name,
+                                    avatar = Avatar.defaultFor(row.accountId.hashCode()),
+                                    classTitle = row.title ?: row.classTitle,
+                                    completedAt = at,
+                                    event = null
+                                )
+                            }
+                        }
+                        .toList()
+                )
+            }
+        }
+
     /**
      * How many rides have been recorded since the last backup — or since the
      * last "not now", whichever is later (23.3.1) — and how many of those
@@ -467,8 +494,11 @@ class AppViewModel(
         dashboardStats,
         combine(
             workoutRepository.observeHousehold(),
-            workoutRepository.observeHouseholdActivity()
-        ) { household, activity -> household to activity },
+            workoutRepository.observeHouseholdActivity(),
+            cloudActivity
+        ) { household, local, cloud ->
+            household to (local + cloud).sortedByDescending { it.completedAt }
+        },
         ftpTrend,
         backupReminder,
         riding
