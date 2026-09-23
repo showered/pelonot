@@ -96,6 +96,8 @@ data class AppUiState(
      * nobody rode — all of which draw nothing.
      */
     val householdRecent: List<HouseholdRider> = emptyList(),
+    /** The newest rides on this bike, with their ride-linked good news (22.8.7). */
+    val householdActivity: List<com.pelonot.domain.social.HouseholdActivity> = emptyList(),
     /**
      * The selected rider's FTP over time (PLAN 7.10.2 / 22.1.4). Empty for a
      * guest, and a single point for a rider whose FTP has never moved — both of
@@ -463,14 +465,18 @@ class AppViewModel(
 
     private val dashboard = combine(
         dashboardStats,
-        workoutRepository.observeHousehold(),
+        combine(
+            workoutRepository.observeHousehold(),
+            workoutRepository.observeHouseholdActivity()
+        ) { household, activity -> household to activity },
         ftpTrend,
         backupReminder,
         riding
-    ) { stats, household, ftp, backup, rider ->
+    ) { stats, (household, activity), ftp, backup, rider ->
         DashboardState(
             stats,
             household,
+            activity,
             ftp,
             backup,
             rider.ridingHistory,
@@ -562,6 +568,7 @@ class AppViewModel(
     private data class DashboardState(
         val stats: DashboardStats,
         val household: List<HouseholdRider>,
+        val householdActivity: List<com.pelonot.domain.social.HouseholdActivity>,
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory,
@@ -584,6 +591,7 @@ class AppViewModel(
             classes = classes,
             dashboardStats = dashboard.stats,
             householdRecent = dashboard.household,
+            householdActivity = dashboard.householdActivity,
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,

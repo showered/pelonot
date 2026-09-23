@@ -88,8 +88,10 @@ import com.pelonot.ui.theme.WideGrid
 import com.pelonot.ui.theme.loneCard
 import com.pelonot.data.repository.DashboardStats
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.social.HouseholdActivity
 import com.pelonot.ui.components.ClassProfileChart
 import com.pelonot.ui.components.HouseholdPanelCard
+import com.pelonot.ui.components.HouseholdActivityCard
 import com.pelonot.ui.components.RideDaysCard
 import com.pelonot.ui.viewmodel.StartingPoint
 import com.pelonot.ui.components.RiderScore
@@ -128,6 +130,8 @@ fun MainDashboardScreen(
     stats: DashboardStats,
     /** Who else on this bike has ridden in the last 30 days (24.2.1, 22.5.4). */
     householdRecent: List<HouseholdRider> = emptyList(),
+    /** The latest finished ride for each local rider, newest first (22.8.7). */
+    householdActivity: List<HouseholdActivity> = emptyList(),
     youId: Int? = null,
     /** How much riding a backup would protect (23.3.1). Draws nothing until it is due. */
     backupReminder: BackupReminder = BackupReminder.None,
@@ -250,6 +254,13 @@ fun MainDashboardScreen(
                         onClick = onJustRide,
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     )
+                    if (householdActivity.any { it.localUserId != youId }) {
+                        HouseholdActivityCard(
+                            activities = householdActivity,
+                            youId = youId,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        )
+                    }
                 }
 
                 // ── 2️⃣a The account offer or the backup reminder ────────

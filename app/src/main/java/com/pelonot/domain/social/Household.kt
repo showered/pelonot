@@ -57,6 +57,18 @@ data class HouseholdRider(
     val level: RiderLevel
 )
 
+/** One recent local ride, with only the celebratory fact that belongs to it. */
+data class HouseholdActivity(
+    val localUserId: Int,
+    val name: String,
+    val avatar: Avatar,
+    val classTitle: String?,
+    val completedAt: Long,
+    val event: Event?
+) {
+    enum class Event { FtpIncreased, PersonalBest }
+}
+
 /**
  * The rows the dashboard's household panel actually draws (24.1.8, applied to
  * the panel rather than the board).

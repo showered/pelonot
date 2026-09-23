@@ -21,6 +21,19 @@ data class HouseholdRiderRow(
     val lastRideAt: Long
 )
 
+/** One household rider's latest completed ride, ready for the dashboard activity card. */
+data class HouseholdActivityRow(
+    val localUserId: Int,
+    val name: String,
+    val avatar: String?,
+    val classTitle: String?,
+    val completedAt: Long,
+    /** `AutoBreakthrough` is the only FTP change that can honestly read as an increase. */
+    val ftpIncreased: Boolean,
+    /** A record alert written for this same ride, if it earned one. */
+    val recordKind: String?
+)
+
 /**
  * Everything one rider has ever ridden here, in three numbers (26.4.1).
  *
@@ -1226,6 +1239,29 @@ interface WorkoutDao {
         """
     )
     suspend fun householdRecent(sinceMs: Long): List<HouseholdRiderRow>
+
+    /** The newest finished ride for each visible rider, newest first. */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId, p.name AS name, p.avatar AS avatar,
+               ct.title AS classTitle, w.timestamp AS completedAt,
+               EXISTS(SELECT 1 FROM ftp_history fh
+                      WHERE fh.workout_id = w.id AND fh.source = 'AutoBreakthrough') AS ftpIncreased,
+               (SELECT ra.kind FROM rider_alerts ra WHERE ra.workout_id = w.id
+                      AND ra.kind IN ('ClassOutput', 'PowerWindow', 'RideOutput', 'RideDuration')
+                      ORDER BY ra.id ASC LIMIT 1) AS recordKind
+        FROM profiles p
+        JOIN workouts w ON w.user_id = p.local_user_id
+        LEFT JOIN class_templates ct ON ct.id = w.class_id
+        WHERE p.household_visible = 1 AND w.is_complete = 1
+          AND NOT EXISTS (SELECT 1 FROM workouts newer
+                          WHERE newer.user_id = w.user_id AND newer.is_complete = 1
+                            AND (newer.timestamp > w.timestamp OR
+                                 (newer.timestamp = w.timestamp AND newer.id > w.id)))
+        ORDER BY w.timestamp DESC, w.id DESC
+        """
+    )
+    fun observeHouseholdActivity(): Flow<List<HouseholdActivityRow>>
 
     /**
      * Lifetime totals for every profile that has ever finished a ride here

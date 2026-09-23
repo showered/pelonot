@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.social.HouseholdActivity
 import com.pelonot.domain.social.RaceCompetitor
 import com.pelonot.domain.social.RaceIdentity
 import com.pelonot.domain.progress.FtpEvidenceRide
@@ -1410,6 +1411,25 @@ class WorkoutRepository(
     fun observeHousehold(): Flow<List<HouseholdRider>> =
         combine(workoutDao.observeAnyCompletedCount(), observeRiderLevels()) { _, levels -> levels }
             .map { levels -> householdRecent(levels = levels) }
+
+    /** Activity on this bike, ready before any account or network question. */
+    fun observeHouseholdActivity(): Flow<List<HouseholdActivity>> =
+        workoutDao.observeHouseholdActivity().map { rows ->
+            rows.map { row ->
+                HouseholdActivity(
+                    localUserId = row.localUserId,
+                    name = row.name,
+                    avatar = Avatar.parse(row.avatar, row.localUserId),
+                    classTitle = row.classTitle,
+                    completedAt = row.completedAt,
+                    event = when {
+                        row.ftpIncreased -> HouseholdActivity.Event.FtpIncreased
+                        row.recordKind != null -> HouseholdActivity.Event.PersonalBest
+                        else -> null
+                    }
+                )
+            }
+        }
 
     /**
      * Who on this bike has ridden **in the last 30 days** (24.2, 22.5.4).

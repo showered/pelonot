@@ -299,6 +299,7 @@ fun PelonotNavGraph(
                 stats = uiState.dashboardStats,
                 riderLevel = uiState.selectedRiderLevel,
                 householdRecent = uiState.householdRecent,
+                householdActivity = uiState.householdActivity,
                 youId = uiState.selectedProfile?.localUserId,
                 backupReminder = uiState.backupReminder,
                 onDismissBackupReminder = onDismissBackupReminder,
