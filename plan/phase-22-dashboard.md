@@ -1383,6 +1383,14 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       `activity_feed` only for riders who opted into `share_activity` — the
       default remains private. A cloud failure leaves the local lines intact
       and says nothing false about whether anyone else rode.
+
+      ***Built, pending tablet observation.*** The dashboard now draws the
+      Room tier immediately and appends opted-in cross-bike rows through the
+      existing narrow `activity_feed` RPC when the selected profile has an
+      account. The cloud response carries no ride rows, heart rate or RPE; its
+      own rider is excluded, and newest completion time orders the combined
+      list. The Room query is still the source of FTP increases and personal
+      bests because those facts are recorded locally against the exact ride.
 - [ ] **22.8.8** **The achievements slot is deliberately left as a hole.**
       Phase 28 is where achievements are designed, at the owner's weighting
       (*"one for the backlog"*), and 28.6 is the dashboard's share of it. What
