@@ -12,6 +12,7 @@ import com.pelonot.data.remote.DeviceLinkRepository
 import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.repository.AccountRepository
 import com.pelonot.data.repository.AlertRepository
+import com.pelonot.data.repository.AchievementRepository
 import com.pelonot.data.repository.CalibrationRepository
 import com.pelonot.data.repository.ClassRepository
 import com.pelonot.data.repository.RestoreRepository
@@ -246,13 +247,21 @@ object ServiceLocator {
         )
     }
 
+    val achievementRepository: AchievementRepository by lazy {
+        AchievementRepository(
+            achievementDao = database.riderAchievementDao(),
+            workoutDao = database.workoutDao()
+        )
+    }
+
     val workoutRepository: WorkoutRepository by lazy {
         WorkoutRepository(
             database.workoutDao(),
             database.workoutMetricDao(),
             database.activeRideRivalDao(),
             database.workoutPowerBestDao(),
-            alertRepository
+            alertRepository,
+            achievementRepository
         )
     }
 

@@ -12,6 +12,14 @@ written at length for the reason Phase 27 was: the one sentence is not one job,
 and the parts of it that are easy to get wrong are the parts that would be
 decided quickly in a hurry.
 
+**Started 23 September 2026 — not yet closed.** The first, deliberately
+equipment-free catalogue is in code: nine ride and time milestones, all judged
+from completed history rather than watts. A separate `rider_achievements`
+ledger and 23 → 24 migration give an award a permanent date and make a second
+finalise harmless. The Room migration is written and the app plus test APKs
+compile; it is not a checked box until a real upgrade and the first earned
+badge have been watched on the tablet emulator.
+
 ---
 
 ### Why this is not Phase 27 with a different name

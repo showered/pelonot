@@ -49,6 +49,12 @@ data class RiderTotalsRow(
     val outputKj: Double
 )
 
+/** Totals used by volume achievements; only completed rides can contribute. */
+data class AchievementTotalsRow(
+    val rides: Int,
+    val durationSec: Long
+)
+
 /** One rider's place on a class's household board — see [WorkoutDao.householdLeaderboard]. */
 data class ClassLeaderboardRow(
     val localUserId: Int,
@@ -164,6 +170,15 @@ data class SyncBacklog(
 
 @Dao
 interface WorkoutDao {
+
+    @Query(
+        """
+        SELECT COUNT(*) AS rides, COALESCE(SUM(duration_sec), 0) AS durationSec
+        FROM workouts
+        WHERE user_id = :userId AND is_complete = 1
+        """
+    )
+    suspend fun achievementTotalsFor(userId: Int): AchievementTotalsRow
 
     /**
      * `@Upsert` rather than `@Insert(onConflict = REPLACE)`, for the reason

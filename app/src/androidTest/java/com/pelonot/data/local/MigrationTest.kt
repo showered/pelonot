@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.pelonot.data.local.entity.RiderAlertEntity
+import com.pelonot.data.local.entity.RiderAchievementEntity
 import com.pelonot.domain.alerts.AlertKind
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.PowerProvenance
@@ -1522,6 +1523,53 @@ class MigrationTest {
                 0,
                 runBlocking { dao.allFor(1) }.size
             )
+        } finally {
+            migrated.close()
+        }
+    }
+
+    @Test
+    fun migrate23To24_addsThePermanentAchievementLedger() {
+        helper.createDatabase(TEST_DB, 23).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO profiles (local_user_id, name, weight_kg, ftp_watts,
+                                      created_at, household_visible,
+                                      account_offer_dismissed, max_hr_bpm)
+                VALUES (1, 'Test Rider', 72.0, 210, 1000, 1, 0, 190)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO workouts (id, user_id, duration_sec, total_output_kj,
+                                      timestamp, is_complete, total_distance_km, intent_modifier,
+                                      was_recovered, ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('ride-1', 1, 1800, 300.0, 1000, 1, 10.0, 1.0, 0, 0, 0, 0)
+                """.trimIndent()
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 24, true, AppMigrations.MIGRATION_23_24)
+
+        val migrated = Room.databaseBuilder(
+            ApplicationProvider.getApplicationContext(), AppDatabase::class.java, TEST_DB
+        ).addMigrations(*AppMigrations.ALL).build()
+        try {
+            val achievements = migrated.riderAchievementDao()
+            runBlocking {
+                achievements.insertAll(
+                    listOf(RiderAchievementEntity(1, 1, "ride-1", "first_ride", 2_000))
+                )
+                achievements.insertAll(
+                    listOf(RiderAchievementEntity(1, 1, "ride-1", "first_ride", 3_000))
+                )
+            }
+            assertEquals("an achievement is earned once", 1, runBlocking { achievements.allFor(1) }.size)
+
+            runBlocking { migrated.workoutDao().deleteWorkout("ride-1") }
+            assertNull("the source ride may go without revoking the achievement", runBlocking {
+                achievements.allFor(1).single().workoutId
+            })
         } finally {
             migrated.close()
         }

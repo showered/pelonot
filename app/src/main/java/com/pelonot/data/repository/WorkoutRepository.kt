@@ -119,7 +119,8 @@ class WorkoutRepository(
      * is about Phase 27. Absent means no alert is ever written, which is the
      * same state a rider who has turned them off is in.
      */
-    private val alertRepository: AlertRepository? = null
+    private val alertRepository: AlertRepository? = null,
+    private val achievementRepository: AchievementRepository? = null
 ) {
 
     fun observeWorkouts(userId: Int): Flow<List<WorkoutEntity>> =
@@ -781,6 +782,8 @@ class WorkoutRepository(
         // congratulation is the cheapest thing in the app to lose.
         runCatching { alertRepository?.judge(workoutId) }
             .onFailure { Log.w(TAG, "Could not judge $workoutId for records", it) }
+        runCatching { achievementRepository?.awardFor(workoutId) }
+            .onFailure { Log.w(TAG, "Could not award achievements for $workoutId", it) }
     }
 
     /**
