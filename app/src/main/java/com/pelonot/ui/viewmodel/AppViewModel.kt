@@ -138,6 +138,7 @@ data class AppUiState(
      * rider who has not ridden, no level at all for a guest.
      */
     val riderLevels: Map<Int, RiderLevel> = emptyMap(),
+    val riderFtpVerified: Map<Int, Boolean> = emptyMap(),
     /**
      * The class the dashboard offers, and why (22.8.6). Null only while the
      * library is still loading — a rider with no history has a suggestion too,
@@ -463,14 +464,19 @@ class AppViewModel(
      * reason [rideStatus] is a pair: the typed `combine` overload stops at five
      * and [dashboard] is already at it.
      */
+    private val riderIdentity = combine(
+        workoutRepository.observeRiderLevels(),
+        userRepository.observeFtpVerification()
+    ) { levels, verified -> levels to verified }
+
     private val riding = combine(
         ridingHistory,
         ridingIntensity,
         riderRides,
-        workoutRepository.observeRiderLevels(),
+        riderIdentity,
         riderAlerts
-    ) { history, intensity, rides, levels, alerts ->
-        RiderState(history, intensity, rides, levels, alerts)
+    ) { history, intensity, rides, (levels, verified), alerts ->
+        RiderState(history, intensity, rides, levels, verified, alerts)
     }
 
     /** [riding]'s three flows, named rather than nested in a `Pair` (see [DashboardState]). */
@@ -486,6 +492,7 @@ class AppViewModel(
          * come to show a rider two different numbers.
          */
         val riderLevels: Map<Int, RiderLevel>,
+        val riderFtpVerified: Map<Int, Boolean>,
         /** Everything this rider has been told about themselves (27.4.1). */
         val alerts: List<StoredAlert>
     )
@@ -513,6 +520,7 @@ class AppViewModel(
             rider.ridingIntensity,
             rider.riderRides,
             rider.riderLevels,
+            rider.riderFtpVerified,
             rider.alerts
         )
     }
@@ -605,6 +613,7 @@ class AppViewModel(
         val ridingIntensity: RidingIntensity,
         val riderRides: RiderRides,
         val riderLevels: Map<Int, RiderLevel>,
+        val riderFtpVerified: Map<Int, Boolean>,
         val alerts: List<StoredAlert>
     )
 
@@ -627,6 +636,7 @@ class AppViewModel(
             ridingHistory = dashboard.ridingHistory,
             ridingIntensity = dashboard.ridingIntensity,
             riderLevels = dashboard.riderLevels,
+            riderFtpVerified = dashboard.riderFtpVerified,
             alerts = dashboard.alerts,
             suggestion = recommendation.suggestion,
             suggestionProfile = recommendation.suggestionProfile,

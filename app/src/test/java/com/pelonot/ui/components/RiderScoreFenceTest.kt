@@ -83,11 +83,10 @@ class RiderScoreFenceTest {
      *
      * Wider than [mayPutALevelOnAFace] on purpose: the *pill* beside a name is
      * not the thing rule 2 restricts, and the greeting and the household panel
-     * both draw one legitimately. [RiderAvatar] is here because it owns the
-     * compact form.
+     * both draw one legitimately. The avatar now carries level only as a ring,
+     * never as a second text badge.
      */
     private val mayDrawTheBadge = setOf(
-        "ui/components/RiderAvatar.kt",
         "ui/components/HouseholdPanelCard.kt",
         "ui/screen/MainDashboardScreen.kt"
     )

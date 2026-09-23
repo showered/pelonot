@@ -3,6 +3,7 @@ package com.pelonot.data.repository
 import androidx.room.withTransaction
 import com.pelonot.data.local.AppDatabase
 import com.pelonot.data.local.dao.FtpHistoryDao
+import com.pelonot.domain.progress.isVerifiedFtpSource
 import com.pelonot.data.local.dao.UserDao
 import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.FtpHistoryEntity
@@ -11,6 +12,7 @@ import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.domain.identity.Avatar
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 /**
  * Rider profiles. Room is the source of truth; the cloud is a best-effort
@@ -29,6 +31,12 @@ class UserRepository(
     /** A rider's FTP over time, oldest first (7.9). */
     fun observeFtpHistory(userId: Int): Flow<List<FtpHistoryEntity>> =
         ftpHistoryDao.observeForUser(userId)
+
+    /** One provenance mark per profile, for the avatar system's tiny FTP tick. */
+    fun observeFtpVerification(): Flow<Map<Int, Boolean>> =
+        ftpHistoryDao.observeCurrentSources().map { rows ->
+            rows.associate { it.localUserId to isVerifiedFtpSource(it.source) }
+        }
 
     suspend fun ftpHistory(userId: Int): List<FtpHistoryEntity> = ftpHistoryDao.forUser(userId)
 

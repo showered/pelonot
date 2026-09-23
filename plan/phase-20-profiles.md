@@ -1402,6 +1402,15 @@ taste: which set, and how many. **Open Peeps** (Pablo Stanley, CC0 1.0) and
       colon is a word's worth of punctuation doing nothing, and Phase 26's rule
       is to say less. Noted rather than silently diverged from
 
+      **23 September refinement, in progress:** the level tab is replaced by
+      `FTP 215 W` and a provenance mark on avatars large enough to read it; the
+      level survives only as a slate-to-teal ring. The mark is a check only for
+      a measured guided or accepted automatic assessment, never a typed,
+      estimated or restored value. Smaller faces keep the ring and omit the
+      whole metric rather than shrinking it into noise. The system is compiled
+      and unit-tested; it remains unticked until every avatar size is inspected
+      on the tablet emulator.
+
 ---
 
 ### 20.7 The photograph belongs to the web app, not the bike — the owner's note, 18 August 2026

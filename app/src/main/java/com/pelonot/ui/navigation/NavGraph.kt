@@ -259,6 +259,7 @@ fun PelonotNavGraph(
             ProfileSelectorScreen(
                 profiles = uiState.profiles,
                 riderLevels = uiState.riderLevels,
+                riderFtpVerified = uiState.riderFtpVerified,
                 onProfileSelected = { user ->
                     onSelectProfile(user.localUserId)
                     navController.navigate(Destination.Dashboard.route)

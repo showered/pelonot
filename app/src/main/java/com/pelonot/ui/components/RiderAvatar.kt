@@ -6,9 +6,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -18,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
@@ -98,7 +106,11 @@ fun RiderAvatar(
      * [RiderScore]). This parameter is the *caller's* choice about the shape of
      * its own row.
      */
-    level: RiderLevel? = null
+    level: RiderLevel? = null,
+    /** Shown on the face only where a complete measurement still fits. */
+    ftpWatts: Int? = null,
+    /** A measured assessment gets the tick; estimates and entries get the quiet outline. */
+    ftpVerified: Boolean = false
 ) {
     val photograph = rememberAvatarPhoto(avatar, size)
 
@@ -110,7 +122,13 @@ fun RiderAvatar(
     // component once a ring is round it.
     val disc = if (ringed) size - ringStroke * RING_GAP else size
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-    val arc = MaterialTheme.colorScheme.primary
+    val arc = level?.let {
+        lerp(
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.primary,
+            ((it.level - 1) / 12f).coerceIn(0f, 1f)
+        )
+    } ?: MaterialTheme.colorScheme.primary
 
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
         if (ringed) {
@@ -193,8 +211,8 @@ fun RiderAvatar(
             }
         }
 
-        if (ringed) {
-            LevelBadge(level!!, size)
+        if (ftpWatts != null && size >= FTP_BADGE_FLOOR) {
+            FtpBadge(ftpWatts, ftpVerified, size)
         }
     }
 }
@@ -239,15 +257,30 @@ private fun rememberAvatarPhoto(avatar: Avatar, size: Dp): ImageBitmap? {
  * ring is the progress; this is the number.
  */
 @Composable
-private fun BoxScope.LevelBadge(level: RiderLevel, size: Dp) {
-    RiderScore(
-        level = level,
-        // Rule 2: everything on the face scales with it. A 26 dp pill on a
-        // 66 dp face and the same pill on a 114 dp face are two different
-        // objects, and the tile derives its size from the screen.
-        compact = size * COMPACT_BADGE,
-        modifier = Modifier.align(Alignment.BottomCenter)
-    )
+private fun BoxScope.FtpBadge(ftpWatts: Int, verified: Boolean, size: Dp) {
+    Row(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .clip(MaterialTheme.expressiveShapes.pill)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(horizontal = size * 0.08f, vertical = size * 0.025f),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "FTP $ftpWatts W",
+            fontSize = (size.value * 0.105f).sp,
+            lineHeight = (size.value * 0.12f).sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.size(size * 0.025f))
+        Icon(
+            imageVector = if (verified) Icons.Default.Check else Icons.Outlined.HelpOutline,
+            contentDescription = if (verified) "FTP verified from measured riding" else "FTP not verified from measured riding",
+            tint = if (verified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(size * 0.105f)
+        )
+    }
 }
 
 /**
@@ -309,7 +342,7 @@ val AVATAR_GREETING: Dp = 40.dp
 private val LEVEL_RING_FLOOR: Dp = 56.dp
 
 /** The badge's height as a fraction of the face it sits on. */
-private const val COMPACT_BADGE = 0.26f
+private val FTP_BADGE_FLOOR = 80.dp
 
 /** The progress ring's thickness, as a fraction of the face. */
 private const val RING_STROKE = 0.055f

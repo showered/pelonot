@@ -6,6 +6,8 @@ import androidx.room.Query
 import com.pelonot.data.local.entity.FtpHistoryEntity
 import kotlinx.coroutines.flow.Flow
 
+data class CurrentFtpSourceRow(val localUserId: Int, val source: String)
+
 /**
  * The record of a rider's FTP over time (PLAN 7.9).
  *
@@ -36,6 +38,21 @@ interface FtpHistoryDao {
         """
     )
     fun observeForUser(userId: Int): Flow<List<FtpHistoryEntity>>
+
+    /** Latest source per rider, with `id` settling two writes in the same millisecond. */
+    @Query(
+        """
+        SELECT current.local_user_id AS localUserId, current.source AS source
+        FROM ftp_history AS current
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ftp_history AS newer
+            WHERE newer.local_user_id = current.local_user_id
+              AND (newer.changed_at > current.changed_at
+                   OR (newer.changed_at = current.changed_at AND newer.id > current.id))
+        )
+        """
+    )
+    fun observeCurrentSources(): Flow<List<CurrentFtpSourceRow>>
 
     @Query(
         """

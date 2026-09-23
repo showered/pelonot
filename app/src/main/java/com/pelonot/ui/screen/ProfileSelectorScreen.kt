@@ -122,6 +122,7 @@ fun ProfileSelectorScreen(
      * on 7" — rather than as a measurement of the rider.
      */
     riderLevels: Map<Int, RiderLevel> = emptyMap(),
+    riderFtpVerified: Map<Int, Boolean> = emptyMap(),
     onSaveProfile: (UserEntity, String, Avatar) -> Unit = { _, _, _ -> },
     onDeleteProfile: (UserEntity) -> Unit = {}
 ) {
@@ -250,6 +251,7 @@ fun ProfileSelectorScreen(
                             // the app moves by itself (Phase 7) and never shows
                             // is a number nobody can argue with.
                             ftpWatts = user.ftpWatts,
+                            ftpVerified = riderFtpVerified[user.localUserId] == true,
                             onClick = { onProfileSelected(user) },
                             onLongClick = { editing = user.localUserId }
                         )
@@ -374,6 +376,7 @@ private fun ProfileTile(
     size: Dp,
     level: RiderLevel,
     ftpWatts: Int,
+    ftpVerified: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -416,7 +419,9 @@ private fun ProfileTile(
                 name = name,
                 avatar = avatar,
                 size = size * 0.44f,
-                level = level
+                level = level,
+                ftpWatts = ftpWatts,
+                ftpVerified = ftpVerified
             )
 
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
