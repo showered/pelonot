@@ -767,9 +767,21 @@ class AppViewModel(
      */
     fun resumeWorkout(onResuming: (String) -> Unit) {
         val interrupted = _recoverableWorkout.value ?: return
-        if (interrupted.canResume) {
+        // The dialog may have been left open past the half-hour window.
+        // Refresh its choices before navigating; the service refuses stale
+        // resumes, which would otherwise leave an empty ride screen behind.
+        val current = interrupted.copy(interruption = interrupted.interruption?.let {
+            RideInterruption.between(
+                interrupted.workout.timestamp,
+                it.lastRecordedSec,
+                System.currentTimeMillis()
+            )
+        })
+        if (current.canResume) {
             _recoverableWorkout.value = null
-            onResuming(interrupted.workout.id)
+            onResuming(current.workout.id)
+        } else {
+            _recoverableWorkout.value = current
         }
     }
 

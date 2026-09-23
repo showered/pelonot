@@ -1,3 +1,19 @@
+# Recovery dialog expiry — 23 September 2026
+
+A prompt left open beyond the 30-minute resume window kept a stale Carry on
+riding action. Tapping it navigated to an empty ride screen; the service logged
+Not resumable. The ViewModel now rechecks the clock before navigation and
+refreshes an expired offer to Keep it / Discard.
+
+Observed on the tablet emulator with a temporary copy of the database: opened
+the prompt before expiry, waited across the boundary, then tapped the stale
+button. It stayed on the recovery dialog with only valid choices. A separate
+within-window tap resumed the ride at 07:00 and drew the corrected leaderboard.
+Original app data restored and compared byte-for-byte afterwards. **989 JVM
+tests and the debug build pass.** No production or hardware changes.
+
+---
+
 # Live leaderboard pace and labels — 23 September 2026
 
 Reproduced the owner's paused Rolling Climbs board: Your best 56 was above

@@ -193,6 +193,18 @@
       ride must also be on `WorkoutSession`, or the finalise will quietly
       revert it.** `rpe_rating`, `ftp_proposal_declined` and `synced_at` are
       safe only because they are all written *after* the ride ends.*
+- [x] **8.3d.5 A recovery choice must still be valid when tapped.** A dialog
+      left open overnight retained “Carry on riding” from its first query.
+      Tapping it navigated to an empty ride screen while `WorkoutService`
+      correctly logged `Not resumable`. `AppViewModel.resumeWorkout` now
+      recalculates the interruption against the current clock before
+      navigating; an expired offer refreshes to Keep it / Discard instead.
+      Observed on the tablet emulator with a temporary timestamp fixture:
+      open the three-choice prompt before the 30-minute boundary, cross it,
+      tap Carry on riding, and remain on the two-choice prompt. A fresh
+      within-window tap still resumed at 07:00 and showed the corrected live
+      board. Original app data restored afterwards. **989 JVM tests and the
+      debug build pass**, including the existing interruption-boundary tests.
 - [x] **8.4** Guest post-ride: file against an existing profile, create one on the spot, keep as a household guest ride, or discard
 - [x] **8.5** Haptic feedback for interval alerts — **and the `VIBRATE` permission it needs**
 - [x] **8.6** TTS audio cues, with navigation-guidance audio attributes so the rider's video ducks under them

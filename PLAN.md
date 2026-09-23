@@ -265,7 +265,12 @@ same simulated class. Labels are shorter, including **30m average**, **Year
 best** and **Recent best**; checked at normal and 130% system text.
 
 **24.3.18g** records the change. **989 JVM tests and the debug build pass.**
-The preview app was updated in place, with completed history preserved. The
+The preview app was updated in place, with completed history preserved. An
+open recovery prompt left overnight exposed **8.3d.5**: its cached resume
+choice navigated to an empty ride after the service refused it. The tap now
+rechecks the current time and refreshes an expired prompt to Keep it / Discard.
+Both sides of the 30-minute boundary were observed on the emulator using a
+temporary timestamp fixture, with the original data restored afterwards. The
 preceding update-install safeguard is committed separately; its real
 permanent-certificate rehearsal remains open at **30.7.3**.
 

@@ -4,7 +4,8 @@
 now stays above the personal-best traces it follows throughout a class, and
 labels such as **30m average** fit at normal and 130% text on the tablet emulator.
 **989 JVM tests and the debug build** pass. Update installation also rechecks
-for a new ride immediately before committing; production signing and installer
+for a new ride immediately before committing, and expired recovery prompts
+refresh their choices instead of opening an empty ride. Production signing and installer
 rehearsal remain outstanding. [PLAN.md](PLAN.md) is the current index.
 
 <!-- figures:begin -->
@@ -13,7 +14,7 @@ rehearsal remain outstanding. [PLAN.md](PLAN.md) is the current index.
 | Measured | |
 |---|---|
 | JVM tests | **989**, 0 failures |
-| Plan boxes ticked | **753 of 973** — 77% |
+| Plan boxes ticked | **754 of 974** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
