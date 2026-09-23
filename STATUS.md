@@ -13,7 +13,7 @@ rehearsal remain outstanding. [PLAN.md](PLAN.md) is the current index.
 
 | Measured | |
 |---|---|
-| JVM tests | **989**, 0 failures |
+| JVM tests | **991**, 0 failures |
 | Plan boxes ticked | **754 of 974** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
