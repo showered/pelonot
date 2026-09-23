@@ -1371,6 +1371,18 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       whose complaint is that it already scrolls. The honest shape is probably
       *three lines and a door*, the way `RecentRidingCard` is a number and a
       door — not a timeline
+
+      **The owner made the content requirement concrete on 23 September:** the
+      newest completed ride leads; the card should make *Tom completed a ride
+      yesterday*, *Nicki rode last week and increased her FTP*, and *Chris set
+      a personal best* legible at a glance. That is activity, not a ranking:
+      recency is the ordering and an FTP change or personal best is an event
+      attached to the ride, never a second score. The compact dashboard version
+      stays three lines and a door; the door may open the fuller list. The local
+      tier is those same facts from Room, while the signed-in tier may use
+      `activity_feed` only for riders who opted into `share_activity` — the
+      default remains private. A cloud failure leaves the local lines intact
+      and says nothing false about whether anyone else rode.
 - [ ] **22.8.8** **The achievements slot is deliberately left as a hole.**
       Phase 28 is where achievements are designed, at the owner's weighting
       (*"one for the backlog"*), and 28.6 is the dashboard's share of it. What
