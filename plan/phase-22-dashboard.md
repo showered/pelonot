@@ -1380,8 +1380,10 @@ list. That is the gap the owner's primary-CTA note is standing next to, and
       attached to the ride, never a second score. The compact dashboard version
       stays three lines and a door; the door may open the fuller list. The local
       tier is those same facts from Room, while the signed-in tier may use
-      `activity_feed` only for riders who opted into `share_activity` — the
-      default remains private. A cloud failure leaves the local lines intact
+      `activity_feed` only for riders who are sharing activity. **The owner
+      changed this to opt-out on 23 September 2026**: migration 009 makes new
+      and existing cloud profiles share ordinary rides, while the web switch
+      and per-ride `hidden` remain real ways to withdraw. A cloud failure leaves the local lines intact
       and says nothing false about whether anyone else rode.
 
       ***Built, pending tablet observation.*** The dashboard now draws the

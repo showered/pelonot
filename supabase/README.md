@@ -35,7 +35,8 @@ degraded one.
 | `005_revoke_truncate.sql` | Takes back `TRUNCATE`, `TRIGGER` and `REFERENCES`, which Supabase's default privileges grant to `anon` on every new table and no migration here ever asked for |
 | `006_service_role.sql` | The service role's own grants, for the scripts beside this file |
 | `007_everyone_leaderboard.sql` | **Leaderboards and ghosts across bikes**, as two narrow `SECURITY DEFINER` functions rather than relaxed policies. Adds `workouts.power_provenance`. Drops the `friendships` table that was written for 17.5 and never needed — read the header for the owner's reasoning |
-| `008_companion_web.sql` | **What the companion web app needs** (Phase 17): a bio, units, a maximum heart rate and a sharing switch on `profiles`; a title and `hidden` on `workouts`; `kudos` and `ride_comments` with the functions that reach them. `share_activity` defaults to **false**, so the day it runs nothing about the project's exposure changes |
+| `008_companion_web.sql` | **What the companion web app needs** (Phase 17): a bio, units, a maximum heart rate and a sharing switch on `profiles`; a title and `hidden` on `workouts`; `kudos` and `ride_comments` with the functions that reach them |
+| `009_activity_sharing_opt_out.sql` | Changes the owner’s activity-sharing decision to **opt-out**: new and existing cloud profiles share ordinary rides, while `hidden` remains the per-ride escape hatch |
 
 Run them in that order in the SQL Editor. `002` is non-destructive; **`003` is
 not** — it clears `profiles`, deliberately, because every row in it was written

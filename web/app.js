@@ -599,7 +599,7 @@ async function loadSocial(workoutId) {
   el('ride-kudos-count').textContent = '';
   el('social-note').textContent = profile && profile.share_activity
     ? 'Everyone here can see this ride and say something under it.'
-    : 'Only you can see this ride. Turn sharing on under You to let the ' +
+    : 'Only you can see this ride. Turn sharing back on under You to let the ' +
       'others see it and cheer.';
 
   const { data, error } = await client.rpc('ride_comments_for', { p_workout: workoutId });

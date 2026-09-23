@@ -555,6 +555,15 @@ been looked at with one shape of data has not been checked.
 
 - [x] **17.7** **Private by default.** Nothing is visible to anyone until the rider opts in, with per-ride visibility (private / friends / public). Defaulting to visible would publish training history people did not know they were publishing
 
+      **Superseded by the owner, 23 September 2026.** The network remains a
+      small, invited Pelonot group, and the owner wants Tom to see their rides
+      on installing the update rather than needing both riders to discover a
+      web switch first. `009_activity_sharing_opt_out.sql` changes both the
+      server default and existing profiles to sharing on. This changes the
+      product decision, not the data boundary: `activity_feed` still returns a
+      narrow summary only, and the profile switch plus `workouts.hidden` remain
+      the opt-out controls.
+
       **Kept, and it is the item that decided the shape of the whole
       migration.** `profiles.share_activity` defaults to **false**, so on the
       day `008` runs the feed is empty for everybody and stays empty until
