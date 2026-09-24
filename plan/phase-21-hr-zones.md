@@ -998,3 +998,32 @@ how a working feature reads as broken.
       is no Android API that reaches a watch except the standard one already
       here, and a second code path for a device nobody in the project owns is a
       path nobody can test
+
+### 21.8 The zones fill the ride, not the circle
+
+- [ ] **21.8.1** Draw a live heart-rate-zone doughnut whose circumference
+      represents the whole ride duration. Each second contributes only its
+      corresponding fraction of the circumference, coloured by the rider's
+      heart-rate zone; the unelapsed part stays visibly unfilled. Zone time
+      accumulates from the ride's valid samples, so one minute in H1 during a
+      30-minute ride occupies one-thirtieth of the circle, not a full ring.
+      Keep missing heart rate and missing zone boundaries absent rather than
+      assigning them to a zone. Check that the complete ring is reached at
+      class completion and that a free ride uses elapsed time as its horizon.
+
+      **Owner request, 24 September 2026.** This is a cumulative distribution
+      over ride progress, not a conventional chart of percentages that always
+      sum to 100.
+
+### 21.9 Heart-rate strap battery
+
+- [ ] **21.9.1** Where a paired strap exposes the standard BLE Battery Service,
+      read its battery level and keep it visible during a class. Warn the rider
+      when it is low, with wording that distinguishes a battery reading from an
+      estimate. Battery characteristics are optional and may be hidden by some
+      straps; show no invented level when unavailable. Verify the service and
+      characteristic on supported hardware before promising battery reporting.
+
+      **Owner request, 24 September 2026.** The current heart-rate connection
+      subscribes only to the Heart Rate Service, so a strap can stop mid-class
+      without any low-battery notice.

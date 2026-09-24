@@ -1153,3 +1153,20 @@ beside it.
       15.7.3 is what unblocks testing. The owner's call, and `supabase/
       auth_config.py` can make and revert the change in one command with the
       whole config backed up first
+
+### 15.3.3 Sign-in restores the account as well as uploading
+
+- [ ] **15.3.3** A successful sign-in on an existing profile must automatically
+      restore missing rides and the cloud profile's FTP, just as the new-bike
+      path does. Uploading the local backlog alone cannot recover rides after
+      reinstall, and a fresh local profile otherwise keeps the default 150 W.
+      Reuse `RestoreRepository`: it only adds rides and adopts profile fields
+      only when this profile has never ridden, preserving a rider's established
+      local FTP. Keep restore asynchronous to navigation and leave the account
+      screen's explicit retry available when the network is unavailable.
+
+      **Code path added 24 September 2026, verification still owed.** The
+      ordinary successful sign-in now starts the same additive restore in the
+      background; the new-bike path already did so. Confirm on an account that
+      has rides and a non-default FTP, both after reinstall and against a
+      profile that already has local rides.

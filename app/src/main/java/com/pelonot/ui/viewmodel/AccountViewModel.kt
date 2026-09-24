@@ -361,7 +361,7 @@ class AccountViewModel(
     ) {
         if (attempt is AuthAttempt.Success && localUserId != null) {
             settingsRepository.setLastProfileId(localUserId)
-            resolve(attempt, localUserId) { }
+            resolve(attempt, localUserId, onSignedIn = {}, restoreAfterSignIn = false)
             restoreRepository.restore(localUserId)
             onSignedIn()
         } else {
@@ -637,7 +637,12 @@ class AccountViewModel(
         form.update { it.copy(problem = message) }
     }
 
-    private suspend fun resolve(outcome: AuthAttempt, localUserId: Int, onSignedIn: () -> Unit) {
+    private suspend fun resolve(
+        outcome: AuthAttempt,
+        localUserId: Int,
+        onSignedIn: () -> Unit,
+        restoreAfterSignIn: Boolean = true
+    ) {
         when (outcome) {
             is AuthAttempt.Success -> {
                 form.update {
@@ -651,6 +656,23 @@ class AccountViewModel(
                     workoutId = "first-sign-in",
                     userId = localUserId
                 )
+                // 15.3.3. Signing in on a bike that already has this profile is
+                // still a restore point. The new-bike path did this explicitly,
+                // but this ordinary path only uploaded the local backlog; after
+                // reinstalling, a profile shell could therefore stay at its
+                // default FTP and its history stayed stranded in the account.
+                // Restore is additive and idempotent, and only adopts the cloud
+                // profile when this local profile has never ridden.
+                if (restoreAfterSignIn) {
+                    viewModelScope.launch {
+                        when (restoreRepository.restore(localUserId)) {
+                            is SyncOutcome.Success -> Unit
+                            is SyncOutcome.Failed,
+                            is SyncOutcome.Rejected,
+                            SyncOutcome.Disabled -> Unit // Account screen offers an explicit retry.
+                        }
+                    }
+                }
                 onSignedIn()
             }
 

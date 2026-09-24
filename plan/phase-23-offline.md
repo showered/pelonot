@@ -923,3 +923,18 @@ three of the four renamed classes actually said.
       classes to check a word in a title, and R10's own lesson is that the
       *cheap* untested rules are where the value was. Worth doing the day
       somebody adds a class, not as a pass over the library
+
+### 23.2.9 Put a rider's class record on the class card
+
+- [ ] **23.2.9** Make the class library feel like a set of rides worth choosing
+      by showing a concise, truthful best score for each class (and its rank
+      where there is a real comparison). Prefer the household's local best so
+      the library works offline; use the existing cross-bike leaderboard only
+      when its consent and provenance rules permit it. Empty boards stay quiet,
+      and cards must not imply that one rider's all-time result is a live
+      ranking. Check the resulting card grid at 1280 × 720 dp.
+
+      **Owner request, 24 September 2026.** The current card is title, category
+      and duration only. The design direction is open: test a compact record or
+      ranking treatment before considering generated photography, which could
+      add visual weight without helping the rider choose.

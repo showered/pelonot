@@ -1732,3 +1732,18 @@ and no amount of getting 11.7 right produces it.
       exceptions. This is a lifecycle/lint improvement, not a claim that the
       performance measurement in 8.16.2 was wrong. The live overlay was watched
       over the launcher during a simulated ride.
+
+### 11.10 Choose a Just Ride goal
+
+- [ ] **11.10** Before a Just Ride starts, offer three clear choices: ride for
+      a chosen time (common lengths such as 30 minutes), ride for a chosen
+      distance (such as 10 miles, respecting the rider's unit setting), or
+      leave the ride open-ended. Keep the open-ended choice one tap away and
+      make each selected goal visible during the ride. A time goal ends when
+      elapsed active time reaches it; a distance goal uses the app's recorded
+      distance and ends when it is reached. Pause must stop the time goal, and
+      finishing any goal must use the ordinary ride finalisation path.
+
+      **Owner request, 24 September 2026.** The current Just Ride path starts
+      without a goal. This needs an explicit pre-ride selection and service
+      semantics, not just a timer drawn on screen.
