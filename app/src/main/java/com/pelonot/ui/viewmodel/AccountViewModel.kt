@@ -664,13 +664,14 @@ class AccountViewModel(
                 // Restore is additive and idempotent, and only adopts the cloud
                 // profile when this local profile has never ridden.
                 if (restoreAfterSignIn) {
-                    viewModelScope.launch {
-                        when (restoreRepository.restore(localUserId)) {
-                            is SyncOutcome.Success -> Unit
-                            is SyncOutcome.Failed,
-                            is SyncOutcome.Rejected,
-                            SyncOutcome.Disabled -> Unit // Account screen offers an explicit retry.
-                        }
+                    // This runs inside the sign-in coroutine before navigation
+                    // pops this ViewModel. A child launch here could be cancelled
+                    // as soon as the account screen leaves the back stack.
+                    when (restoreRepository.restore(localUserId)) {
+                        is SyncOutcome.Success -> Unit
+                        is SyncOutcome.Failed,
+                        is SyncOutcome.Rejected,
+                        SyncOutcome.Disabled -> Unit // Account screen offers an explicit retry.
                     }
                 }
                 onSignedIn()

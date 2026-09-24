@@ -1162,8 +1162,9 @@ beside it.
       reinstall, and a fresh local profile otherwise keeps the default 150 W.
       Reuse `RestoreRepository`: it only adds rides and adopts profile fields
       only when this profile has never ridden, preserving a rider's established
-      local FTP. Keep restore asynchronous to navigation and leave the account
-      screen's explicit retry available when the network is unavailable.
+      local FTP. Run it in the sign-in coroutine before navigation pops its
+      ViewModel; leave the account screen's explicit retry available when the
+      network is unavailable.
 
       **Code path added 24 September 2026, verification still owed.** The
       ordinary successful sign-in now starts the same additive restore in the
