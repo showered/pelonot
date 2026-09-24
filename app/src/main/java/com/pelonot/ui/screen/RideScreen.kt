@@ -1,5 +1,6 @@
 package com.pelonot.ui.screen
 
+import com.pelonot.ui.components.LiveHeartRateRing
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -1521,6 +1522,7 @@ private fun MetricGrid(
                 // 21.3.4. The owner's, and the one metric on this screen with a
                 // rhythm of its own. Null draws nothing — see BeatingHeart.
                 pulseBpm = state.reading.heartRateBpm,
+                heartRateProgress = if (state.session?.maxHrBpm != null) snapshot else null,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1599,6 +1601,7 @@ private fun RideMetricTile(
     footnote: String? = null,
     /** Non-null beats a heart in the tile's empty half at that rate (21.3.4). */
     pulseBpm: Int? = null,
+    heartRateProgress: com.pelonot.data.service.RideSnapshot? = null,
     /** Whether this tile's band is the class's instruction (11.7.3). */
     emphasis: TargetEmphasis = TargetEmphasis.Instruction
 ) {
@@ -1647,11 +1650,22 @@ private fun RideMetricTile(
             // Behind the number rather than beside it: the tile's right-hand
             // half is empty, and a heart the rider catches in peripheral vision
             // must not push the digits around when it swells.
-            BeatingHeart(
-                bpm = pulseBpm,
-                color = accent,
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
+            if (heartRateProgress != null) {
+                LiveHeartRateRing(
+                    zones = heartRateProgress.heartRateZones,
+                    elapsedSec = heartRateProgress.elapsedSeconds,
+                    durationSec = heartRateProgress.intervals.lastOrNull()?.endSec,
+                    bpm = pulseBpm,
+                    accent = accent,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            } else {
+                BeatingHeart(
+                    bpm = pulseBpm,
+                    color = accent,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            }
 
             MetricReadout(
                 label = label,
@@ -1662,6 +1676,7 @@ private fun RideMetricTile(
                 rawValue = rawValue,
                 // Sized for a 21-inch screen read from a metre away, mid-effort.
                 valueSize = valueSize,
+                valueEndPadding = if (heartRateProgress != null) 88.dp else 0.dp,
                 // 11.6.4. There is room for the numbers here, and this is the
                 // screen a rider reads rather than glances at.
                 showTargetRange = true,

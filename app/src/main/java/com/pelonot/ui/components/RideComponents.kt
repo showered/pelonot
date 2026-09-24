@@ -356,6 +356,7 @@ fun MetricReadout(
     rawValue: Double = 0.0,
     valueSize: androidx.compose.ui.unit.TextUnit = 56.sp,
     compact: Boolean = false,
+    valueEndPadding: androidx.compose.ui.unit.Dp = 0.dp,
     showTargetRange: Boolean = false,
     icon: ImageVector? = null,
     /**
@@ -406,7 +407,7 @@ fun MetricReadout(
         },
         horizontalAlignment = Alignment.Start
     ) {
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.padding(end = valueEndPadding), verticalAlignment = Alignment.Bottom) {
             // The number is the weighted one, so the **unit is measured first
             // and keeps its width**. It was the other way round, and the way a
             // `Row` measures meant a three-digit value took what it wanted and

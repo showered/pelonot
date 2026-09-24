@@ -152,7 +152,9 @@ data class RideUiState(
      * differently — the same reason [currentZone] goes through [ZoneScale].
      */
     val heartRateZone: HeartRateZone?
-        get() = HeartRateZone.forHeartRate(reading.heartRateBpm, maxHeartRate?.bpm)
+        get() = HeartRateZone.forHeartRate(
+            reading.heartRateBpm, if (session != null) session.maxHrBpm else maxHeartRate?.bpm
+        )
 
     /** True when telemetry is fabricated, so the UI can say so plainly. */
     val isSimulated: Boolean

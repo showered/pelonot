@@ -43,6 +43,7 @@ import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassIntervalEngine
 import com.pelonot.domain.model.HudDock
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.LiveHeartRateZones
 import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
@@ -161,6 +162,7 @@ class WorkoutService : Service() {
     private var accumulatedPausedMs = 0L
     private var pausedAtRealtimeMs = 0L
 
+    private var heartRateZones = LiveHeartRateZones()
     private val pendingMetrics = mutableListOf<WorkoutMetricEntity>()
 
     /**
@@ -332,6 +334,7 @@ class WorkoutService : Service() {
         _rideCaption.value = null
         telemetryStalled = false
         pendingMetrics.clear()
+        heartRateZones = LiveHeartRateZones()
         calibrationSamples.clear()
         intervalEngine = null
         clearRace()
@@ -458,9 +461,14 @@ class WorkoutService : Service() {
         }
     }
 
-    private fun beginResumedRide(resumed: ResumedRide) {
+    private suspend fun beginResumedRide(resumed: ResumedRide) {
         val workout = resumed.workout
         val aggregates = resumed.aggregates
+        heartRateZones = workoutRepository.getMetrics(workout.id)
+            .sortedBy { it.timestampSec }
+            .fold(LiveHeartRateZones()) { zones, sample ->
+                zones.record(sample.timestampSec, sample.heartRate, workout.maxHrBpm)
+            }
         val intent = RideIntent.fromMultiplier(workout.intentModifier)
         // From the row, never the profile: a breakthrough accepted between the
         // crash and the resume would otherwise rescore the ride it came from
@@ -552,7 +560,8 @@ class WorkoutService : Service() {
             // has just ridden twenty minutes a total output of zero until the
             // first tick lands on top of the restored calculator.
             totalOutputKj = aggregates.totalOutputKj,
-            distanceKm = aggregates.distanceKm
+            distanceKm = aggregates.distanceKm,
+            heartRateZones = heartRateZones
         )
         // The prompt is answered; nothing should still be offering this ride.
         _recoverableWorkout.value = null
@@ -1152,6 +1161,7 @@ class WorkoutService : Service() {
                     session?.distanceKm ?: current.distanceKm
                 ),
                 standings = board,
+                heartRateZones = heartRateZones,
                 passedOwnRide = pass
             )
         }
@@ -1273,6 +1283,7 @@ class WorkoutService : Service() {
             return
         }
 
+        heartRateZones = heartRateZones.record(elapsedSec, reading.heartRateBpm, session.maxHrBpm)
         val derived = metricsCalculator.processReading(reading, session.ftpWatts)
 
         pendingMetrics += WorkoutMetricEntity(

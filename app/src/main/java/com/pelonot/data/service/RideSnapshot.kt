@@ -4,6 +4,7 @@ import com.pelonot.data.sensor.PowerModel
 import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.IntervalState
+import com.pelonot.domain.model.LiveHeartRateZones
 import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RideIntent
@@ -41,6 +42,7 @@ data class RideSnapshot(
     val intent: RideIntent = RideIntent.DEFAULT,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
+    val heartRateZones: LiveHeartRateZones = LiveHeartRateZones(),
     /**
      * Whether the bike is still reporting (2.4.5).
      *
