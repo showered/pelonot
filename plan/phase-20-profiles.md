@@ -1632,3 +1632,33 @@ adds is that the web app is not merely *also* a place to do it; it is the
       text the QR/form pair pushed the old footer below the viewport. Move
       the choice into the introductory row above that pair. Both states were screenshotted at 115% text; the new button was
       visible at the top and tapping it reached the dashboard.
+
+
+### 20.9 Avatar power badge — 24 September 2026
+
+The owner found `FTP 215 W` cramped and asked for a modern avatar treatment,
+using ChatGPT image generation first. The final choice is a lightning icon and
+larger number in a dark **60%-opacity capsule**, horizontally centred over the
+bottom of the avatar. A green circular tick appears only for the existing
+ride-confirmed FTP status. Unconfirmed numbers have no extra status glyph.
+The ring still represents riding volume; neither FTP assessment nor data changes.
+
+- [x] **20.9.1 A compact power badge.** Replace the text-heavy label and tiny
+      status icon with bolt, number and conditional green seal. Preserve full
+      watts and confirmation status in a single accessibility description.
+      Both themes and confirmed/unconfirmed fixtures observed at 114, 100 and
+      80 dp, at 100% and 130% system text; 66 and 40 dp retain no power badge.
+- [x] **20.9.2 One FTP on the selector.** Remove the repeated caption below
+      the name. Selector avatars have an 80 dp minimum so even a full household
+      retains its one power badge. One-rider and six-rider selector fixtures
+      checked on the 1920 × 1080, 240 dpi AVD, including 130% text.
+- [x] **20.9.3 Keep the badge on the avatar.** The owner tried a lower badge
+      with added component height, then rejected it as unbalanced. Restore the
+      square footprint and bottom-centred overlay; increase translucency from
+      78% to 60%. ChatGPT image generation supplied the initial study and a
+      refinement from the implemented screenshot. The actual badge remains
+      native Compose so numbers, accessibility and status stay dynamic.
+
+[Design prompts, generated concepts and emulator evidence](images/avatar-power/README.md).
+The review activity used in-memory fixtures and was removed after verification;
+no saved rider or ride was changed. Debug build and 992 JVM tests pass. No release.

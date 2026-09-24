@@ -1,5 +1,26 @@
 > Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
 
+### Session — 23 September 2026: a stretch target that stays ahead
+
+The owner's live-board report reproduced directly: **Your best 56**, but
+**Just past your best 48**. The generated target spread a class-only finishing
+total evenly across the ride, so it could fall behind a fast start and ignored
+a better ride at the same duration. It now tracks the strongest personal-best
+trace on the board at each second, plus 5%, without changing recorded rides or
+forcing the sort order. **Best +5% 59** appeared above **Your best 56** in the
+same simulated class. Labels are shorter, including **30m average**, **Year
+best** and **Recent best**; checked at normal and 130% system text.
+
+**24.3.18g** records the change. **989 JVM tests and the debug build pass.**
+The preview app was updated in place, with completed history preserved. An
+open recovery prompt left overnight exposed **8.3d.5**: its cached resume
+choice navigated to an empty ride after the service refused it. The tap now
+rechecks the current time and refreshes an expired prompt to Keep it / Discard.
+Both sides of the 30-minute boundary were observed on the emulator using a
+temporary timestamp fixture, with the original data restored afterwards. The
+preceding update-install safeguard is committed separately; its real
+permanent-certificate rehearsal remains open at **30.7.3**.
+
 ### Session — 22 September 2026: keep a new ride ahead of an update
 
 The update guard checked after downloading but before copying the APK into

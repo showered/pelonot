@@ -14,7 +14,7 @@ rehearsal remain outstanding. [PLAN.md](PLAN.md) is the current index.
 | Measured | |
 |---|---|
 | JVM tests | **992**, 0 failures |
-| Plan boxes ticked | **754 of 974** — 77% |
+| Plan boxes ticked | **757 of 977** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a
@@ -196,12 +196,17 @@ answer really is gone.
 
 **A level, and it is the only number here that cannot go down (26.4).** Lifetime
 rides, minutes and kilojoules through a square-law curve, drawn as `LVL 7`
-beside a rider's name on the dashboard, on the household panel and on the
-profile selector. It says *has ridden more* and never *is fitter* — which is why
+beside a rider's name on the dashboard and household panel. On the profile
+selector, riding progress is the ring around the avatar. It says *has ridden more* and never *is fitter* — which is why
 it is not the FTP with a nicer badge: the FTP falls when a rider is ill and
 Phase 7 moves it by itself, so a "score" built on it would demote somebody in
 their sleep. A guest gets no badge at all, because a guest's rides are filed
 against nobody and they could never leave level 1.
+
+**Avatar power badges (20.9).** One lightning icon and number, centred on a
+translucent capsule over the avatar, with a green tick only for ride-confirmed
+FTP. The selector no longer repeats FTP below the name. Checked in both themes
+at normal and 130% text on the tablet emulator.
 
 **The household.** A profile selector built for the tablet, a per-class
 leaderboard, the household's **last 30 days** with streaks and an opt-out — a

@@ -410,15 +410,11 @@ private fun ProfileTile(
             // Sized off the tile, which is itself sized off the screen
             // (20.1.2): a fixed disc would leave a small letter marooned in a
             // large circle, which is the fault that rule exists for.
-            //
-            // **The level rides on the face** (20.6.4) rather than sitting in a
-            // row of its own under the name, which is the owner's *"lvl should
-            // be part of the avatar"* and also what buys the row the FTP goes
-            // in: the tile is the same height it was.
             RiderAvatar(
                 name = name,
                 avatar = avatar,
-                size = size * 0.44f,
+                // Keep the single FTP badge visible even in a full household grid.
+                size = (size * 0.44f).coerceAtLeast(80.dp),
                 level = level,
                 ftpWatts = ftpWatts,
                 ftpVerified = ftpVerified
@@ -433,20 +429,6 @@ private fun ProfileTile(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                // **`FTP 150 W`, not `150 W FTP`.** The rejected form led with
-                // the number, which made it a headline on a tile whose headline
-                // is the rider's name; label first reads as a fact *about* them
-                // and is scanned past by anyone who did not come for it. Quiet
-                // on purpose — the eye still lands on the face, then the name,
-                // and this is third (20.6.5).
-                text = "FTP $ftpWatts W",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 1
             )
         }
     }

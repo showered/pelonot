@@ -3,6 +3,7 @@ package com.pelonot.ui.components
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -15,7 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,7 @@ import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.identity.AvatarFace
 import com.pelonot.domain.progress.RiderLevel
 import com.pelonot.di.ServiceLocator
+import com.pelonot.ui.theme.AlertGreen
 import com.pelonot.ui.theme.AvatarPalette
 import com.pelonot.ui.theme.expressiveShapes
 
@@ -68,27 +71,15 @@ import com.pelonot.ui.theme.expressiveShapes
  * 3. **It is silent to a screen reader.** A face beside a name says nothing a
  *    name does not, and announcing "avatar" before every rider on the household
  *    panel is three extra words per row for no fact. The caller owns the
- *    description of the row. **The level badge is the exception and describes
- *    itself**, because a level is a fact the name does not carry.
+ *    description of the row. **The FTP badge is the exception and describes
+ *    itself**, because FTP and confirmation are facts the name does not carry.
  * 4. **The colour is never read as a status.** [AvatarPalette] contains no zone
  *    colour, no live-metric accent and nothing amber, and the reason is written
  *    where the palette is defined.
- * 5. **The level rides on the face only where the face is big enough to carry
- *    it** (20.6.4, 20.6.8). The owner's note is *"lvl should be part of the
- *    avatar (overlaid somehow)"* and their follow-up came with a picture — a
- *    **ring** round the face with a small `LVL` tab on the bottom of it
- *    (`plan/images/leaderboard-idea.png`). That is what [level] draws, and the
- *    ring is the better half of it: **it is the progress arc**, so
- *    `RiderLevel.progress` gets somewhere it can actually be read, and the
- *    drawing inside is left alone. The first version put a filled pill on the
- *    figure's collar, which worked and covered part of them.
- *
- *    But a ring at 32 dp is a hairline and the tab under it is unreadable, so
- *    the household row and the dashboard greeting keep the pill *beside* the
- *    name and simply do not pass a level. Below [LEVEL_RING_FLOOR] it is not
- *    drawn at all, which is the one place this component silently declines to
- *    draw something it was handed; the alternative is a caller shipping an
- *    unreadable badge without ever seeing it.
+ * 5. **Details need room.** The level's progress ring starts at
+ *    [LEVEL_RING_FLOOR]; the power capsule starts at [FTP_BADGE_FLOOR].
+ *    Small inline faces stay uncluttered. The ring still represents riding
+ *    volume, while the capsule shows FTP and its measured confirmation (20.9).
  */
 @Composable
 fun RiderAvatar(
@@ -98,7 +89,7 @@ fun RiderAvatar(
     size: Dp,
     modifier: Modifier = Modifier,
     /**
-     * The rider's level, drawn on the face itself (20.6.4), or null for the
+     * The rider's level progress, drawn around the face (20.6.4), or null for the
      * call sites that draw the badge beside the name instead.
      *
      * Null is *not* "level unknown" — `AppUiState.levelFor` already returns
@@ -109,13 +100,12 @@ fun RiderAvatar(
     level: RiderLevel? = null,
     /** Shown on the face only where a complete measurement still fits. */
     ftpWatts: Int? = null,
-    /** A measured assessment gets the tick; estimates and entries get the quiet outline. */
+    /** A measured assessment gets the green tick; estimates and entries have no seal. */
     ftpVerified: Boolean = false
 ) {
     val photograph = rememberAvatarPhoto(avatar, size)
 
-    // The ring and the tab are one decision: either the face carries its level
-    // or it does not, and half of it is worse than neither.
+    // Small inline faces cannot carry a readable progress ring.
     val ringed = level != null && size >= LEVEL_RING_FLOOR
     val ringStroke = size * RING_STROKE
     // Rule 2: the initial scales with the *disc*, which is smaller than the
@@ -246,15 +236,9 @@ private fun rememberAvatarPhoto(avatar: Avatar, size: Dp): ImageBitmap? {
 }
 
 /**
- * The level's tab, centred on the bottom of the ring (20.6.4, 20.6.8).
- *
- * **Centred on the bottom rather than tucked into a corner**, which is where
- * the owner's reference puts it and is also what the artwork wants: an Open
- * Peeps figure is a head and a pair of shoulders, so the bottom *corners* of
- * the disc are where the drawing is and the bottom *centre* is a collar.
- *
- * It sits *on* the ring rather than beside it, so the two are one object. The
- * ring is the progress; this is the number.
+ * Power belongs to the number, confirmation to the green seal (20.9).
+ * A translucent dark capsule lets the portrait show through in both themes.
+ * Full units and provenance remain in its spoken label.
  */
 @Composable
 private fun BoxScope.FtpBadge(ftpWatts: Int, verified: Boolean, size: Dp) {
@@ -262,26 +246,49 @@ private fun BoxScope.FtpBadge(ftpWatts: Int, verified: Boolean, size: Dp) {
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .clip(MaterialTheme.expressiveShapes.pill)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .padding(horizontal = size * 0.08f, vertical = size * 0.025f),
+            .background(FTP_BADGE_SURFACE.copy(alpha = 0.60f))
+            .border(1.dp, FTP_BADGE_OUTLINE.copy(alpha = 0.7f), MaterialTheme.expressiveShapes.pill)
+            .clearAndSetSemantics {
+                contentDescription = "FTP $ftpWatts watts, " +
+                    if (verified) "confirmed from measured riding" else "not confirmed from measured riding"
+            }
+            .padding(horizontal = size * 0.075f, vertical = size * 0.035f),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "FTP $ftpWatts W",
-            fontSize = (size.value * 0.105f).sp,
-            lineHeight = (size.value * 0.12f).sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+        Icon(
+            imageVector = Icons.Default.Bolt,
+            contentDescription = null,
+            tint = FTP_BADGE_INK,
+            modifier = Modifier.size(size * 0.16f)
         )
         Spacer(Modifier.size(size * 0.025f))
-        Icon(
-            imageVector = if (verified) Icons.Default.Check else Icons.Outlined.HelpOutline,
-            contentDescription = if (verified) "FTP verified from measured riding" else "FTP not verified from measured riding",
-            tint = if (verified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(size * 0.105f)
+        Text(
+            text = ftpWatts.toString(),
+            fontSize = (size.value * 0.16f).sp,
+            lineHeight = (size.value * 0.18f).sp,
+            fontWeight = FontWeight.Bold,
+            color = FTP_BADGE_INK,
+            maxLines = 1
         )
+        if (verified) {
+            Spacer(Modifier.size(size * 0.05f))
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = FTP_BADGE_SURFACE,
+                modifier = Modifier
+                    .size(size * 0.19f)
+                    .background(AlertGreen, MaterialTheme.expressiveShapes.pill)
+                    .padding(size * 0.03f)
+            )
+        }
     }
 }
+
+// Dark enough at 60% opacity to keep white digits legible over the lightest portrait.
+private val FTP_BADGE_SURFACE = Color(0xFF141417)
+private val FTP_BADGE_OUTLINE = Color(0xFF52525B)
+private val FTP_BADGE_INK = Color(0xFFF4F4F5)
 
 /**
  * The drawable for a face.
@@ -341,7 +348,7 @@ val AVATAR_GREETING: Dp = 40.dp
  */
 private val LEVEL_RING_FLOOR: Dp = 56.dp
 
-/** The badge's height as a fraction of the face it sits on. */
+/** Smaller faces keep their silhouette; a power badge needs room for three digits. */
 private val FTP_BADGE_FLOOR = 80.dp
 
 /** The progress ring's thickness, as a fraction of the face. */
