@@ -1064,6 +1064,31 @@ and no amount of social plumbing fixes that.
       leaderboard renderer in the current source, so its passed-row check also
       remains open with 24.3.16.
 
+      **Tablet preview, 24 September:** a disposable app ID on a separate
+      1920 × 1080, 240 dpi emulator data set carried six temporary riders and
+      fifteen temporary rides (including three of the current rider's), with
+      900 power samples. All fixture rides were marked `Modelled`, as simulated
+      telemetry is. This exposed a real roster bug: `raceBoardFor` selected the
+      modelled lane for personal history, but the two household queries still
+      hard-coded `Measured`. Both now use the race's provenance; the new DAO
+      device test checks best and latest rides in each lane. The live service
+      loaded six housemates, their latest rides, the rider's best, and the
+      generated 1-minute average, class target and best-plus-five-percent
+      targets. The list was scrolled on the tablet to check the entries below
+      the initial viewport. Fixture data lived only in the preview package.
+
+      The ride screen now keeps the crossed milestone and the six-second
+      personal-best cue above the scrolling field, strengthens the latter's
+      contrast, and highlights `YOU` while it is shown. Long housemate names
+      use two lines; a recent ride shows the person's name with `LAST RIDE`
+      beneath it. `YOU` shows `CURRENT` and elapsed ride time. Every moving
+      entry is 64 dp tall, including generated targets; the field uses the
+      available space above the buttons, fades only where there is more to
+      scroll, and animates reordering without restarting its follow-you scroll
+      on every rank change. These layout changes were checked on the tablet
+      preview. The original 250 kJ bike transition and the overlay remain
+      unverified, so this item stays open.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and

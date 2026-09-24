@@ -675,7 +675,7 @@ interface WorkoutDao {
           AND w.user_id != :excludingUserId
           AND w.is_complete = 1
           AND p.household_visible = 1
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         GROUP BY p.local_user_id
         ORDER BY outputKj DESC
         """
@@ -683,7 +683,8 @@ interface WorkoutDao {
     suspend fun householdRivals(
         classId: String,
         excludingWorkoutId: String,
-        excludingUserId: Int
+        excludingUserId: Int,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): List<HouseholdRivalRow>
 
     /**
@@ -722,7 +723,7 @@ interface WorkoutDao {
           AND w.is_complete = 1
           AND w.total_output_kj > 0
           AND p.household_visible = 1
-          AND w.power_provenance = 'Measured'
+          AND w.power_provenance = :provenance
         GROUP BY p.local_user_id
         ORDER BY lastRideAt DESC
         """
@@ -730,7 +731,8 @@ interface WorkoutDao {
     suspend fun householdLatestRides(
         classId: String,
         excludingWorkoutId: String,
-        excludingUserId: Int
+        excludingUserId: Int,
+        provenance: PowerProvenance = PowerProvenance.Measured
     ): List<HouseholdLatestRow>
 
     /**

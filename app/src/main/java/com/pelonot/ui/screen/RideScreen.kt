@@ -1026,6 +1026,7 @@ private fun RivalGap(rival: RivalStatus?, modifier: Modifier = Modifier) {
 @Composable
 private fun LiveLeaderboardCard(
     standings: LiveStandings?,
+    elapsedSeconds: Int,
     modifier: Modifier = Modifier,
     /**
      * The rider's own past ride just overtaken (24.3.18d). Raised by the
@@ -1047,25 +1048,33 @@ private fun LiveLeaderboardCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
-        // 24.3.18c. Six rows without moving a hand, and the rest of the field
-        // by scrolling — the owner's *"there is space … the more the merrier
-        // within reason"*, measured rather than felt: rows are 44 dp, the card
-        // starts below the zone ladder and *View in Overlay Mode* caps it, so
-        // six fit and a seventh collides with the button.
+        // 24.3.18c. The field's height was measured on the tablet: the card
+        // starts below the zone ladder and the buttons below cap it. Every
+        // entry now uses the same row height so passing a person or a target
+        // cannot change the rhythm of the scrolling list.
         //
         // The scroll starts on the rider's own row rather than at the top,
         // because being able to see yourself is the one thing this card is
         // for. It is a `LazyColumn` for the same reason `NextUpBlock` became
         // one (11.6.18): the field is bounded at 16 but the rows are cheap and
         // the list must not measure all of them every tick.
-        val yourIndex = standings.all.indexOfFirst { it.isYou }.coerceAtLeast(0)
+        // A crossed rung belongs in the fixed header below. Leaving it in the
+        // scrolling field lets the automatic follow-you scroll hide the very
+        // achievement the rider needs to notice.
+        val passedMilestone = standings.all.firstOrNull { it.milestonePassed }
+        val visibleField = standings.all.filterNot { it.milestonePassed }
+        val nextMilestone = visibleField.firstOrNull {
+            it.kind == com.pelonot.domain.social.GhostKind.Milestone
+        }
+        val yourIndex = visibleField.indexOfFirst { it.isYou }.coerceAtLeast(0)
         val listState = rememberLazyListState()
         LaunchedEffect(standings.yourRank) {
-            // Follows the rider as they pass and are passed, so the card never
-            // ends up showing a stretch of board they are not on.
-            listState.animateScrollToItem(
-                (yourIndex - LiveLeaderboard.WINDOW / 2).coerceAtLeast(0)
-            )
+            // Follow only when the rider leaves the visible field. Starting a
+            // new scroll on every rank change cancels the previous animation
+            // just as rows are changing places and makes some passes lurch.
+            if (listState.layoutInfo.visibleItemsInfo.none { it.index == yourIndex }) {
+                listState.animateScrollToItem((yourIndex - 2).coerceAtLeast(0))
+            }
         }
 
         // The padding is `contentPadding` rather than a modifier, and the cap
@@ -1096,6 +1105,13 @@ private fun LiveLeaderboardCard(
                 modifier = Modifier.padding(start = edge, end = edge, top = edge)
             )
         }
+        passedMilestone?.let { passed ->
+            MilestoneReached(
+                passed = passed,
+                next = nextMilestone,
+                modifier = Modifier.padding(start = edge, end = edge, top = edge)
+            )
+        }
 
         // The banner is paid for out of the board, not out of the buttons
         // below it. 24.3.18c measured this card's ceiling on the AVD — six rows
@@ -1104,30 +1120,29 @@ private fun LiveLeaderboardCard(
         // doing exactly that: the moment fired and pushed *End ride* off the
         // bottom of the screen.
         //
-        // **The ceiling is a height and six is only how it was counted**
-        // (24.3.19a). Since a row that is a person is 64 dp rather than 44, a
-        // board with faces on it shows fewer rows at once and scrolls the rest,
-        // which is what it already did past the sixth. What must not happen is
-        // the card growing, and this is where that is held.
-        val rows = if (passedOwnRide != null) {
-            LiveLeaderboard.WINDOW - 1
-        } else {
-            LiveLeaderboard.WINDOW
-        }
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(edge),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = LEADERBOARD_ROW_HEIGHT * rows + edge * 2)
-        ) {
+        // The tablet has room for one more 64 dp row below the old card. A
+        // celebration takes its own height from that budget, leaving the
+        // buttons in their measured position.
+        val eventCount = (if (passedOwnRide != null) 1 else 0) +
+            (if (passedMilestone != null) 1 else 0)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(edge),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(
+                        max = LEADERBOARD_FIELD_HEIGHT -
+                            LEADERBOARD_EVENT_HEIGHT * eventCount + edge * 2
+                    )
+            ) {
             // No header at all (24.3.17c). It said `4TH OF 6`, and a position
             // over a field that is mostly the rider's own past rides is a
             // category error rather than a small overstatement. Nothing has
             // replaced it: the rows are names and numbers, best first, and
             // that is the whole card.
             items(
-                standings.all,
+                visibleField,
                 // A milestone is one continuing lane: keeping its key as the
                 // rung advances lets its number animate rather than blinking
                 // out and being replaced in the next frame.
@@ -1139,7 +1154,33 @@ private fun LiveLeaderboardCard(
                     }
                 }
             ) { row ->
-                LeaderboardRow(row, standings.metric)
+                LeaderboardRow(
+                    row,
+                    standings.metric,
+                    elapsedSeconds,
+                    modifier = Modifier.animateItem(),
+                    celebrating = passedOwnRide != null
+                )
+            }
+            }
+            val fadeColour = MaterialTheme.colorScheme.surfaceContainerLow
+            if (listState.canScrollBackward) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .background(Brush.verticalGradient(listOf(fadeColour, Color.Transparent)))
+                )
+            }
+            if (listState.canScrollForward) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, fadeColour)))
+                )
             }
         }
     }
@@ -1166,7 +1207,8 @@ private fun PassedYourBest(row: LiveStanding, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.expressiveShapes.pill)
-            .background(accent.copy(alpha = 0.18f))
+            .background(accent.copy(alpha = 0.28f))
+            .border(2.dp, accent.copy(alpha = 0.75f), MaterialTheme.expressiveShapes.pill)
             .padding(
                 horizontal = MaterialTheme.spacing.medium,
                 vertical = MaterialTheme.spacing.small
@@ -1176,8 +1218,8 @@ private fun PassedYourBest(row: LiveStanding, modifier: Modifier = Modifier) {
             .attentionBounce(trigger = row.name)
     ) {
         Text(
-            text = "PAST ${row.name.uppercase()}",
-            style = MaterialTheme.typography.titleSmall,
+            text = "✓ PAST ${row.name.uppercase()}",
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             color = accent,
             maxLines = 1,
@@ -1186,40 +1228,60 @@ private fun PassedYourBest(row: LiveStanding, modifier: Modifier = Modifier) {
     }
 }
 
+/** The latest earned rung stays outside the scrolling field until the next one. */
+@Composable
+private fun MilestoneReached(
+    passed: LiveStanding,
+    next: LiveStanding?,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.expressiveShapes.pill)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+            .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "✓ ${passed.name} REACHED",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+            maxLines = 1
+        )
+        next?.let {
+            Text(
+                text = "${it.name} NEXT",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
+
 
 /**
- * One row's height, and the unit the card's ceiling is counted in (24.3.18c).
- *
- * Named rather than inlined because it appears twice — the row and the six-row
- * cap — and a board that scrolled at five and a half rows would look broken in
- * a way that is hard to attribute.
+ * Every item has one height. The avatar needs 56 dp, so people set the row
+ * size and targets use the same space when they move past them.
  */
-private val LEADERBOARD_ROW_HEIGHT = 44.dp
-
-/**
- * A row that is a **person**, which is taller (24.3.19a).
- *
- * The face has to carry the level ring, and `RiderAvatar` will not draw one
- * below 56 dp — a ring at 32 dp is a hairline and the tab under it is
- * unreadable, which is the one place that component silently declines to draw
- * something it was handed. So the face is 56 dp and the row is what fits it.
- *
- * **The card's ceiling stayed where 24.3.18c measured it**, and that is the
- * decision worth naming: the budget was always a *height* — the card starts
- * below the zone ladder and *View in Overlay Mode* caps it — and it is only the
- * arithmetic that ever counted six. So a board with people on it shows fewer
- * rows at once and scrolls the rest, exactly as it already did past the sixth,
- * rather than the card growing into the button below it. Two people on a
- * household board is the ordinary case, so most boards lose one row and not
- * four.
- */
-private val LEADERBOARD_PERSON_ROW_HEIGHT = 64.dp
+private val LEADERBOARD_ROW_HEIGHT = 64.dp
+private val LEADERBOARD_FIELD_HEIGHT = 328.dp
+private val LEADERBOARD_EVENT_HEIGHT = 44.dp
 
 /** The face on a person's row — the smallest that may carry a level ring. */
 private val LEADERBOARD_FACE = 56.dp
 
 @Composable
-private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
+private fun LeaderboardRow(
+    row: LiveStanding,
+    metric: RaceMetric,
+    elapsedSeconds: Int,
+    modifier: Modifier = Modifier,
+    celebrating: Boolean = false
+) {
     val units = MaterialTheme.units
     // 24.3.17a. Their total, not their distance from yours — on every row,
     // including the rider's own, so there is one number space on the card and
@@ -1247,13 +1309,20 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
     // four times down a board is what 20.2.6a called decoration. The two
     // classes of row look different on purpose.
     val identity = row.identity
+    val isActivityRide = identity != null && !row.isYou && row.name != identity.name
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(
-                if (identity != null) LEADERBOARD_PERSON_ROW_HEIGHT else LEADERBOARD_ROW_HEIGHT
-            ),
+            .clip(MaterialTheme.expressiveShapes.medium)
+            .background(
+                if (celebrating && row.isYou) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+                } else {
+                    Color.Transparent
+                }
+            )
+            .height(LEADERBOARD_ROW_HEIGHT),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (identity != null) {
@@ -1273,6 +1342,8 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             val label = when {
                 row.milestonePassed -> "✓ ${row.name.uppercase()}"
                 row.isGhost -> "○ ${row.name.uppercase()}"
+                isActivityRide -> identity?.name ?: row.name
+                row.kind.isPerson && !row.isYou -> row.name
                 else -> row.name.uppercase()
             }
             AnimatedContent(
@@ -1290,10 +1361,13 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
                 // and it is the same glyph 18.7 already uses for *this row is
                 // not quite what the others are*.
                 text = shown,
-                style = MaterialTheme.typography.titleMedium,
+                fontSize = 15.sp,
+                lineHeight = 17.sp,
                 fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Medium,
                 color = colour,
-                maxLines = 1,
+                // A housemate's name is theirs, not ours to abbreviate. Give
+                // long names a second line within the row before ellipsizing.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             ) }
             // 24.3.6. A competitor whose own ride has run out says so, once,
@@ -1309,7 +1383,14 @@ private fun LeaderboardRow(row: LiveStanding, metric: RaceMetric) {
             // a fact *about* the rider rather than as a headline competing with
             // their name.
             val caption = listOfNotNull(
-                identity?.ftpWatts?.let { "FTP $it W" },
+                if (row.isYou) {
+                    "CURRENT · ${Formatters.duration(elapsedSeconds)}"
+                } else if (isActivityRide) {
+                    listOfNotNull("LAST RIDE", identity?.ftpWatts?.let { "FTP $it W" })
+                        .joinToString(" · ")
+                } else {
+                    identity?.ftpWatts?.let { "FTP $it W" }
+                },
                 if (row.finished) "FINISHED" else null
             )
             if (caption.isNotEmpty()) {
@@ -1887,6 +1968,7 @@ private fun UpNextColumn(
         RivalGap(state.snapshot.rival, Modifier.fillMaxWidth())
         LiveLeaderboardCard(
             standings = state.snapshot.standings,
+            elapsedSeconds = state.snapshot.elapsedSeconds,
             modifier = Modifier.fillMaxWidth(),
             passedOwnRide = state.snapshot.passedOwnRide
         )

@@ -1054,7 +1054,8 @@ class WorkoutRepository(
             excludingWorkoutId = excludingWorkoutId,
             // The guest sentinel, so a guest ride races the whole household
             // rather than silently excluding whichever profile holds id -1.
-            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID
+            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID,
+            provenance = provenance
         ).map {
             RaceCompetitor(
                 workoutId = it.workoutId,
@@ -1072,7 +1073,8 @@ class WorkoutRepository(
         val latest = workoutDao.householdLatestRides(
             classId = classId,
             excludingWorkoutId = excludingWorkoutId,
-            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID
+            excludingUserId = youId ?: GUEST_SENTINEL_USER_ID,
+            provenance = provenance
         ).map {
             RaceCompetitor(
                 workoutId = it.workoutId,

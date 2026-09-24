@@ -707,6 +707,27 @@ class WorkoutDaoTest {
             .map { it.workoutId })
     }
 
+    @Test
+    fun liveRaceUsesOneProvenanceLaneForHousematesAndTheirLatestRides() = runBlocking {
+        workoutDao.insertWorkout(workout("measured", userId = OTHER_USER_ID,
+            outputKj = 20.0, classId = CLASS_ID))
+        samplesFor("measured", measured = true)
+        workoutDao.insertWorkout(workout("modelled", userId = OTHER_USER_ID,
+            outputKj = 12.0, classId = CLASS_ID))
+        samplesFor("modelled", measured = false)
+
+        val modelledBest = settled().householdRivals(
+            CLASS_ID, "mine", USER_ID, PowerProvenance.Modelled
+        )
+        val modelledLatest = settled().householdLatestRides(
+            CLASS_ID, "mine", USER_ID, PowerProvenance.Modelled
+        )
+        assertEquals(listOf("modelled"), modelledBest.map { it.workoutId })
+        assertEquals(listOf("modelled"), modelledLatest.map { it.workoutId })
+        assertEquals(listOf("measured"), settled().householdRivals(CLASS_ID, "mine", USER_ID)
+            .map { it.workoutId })
+    }
+
     /** 24.2.3's opt-out gates this too, through the same column. */
     @Test
     fun theRivalQueryRespectsTheHouseholdOptOut() = runBlocking {

@@ -267,8 +267,14 @@ The owner's new report is **24.3.18d.2**: passing a milestone still goes unnotic
 despite the 20 September fix. The code now holds a projected target at the next
 unearned rung, so it cannot move past 250 before 250 has been ridden; the rider
 report remains open for a device/version, riding-distance visibility and target
-roster check. **11.10 is now observed too:** Just Ride offers time, distance and open-ended
-rides, with durable goals and ordinary automatic finalisation. Migration and
+roster check. A separate tablet preview with six temporary riders and fifteen
+rides exposed and fixed a provenance mismatch that excluded household riders
+from simulated live races. Their best and latest rides, personal history and
+generated targets now load together. The live list has equal-height entries,
+room for another row, conditional edge fades, smoother rank transitions,
+long-name handling and elapsed `CURRENT` time under `YOU`. The 250 kJ pass on
+the bike and the overlay still need observation. **11.10 is now observed too:**
+Just Ride offers time, distance and open-ended rides, with durable goals and ordinary automatic finalisation. Migration and
 service checks pass. The owner explicitly requested a doughnut/label overlap
 check: H1 Recovery at 100% and H4 Threshold at 130% are clear, and the ring now
 occupies the value row above a separate label row. **21.9.1** now reads optional
