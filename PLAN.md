@@ -264,7 +264,9 @@ text were checked; the preview used a separate app ID and preserved the release
 app's data. **1,007 JVM tests, the debug build and 34 migration/service device tests pass.**
 
 The owner's new report is **24.3.18d.2**: passing a milestone still goes unnoticed
-despite the 20 September fix. It remains open for a device/version and target
+despite the 20 September fix. The code now holds a projected target at the next
+unearned rung, so it cannot move past 250 before 250 has been ridden; the rider
+report remains open for a device/version, riding-distance visibility and target
 roster check. **11.10 is now observed too:** Just Ride offers time, distance and open-ended
 rides, with durable goals and ordinary automatic finalisation. Migration and
 service checks pass. The owner explicitly requested a doughnut/label overlap

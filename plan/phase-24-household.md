@@ -1052,6 +1052,16 @@ and no amount of social plumbing fixes that.
       competitor and does not render the full screen's passed row. These are
       concrete reproduction leads; the installed bike version is still unknown.
 
+      **Code fix, 24 September:** the projected target is now capped at the
+      next rung above actual accumulated output. A projection can no longer
+      advance 250 to 300 before 250 has been ridden; once 250 is reached, it is
+      retained as the passed row beside 300 until the next actual milestone.
+      This closes the code-level cause, not the rider report: the bike's
+      installed version, riding-distance visibility and complete target roster
+      still need the requested device observation. The overlay has no live
+      leaderboard renderer in the current source, so its passed-row check also
+      remains open with 24.3.16.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and

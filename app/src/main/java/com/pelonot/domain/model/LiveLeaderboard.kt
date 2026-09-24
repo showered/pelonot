@@ -73,10 +73,9 @@ data class LiveLeaderboard(
      * A round number that stays ahead of the rider (24.3.18b).
      *
      * It is a *pace* rather than a trace: the rung is chosen at each second
-     * from the greater of [floor] and the rider's own projected finish, so the
-     * ladder rises as they do. The row's own name changes with the rung, which
-     * is the point — passing 300 and finding 350 in front of you is the
-     * feature, not a glitch.
+     * from the rider's projected finish, but it cannot move beyond the next
+     * rung they have actually earned. Otherwise a projection can replace 250
+     * with 300 before the rider has accumulated 250, leaving no pass to show.
      *
      * @property floor the best total already on the board, so the first rung
      *   is above the field rather than above nothing.
@@ -100,7 +99,9 @@ data class LiveLeaderboard(
             } else {
                 0.0
             }
-            return GhostRider.nextMilestone(maxOf(floor, projected, yourValue), stepKj)
+            val projectedTarget = GhostRider.nextMilestone(maxOf(floor, projected), stepKj)
+            val earnedTarget = GhostRider.nextMilestone(maxOf(floor, yourValue), stepKj)
+            return minOf(projectedTarget, earnedTarget)
         }
 
         /** The latest rung the rider has actually crossed, if there is one. */
