@@ -926,7 +926,7 @@ three of the four renamed classes actually said.
 
 ### 23.2.9 Put a rider's class record on the class card
 
-- [ ] **23.2.9** Make the class library feel like a set of rides worth choosing
+- [x] **23.2.9** Make the class library feel like a set of rides worth choosing
       by showing a concise, truthful best score for each class (and its rank
       where there is a real comparison). Prefer the household's local best so
       the library works offline; use the existing cross-bike leaderboard only
@@ -938,3 +938,13 @@ three of the four renamed classes actually said.
       and duration only. The design direction is open: test a compact record or
       ranking treatment before considering generated photography, which could
       add visual weight without helping the rider choose.
+
+      **Observed 24 September:** cards now show Your best or Bike best, with an
+      explicitly all-time bike rank only when another rider supplies a real
+      comparison. One Room flow groups completed measured rides by class and
+      rider, observes profile visibility changes, and makes no cloud requests.
+      No samples are scanned, so condensed rides retain their records. The
+      SQLite test covers personal maxima, guest/free/unfinished/modelled/unknown
+      exclusions and opting out; four JVM tests cover empty boards and ties.
+      The three-column tablet grid was checked in dark mode at 100% and light
+      mode at 130%, with ranked, lone-rider and empty class cards.

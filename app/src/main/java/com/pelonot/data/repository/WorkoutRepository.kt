@@ -501,6 +501,15 @@ class WorkoutRepository(
         )
     }
 
+    fun observeClassRecords(youId: Int?): Flow<Map<String, com.pelonot.domain.model.ClassRecord>> =
+        workoutDao.observeLibraryRecords().map { rows ->
+            rows.groupBy { it.classId }.mapValues { (_, records) ->
+                com.pelonot.domain.model.ClassRecord.from(
+                    records.associate { it.userId to it.bestOutputKj }, youId
+                )!!
+            }
+        }
+
     /**
      * The household's board for one class (24.1).
      *

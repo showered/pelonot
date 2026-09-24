@@ -60,7 +60,8 @@ fun ClassLibraryScreen(
     classes: List<ClassPlan>,
     onClassSelected: (ClassPlan) -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    records: Map<String, com.pelonot.domain.model.ClassRecord> = emptyMap()
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -184,6 +185,7 @@ fun ClassLibraryScreen(
                                     row.forEach { plan ->
                                         ClassCard(
                                             plan = plan,
+                                            record = records[plan.id],
                                             onClick = { onClassSelected(plan) },
                                             modifier = Modifier.weight(1f)
                                         )
@@ -227,7 +229,8 @@ private fun EmptyLibraryMessage(hasFilter: Boolean, onClearFilters: () -> Unit) 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ClassCard(plan: ClassPlan, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ClassCard(plan: ClassPlan, onClick: () -> Unit, modifier: Modifier = Modifier,
+    record: com.pelonot.domain.model.ClassRecord? = null) {
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -259,6 +262,21 @@ private fun ClassCard(plan: ClassPlan, onClick: () -> Unit, modifier: Modifier =
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (record != null) {
+                    Spacer(Modifier.size(MaterialTheme.spacing.small))
+                    Text(
+                        text = "${if (record.isYours) "Your best" else "Bike best"} · ${kotlin.math.round(record.outputKj).toInt()} kJ",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    record.rank?.let { rank ->
+                        Text(
+                            text = "#$rank of ${record.riders} on this bike · all time",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 if (plan.isMalformed) {
                     // Surfaced rather than silently rendering an empty class.
                     Text(

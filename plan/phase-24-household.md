@@ -1027,6 +1027,23 @@ and no amount of social plumbing fixes that.
       case; the active milestone keeps a stable Compose key so its label
       cross-fades and scales rather than blinking out.
 
+- [ ] **24.3.18d.2 Recheck milestone passes and the full target mix on the
+      bike.** **Owner report, 24 September 2026:** on today's ride, passing
+      `250` still made it disappear and become `300` without a noticeable
+      moment. The owner remembers the earlier work on this and on targets
+      such as “30 day avg”, alongside real friends, and finds the live board
+      unengaging. **24.3.18d.1 is already marked done; this is contrary rider
+      evidence, not a new request for the same invisible label change.**
+      Check the installed version against the current implementation, then
+      reproduce 250 → 300 on the ride screen and every overlay layout. Make
+      the pass perceptible at riding distance and preserve the achievement
+      long enough to notice before attention moves to the next target. Check
+      which recent averages, personal bests, generated targets and real riders
+      actually load for this rider, including restored history and the
+      measured-power gates. Never invent opponents or bypass consent to make
+      the board busier. Record both the target roster and visible transition;
+      a unit test alone cannot close this snag.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and

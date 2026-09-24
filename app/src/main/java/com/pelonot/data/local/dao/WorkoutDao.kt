@@ -10,6 +10,13 @@ import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.coroutines.flow.Flow
 
+/** One measured personal best per class, for the offline library cards. */
+data class LibraryRecordRow(
+    val classId: String,
+    val userId: Int,
+    val bestOutputKj: Double
+)
+
 /** One rider's week on the dashboard's household panel — see [WorkoutDao.householdRecent]. */
 data class HouseholdRiderRow(
     val localUserId: Int,
@@ -523,6 +530,18 @@ interface WorkoutDao {
 
     @Query("SELECT MAX(total_output_kj) FROM workouts WHERE user_id = :userId AND is_complete = 1")
     suspend fun getAllTimeBestOutput(userId: Int): Double?
+
+    @Query(
+        """
+        SELECT w.class_id AS classId, w.user_id AS userId,
+               MAX(w.total_output_kj) AS bestOutputKj
+        FROM workouts w JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE w.class_id IS NOT NULL AND w.is_complete = 1
+          AND w.power_provenance = 'Measured' AND p.household_visible = 1
+        GROUP BY w.class_id, w.user_id
+        """
+    )
+    fun observeLibraryRecords(): Flow<List<LibraryRecordRow>>
 
     // ── Household leaderboard (24.1) ────────────────────────────────
     // Everyone with a profile on this tablet, ranked on one class. No network,

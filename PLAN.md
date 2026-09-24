@@ -253,7 +253,21 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 24 September 2026: a simpler avatar power badge
+### Latest session — 24 September 2026: ride progress and class records
+
+**21.8.1 and 23.2.9 are built and observed.** The live heart-rate ring fills
+against the class duration, retaining gaps, and uses elapsed time for free rides.
+Class cards show local measured personal/bike records and an explicitly all-time
+rank where there is a comparison. The tablet preview caught and fixed the ring
+crowding three-digit heart rates. Pause/completion, dark/light themes and larger
+text were checked; the preview used a separate app ID and preserved the release
+app's data. **1,000 JVM tests, the debug build and the focused SQLite test pass.**
+
+The owner's new report is **24.3.18d.2**: passing a milestone still goes unnoticed
+despite the 20 September fix. It remains open for a device/version and target
+roster check. **11.10** and **21.9.1** remain the next new feature items.
+
+### Earlier today — a simpler avatar power badge
 
 **20.9** replaces the cramped `FTP 215 W` pill with a lightning icon, a larger
 number and a green seal for ride-confirmed FTP. The capsule is 60% opaque,
@@ -484,6 +498,13 @@ records re-fire at their new values.
 
 
 ### What to do next, in order
+
+**24 September additions:** finish **21.8.1** (live heart-rate-zone progress),
+**23.2.9** (class-card records), **11.10** (Just Ride goals) and **21.9.1**
+(optional strap battery). The owner's follow-up ride report is **24.3.18d.2**:
+recheck the unnoticed 250 → 300 milestone transition and the complete target
+roster, despite the earlier item being marked done.
+
 
 **Release preparation now has a command:** read `RELEASE.md`, supply the
 permanent signing configuration locally, and rehearse **30.7.3–30.7.4** on an

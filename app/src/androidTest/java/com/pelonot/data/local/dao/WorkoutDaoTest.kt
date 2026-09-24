@@ -73,6 +73,31 @@ class WorkoutDaoTest {
         )
     }
 
+    @Test
+    fun libraryRecordsKeepOnlyVisibleMeasuredCompletedPersonalBests(): Unit = runBlocking {
+        val measured = workout("best", classId = CLASS_ID, outputKj = 200.0)
+            .copy(powerProvenance = PowerProvenance.Measured)
+        workoutDao.insertWorkout(measured)
+        workoutDao.insertWorkout(measured.copy(id = "older", totalOutputKj = 150.0))
+        workoutDao.insertWorkout(measured.copy(id = "modelled", totalOutputKj = 900.0,
+            powerProvenance = PowerProvenance.Modelled))
+        workoutDao.insertWorkout(measured.copy(id = "unknown", totalOutputKj = 900.0,
+            powerProvenance = null))
+        workoutDao.insertWorkout(measured.copy(id = "unfinished", totalOutputKj = 900.0,
+            isComplete = false))
+        workoutDao.insertWorkout(measured.copy(id = "guest", userId = null, totalOutputKj = 900.0))
+        workoutDao.insertWorkout(measured.copy(id = "free", classId = null, totalOutputKj = 900.0))
+        workoutDao.insertWorkout(measured.copy(id = "other", userId = OTHER_USER_ID,
+            totalOutputKj = 300.0, metricsDetailSec = 10))
+        assertEquals(
+            setOf(LibraryRecordRow(CLASS_ID, USER_ID, 200.0), LibraryRecordRow(CLASS_ID, OTHER_USER_ID, 300.0)),
+            workoutDao.observeLibraryRecords().first().toSet()
+        )
+        userDao.updateUser(userDao.getUserById(OTHER_USER_ID)!!.copy(householdVisible = false))
+        assertEquals(listOf(LibraryRecordRow(CLASS_ID, USER_ID, 200.0)),
+            workoutDao.observeLibraryRecords().first())
+    }
+
     @After
     fun teardown() = database.close()
 

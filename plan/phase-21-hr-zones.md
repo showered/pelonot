@@ -1001,7 +1001,7 @@ how a working feature reads as broken.
 
 ### 21.8 The zones fill the ride, not the circle
 
-- [ ] **21.8.1** Draw a live heart-rate-zone doughnut whose circumference
+- [x] **21.8.1** Draw a live heart-rate-zone doughnut whose circumference
       represents the whole ride duration. Each second contributes only its
       corresponding fraction of the circumference, coloured by the rider's
       heart-rate zone; the unelapsed part stays visibly unfilled. Zone time
@@ -1014,6 +1014,14 @@ how a working feature reads as broken.
       **Owner request, 24 September 2026.** This is a cumulative distribution
       over ride progress, not a conventional chart of percentages that always
       sum to 100.
+
+      **Observed 24 September:** the service counts valid recorded seconds,
+      restores them from the interrupted ride's samples, and uses that ride's
+      saved maximum. The tablet preview showed a partial ring, an unchanged
+      ring through a manual pause, and a full ring at 60 seconds; SQLite held
+      exactly 60 samples at seconds 1–60. A free ride filled against elapsed
+      time. Reserved width keeps three-digit BPM clear of the ring. Four JVM
+      tests cover the 1/30 example, completion, gaps and duplicate seconds.
 
 ### 21.9 Heart-rate strap battery
 

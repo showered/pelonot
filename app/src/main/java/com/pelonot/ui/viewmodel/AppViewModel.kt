@@ -91,6 +91,7 @@ data class AppUiState(
     val settings: AppSettings = AppSettings(),
     val profiles: List<UserEntity> = emptyList(),
     val classes: List<ClassPlan> = emptyList(),
+    val classRecords: Map<String, com.pelonot.domain.model.ClassRecord> = emptyMap(),
     val dashboardStats: DashboardStats = DashboardStats(),
     /**
      * Who else on this bike has ridden in the last 30 days (24.2, 22.5.4). Empty for a
@@ -617,17 +618,23 @@ class AppViewModel(
         val alerts: List<StoredAlert>
     )
 
+    private val library = combine(
+        classRepository.allPlans,
+        settingsRepository.selectedProfileId.flatMapLatest { workoutRepository.observeClassRecords(it) }
+    ) { plans, records -> plans to records }
+
     val uiState: StateFlow<AppUiState> = combine(
         settingsRepository.settings,
         userRepository.allUsers,
-        classRepository.allPlans,
+        library,
         combine(dashboard, recommendation) { dash, rec -> dash to rec },
         rideStatus
-    ) { settings, profiles, classes, (dashboard, recommendation), (recoverable, active, updateOffer) ->
+    ) { settings, profiles, (classes, records), (dashboard, recommendation), (recoverable, active, updateOffer) ->
         AppUiState(
             settings = settings,
             profiles = profiles,
             classes = classes,
+            classRecords = records,
             dashboardStats = dashboard.stats,
             householdRecent = dashboard.household,
             householdActivity = dashboard.householdActivity,

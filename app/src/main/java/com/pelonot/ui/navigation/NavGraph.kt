@@ -413,6 +413,7 @@ fun PelonotNavGraph(
         composable(Destination.ClassLibrary.route) {
             ClassLibraryScreen(
                 classes = uiState.classes,
+                records = uiState.classRecords,
                 onClassSelected = { plan ->
                     navController.navigate(Destination.ClassDetail.of(plan.id))
                 },
