@@ -266,7 +266,11 @@ Compose implements the live badge. Confirmed and unconfirmed fixtures were
 checked in both themes at normal and 130% text on the tablet AVD, plus one-rider
 and six-rider selectors. The temporary review activity was removed, and stored
 profiles and rides were preserved. **992 JVM tests and the debug build pass.**
-Docs and visual evidence updated; commit and push only, no release.
+Docs and visual evidence updated. At the owner's follow-up request,
+**1.0.4 (version code 5)** was signed with the existing release key and published
+on GitHub. An in-place emulator update from code 4 succeeded, preserving the
+existing profile. The minified release build, 992 JVM tests and five publishing
+tool tests pass; the update manifest advertises the verified APK checksum.
 
 ### Previous session — 29 August 2026 (seventy-third sitting): three guesses about where the cost was, and all three wrong
 

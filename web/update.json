@@ -1,7 +1,7 @@
 {
-  "version_code": 4,
-  "version_name": "1.0.3",
-  "notes": "See recent rides from your household and shared Pelonot riders on the dashboard. Activity sharing is on by default and can be turned off in your profile.",
-  "url": "https://github.com/showered/pelonot/releases/download/v1.0.3/pelonot-1.0.3.apk",
-  "sha256": "671be42891ddcba3b8a4a8d1027f26ad59f2c2de5d86643a695872cf4c85c945"
+  "version_code": 5,
+  "version_name": "1.0.4",
+  "notes": "Cleaner rider avatars with translucent power badges and a green tick for ride-confirmed FTP. Removes duplicate FTP text from the profile selector and adds earned riding achievements.",
+  "url": "https://github.com/showered/pelonot/releases/download/v1.0.4/pelonot-1.0.4.apk",
+  "sha256": "7d06772f45db583598c226af4c1d77d7539fb491501af7d7321338babe03ee4d"
 }
