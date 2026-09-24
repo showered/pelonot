@@ -38,6 +38,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class RideFacts(
+    @SerialName("goal_spec") val goalSpec: String? = null,
     /** `workouts.ftp_watts` (7.8) — null means the ride never recorded one. */
     @SerialName("ftp") val ftpWatts: Int? = null,
     /** `workouts.max_hr_bpm` (21.2.3). Null is the same claim as above. */
@@ -78,6 +79,7 @@ data class RideFacts(
         fun of(workout: WorkoutEntity): RideFacts? = RideFacts(
             ftpWatts = workout.ftpWatts,
             maxHrBpm = workout.maxHrBpm,
+            goalSpec = workout.goalSpec,
             maxHrSource = workout.maxHrSource?.name,
             resumeCount = workout.resumeCount,
             interruptedSec = workout.interruptedSec,

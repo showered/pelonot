@@ -31,11 +31,7 @@ fun LiveHeartRateRing(
 ) {
     val fractions = zones.fractions(elapsedSec, durationSec)
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
-    val description = "Heart-rate zones, " +
-        (durationSec?.let { "$elapsedSec of $it seconds" } ?: "$elapsedSec seconds elapsed") +
-        HeartRateZone.entries.joinToString( prefix = ". ") {
-            "H${it.number}: ${zones.secondsByZone[it] ?: 0} seconds"
-        }
+    val description = heartRateZoneProgressDescription(zones, elapsedSec, durationSec)
     Box(modifier.size(80.dp).semantics { contentDescription = description }, Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 8.dp.toPx()
@@ -52,3 +48,10 @@ fun LiveHeartRateRing(
         BeatingHeart(bpm = bpm, color = accent, size = 40.dp)
     }
 }
+
+fun heartRateZoneProgressDescription(zones: LiveHeartRateZones, elapsedSec: Int, durationSec: Int?): String =
+    "Heart-rate zones, " +
+        (durationSec?.let { "$elapsedSec of $it seconds" } ?: "$elapsedSec seconds elapsed") +
+        HeartRateZone.entries.joinToString(prefix = ". ") {
+            "H${it.number}: ${zones.secondsByZone[it] ?: 0} seconds"
+        }

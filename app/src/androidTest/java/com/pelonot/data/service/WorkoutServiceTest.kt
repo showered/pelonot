@@ -220,6 +220,41 @@ class WorkoutServiceTest {
         assertNull("stopping with no ride must not invent one", service.currentSession.value)
     }
 
+    @Test
+    fun timeGoalPausesThenFinalisesWithItsGoal(): Unit = runBlocking {
+        service.startWorkout(null, null, RideIntent.DEFAULT, FTP,
+            goal = com.pelonot.domain.model.RideGoal.Time(4))
+        val id = service.currentSession.value!!.workoutId
+        startedWorkoutId = id
+        awaitElapsedAtLeast(1)
+        service.pauseWorkout()
+        val pausedAt = service.rideSnapshot.value.elapsedSeconds
+        Thread.sleep(4_500)
+        assertEquals(WorkoutState.Paused, service.workoutState.value)
+        assertEquals(pausedAt, service.rideSnapshot.value.elapsedSeconds)
+        service.resumeWorkout()
+        val row = awaitCondition("time goal completion") {
+            ServiceLocator.workoutRepository.getWorkout(id)?.takeIf { it.isComplete }
+        }!!
+        assertEquals("time:4", row.goalSpec)
+        assertTrue(row.durationSec >= 4)
+        assertEquals(WorkoutState.Completed, service.workoutState.value)
+    }
+
+    @Test
+    fun distanceGoalFinalisesUsingRecordedDistance(): Unit = runBlocking {
+        service.startWorkout(null, null, RideIntent.DEFAULT, FTP,
+            goal = com.pelonot.domain.model.RideGoal.Distance(0.005))
+        val id = service.currentSession.value!!.workoutId
+        startedWorkoutId = id
+        val row = awaitCondition("distance goal completion") {
+            ServiceLocator.workoutRepository.getWorkout(id)?.takeIf { it.isComplete }
+        }!!
+        assertEquals("distance:0.005", row.goalSpec)
+        assertTrue(row.totalDistanceKm >= 0.005)
+        assertTrue(ServiceLocator.workoutRepository.getMetrics(id).isNotEmpty())
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     private fun startRide() {

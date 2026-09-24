@@ -41,6 +41,9 @@ data class WorkoutEntity(
     @ColumnInfo(name = "class_id")
     val classId: String? = null,
 
+    @ColumnInfo(name = "goal_spec")
+    val goalSpec: String? = null,
+
     @ColumnInfo(name = "duration_sec")
     val durationSec: Int,
 

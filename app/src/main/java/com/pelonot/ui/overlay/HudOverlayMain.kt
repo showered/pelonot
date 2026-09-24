@@ -1,5 +1,6 @@
 package com.pelonot.ui.overlay
 
+import com.pelonot.core.progressLabel
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -1007,13 +1008,23 @@ private fun CueBand(cue: RideCue, accent: Color, animate: Boolean) {
 @Composable
 private fun ClockBlock(snapshot: RideSnapshot, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
-        Text(
-            text = snapshot.classTitle?.uppercase() ?: "JUST RIDE",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (snapshot.goal != null && snapshot.classTitle == null) {
+            ShrinkToFitText(
+                text = snapshot.goal.progressLabel(snapshot.elapsedSeconds, snapshot.distanceKm, MaterialTheme.units),
+                fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                minFontSize = 8.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            Text(
+                text = snapshot.classTitle?.uppercase() ?: "JUST RIDE",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Text(
             text = Formatters.duration(snapshot.elapsedSeconds),
             fontSize = 40.sp,

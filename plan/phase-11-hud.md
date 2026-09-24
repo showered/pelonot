@@ -1735,7 +1735,7 @@ and no amount of getting 11.7 right produces it.
 
 ### 11.10 Choose a Just Ride goal
 
-- [ ] **11.10** Before a Just Ride starts, offer three clear choices: ride for
+- [x] **11.10** Before a Just Ride starts, offer three clear choices: ride for
       a chosen time (common lengths such as 30 minutes), ride for a chosen
       distance (such as 10 miles, respecting the rider's unit setting), or
       leave the ride open-ended. Keep the open-ended choice one tap away and
@@ -1747,3 +1747,16 @@ and no amount of getting 11.7 right produces it.
       **Owner request, 24 September 2026.** The current Just Ride path starts
       without a goal. This needs an explicit pre-ride selection and service
       semantics, not just a timer drawn on screen.
+
+      **Observed 24 September:** Just Ride opens a time/distance/open-ended
+      picker; choosing open-ended starts the usual countdown in one tap. Time
+      options are 15/20/30/45/60 minutes; distance options are 5/10/15/20/30 in
+      the rider's units, persisted in km. The service uses active elapsed time
+      or its recorded distance and the ordinary finalisation path. Goals live
+      on the session and workout row (migration 24 → 25), survive interrupted
+      resume and travel in cloud ride facts. The live screen and expanded
+      overlay show progress; the HR ring uses a time goal as its horizon.
+      A real 30-minute selection/countdown/progress flow and the distance picker
+      at 130% text were checked on the tablet. Service tests observed pause
+      excluding 4.5 seconds, automatic time completion and recorded-distance
+      completion; the migration preserves older rides with no goal.

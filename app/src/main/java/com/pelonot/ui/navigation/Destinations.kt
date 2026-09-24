@@ -29,18 +29,19 @@ sealed class Destination(val route: String) {
 
     data object Ride : Destination(
         "ride?$ARG_CLASS_ID={$ARG_CLASS_ID}&$ARG_INTENT_ID={$ARG_INTENT_ID}" +
-            "&$ARG_RESUME_ID={$ARG_RESUME_ID}&$ARG_RIVAL_ID={$ARG_RIVAL_ID}"
+            "&$ARG_RESUME_ID={$ARG_RESUME_ID}&$ARG_RIVAL_ID={$ARG_RIVAL_ID}&$ARG_GOAL={$ARG_GOAL}"
     ) {
         /**
          * @param rivalWorkoutId the ride being raced live (24.3.3), chosen on
          *   the class detail screen before the ride starts. Null is the
          *   ordinary case and means no ghost.
          */
-        fun of(classId: String?, intentId: String, rivalWorkoutId: String? = null) = buildString {
+        fun of(classId: String?, intentId: String, rivalWorkoutId: String? = null, goalSpec: String? = null) = buildString {
             append("ride?")
             append("$ARG_CLASS_ID=${classId?.let(Uri::encode).orEmpty()}")
             append("&$ARG_INTENT_ID=$intentId")
             append("&$ARG_RIVAL_ID=${rivalWorkoutId?.let(Uri::encode).orEmpty()}")
+            append("&$ARG_GOAL=${goalSpec?.let(Uri::encode).orEmpty()}")
         }
 
         /**
@@ -121,6 +122,7 @@ sealed class Destination(val route: String) {
     }
 
     companion object {
+        const val ARG_GOAL = "goal"
         const val ARG_CLASS_ID = "classId"
         const val ARG_INTENT_ID = "intentId"
         const val ARG_WORKOUT_ID = "workoutId"

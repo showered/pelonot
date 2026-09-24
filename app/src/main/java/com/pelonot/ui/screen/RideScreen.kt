@@ -1,5 +1,8 @@
 package com.pelonot.ui.screen
 
+import com.pelonot.domain.model.RideGoal
+import com.pelonot.core.progressLabel
+import com.pelonot.ui.components.heartRateZoneProgressDescription
 import com.pelonot.ui.components.LiveHeartRateRing
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -150,6 +153,7 @@ fun RideScreen(
     resumeWorkoutId: String? = null,
     /** The ride being raced live, chosen before the class started (24.3.3). */
     rivalWorkoutId: String? = null,
+    goal: RideGoal? = null,
     onEndRide: (workoutId: String?) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RideViewModel = viewModel()
@@ -242,7 +246,8 @@ fun RideScreen(
                 classId = plan?.id,
                 intent = intent,
                 ftpWatts = ftp,
-                rivalWorkoutId = rivalWorkoutId
+                rivalWorkoutId = rivalWorkoutId,
+                goal = goal
             )
         }
     }
@@ -777,6 +782,7 @@ private fun EffortColumn(
                     state.isPaused -> "PAUSED"
                     interval.hasClass ->
                         "${Formatters.duration(interval.classRemainingSec)} REMAINING"
+                    snapshot.goal != null -> snapshot.goal.progressLabel(snapshot.elapsedSeconds, snapshot.distanceKm, MaterialTheme.units)
                     else -> "ELAPSED"
                 },
                 style = MaterialTheme.typography.labelMedium,
@@ -1650,22 +1656,15 @@ private fun RideMetricTile(
             // Behind the number rather than beside it: the tile's right-hand
             // half is empty, and a heart the rider catches in peripheral vision
             // must not push the digits around when it swells.
-            if (heartRateProgress != null) {
-                LiveHeartRateRing(
-                    zones = heartRateProgress.heartRateZones,
-                    elapsedSec = heartRateProgress.elapsedSeconds,
-                    durationSec = heartRateProgress.intervals.lastOrNull()?.endSec,
-                    bpm = pulseBpm,
-                    accent = accent,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
-            } else {
+            if (heartRateProgress == null) {
                 BeatingHeart(
                     bpm = pulseBpm,
                     color = accent,
                     modifier = Modifier.align(Alignment.CenterEnd)
                 )
             }
+            val ringDuration = heartRateProgress?.intervals?.lastOrNull()?.endSec
+                ?: (heartRateProgress?.goal as? RideGoal.Time)?.seconds
 
             MetricReadout(
                 label = label,
@@ -1676,7 +1675,20 @@ private fun RideMetricTile(
                 rawValue = rawValue,
                 // Sized for a 21-inch screen read from a metre away, mid-effort.
                 valueSize = valueSize,
-                valueEndPadding = if (heartRateProgress != null) 88.dp else 0.dp,
+                valueAccessory = if (heartRateProgress != null) {
+                    {
+                        LiveHeartRateRing(
+                            zones = heartRateProgress.heartRateZones,
+                            elapsedSec = heartRateProgress.elapsedSeconds,
+                            durationSec = ringDuration,
+                            bpm = pulseBpm,
+                            accent = accent
+                        )
+                    }
+                } else null,
+                accessoryDescription = heartRateProgress?.let {
+                    heartRateZoneProgressDescription(it.heartRateZones, it.elapsedSeconds, ringDuration)
+                },
                 // 11.6.4. There is room for the numbers here, and this is the
                 // screen a rider reads rather than glances at.
                 showTargetRange = true,

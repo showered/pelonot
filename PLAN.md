@@ -261,11 +261,15 @@ Class cards show local measured personal/bike records and an explicitly all-time
 rank where there is a comparison. The tablet preview caught and fixed the ring
 crowding three-digit heart rates. Pause/completion, dark/light themes and larger
 text were checked; the preview used a separate app ID and preserved the release
-app's data. **1,000 JVM tests, the debug build and the focused SQLite test pass.**
+app's data. **1,004 JVM tests, the debug build and 34 migration/service device tests pass.**
 
 The owner's new report is **24.3.18d.2**: passing a milestone still goes unnoticed
 despite the 20 September fix. It remains open for a device/version and target
-roster check. **11.10** and **21.9.1** remain the next new feature items.
+roster check. **11.10 is now observed too:** Just Ride offers time, distance and open-ended
+rides, with durable goals and ordinary automatic finalisation. Migration and
+service checks pass. The owner explicitly requested a doughnut/label overlap
+check: H1 Recovery at 100% and H4 Threshold at 130% are clear, and the ring now
+occupies the value row above a separate label row. **21.9.1** remains next.
 
 ### Earlier today — a simpler avatar power badge
 

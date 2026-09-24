@@ -277,6 +277,7 @@ data class WorkoutDto(
         intentModifier = intentModifier,
         ftpWatts = metrics.ride?.ftpWatts,
         maxHrBpm = metrics.ride?.maxHrBpm,
+        goalSpec = metrics.ride?.goalSpec,
         // 21.4.2c, resolved the same way `power_provenance` is two lines down:
         // a word this build does not know becomes null, which is the one value
         // every reader already handles.

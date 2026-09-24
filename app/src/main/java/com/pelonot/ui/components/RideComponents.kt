@@ -356,7 +356,8 @@ fun MetricReadout(
     rawValue: Double = 0.0,
     valueSize: androidx.compose.ui.unit.TextUnit = 56.sp,
     compact: Boolean = false,
-    valueEndPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    valueAccessory: (@Composable () -> Unit)? = null,
+    accessoryDescription: String? = null,
     showTargetRange: Boolean = false,
     icon: ImageVector? = null,
     /**
@@ -392,6 +393,7 @@ fun MetricReadout(
         modifier = modifier.clearAndSetSemantics {
             contentDescription = buildString {
                 append("$label $value $unit")
+                accessoryDescription?.let { append(". $it") }
                 // The band is spoken whenever there is one, on both surfaces:
                 // the reason for hiding it on the strip is width, and a screen
                 // reader has none.
@@ -407,40 +409,51 @@ fun MetricReadout(
         },
         horizontalAlignment = Alignment.Start
     ) {
-        Row(Modifier.padding(end = valueEndPadding), verticalAlignment = Alignment.Bottom) {
-            // The number is the weighted one, so the **unit is measured first
-            // and keeps its width**. It was the other way round, and the way a
-            // `Row` measures meant a three-digit value took what it wanted and
-            // the label got the remainder: on the overlay over a film, `100
-            // RPM / 296 W / 188 BPM` rendered as `100 RP`, `296` with the W
-            // gone, and `188 BP`. That is the clipping the owner reported in
-            // 24.3.16 — where it was put down to the race chip crowding the
-            // band, and the chip was removed. The chip was not the cause. This
-            // tile clips on its own as soon as the rider is working.
-            //
-            // Sized against the widest value the tile can hold rather than the
-            // value in it, so a readout changing twice a second is drawn at one
-            // size instead of pulsing between two as it crosses 99.
-            ShrinkToFitText(
-                text = value,
-                measureAgainst = "0".repeat(maxOf(value.length, WIDEST_METRIC_DIGITS)),
-                fontSize = valueSize,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-2).sp,
-                color = valueColor,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = unit,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                // "BPM" was stacking into a vertical B/P/M in a narrow tile.
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.padding(bottom = valueSize.value.dp * 0.12f)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = if (valueAccessory != null) Modifier.weight(1f) else Modifier,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                // The number is the weighted one, so the **unit is measured first
+                // and keeps its width**. It was the other way round, and the way a
+                // `Row` measures meant a three-digit value took what it wanted and
+                // the label got the remainder: on the overlay over a film, `100
+                // RPM / 296 W / 188 BPM` rendered as `100 RP`, `296` with the W
+                // gone, and `188 BP`. That is the clipping the owner reported in
+                // 24.3.16 — where it was put down to the race chip crowding the
+                // band, and the chip was removed. The chip was not the cause. This
+                // tile clips on its own as soon as the rider is working.
+                //
+                // Sized against the widest value the tile can hold rather than the
+                // value in it, so a readout changing twice a second is drawn at one
+                // size instead of pulsing between two as it crosses 99.
+                ShrinkToFitText(
+                    text = value,
+                    measureAgainst = "0".repeat(maxOf(value.length, WIDEST_METRIC_DIGITS)),
+                    fontSize = valueSize,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-2).sp,
+                    color = valueColor,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = unit,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // "BPM" was stacking into a vertical B/P/M in a narrow tile.
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(bottom = valueSize.value.dp * 0.12f)
+                )
+            }
+
+            if (valueAccessory != null) {
+                Spacer(Modifier.width(8.dp))
+                valueAccessory()
+            }
         }
+        if (valueAccessory != null) Spacer(Modifier.height(4.dp))
 
         // No gauge without a target. An empty track under a free ride's numbers
         // is a gauge that measures nothing, which is worse than no gauge.

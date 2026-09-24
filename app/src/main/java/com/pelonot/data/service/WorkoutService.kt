@@ -52,6 +52,7 @@ import com.pelonot.domain.social.RaceIdentity
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
+import com.pelonot.domain.model.RideGoal
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RaceMetric
 import com.pelonot.domain.model.PowerProvenance
@@ -287,7 +288,8 @@ class WorkoutService : Service() {
                 classId = intent.getStringExtra(EXTRA_CLASS_ID),
                 intent = RideIntent.fromId(intent.getStringExtra(EXTRA_INTENT_ID)),
                 ftpWatts = intent.getIntExtra(EXTRA_FTP_WATTS, WorkoutSession.DEFAULT_FTP),
-                rivalWorkoutId = intent.getStringExtra(EXTRA_RIVAL_WORKOUT_ID)
+                rivalWorkoutId = intent.getStringExtra(EXTRA_RIVAL_WORKOUT_ID),
+                goal = RideGoal.decode(intent.getStringExtra(EXTRA_GOAL))
             )
 
             ACTION_RESUME_WORKOUT -> intent.getStringExtra(EXTRA_WORKOUT_ID)
@@ -313,7 +315,8 @@ class WorkoutService : Service() {
         classId: String?,
         intent: RideIntent,
         ftpWatts: Int,
-        rivalWorkoutId: String? = null
+        rivalWorkoutId: String? = null,
+        goal: RideGoal? = null
     ) {
         if (_workoutState.value != WorkoutState.Idle) return
 
@@ -322,6 +325,7 @@ class WorkoutService : Service() {
             userId = userId,
             classId = classId,
             startedAtEpochMs = System.currentTimeMillis(),
+            goal = goal.takeIf { classId == null },
             intent = intent,
             ftpWatts = ftpWatts
         )
@@ -364,6 +368,7 @@ class WorkoutService : Service() {
         _workoutState.value = WorkoutState.Active
         _rideSnapshot.value = RideSnapshot(
             state = WorkoutState.Active,
+            goal = session.goal,
             ftpWatts = ftpWatts,
             intent = intent
         )
@@ -532,6 +537,7 @@ class WorkoutService : Service() {
             userId = workout.userId,
             classId = workout.classId,
             startedAtEpochMs = workout.timestamp,
+            goal = RideGoal.decode(workout.goalSpec).takeIf { workout.classId == null },
             intent = intent,
             ftpWatts = ftpWatts,
             // 21.2.3, and the same rule as `ftpWatts` above: off the row, so a
@@ -553,6 +559,7 @@ class WorkoutService : Service() {
         _workoutState.value = WorkoutState.Active
         _rideSnapshot.value = RideSnapshot(
             state = WorkoutState.Active,
+            goal = session.goal,
             ftpWatts = ftpWatts,
             intent = intent,
             elapsedSeconds = aggregates.durationSec,
@@ -1090,7 +1097,8 @@ class WorkoutService : Service() {
         val engine = intervalEngine ?: run {
             // No class: the snapshot still needs its clock and totals.
             publishSnapshot(elapsedSec, IntervalState.NONE)
-            return false
+            val session = _currentSession.value
+            return session?.goal?.reached(elapsedSec, session.distanceKm) == true
         }
 
         val intervalState = engine.stateAt(elapsedSec)
@@ -1379,6 +1387,7 @@ class WorkoutService : Service() {
         userId = userId,
         classId = classId,
         durationSec = elapsedSeconds,
+        goalSpec = goal?.encode(),
         totalOutputKj = totalOutputKj,
         totalDistanceKm = distanceKm,
         avgCadence = avgCadence,
@@ -1502,6 +1511,7 @@ class WorkoutService : Service() {
         const val ACTION_RESUME_WORKOUT = "com.pelonot.action.RESUME_WORKOUT"
 
         const val EXTRA_USER_ID = "com.pelonot.extra.USER_ID"
+        const val EXTRA_GOAL = "com.pelonot.extra.GOAL"
         const val EXTRA_CLASS_ID = "com.pelonot.extra.CLASS_ID"
         const val EXTRA_INTENT_ID = "com.pelonot.extra.INTENT_ID"
         const val EXTRA_FTP_WATTS = "com.pelonot.extra.FTP_WATTS"
@@ -1529,7 +1539,8 @@ class WorkoutService : Service() {
             classId: String?,
             intent: RideIntent,
             ftpWatts: Int,
-            rivalWorkoutId: String? = null
+            rivalWorkoutId: String? = null,
+            goal: RideGoal? = null
         ): Intent = Intent(context, WorkoutService::class.java).apply {
             action = ACTION_START_WORKOUT
             putExtra(EXTRA_USER_ID, userId ?: GUEST_USER_ID)
@@ -1537,6 +1548,7 @@ class WorkoutService : Service() {
             putExtra(EXTRA_INTENT_ID, intent.id)
             putExtra(EXTRA_FTP_WATTS, ftpWatts)
             putExtra(EXTRA_RIVAL_WORKOUT_ID, rivalWorkoutId)
+            putExtra(EXTRA_GOAL, goal?.encode())
         }
     }
 }

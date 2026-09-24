@@ -7,6 +7,7 @@ import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.LiveHeartRateZones
 import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
+import com.pelonot.domain.model.RideGoal
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
@@ -40,6 +41,7 @@ data class RideSnapshot(
     val classTitle: String? = null,
     val ftpWatts: Int = WorkoutSession.DEFAULT_FTP,
     val intent: RideIntent = RideIntent.DEFAULT,
+    val goal: RideGoal? = null,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
     val heartRateZones: LiveHeartRateZones = LiveHeartRateZones(),

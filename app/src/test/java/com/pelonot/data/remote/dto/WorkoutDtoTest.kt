@@ -45,6 +45,14 @@ class WorkoutDtoTest {
     )
 
     @Test
+    fun `free ride goals survive cloud round trip`() {
+        val dto = WorkoutDto.from(workout().copy(goalSpec = "distance:16.09344"), emptyList(), ACCOUNT_ID)
+        val restored = json.decodeFromString<WorkoutDto>(json.encodeToString(WorkoutDto.serializer(), dto))
+            .toEntity(localUserId = 3, classId = null, syncedAt = 1L, recordedAtMs = 2L)
+        assertEquals("distance:16.09344", restored.goalSpec)
+    }
+
+    @Test
     fun `recorded_at is ISO-8601 UTC, not epoch millis`() {
         val dto = WorkoutDto.from(workout(), emptyList(), ACCOUNT_ID)
 

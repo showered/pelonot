@@ -1,5 +1,7 @@
 package com.pelonot.ui.navigation
 
+import com.pelonot.ui.components.JustRideGoalDialog
+import com.pelonot.domain.model.RideGoal
 import android.content.Intent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -229,6 +231,18 @@ fun PelonotNavGraph(
         )
     }
 
+    var showGoalPrompt by rememberSaveable { mutableStateOf(false) }
+    if (showGoalPrompt) {
+        JustRideGoalDialog(
+            units = uiState.settings.unitSystem,
+            onChoose = { goal ->
+                showGoalPrompt = false
+                navController.navigate(Destination.Ride.of(null, RideIntent.DEFAULT.id, goalSpec = goal?.encode()))
+            },
+            onDismiss = { showGoalPrompt = false }
+        )
+    }
+
     if (showIntentPrompt) {
         PreRideIntentPrompt(
             onIntentSelected = { intent ->
@@ -307,10 +321,7 @@ fun PelonotNavGraph(
                 showAccountOffer = showAccountOffer,
                 onAccountOffer = { navController.navigate(Destination.Account.normal()) },
                 onDismissAccountOffer = onDismissAccountOffer,
-                onJustRide = {
-                    pendingClassId = null
-                    showIntentPrompt = true
-                },
+                onJustRide = { showGoalPrompt = true },
                 onBeginClass = { navController.navigate(Destination.ClassLibrary.route) },
 
 
@@ -501,6 +512,11 @@ fun PelonotNavGraph(
                     nullable = true
                     defaultValue = null
                 },
+                navArgument(Destination.ARG_GOAL) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
                 navArgument(Destination.ARG_RIVAL_ID) {
                     type = NavType.StringType
                     nullable = true
@@ -532,6 +548,7 @@ fun PelonotNavGraph(
                 userId = uiState.selectedProfile?.localUserId,
                 resumeWorkoutId = resumeWorkoutId,
                 rivalWorkoutId = rivalWorkoutId,
+                goal = RideGoal.decode(backStackEntry.arguments?.getString(Destination.ARG_GOAL)),
                 onEndRide = { workoutId ->
                     if (workoutId != null) {
                         navController.navigate(Destination.PostRide.of(workoutId)) {

@@ -2,6 +2,7 @@ package com.pelonot.data.service
 
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.MaxHeartRate
+import com.pelonot.domain.model.RideGoal
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlin.math.roundToInt
@@ -25,6 +26,7 @@ data class WorkoutSession(
     val startedAtEpochMs: Long,
     val elapsedSeconds: Int = 0,
     val intent: RideIntent = RideIntent.DEFAULT,
+    val goal: RideGoal? = null,
     val ftpWatts: Int = DEFAULT_FTP,
     /**
      * The maximum heart rate this ride's zones are judged against (21.2.3), or

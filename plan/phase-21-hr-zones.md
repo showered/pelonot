@@ -1023,6 +1023,14 @@ how a working feature reads as broken.
       time. Reserved width keeps three-digit BPM clear of the ring. Four JVM
       tests cover the 1/30 example, completion, gaps and duplicate seconds.
 
+      **Owner follow-up, 24 September:** explicitly confirm no overlap between
+      the label and the doughnut before closing. Reopened for the longest zone
+      label at normal and 130% text, with the ring reserved above the label's
+      layout area rather than overlaid on it. **Confirmed before reclosing:**
+      H1 Recovery at 100% and H4 Threshold at 130%, with three-digit readings,
+      have no overlap. The ring occupies the value row; the label follows it
+      with a 4 dp gap. [Tablet evidence](images/ride-progress/README.md).
+
 ### 21.9 Heart-rate strap battery
 
 - [ ] **21.9.1** Where a paired strap exposes the standard BLE Battery Service,

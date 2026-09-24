@@ -21,6 +21,7 @@ import com.pelonot.di.ServiceLocator
 import com.pelonot.domain.model.HeartRateZone
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.PowerZone
+import com.pelonot.domain.model.RideGoal
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.domain.model.ZoneScale
 import com.pelonot.ui.overlay.OverlayPermissionHelper
@@ -341,14 +342,15 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         classId: String?,
         intent: RideIntent,
         ftpWatts: Int,
-        rivalWorkoutId: String? = null
+        rivalWorkoutId: String? = null,
+        goal: RideGoal? = null
     ) {
         if (bound) return
         _uiState.update { it.copy(ftpWatts = ftpWatts) }
 
         val context = getApplication<Application>()
         val serviceIntent = WorkoutService.startIntent(
-            context, userId, classId, intent, ftpWatts, rivalWorkoutId
+            context, userId, classId, intent, ftpWatts, rivalWorkoutId, goal
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

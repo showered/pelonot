@@ -36,7 +36,7 @@ import com.pelonot.data.local.entity.WorkoutPowerBestEntity
         RiderAlertEntity::class,
         RiderAchievementEntity::class
     ],
-    version = 24,
+    version = 25,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -1575,6 +1575,25 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migrate24To25_keepsOldRidesOpenEnded() {
+        helper.createDatabase(TEST_DB, 24).use { db ->
+            db.execSQL("""
+                INSERT INTO workouts (id, duration_sec, total_output_kj,
+                    timestamp, is_complete, total_distance_km, intent_modifier,
+                    was_recovered, ftp_proposal_declined, resume_count, interrupted_sec)
+                VALUES ('old-free-ride', 1800, 300.0, 1000, 1, 10.0, 1.0, 0, 0, 0, 0)
+            """.trimIndent())
+        }
+        helper.runMigrationsAndValidate(TEST_DB, 25, true, AppMigrations.MIGRATION_24_25).use { db ->
+            db.query("SELECT goal_spec, total_output_kj FROM workouts WHERE id = 'old-free-ride'").use {
+                assertTrue(it.moveToFirst())
+                assertTrue(it.isNull(0))
+                assertEquals(300.0, it.getDouble(1), 0.001)
+            }
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test"
     }

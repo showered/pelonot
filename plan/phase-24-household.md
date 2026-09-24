@@ -1044,6 +1044,14 @@ and no amount of social plumbing fixes that.
       the board busier. Record both the target roster and visible transition;
       a unit test alone cannot close this snag.
 
+      **First code check, same sitting:** `Pacer.targetAt` raises the next rung
+      from *projected finishing output*, whereas `passedAt` retains a checkmark
+      only for *actual accumulated output*. Passing the 250-paced row can
+      therefore replace it with 300 before 250 kJ has been accumulated, leaving
+      no retained pass at all. The expanded overlay also shows only the nearest
+      competitor and does not render the full screen's passed row. These are
+      concrete reproduction leads; the installed bike version is still unknown.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and
