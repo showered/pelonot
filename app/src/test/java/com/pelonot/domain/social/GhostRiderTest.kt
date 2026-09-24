@@ -125,11 +125,15 @@ class GhostRiderTest {
     }
 
     @Test
-    fun `once settled the ladder rises with the rider`() {
+    fun `projection cannot skip a rung the rider has not earned`() {
         val pacer = LiveLeaderboard.Pacer(durationSec = 1200, floor = 100.0)
 
-        // Half way, on 200 — projecting 400, so the rung above that is 450.
-        assertEquals(450.0, pacer.targetAt(second = 600, yourValue = 200.0), 0.0)
+        // Half way, on 200 — projecting 400 must not skip the unearned 250.
+        assertEquals(250.0, pacer.targetAt(second = 600, yourValue = 200.0), 0.0)
+
+        // Once 250 is actually accumulated, the next rung becomes the target.
+        assertEquals(300.0, pacer.targetAt(second = 600, yourValue = 250.0), 0.0)
+        assertEquals(250.0, pacer.passedAt(yourValue = 250.0)!!, 0.0)
     }
 
     // ---- selection and the cap ------------------------------------------

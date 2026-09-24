@@ -1056,6 +1056,8 @@ and no amount of social plumbing fixes that.
       next rung above actual accumulated output. A projection can no longer
       advance 250 to 300 before 250 has been ridden; once 250 is reached, it is
       retained as the passed row beside 300 until the next actual milestone.
+      `GhostRiderTest` now checks the pre-pass and post-pass states; the full
+      local JVM suite passes.
       This closes the code-level cause, not the rider report: the bike's
       installed version, riding-distance visibility and complete target roster
       still need the requested device observation. The overlay has no live
