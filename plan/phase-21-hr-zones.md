@@ -1043,3 +1043,22 @@ how a working feature reads as broken.
       **Owner request, 24 September 2026.** The current heart-rate connection
       subscribes only to the Heart Rate Service, so a strap can stop mid-class
       without any low-battery notice.
+
+      **Implementation, 24 September:** optional Battery Service 0x180F /
+      Battery Level 0x2A19 reads start only after the heart-rate subscription's
+      descriptor write succeeds. Read once a minute; clear on failed/invalid
+      reads, timeout, disconnect or strap change. A timed-out GATT request is
+      not followed by another queued request. Zero is a real percentage;
+      reserved values and absent characteristics remain unknown. API 24–32 and
+      33+ read callbacks are both handled. The ride header and Settings say
+      “Strap reports 15% · Low battery” at 20% or below, without predicting
+      remaining time. Battery state also reaches the shared ride snapshot,
+      including while paused. The warning fits the tablet at 130% text without
+      moving or overlapping the heart-rate ring.
+
+      **Still open:** verify reporting and reconnection on a physical strap,
+      including one without the service, and carry the warning into the overlay
+      with its own tablet layout check. No strap is connected to this session;
+      the fixture establishes layout, not hardware support. Three JVM tests
+      cover decoding, reserved values, low threshold and attributed wording.
+      Standard: [Bluetooth Battery Service](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/BAS_v1.1/out/en/index-en.html).

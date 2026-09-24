@@ -109,6 +109,8 @@ class SensorRepository(
     private val _status = MutableStateFlow<SensorStatus>(SensorStatus.Stopped)
     val status: StateFlow<SensorStatus> = _status.asStateFlow()
 
+    val strapBatteryPercent: StateFlow<Int?> get() = bleHeartRateManager.batteryPercent
+
     val heartRateStatus: StateFlow<HeartRateStatus> get() = bleHeartRateManager.status
     val discoveredHeartRateDevices: StateFlow<List<HeartRateDevice>>
         get() = bleHeartRateManager.discoveredDevices

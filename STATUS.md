@@ -3,9 +3,9 @@
 **Latest verification: 24 September 2026.** Live heart-rate zones now fill over
 ride progress, and class-library cards show local measured records and all-time
 bike ranks. Checked on the tablet preview, including pause/completion and larger
-text. **1,004 JVM tests and the debug build pass**, alongside targeted SQLite, migration and goal-completion checks.
+text. **1,007 JVM tests and the debug build pass**, alongside targeted SQLite, migration and goal-completion checks.
 The owner's report of unnoticed leaderboard milestones is open as **24.3.18d.2**;
-Just Ride now offers time and distance goals; strap battery reporting is next. Version 1.0.4 was published
+Just Ride now offers time and distance goals; optional strap battery reporting is built for the ride screen and Settings, with hardware verification and the overlay still pending. Version 1.0.4 was published
 earlier today; these changes are committed source, not a new APK release.
 [PLAN.md](PLAN.md) is the current index.
 
@@ -14,7 +14,7 @@ earlier today; these changes are committed source, not a new APK release.
 
 | Measured | |
 |---|---|
-| JVM tests | **1004**, 0 failures |
+| JVM tests | **1007**, 0 failures |
 | Plan boxes ticked | **760 of 983** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented

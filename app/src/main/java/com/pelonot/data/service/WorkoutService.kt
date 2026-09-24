@@ -254,6 +254,11 @@ class WorkoutService : Service() {
             }
         }
         coach = RideCoach(this)
+        serviceScope.launch {
+            sensorRepository.strapBatteryPercent.collect { percent ->
+                _rideSnapshot.update { it.copy(strapBatteryPercent = percent) }
+            }
+        }
 
         serviceScope.launch {
             _recoverableWorkout.value = workoutRepository.findRecoverableWorkout()
@@ -369,6 +374,7 @@ class WorkoutService : Service() {
         _rideSnapshot.value = RideSnapshot(
             state = WorkoutState.Active,
             goal = session.goal,
+            strapBatteryPercent = sensorRepository.strapBatteryPercent.value,
             ftpWatts = ftpWatts,
             intent = intent
         )
@@ -560,6 +566,7 @@ class WorkoutService : Service() {
         _rideSnapshot.value = RideSnapshot(
             state = WorkoutState.Active,
             goal = session.goal,
+            strapBatteryPercent = sensorRepository.strapBatteryPercent.value,
             ftpWatts = ftpWatts,
             intent = intent,
             elapsedSeconds = aggregates.durationSec,

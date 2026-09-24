@@ -44,6 +44,7 @@ data class RideSnapshot(
     val goal: RideGoal? = null,
     val totalOutputKj: Double = 0.0,
     val distanceKm: Double = 0.0,
+    val strapBatteryPercent: Int? = null,
     val heartRateZones: LiveHeartRateZones = LiveHeartRateZones(),
     /**
      * Whether the bike is still reporting (2.4.5).

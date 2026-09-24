@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val profile: UserEntity? = null,
+    val strapBatteryPercent: Int? = null,
     val heartRateStatus: HeartRateStatus = HeartRateStatus.Idle,
     val heartRateDevices: List<HeartRateDevice> = emptyList(),
     /** System media volume as 0..1 — read live, not stored by us (11.5.1). */
@@ -281,7 +282,7 @@ class SettingsViewModel(
         }
 
     private val sensors = combine(
-        sensorRepository.heartRateStatus,
+        combine(sensorRepository.heartRateStatus, sensorRepository.strapBatteryPercent) { status, battery -> status to battery },
         sensorRepository.discoveredHeartRateDevices,
         cloudSync
     ) { status, devices, cloud -> Triple(status, devices, cloud) }
@@ -331,7 +332,8 @@ class SettingsViewModel(
             settings = settings,
             profile = user,
             ftpHistory = ftpHistory,
-            heartRateStatus = hrStatus,
+            heartRateStatus = hrStatus.first,
+            strapBatteryPercent = hrStatus.second,
             heartRateDevices = hrDevices,
             mediaVolume = mediaVolume,
             volumeError = volumeError,

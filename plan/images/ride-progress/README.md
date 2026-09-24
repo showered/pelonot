@@ -9,3 +9,7 @@ long zone labels with three-digit heart rates; no rider data was changed.
 The doughnut and the BPM value share a measured row. The label occupies the
 following row, after a 4 dp gap; it cannot flow behind the doughnut. The prior
 absolute positioning was removed after the owner's explicit overlap check.
+
+[Low strap battery at 130% text](battery-130.png) shows the warning in the ride
+header. This is a synthetic battery reading for layout verification, not a
+claim that a physical strap's Battery Service has been verified.

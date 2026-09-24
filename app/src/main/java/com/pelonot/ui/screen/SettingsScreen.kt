@@ -319,6 +319,7 @@ fun SettingsScreen(
 
             HeartRateSection(
                 status = state.heartRateStatus,
+                batteryPercent = state.strapBatteryPercent,
                 deviceCount = state.heartRateDevices.size,
                 selectedAddress = state.settings.heartRateDeviceAddress,
                 onScan = scanForHeartRate,
@@ -568,6 +569,7 @@ fun RideSettingsSheet(
 
             HeartRateSection(
                 status = state.heartRateStatus,
+                batteryPercent = state.strapBatteryPercent,
                 deviceCount = state.heartRateDevices.size,
                 selectedAddress = state.settings.heartRateDeviceAddress,
                 onScan = scanForHeartRate,
@@ -894,6 +896,7 @@ private fun SensorSection(
 @Composable
 private fun HeartRateSection(
     status: HeartRateStatus,
+    batteryPercent: Int?,
     deviceCount: Int,
     selectedAddress: String?,
     onScan: () -> Unit,
@@ -916,6 +919,8 @@ private fun HeartRateSection(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        batteryPercent?.let { com.pelonot.ui.components.StrapBatteryLabel(it) }
 
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
 

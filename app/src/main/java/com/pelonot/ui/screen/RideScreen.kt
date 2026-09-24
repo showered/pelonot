@@ -675,6 +675,10 @@ private fun RideHeader(
             )
         }
 
+        snapshot.strapBatteryPercent?.let { percent ->
+            com.pelonot.ui.components.StrapBatteryLabel(percent)
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+        }
         TelemetryChip(state)
 
         // 11.6.10. Small and out of the way — this is not a thing a rider

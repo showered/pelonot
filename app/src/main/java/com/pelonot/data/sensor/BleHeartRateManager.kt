@@ -20,6 +20,15 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.pelonot.domain.model.StrapBattery
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,6 +89,11 @@ class BleHeartRateManager(context: Context) {
 
     private var gatt: BluetoothGatt? = null
     private var scanning = false
+    private val batteryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var batteryJob: Job? = null
+    private var batteryRead: CompletableDeferred<Int?>? = null
+    private val _batteryPercent = MutableStateFlow<Int?>(null)
+    val batteryPercent: StateFlow<Int?> = _batteryPercent.asStateFlow()
 
     /** Address the user picked, so a reconnect targets the same strap. */
     private var preferredAddress: String? = null
@@ -217,6 +231,7 @@ class BleHeartRateManager(context: Context) {
 
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            if (gatt !== this@BleHeartRateManager.gatt) return
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     _status.value = HeartRateStatus.Connected(safeDeviceName(gatt.device))
@@ -228,6 +243,7 @@ class BleHeartRateManager(context: Context) {
                     // connectGatt(autoConnect = true) means the stack retries
                     // on our behalf; we must not tear the GATT down here or
                     // that reconnect can never happen.
+                    clearBattery()
                     _heartRate.value = null
                     _status.value = HeartRateStatus.Idle
                 }
@@ -236,6 +252,7 @@ class BleHeartRateManager(context: Context) {
 
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (gatt !== this@BleHeartRateManager.gatt) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.w(TAG, "Service discovery failed: $status")
                 return
@@ -263,6 +280,35 @@ class BleHeartRateManager(context: Context) {
             } else {
                 cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 gatt.writeDescriptor(cccd)
+            }
+        }
+
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            if (descriptor.uuid == CLIENT_CHARACTERISTIC_CONFIG &&
+                descriptor.characteristic.uuid == HEART_RATE_MEASUREMENT &&
+                status == BluetoothGatt.GATT_SUCCESS
+            ) {
+                // Android serialises GATT requests: heart-rate subscription comes first.
+                batteryScope.launch {
+                    if (gatt === this@BleHeartRateManager.gatt && _status.value is HeartRateStatus.Connected) {
+                        startBatteryReads(gatt)
+                    }
+                }
+            }
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic,
+            value: ByteArray, status: Int
+        ) = receiveBattery(gatt, characteristic, value, status)
+
+        @Deprecated("Required for API < 33", ReplaceWith(""))
+        @Suppress("DEPRECATION")
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int
+        ) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                receiveBattery(gatt, characteristic, characteristic.value ?: byteArrayOf(), status)
             }
         }
 
@@ -294,13 +340,57 @@ class BleHeartRateManager(context: Context) {
         }
     }
 
+    private fun receiveBattery(
+        source: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int
+    ) {
+        if (characteristic.uuid != BATTERY_LEVEL) return
+        batteryScope.launch {
+            if (source === gatt && _status.value is HeartRateStatus.Connected) {
+                batteryRead?.complete(if (status == BluetoothGatt.GATT_SUCCESS) StrapBattery.parse(value) else null)
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startBatteryReads(source: BluetoothGatt) {
+        clearBattery()
+        val characteristic = source.getService(BATTERY_SERVICE)?.getCharacteristic(BATTERY_LEVEL) ?: return
+        if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ == 0) return
+        batteryJob = batteryScope.launch {
+            while (source === gatt && _status.value is HeartRateStatus.Connected) {
+                val response = CompletableDeferred<Int?>()
+                batteryRead = response
+                if (!runCatching { source.readCharacteristic(characteristic) }.getOrDefault(false)) {
+                    _batteryPercent.value = null
+                    batteryRead = null
+                    return@launch
+                }
+                _batteryPercent.value = withTimeoutOrNull(10_000) { response.await() }
+                batteryRead = null
+                // A missing callback may mean GATT is still busy. Do not queue
+                // another request behind it; reconnect/discovery starts afresh.
+                if (!response.isCompleted) return@launch
+                delay(60_000)
+            }
+        }
+    }
+
+    private fun clearBattery() {
+        batteryJob?.cancel()
+        batteryJob = null
+        batteryRead = null
+        _batteryPercent.value = null
+    }
+
     @SuppressLint("MissingPermission")
     private fun closeGatt() {
-        gatt?.let {
+        clearBattery()
+        val previous = gatt
+        gatt = null
+        previous?.let {
             runCatching { it.disconnect() }
             runCatching { it.close() }
         }
-        gatt = null
     }
 
     /** Drops the connection without scheduling a reconnect. */
@@ -324,6 +414,8 @@ class BleHeartRateManager(context: Context) {
     companion object {
         private const val TAG = "BleHeartRateManager"
 
+        val BATTERY_SERVICE: UUID = UUID.fromString("0000180F-0000-1000-8000-00805F9B34FB")
+        val BATTERY_LEVEL: UUID = UUID.fromString("00002A19-0000-1000-8000-00805F9B34FB")
         val HEART_RATE_SERVICE: UUID = UUID.fromString("0000180D-0000-1000-8000-00805F9B34FB")
         val HEART_RATE_MEASUREMENT: UUID = UUID.fromString("00002A37-0000-1000-8000-00805F9B34FB")
         val CLIENT_CHARACTERISTIC_CONFIG: UUID =
