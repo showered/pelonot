@@ -47,11 +47,13 @@ class AccountRestoreTest {
     private lateinit var database: AppDatabase
     private lateinit var restores: RestoreRepository
     private lateinit var workouts: WorkoutRepository
+    private lateinit var userRepository: UserRepository
     private var riderId = 0
 
     /** What the account is holding, in the shape the endpoint hands back. */
     private var cloudRides: List<WorkoutDto> = emptyList()
     private var cloudProfile: ProfileDto? = null
+    private var profileWrites = 0
     private var idsFail = false
 
     @Before
@@ -81,11 +83,17 @@ class AccountRestoreTest {
             )
         )
 
-        val userRepository = UserRepository(
+        profileWrites = 0
+        userRepository = UserRepository(
             database = database,
             userDao = database.userDao(),
             ftpHistoryDao = database.ftpHistoryDao(),
-            syncRepository = SupabaseSyncRepository(CloudAccess(database.userDao()))
+            syncRepository = SupabaseSyncRepository(CloudAccess(database.userDao())),
+            syncProfile = { user ->
+                profileWrites++
+                cloudProfile = ProfileDto.from(user, ACCOUNT)
+                SyncOutcome.Success(Unit)
+            }
         )
         restores = RestoreRepository(
             database = database,
@@ -358,6 +366,36 @@ class AccountRestoreTest {
             "PulledFromCloud",
             database.ftpHistoryDao().forUser(riderId).last().source
         )
+    }
+
+    @Test
+    fun attachingANewBikeProfileDoesNotOverwriteTheFtpBeforeRestoreReadsIt() = runBlocking {
+        cloudProfile = ProfileDto(id = ACCOUNT, name = "Simon", ftpWatts = 214, weightKg = 78.0)
+        val shell = database.userDao().getUserById(riderId)!!
+
+        // AccountRepository attaches via this local-only write. A normal save
+        // here used to mirror 150 W to the cloud before restore fetched it.
+        userRepository.saveLocally(shell.copy(authUserId = ACCOUNT))
+        assertEquals(0, profileWrites)
+        assertEquals(214, cloudProfile?.ftpWatts)
+
+        val restored = outcome(restores.restore(riderId))
+
+        assertTrue(restored.profileAdopted)
+        assertEquals(214, database.userDao().getUserById(riderId)?.ftpWatts)
+        assertEquals(214, cloudProfile?.ftpWatts)
+    }
+
+    @Test
+    fun aCloudProfileIsCreatedOnlyAfterRestoreConfirmsItIsAbsent() = runBlocking {
+        val shell = database.userDao().getUserById(riderId)!!
+        userRepository.saveLocally(shell.copy(authUserId = ACCOUNT))
+        assertEquals(0, profileWrites)
+
+        restores.restore(riderId)
+
+        assertEquals(1, profileWrites)
+        assertEquals(150, cloudProfile?.ftpWatts)
     }
 
     /**

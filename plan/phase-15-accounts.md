@@ -1171,3 +1171,14 @@ beside it.
       background; the new-bike path already did so. Confirm on an account that
       has rides and a non-default FTP, both after reinstall and against a
       profile that already has local rides.
+
+      **FTP regression reported 24 September:** a new-bike sign-in restored
+      rides but left FTP at 150 W. The cloud profile did carry the correct FTP;
+      attaching the account called `UserRepository.save` on the fresh local
+      shell, which mirrored its default 150 W *before* `RestoreRepository`
+      fetched the cloud profile. That made the later restore faithfully adopt
+      the overwritten value. Attachment now writes locally only. Restore reads
+      the account profile first, adopts its FTP when present, and seeds the
+      cloud profile from local data only after a successful read confirms no
+      cloud profile exists. `AccountRestoreTest` covers both orderings. The
+      real-endpoint sign-in check remains owed.

@@ -151,7 +151,10 @@ class AccountRepository(
         val user = userDao.getUserById(localUserId)
             ?: return AuthAttempt.Failed("That profile is no longer on this bike")
 
-        userRepository.save(user.copy(authUserId = success.accountId))
+        // Attaching is not permission to upload this tablet's profile copy. On
+        // a new device that copy is only a 150 W shell; mirror it before the
+        // restore and the cloud's real FTP is overwritten before it is read.
+        userRepository.saveLocally(user.copy(authUserId = success.accountId))
 
         // 15.3.1. Attaching an account is the moment the whole history becomes
         // a backlog. See `WorkoutDao.clearSyncedFor` for why this is

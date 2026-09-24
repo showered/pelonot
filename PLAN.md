@@ -274,6 +274,9 @@ check: H1 Recovery at 100% and H4 Threshold at 130% are clear, and the ring now
 occupies the value row above a separate label row. **21.9.1** now reads optional
 strap battery levels and shows an attributed warning in the ride header and
 Settings. It remains open for real-strap verification and the overlay warning.
+**15.3.3's new-device FTP regression is fixed:** attaching the local shell no
+longer uploads its default 150 W before restore reads the cloud profile; the
+restore seeds a cloud profile only after a successful empty profile read.
 
 ### Earlier today — a simpler avatar power badge
 

@@ -9,6 +9,7 @@ import com.pelonot.data.local.entity.FtpChangeSource
 import com.pelonot.data.local.entity.FtpHistoryEntity
 import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.domain.identity.Avatar
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -23,6 +24,7 @@ class UserRepository(
     private val userDao: UserDao,
     private val ftpHistoryDao: FtpHistoryDao,
     private val syncRepository: SupabaseSyncRepository,
+    private val syncProfile: suspend (UserEntity) -> SyncOutcome<Unit> = syncRepository::syncProfile,
     private val clock: () -> Long = System::currentTimeMillis
 ) {
 
@@ -75,6 +77,27 @@ class UserRepository(
         user: UserEntity,
         ftpSource: FtpChangeSource = FtpChangeSource.Unknown,
         ftpWorkoutId: String? = null
+    ): UserEntity = saveInternal(user, ftpSource, ftpWorkoutId, mirrorToCloud = true)
+
+    /**
+     * Persists a profile change without mirroring it yet. Account attachment
+     * uses this because the just-authenticated account may already have a
+     * profile to restore; uploading the local shell first would overwrite it.
+     */
+    suspend fun saveLocally(
+        user: UserEntity,
+        ftpSource: FtpChangeSource = FtpChangeSource.Unknown,
+        ftpWorkoutId: String? = null
+    ): UserEntity = saveInternal(user, ftpSource, ftpWorkoutId, mirrorToCloud = false)
+
+    /** Mirrors a profile after restore has established that no cloud copy exists. */
+    suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> = syncProfile.invoke(user)
+
+    private suspend fun saveInternal(
+        user: UserEntity,
+        ftpSource: FtpChangeSource,
+        ftpWorkoutId: String?,
+        mirrorToCloud: Boolean
     ): UserEntity {
         val previous = if (user.localUserId == 0) null else userDao.getUserById(user.localUserId)
 
@@ -105,7 +128,7 @@ class UserRepository(
 
         // Outside the transaction: the cloud is a best-effort mirror and a
         // network call has no business holding a database lock.
-        syncRepository.syncProfile(saved)
+        if (mirrorToCloud) syncProfile(saved)
         return saved
     }
 
@@ -163,7 +186,7 @@ class UserRepository(
                 changedAt = clock(), source = source.name, workoutId = workoutId))
             updated
         } ?: return false
-        syncRepository.syncProfile(saved)
+        syncProfile(saved)
         return true
     }
 

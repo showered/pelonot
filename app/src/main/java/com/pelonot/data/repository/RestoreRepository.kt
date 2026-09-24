@@ -179,8 +179,17 @@ class RestoreRepository(
      * than propagating, and the screen simply does not mention the profile.
      */
     private suspend fun adoptProfile(localUserId: Int): Boolean {
-        val cloud = (fetchProfile(localUserId) as? SyncOutcome.Success)?.value ?: return false
+        val profileOutcome = fetchProfile(localUserId)
+        if (profileOutcome !is SyncOutcome.Success) return false
         val local = userRepository.getUser(localUserId) ?: return false
+        val cloud = profileOutcome.value
+        if (cloud == null) {
+            // A successful empty read is the only safe time to seed the cloud
+            // profile. Attachment itself is local-only so it cannot replace a
+            // profile that this restore has not read yet.
+            userRepository.syncProfile(local)
+            return false
+        }
         if (local.name == cloud.name &&
             local.ftpWatts == cloud.ftpWatts &&
             local.weightKg == cloud.weightKg
