@@ -1,7 +1,7 @@
 {
-  "version_code": 5,
-  "version_name": "1.0.4",
-  "notes": "Cleaner rider avatars with translucent power badges and a green tick for ride-confirmed FTP. Removes duplicate FTP text from the profile selector and adds earned riding achievements.",
-  "url": "https://github.com/showered/pelonot/releases/download/v1.0.4/pelonot-1.0.4.apk",
-  "sha256": "7d06772f45db583598c226af4c1d77d7539fb491501af7d7321338babe03ee4d"
+  "version_code": 6,
+  "version_name": "1.0.5",
+  "notes": "Improved live leaderboards with clearer personal-best targets, smoother position changes, and more reliable household entries. Personal bests get a stronger celebration. The ride screen aligns its main metrics and shows cumulative heart-rate zones when a maximum heart rate is available. Includes local class records, Just Ride goals, strap battery warnings, and ride restore fixes.",
+  "url": "https://github.com/showered/pelonot/releases/download/v1.0.5/pelonot-1.0.5.apk",
+  "sha256": "f7fc3cdb2f3832fc685cca65ad68758e7aa5c3df385104307caafc6711efa6ab"
 }
