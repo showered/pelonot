@@ -1089,6 +1089,17 @@ and no amount of social plumbing fixes that.
       preview. The original 250 kJ bike transition and the overlay remain
       unverified, so this item stays open.
 
+      **Controlled Personal Best pass, 25 September:** the temporary one-minute
+      past ride produced 4.5 kJ, with most of its output in the first thirty
+      seconds. The simulated rider started behind it, crossed it at 47 seconds,
+      and the tablet showed `✓ PAST 1M BEST`. The first capture also found YOU
+      partly hidden under the list's top edge while the banner was up. The
+      follow position now moves YOU fully into view for the celebration; a
+      second controlled pass showed the banner and highlighted YOU together.
+      Capturing the later place swap caught two animated labels drawing over
+      each other, so moving rows now have opaque card-coloured backgrounds and
+      YOU draws above its neighbours during a crossing.
+
 - [x] **24.3.18e The labels, and this is 24.3.12a arriving from the other
       side.** *"Self-explanatory but also personal and not too geeky."*
       **24.3.12a is still open with the owner's name on it** — `12 MONTHS` and

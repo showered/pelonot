@@ -78,6 +78,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -1068,12 +1069,20 @@ private fun LiveLeaderboardCard(
         }
         val yourIndex = visibleField.indexOfFirst { it.isYou }.coerceAtLeast(0)
         val listState = rememberLazyListState()
-        LaunchedEffect(standings.yourRank) {
+        LaunchedEffect(standings.yourRank, passedOwnRide?.name) {
             // Follow only when the rider leaves the visible field. Starting a
             // new scroll on every rank change cancels the previous animation
             // just as rows are changing places and makes some passes lurch.
-            if (listState.layoutInfo.visibleItemsInfo.none { it.index == yourIndex }) {
-                listState.animateScrollToItem((yourIndex - 2).coerceAtLeast(0))
+            // The event banner makes the list shorter; a partly clipped YOU
+            // row still counts as visible to LazyColumn, so check its bounds.
+            val layout = listState.layoutInfo
+            val you = layout.visibleItemsInfo.firstOrNull { it.index == yourIndex }
+            val fullyVisible = you != null && you.offset >= 0 &&
+                you.offset + you.size <= layout.viewportEndOffset
+            if (passedOwnRide != null || !fullyVisible) {
+                listState.animateScrollToItem(
+                    if (passedOwnRide != null) yourIndex else (yourIndex - 2).coerceAtLeast(0)
+                )
             }
         }
 
@@ -1158,7 +1167,9 @@ private fun LiveLeaderboardCard(
                     row,
                     standings.metric,
                     elapsedSeconds,
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier
+                        .animateItem()
+                        .zIndex(if (row.isYou) 1f else 0f),
                     celebrating = passedOwnRide != null
                 )
             }
@@ -1315,6 +1326,9 @@ private fun LeaderboardRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.expressiveShapes.medium)
+            // Placement animations make neighbouring rows cross. An opaque
+            // base keeps their labels from drawing through one another.
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .background(
                 if (celebrating && row.isYou) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
