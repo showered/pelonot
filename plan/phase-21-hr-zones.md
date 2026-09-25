@@ -1031,6 +1031,14 @@ how a working feature reads as broken.
       have no overlap. The ring occupies the value row; the label follows it
       with a 4 dp gap. [Tablet evidence](images/ride-progress/README.md).
 
+      **25 September follow-up:** the ring still requires a maximum heart rate
+      for the ride, supplied either explicitly or resolved from the rider's
+      birth date. The preview profiles Alex, Robin and Jo have neither, so they
+      correctly show BPM without a zone ring. Checked the ring on the tablet
+      preview with a rider whose maximum is recorded. The four central ride
+      metrics now reserve a consistent content height by row; the POWER and BPM
+      values share a baseline even though only BPM has a ring.
+
 ### 21.9 Heart-rate strap battery
 
 - [ ] **21.9.1** Where a paired strap exposes the standard BLE Battery Service,

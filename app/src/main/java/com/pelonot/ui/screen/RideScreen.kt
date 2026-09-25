@@ -99,6 +99,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.pelonot.domain.model.LiveLeaderboard
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.model.RaceMetric
+import com.pelonot.domain.social.GhostKind
 import com.pelonot.domain.model.RivalStatus
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetEmphasis
@@ -1309,6 +1310,7 @@ private fun LeaderboardRow(
     // on saying *is this me*.
     val colour = when {
         row.isYou -> MaterialTheme.colorScheme.primary
+        row.kind == GhostKind.YourBest -> MaterialTheme.colorScheme.primary
         row.kind.isPerson -> MaterialTheme.colorScheme.onSurfaceVariant
         else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
     }
@@ -1355,6 +1357,7 @@ private fun LeaderboardRow(
         Column(modifier = Modifier.weight(1f)) {
             val label = when {
                 row.milestonePassed -> "✓ ${row.name.uppercase()}"
+                row.kind == GhostKind.YourBest -> "★ ${row.name.uppercase()}"
                 row.isGhost -> "○ ${row.name.uppercase()}"
                 isActivityRide -> identity?.name ?: row.name
                 row.kind.isPerson && !row.isYou -> row.name
@@ -1377,7 +1380,11 @@ private fun LeaderboardRow(
                 text = shown,
                 fontSize = 15.sp,
                 lineHeight = 17.sp,
-                fontWeight = if (row.isYou) FontWeight.Black else FontWeight.Medium,
+                fontWeight = when {
+                    row.isYou -> FontWeight.Black
+                    row.kind == GhostKind.YourBest -> FontWeight.Bold
+                    else -> FontWeight.Medium
+                },
                 color = colour,
                 // A housemate's name is theirs, not ours to abbreviate. Give
                 // long names a second line within the row before ellipsizing.
@@ -1793,7 +1800,13 @@ private fun RideMetricTile(
                 showTargetRange = true,
                 icon = icon,
                 emphasis = emphasis,
-                modifier = Modifier.fillMaxWidth()
+                // Centre one shared block height per row. Without this, a
+                // target gauge makes POWER/CADENCE taller than its neighbour
+                // and centring each whole block puts their headline numbers
+                // on different horizontal lines.
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = if (valueSize.value >= 100f) 170.dp else 140.dp)
             )
 
             if (footnote != null) {

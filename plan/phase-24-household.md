@@ -1254,6 +1254,11 @@ and no amount of social plumbing fixes that.
 
 ### 24.3.19 The board's row, from a picture — the owner's note, 16 August 2026
 
+**25 September follow-up:** `Your best` now has a small star before its label
+and stronger primary-colour type. The row keeps the same height and type size
+as its neighbours; checked on the 1920 × 1080, 240 dpi tablet preview with a
+live `1M BEST` target alongside the rider and other targets.
+
 **The owner sent a reference image** (`plan/images/leaderboard-idea.png`, which
 is Peloton's own leaderboard) with *"something like that for leaderboard
 please! And this could solve the lvl/ftp problem."* The row in it is: a rank

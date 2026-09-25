@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -409,7 +410,13 @@ fun MetricReadout(
         },
         horizontalAlignment = Alignment.Start
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            // On the ride screen, POWER and BPM share a value line even when
+            // only BPM has an 80 dp zone ring. The other ride tiles' larger
+            // numbers already exceed this minimum.
+            modifier = if (showTargetRange) Modifier.heightIn(min = 80.dp) else Modifier,
+            verticalAlignment = Alignment.Bottom
+        ) {
             Row(
                 modifier = if (valueAccessory != null) Modifier.weight(1f) else Modifier,
                 verticalAlignment = Alignment.Bottom
