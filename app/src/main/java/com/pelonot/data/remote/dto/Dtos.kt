@@ -317,12 +317,15 @@ data class LeaderboardRowDto(
 /** The deliberately narrow cross-bike activity row returned by `activity_feed`. */
 @Serializable
 data class ActivityFeedDto(
+    @SerialName("workout_id") val workoutId: String,
     @SerialName("account_id") val accountId: String,
     val name: String,
     @SerialName("is_you") val isYou: Boolean,
     val title: String? = null,
     @SerialName("class_title") val classTitle: String? = null,
-    @SerialName("recorded_at") val recordedAt: String
+    @SerialName("recorded_at") val recordedAt: String,
+    @SerialName("kudos_count") val kudosCount: Int,
+    @SerialName("you_gave_kudos") val youGaveKudos: Boolean
 )
 
 /**

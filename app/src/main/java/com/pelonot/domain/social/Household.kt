@@ -65,10 +65,25 @@ data class HouseholdActivity(
     val avatar: Avatar,
     val classTitle: String?,
     val completedAt: Long,
-    val event: Event?
+    val event: Event?,
+    /** Present only for a cloud feed entry; local rides never need a network action. */
+    val cloudWorkoutId: String? = null,
+    /** Identifies a cloud rider already represented by a Room activity row. */
+    val cloudAccountId: String? = null,
+    val kudosCount: Int = 0,
+    val youGaveKudos: Boolean = false
 ) {
     enum class Event { FtpIncreased, PersonalBest }
 }
+
+/** The bike's own row wins when the same rider also appears in the cloud feed. */
+fun mergeHouseholdActivity(
+    local: List<HouseholdActivity>,
+    cloud: List<HouseholdActivity>,
+    localAccountIds: Set<String>
+): List<HouseholdActivity> =
+    (local + cloud.filterNot { it.cloudAccountId?.let(localAccountIds::contains) == true })
+        .sortedByDescending { it.completedAt }
 
 /**
  * The rows the dashboard's household panel actually draws (24.1.8, applied to

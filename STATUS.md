@@ -1,12 +1,12 @@
 # Where Pelonot is
 
-**Latest verification: 25 September 2026.** Version **1.0.5** has a live update
-manifest and a reachable GitHub release APK. The overlay now shows the strap's
-reported battery percentage beside heart rate in all four layouts; physical
-strap and tablet layout checks remain open. **1,007 JVM tests and the debug
-build pass.** The owner's report of unnoticed leaderboard milestones remains
-open as **24.3.18d.2**. The site check now includes the update manifest; it
-still reports the host's legacy `config.js` key form.
+**Latest verification: 25 September 2026.** The dashboard's shared activity
+now reloads after account attachment, distinguishes an empty feed from a failed
+request, and offers kudos on cloud rides. It keeps household activity available
+when the cloud fails. The debug build and JVM suite pass; signed-in tablet
+observation remains open for both social items. Version **1.0.5** has a live
+update manifest and reachable APK. The overlay's strap battery layout and the
+owner's reported leaderboard milestone still need device checks.
 [PLAN.md](PLAN.md) is the current index.
 
 <!-- figures:begin -->
@@ -14,7 +14,7 @@ still reports the host's legacy `config.js` key form.
 
 | Measured | |
 |---|---|
-| JVM tests | **1007**, 0 failures |
+| JVM tests | **1009**, 0 failures |
 | Plan boxes ticked | **763 of 983** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented

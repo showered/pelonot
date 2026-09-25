@@ -767,7 +767,32 @@ Two shapes to keep straight, because they will otherwise be built twice:
       18.11 itself was written under.)*
 - [ ] **18.1** Friends list and requests, mirroring 17.5
 - [ ] **18.2** A feed of friends' recent rides on the dashboard, below the rider's own stats and never above them
+
+      **25 September implementation:** the existing dashboard Activity card
+      already combined local Room rides with `activity_feed`, but it fetched
+      only when the selected profile id changed. Signing in attaches an account
+      to the *same* id, so that rider could stay on an empty cloud feed until
+      switching profiles. It now watches account attachment, reloads after a
+      social action and offers Retry. A failed request says *Other bikes
+      unavailable* without removing the local activity; a successful empty
+      response says *No shared rides yet*. The cloud request still names the
+      selected profile and goes through `CloudAccess`. A rider who is also on
+      this tablet appears from Room only, even if their cloud ride is newer;
+      the local side is authoritative (18's preamble), and a merge test holds
+      the duplicate case. **Open until observed**
+      on a signed-in tablet against another rider's shared ride, including the
+      profile-attachment transition and a failed request.
 - [ ] **18.3** Kudos, and nothing that requires typing during or just after a ride
+
+      **25 September implementation:** a cloud ride in the dashboard Activity
+      card shows its kudos count and a tap target to give or remove kudos. It
+      calls the existing `give_kudos` / `remove_kudos` RPC through
+      `SupabaseSyncRepository`, which applies the selected rider's cloud gate;
+      local Room activity has no network action. The button waits for the
+      request, refreshes the feed on success and gives a retryable message on
+      failure. The RPC itself checks ride visibility. The server's feed row
+      shape is covered by a JVM decode test. **Open until the give/remove path
+      is observed against two accounts and checked on the tablet layout.**
 - [ ] **18.4** Compare a class you both rode — same class, both traces, one chart. This is the version of a leaderboard that is actually motivating
 - [x] **18.5** Friend leaderboard on the post-ride summary, alongside the rider's own history (11.4.1)
 - [ ] **18.6** **The HUD stays social-free.** Nothing on the strip during a ride. It has half a second of attention and it belongs to the interval
@@ -775,6 +800,10 @@ Two shapes to keep straight, because they will otherwise be built twice:
 - [ ] **18.8** Mute, block and report exist from the first version that has a feed, not the version after someone needs them
 - [x] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
 - [ ] **18.10** A friend's numbers arrive over the network, so this phase inherits every rule in the *Corrections* table about failures that are caught and shown nowhere. An empty friend leaderboard must say whether it is empty or unreachable
+
+      **25 September:** the dashboard's shared activity now makes this
+      distinction. The class leaderboard still needs its own failure-state
+      check, so the phase-wide item remains open.
 
 ---
 

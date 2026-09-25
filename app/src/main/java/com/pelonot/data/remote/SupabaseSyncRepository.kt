@@ -260,6 +260,15 @@ class SupabaseSyncRepository(
             ).decodeList<ActivityFeedDto>()
         }
 
+    /** A rider can congratulate a visible ride; the RPC checks visibility again. */
+    suspend fun setKudos(forProfileId: Int, workoutId: String, give: Boolean): SyncOutcome<Unit> =
+        execute("setKudos", forProfileId) { supabase, _ ->
+            supabase.postgrest.rpc(
+                function = if (give) "give_kudos" else "remove_kudos",
+                parameters = buildJsonObject { put("p_workout", workoutId) }
+            )
+        }
+
     private suspend inline fun execute(
         operation: String,
         localUserId: Int?,

@@ -22,6 +22,7 @@ import com.pelonot.domain.progress.RidingHistory
 import com.pelonot.domain.progress.RidingIntensity
 import com.pelonot.domain.progress.RidingTotals
 import com.pelonot.domain.social.HouseholdRider
+import com.pelonot.domain.social.mergeHouseholdActivity
 import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.suggest.ClassSuggestion
 import com.pelonot.domain.suggest.ClassToRide
@@ -42,6 +43,7 @@ import com.pelonot.data.service.ActiveRide
 import com.pelonot.data.service.RideInProgress
 import com.pelonot.di.ServiceLocator
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.data.remote.dto.fromIso8601
 import com.pelonot.domain.model.ClassLeaderboard
 import com.pelonot.domain.model.RidesOfThisLength
@@ -101,6 +103,9 @@ data class AppUiState(
     val householdRecent: List<HouseholdRider> = emptyList(),
     /** The newest rides on this bike, with their ride-linked good news (22.8.7). */
     val householdActivity: List<com.pelonot.domain.social.HouseholdActivity> = emptyList(),
+    val socialFeedState: SocialFeedState = SocialFeedState.Offline,
+    val kudosPendingId: String? = null,
+    val socialError: String? = null,
     /**
      * The selected rider's FTP over time (PLAN 7.10.2 / 22.1.4). Empty for a
      * guest, and a single point for a rider whose FTP has never moved — both of
@@ -228,6 +233,9 @@ data class AppUiState(
     /** The rider whose dashboard is on screen, or null for a guest. */
     val selectedRiderLevel: RiderLevel? get() = levelFor(settings.lastProfileId)
 }
+
+/** An empty shared feed and a failed request are different answers (PLAN 18.10). */
+enum class SocialFeedState { Offline, Loading, Ready, Unavailable }
 
 /**
  * Replaces reading Room directly from inside composables, which ran database
@@ -387,12 +395,31 @@ class AppViewModel(
             else workoutRepository.observeRiderRides(profileId)
         }
 
-    /** The signed-in tier, fetched once when this rider's dashboard is opened. */
-    private val cloudActivity = settingsRepository.selectedProfileId
+    private data class CloudActivity(
+        val items: List<com.pelonot.domain.social.HouseholdActivity> = emptyList(),
+        val state: SocialFeedState = SocialFeedState.Offline
+    )
+
+    private val socialRefresh = MutableStateFlow(0)
+    private val kudosPending = MutableStateFlow<String?>(null)
+    private val socialError = MutableStateFlow<String?>(null)
+
+    /** Watch account attachment as well as the selected id: signing in keeps that id. */
+    private val cloudIdentity = settingsRepository.selectedProfileId
         .flatMapLatest { profileId ->
-            if (profileId == null) flowOf(emptyList()) else flow {
-                emit(
-                    syncRepository.activityFeed(profileId).valueOrNull().orEmpty()
+            if (profileId == null) flowOf(null) else userRepository.observeUser(profileId)
+                .map { user -> user?.authUserId?.let { profileId to it } }
+        }.distinctUntilChanged()
+
+    private val cloudActivity = combine(cloudIdentity, socialRefresh) { identity, refresh ->
+        identity to refresh
+    }.flatMapLatest { (identity, _) ->
+        if (identity == null) flowOf(CloudActivity()) else flow {
+            emit(CloudActivity(state = SocialFeedState.Loading))
+            val result = syncRepository.activityFeed(identity.first)
+            emit(when (result) {
+                is SyncOutcome.Success -> CloudActivity(
+                    result.value
                         .asSequence()
                         .filterNot { it.isYou }
                         .mapNotNull { row ->
@@ -403,14 +430,61 @@ class AppViewModel(
                                     avatar = Avatar.defaultFor(row.accountId.hashCode()),
                                     classTitle = row.title ?: row.classTitle,
                                     completedAt = at,
-                                    event = null
+                                    event = null,
+                                    cloudWorkoutId = row.workoutId,
+                                    cloudAccountId = row.accountId,
+                                    kudosCount = row.kudosCount,
+                                    youGaveKudos = row.youGaveKudos
                                 )
                             }
                         }
-                        .toList()
+                        .toList(),
+                    SocialFeedState.Ready
                 )
+                SyncOutcome.Disabled -> CloudActivity()
+                is SyncOutcome.Failed, is SyncOutcome.Rejected ->
+                    CloudActivity(state = SocialFeedState.Unavailable)
+            })
+        }
+    }
+
+    fun refreshSocialActivity() {
+        socialError.value = null
+        socialRefresh.value += 1
+    }
+
+    fun toggleKudos(workoutId: String, give: Boolean) {
+        val profileId = uiState.value.selectedProfile?.localUserId ?: return
+        if (kudosPending.value != null) return
+        kudosPending.value = workoutId
+        socialError.value = null
+        viewModelScope.launch {
+            try {
+                when (syncRepository.setKudos(profileId, workoutId, give)) {
+                    is SyncOutcome.Success -> refreshSocialActivity()
+                    else -> socialError.value = "Couldn't update kudos. Try again."
+                }
+            } finally {
+                kudosPending.value = null
             }
         }
+    }
+
+    private data class SocialPresentation(
+        val feed: CloudActivity,
+        val pendingId: String?,
+        val error: String?
+    )
+
+    private val socialPresentation = combine(cloudActivity, kudosPending, socialError) { feed, pending, error ->
+        SocialPresentation(feed, pending, if (feed.state == SocialFeedState.Offline) null else error)
+    }
+
+    private data class ActivitySources(
+        val household: List<HouseholdRider>,
+        val entries: List<com.pelonot.domain.social.HouseholdActivity>,
+        val social: SocialPresentation
+    )
 
     /**
      * How many rides have been recorded since the last backup — or since the
@@ -503,18 +577,29 @@ class AppViewModel(
         combine(
             workoutRepository.observeHousehold(),
             workoutRepository.observeHouseholdActivity(),
-            cloudActivity
-        ) { household, local, cloud ->
-            household to (local + cloud).sortedByDescending { it.completedAt }
+            socialPresentation,
+            userRepository.allUsers
+        ) { household, local, social, users ->
+            val localAccounts = local.mapNotNull { activity ->
+                users.firstOrNull { it.localUserId == activity.localUserId }?.authUserId
+            }.toSet()
+            ActivitySources(
+                household,
+                mergeHouseholdActivity(local, social.feed.items, localAccounts),
+                social
+            )
         },
         ftpTrend,
         backupReminder,
         riding
-    ) { stats, (household, activity), ftp, backup, rider ->
+    ) { stats, activity, ftp, backup, rider ->
         DashboardState(
             stats,
-            household,
-            activity,
+            activity.household,
+            activity.entries,
+            activity.social.feed.state,
+            activity.social.pendingId,
+            activity.social.error,
             ftp,
             backup,
             rider.ridingHistory,
@@ -608,6 +693,9 @@ class AppViewModel(
         val stats: DashboardStats,
         val household: List<HouseholdRider>,
         val householdActivity: List<com.pelonot.domain.social.HouseholdActivity>,
+        val socialFeedState: SocialFeedState,
+        val kudosPendingId: String?,
+        val socialError: String?,
         val ftpTrend: FtpTrend,
         val backupReminder: BackupReminder,
         val ridingHistory: RidingHistory,
@@ -638,6 +726,9 @@ class AppViewModel(
             dashboardStats = dashboard.stats,
             householdRecent = dashboard.household,
             householdActivity = dashboard.householdActivity,
+            socialFeedState = dashboard.socialFeedState,
+            kudosPendingId = dashboard.kudosPendingId,
+            socialError = dashboard.socialError,
             ftpTrend = dashboard.ftpTrend,
             backupReminder = dashboard.backupReminder,
             ridingHistory = dashboard.ridingHistory,

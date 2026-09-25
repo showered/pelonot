@@ -94,6 +94,7 @@ import com.pelonot.ui.components.HouseholdPanelCard
 import com.pelonot.ui.components.HouseholdActivityCard
 import com.pelonot.ui.components.RideDaysCard
 import com.pelonot.ui.viewmodel.StartingPoint
+import com.pelonot.ui.viewmodel.SocialFeedState
 import com.pelonot.ui.components.RiderScore
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.ui.components.RiderAvatar
@@ -132,6 +133,11 @@ fun MainDashboardScreen(
     householdRecent: List<HouseholdRider> = emptyList(),
     /** The latest finished ride for each local rider, newest first (22.8.7). */
     householdActivity: List<HouseholdActivity> = emptyList(),
+    socialFeedState: SocialFeedState = SocialFeedState.Offline,
+    kudosPendingId: String? = null,
+    socialError: String? = null,
+    onToggleKudos: (String, Boolean) -> Unit = { _, _ -> },
+    onRetrySocial: () -> Unit = {},
     youId: Int? = null,
     /** How much riding a backup would protect (23.3.1). Draws nothing until it is due. */
     backupReminder: BackupReminder = BackupReminder.None,
@@ -254,10 +260,16 @@ fun MainDashboardScreen(
                         onClick = onJustRide,
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     )
-                    if (householdActivity.any { it.localUserId != youId }) {
+                    if (householdActivity.any { it.localUserId != youId } ||
+                        socialFeedState != SocialFeedState.Offline) {
                         HouseholdActivityCard(
                             activities = householdActivity,
                             youId = youId,
+                            socialFeedState = socialFeedState,
+                            kudosPendingId = kudosPendingId,
+                            socialError = socialError,
+                            onToggleKudos = onToggleKudos,
+                            onRetrySocial = onRetrySocial,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }

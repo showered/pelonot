@@ -95,6 +95,8 @@ fun PelonotNavGraph(
     onDismissBackupReminder: () -> Unit = {},
     /** "Don't ask me again" on the dashboard's account offer (15.8.4) — per profile. */
     onDismissAccountOffer: () -> Unit = {},
+    onToggleKudos: (String, Boolean) -> Unit = { _, _ -> },
+    onRetrySocial: () -> Unit = {},
     /** Put back the FTP an auto change replaced (7.10.4). */
     onRevertFtpChange: (Int) -> Unit = {},
     onApplyFtpAssessment: suspend (com.pelonot.domain.progress.FtpAssessment) -> String = { "Unable to update FTP" },
@@ -315,6 +317,11 @@ fun PelonotNavGraph(
                 riderLevel = uiState.selectedRiderLevel,
                 householdRecent = uiState.householdRecent,
                 householdActivity = uiState.householdActivity,
+                socialFeedState = uiState.socialFeedState,
+                kudosPendingId = uiState.kudosPendingId,
+                socialError = uiState.socialError,
+                onToggleKudos = onToggleKudos,
+                onRetrySocial = onRetrySocial,
                 youId = uiState.selectedProfile?.localUserId,
                 backupReminder = uiState.backupReminder,
                 onDismissBackupReminder = onDismissBackupReminder,
