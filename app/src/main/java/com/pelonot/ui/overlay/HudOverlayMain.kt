@@ -62,7 +62,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +85,7 @@ import com.pelonot.domain.model.HudOpacity
 import com.pelonot.domain.model.IntervalState
 import com.pelonot.domain.model.RideCue
 import com.pelonot.domain.model.RidePosition
+import com.pelonot.domain.model.StrapBattery
 import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.domain.model.ZoneScale
@@ -96,7 +99,6 @@ import com.pelonot.ui.components.PowerZoneScale
 import com.pelonot.ui.components.ProgressArc
 import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.VolumeSliders
-import com.pelonot.ui.components.ShrinkToFitText
 import com.pelonot.ui.components.ZoneGlyph
 import com.pelonot.ui.components.rememberFlash
 import com.pelonot.ui.components.rememberPulse
@@ -1243,18 +1245,21 @@ private fun MetricsBlock(
             )
         },
         { m ->
-            MetricReadout(
-                label = "HEART RATE",
-                icon = MetricIcons.HeartRate,
-                // Null means no strap, never a measured zero.
-                value = reading.heartRateBpm?.toString() ?: "--",
-                unit = "BPM",
-                accent = MetricHeartRateGreen,
-                rawValue = (reading.heartRateBpm ?: 0).toDouble(),
-                valueSize = 42.sp,
-                compact = true,
-                modifier = m
-            )
+            Column(m, horizontalAlignment = Alignment.CenterHorizontally) {
+                MetricReadout(
+                    label = "HEART RATE",
+                    icon = MetricIcons.HeartRate,
+                    // Null means no strap, never a measured zero.
+                    value = reading.heartRateBpm?.toString() ?: "--",
+                    unit = "BPM",
+                    accent = MetricHeartRateGreen,
+                    rawValue = (reading.heartRateBpm ?: 0).toDouble(),
+                    valueSize = 42.sp,
+                    compact = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                snapshot.strapBatteryPercent?.let { OverlayStrapBattery(it) }
+            }
         }
     )
 
@@ -1561,11 +1566,14 @@ private fun HudCollapsed(
                     "W",
                     MetricPowerCoral
                 )
-                CompactMetric(
-                    reading.heartRateBpm?.toString() ?: "--",
-                    "BPM",
-                    MetricHeartRateGreen
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CompactMetric(
+                        reading.heartRateBpm?.toString() ?: "--",
+                        "BPM",
+                        MetricHeartRateGreen
+                    )
+                    snapshot.strapBatteryPercent?.let { OverlayStrapBattery(it) }
+                }
             }
         }
 
@@ -1711,6 +1719,7 @@ private fun HudCollapsedVertical(
                     MetricHeartRateGreen,
                     stacked = true
                 )
+                snapshot.strapBatteryPercent?.let { OverlayStrapBattery(it) }
             }
         }
 
@@ -1742,6 +1751,24 @@ private fun HudCollapsedVertical(
             stacked = true
         )
     }
+}
+
+/** An attributed reading, kept beside BPM in every overlay density and dock. */
+@Composable
+private fun OverlayStrapBattery(percent: Int) {
+    val low = StrapBattery.isLow(percent)
+    Text(
+        text = if (low) "STRAP $percent% · LOW" else "STRAP $percent%",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = if (low) FontWeight.Bold else FontWeight.Normal,
+        color = if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        modifier = Modifier.semantics {
+            contentDescription = StrapBattery.label(percent)
+            liveRegion = LiveRegionMode.Polite
+        }
+    )
 }
 
 /**

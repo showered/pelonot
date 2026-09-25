@@ -55,9 +55,9 @@ This is the publishing step. It re-verifies the APK, hash, version and source,
 uploads the binary to GitHub Releases, then copies the prepared manifest to
 `web/update.json`. It does not commit or push anything. Review and commit that
 manifest, then `git push` to deploy it through the existing Cloudflare route.
-Run `./web/check-deployed.sh` afterwards. The first real release and install
-with your permanent key still need to be rehearsed; a green debug build does
-not prove that key or hosting setup.
+Run `./web/check-deployed.sh` afterwards; it includes `update.json` in the
+deployed-file check. Version 1.0.5 is published with a release-signed APK and a live manifest. The revised
+system installer callbacks still need an in-place device rehearsal (30.7.3).
 
 If GitHub reports an existing release, inspect it before retrying; the script
 never overwrites a published binary. If an upload succeeded but writing the

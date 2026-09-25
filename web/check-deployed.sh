@@ -12,19 +12,20 @@
 #   ./web/check-deployed.sh                                # the hosted app
 #   ./web/check-deployed.sh https://staging.example.com    # somewhere else
 #
-# `config.js` is deliberately not checked: it is git-ignored on purpose (17.14),
-# so the deployed one is *expected* to differ from the working copy.
+# `config.js` is git-ignored and supplied outside the push (17.16.3). Its key
+# form is reported separately; it cannot be fixed by redeploying tracked files.
 
 set -eu
 
 HOST="${1:-https://pelonot.showered.workers.dev}"
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-FILES="index.html link.html app.css tokens.css lib.js link.js app.js"
+FILES="index.html link.html app.css tokens.css lib.js link.js app.js update.json"
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 drifted=0
+legacy_config=0
 
 for file in $FILES; do
   # The host trims `.html` with a 307 (17.16), so follow redirects.
@@ -54,12 +55,16 @@ if curl -fsSL "$HOST/config.js" -o "$WORK/config.js" 2>/dev/null; then
     printf 'LEGACY   config.js — the deployed key is the old JWT (eyJ…) form.\n'
     printf '         This project uses sb_publishable_ (17.16.3). Both work;\n'
     printf '         they revoke separately, so rotating one leaves the other live.\n'
-    drifted=$((drifted + 1))
+    printf '         The host supplies this ignored file; a git push will not change it.\n'
+    legacy_config=1
   fi
 fi
 
 if [ "$drifted" -eq 0 ]; then
-  printf '\nThe deployed app is this working tree.\n'
+  printf '\nThe deployed tracked files match this working tree.\n'
+  if [ "$legacy_config" -eq 1 ]; then
+    printf 'The hosting-side config.js key form remains an open issue (17.16.3).\n'
+  fi
   exit 0
 fi
 

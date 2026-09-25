@@ -1,12 +1,12 @@
 # Where Pelonot is
 
-**Latest verification: 24 September 2026.** Live heart-rate zones now fill over
-ride progress, and class-library cards show local measured records and all-time
-bike ranks. Checked on the tablet preview, including pause/completion and larger
-text. **1,007 JVM tests and the debug build pass**, alongside targeted SQLite, migration and goal-completion checks.
-The owner's report of unnoticed leaderboard milestones is open as **24.3.18d.2**;
-Just Ride now offers time and distance goals; optional strap battery reporting is built for the ride screen and Settings, with hardware verification and the overlay still pending. Version 1.0.4 was published
-earlier today; these changes are committed source, not a new APK release.
+**Latest verification: 25 September 2026.** Version **1.0.5** has a live update
+manifest and a reachable GitHub release APK. The overlay now shows the strap's
+reported battery percentage beside heart rate in all four layouts; physical
+strap and tablet layout checks remain open. **1,007 JVM tests and the debug
+build pass.** The owner's report of unnoticed leaderboard milestones remains
+open as **24.3.18d.2**. The site check now includes the update manifest; it
+still reports the host's legacy `config.js` key form.
 [PLAN.md](PLAN.md) is the current index.
 
 <!-- figures:begin -->
@@ -15,7 +15,7 @@ earlier today; these changes are committed source, not a new APK release.
 | Measured | |
 |---|---|
 | JVM tests | **1007**, 0 failures |
-| Plan boxes ticked | **760 of 983** — 77% |
+| Plan boxes ticked | **763 of 983** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a

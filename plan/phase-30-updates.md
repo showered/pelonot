@@ -226,7 +226,7 @@ release, and a repository that accumulates every APK it has ever shipped is a
 repository nobody can clone in a year. Both hosts are free and neither needs an
 account on the bike.
 
-- [ ] **30.3.1 `web/update.json`** — `version_code`, `version_name`, `notes`
+- [x] **30.3.1 `web/update.json`** — `version_code`, `version_name`, `notes`
       (one sentence a rider can read, not a changelog), `url` and `sha256`.
       Served from the same origin the app already carries, so **no new
       configuration value and no new secret**: it is
@@ -234,19 +234,21 @@ account on the bike.
       exactly as 17.14 decided for the endpoint. **The bike's half is built**:
       `UpdateManifest` is the shape, snake_case on the wire with `@SerialName`
       doing the matching for `intervals_json`'s reason, and `UpdateRepository`
-      fetches and parses it. **The file itself is not published**, deliberately
-      — a manifest is a promise that an APK exists at a URL, and no release
-      exists yet. A 404 is already *no update today* (30.3.4), so the live site
-      is correct as it stands. This box ticks when `tools/release.sh` writes a
-      real one
-- [ ] **30.3.2 `tools/release.sh` writes both**, in the manner of
+      fetches and parses it. **Observed 25 September:** the live endpoint serves
+      version 1.0.5 (code 6), byte-for-byte the checked-in manifest; its GitHub
+      release APK URL returns 200 and a 3,526,842-byte asset.
+- [x] **30.3.2 `tools/release.sh` writes both**, in the manner of
       `tools/status-figures.sh`: bump the version, `assembleRelease`, compute
       the hash, create the GitHub release with the APK on it, rewrite
       `web/update.json`, and stop before committing so the owner reads the diff.
       **One command, because a two-step release is a release where step two gets
       skipped** — and the failure mode of skipping it is a manifest advertising
       a build that does not exist, or worse, a hash that does not match one that
-      does
+      does. **The shipped script uses `prepare` and `publish` as two explicit
+      steps:** `prepare` builds, verifies and hashes the signed APK; `publish`
+      rechecks it against the committed source, uploads it, then writes the
+      manifest. The pause between them is intentional review of the exact
+      artifact. Version 1.0.5 was prepared and published by this path.
 - [x] **30.3.3 The check is cheap and rare.** Once per app open at most, and not
       more than once every 24 hours — a timestamp in preferences, and no
       background work, no `WorkManager`, no polling. The note says *"when he
@@ -449,15 +451,16 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       pass compiled both variants and tested coordinator failures but did not
       publish or install a new production release. API 24–25 permission calls
       are now guarded; that older platform was not available for this pass.
-- [ ] **30.7.4 Finish the publishing rehearsal.** `tools/release.sh prepare`
+- [x] **30.7.4 Finish the publishing rehearsal.** `tools/release.sh prepare`
       now bumps the version, builds and verifies a release APK, rejects the
       debug certificate and prepares its checksum and manifest locally.
       `publish` verifies the artifact/source again, uploads to GitHub, and only
       then writes `web/update.json`. Five isolated Python tests cover the
       ordering and failure paths; the real debug APK was rejected by certificate.
-      No GitHub release or live manifest was created. See `RELEASE.md` for the
-      commands. This implements 30.3.2's tooling but leaves its production
-      observation outstanding.
+      **Observed 25 September:** version 1.0.5 is in `version.properties` and
+      the live `update.json`; the APK URL resolves to a GitHub release asset.
+      This settles the publishing path. The in-place platform install remains
+      30.7.3. See `RELEASE.md` for the commands.
 - [ ] **30.7.5 Manual checks can retry a declined update.** Automatic checks
       still respect the declined version. Settings now has a real in-flight
       flag, blocks repeated taps and checks during a ride, and says “Checking…”.

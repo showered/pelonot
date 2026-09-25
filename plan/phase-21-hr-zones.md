@@ -1064,9 +1064,13 @@ how a working feature reads as broken.
       including while paused. The warning fits the tablet at 130% text without
       moving or overlapping the heart-rate ring.
 
-      **Still open:** verify reporting and reconnection on a physical strap,
-      including one without the service, and carry the warning into the overlay
-      with its own tablet layout check. No strap is connected to this session;
+      **25 September follow-up:** the reported percentage now sits beside BPM
+      in all four overlay layouts. The compact text names the strap and says
+      LOW at 20% or less; its screen-reader label keeps the full attributed
+      wording. The debug build and JVM suite pass. **Still open:** inspect
+      every layout on the tablet at normal and larger text, and verify reporting
+      and reconnection on a physical strap, including one without the service.
+      No strap is connected to this session;
       the fixture establishes layout, not hardware support. Three JVM tests
       cover decoding, reserved values, low threshold and attributed wording.
       Standard: [Bluetooth Battery Service](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/BAS_v1.1/out/en/index-en.html).
