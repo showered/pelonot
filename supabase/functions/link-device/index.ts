@@ -28,7 +28,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // The pairing page sends all three headers. Omitting apikey makes the
+  // browser reject the preflight before its POST reaches this function.
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
