@@ -220,7 +220,10 @@ object ServiceLocator {
             database = database,
             userDao = database.userDao(),
             ftpHistoryDao = database.ftpHistoryDao(),
-            syncRepository = syncRepository
+            syncRepository = syncRepository,
+            scheduleProfileRetry = { userId ->
+                com.pelonot.data.worker.ProfileSyncWorker.enqueue(appContext, userId)
+            }
         )
     }
 

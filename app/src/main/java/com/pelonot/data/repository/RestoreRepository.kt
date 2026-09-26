@@ -151,7 +151,16 @@ class RestoreRepository(
             }
         }
 
-        val profileAdopted = neverRiddenHere && adoptProfile(localUserId)
+        val profileAdopted = if (neverRiddenHere) {
+            adoptProfile(localUserId)
+        } else {
+            // This bike keeps its own profile when it has ridden. Mirroring it
+            // only after restore prevents a web-created 150 W shell from
+            // replacing the rider's real FTP, then becoming the stale value a
+            // fresh install later restores.
+            userRepository.getUser(localUserId)?.let { userRepository.syncProfile(it) }
+            false
+        }
 
         Log.i(
             TAG,

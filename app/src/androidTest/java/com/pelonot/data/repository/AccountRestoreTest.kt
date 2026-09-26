@@ -409,6 +409,8 @@ class AccountRestoreTest {
      */
     @Test
     fun aProfileThatHasRiddenHereKeepsItsOwnNumbers() = runBlocking {
+        val local = database.userDao().getUserById(riderId)!!
+        database.userDao().insertUser(local.copy(ftpWatts = 200))
         localRide("already-here", seconds = 60, watts = 200.0)
         cloudProfile = ProfileDto(id = ACCOUNT, name = "Simon", ftpWatts = 214, weightKg = 78.0)
         cloudRides = listOf(cloudRide("a"))
@@ -416,8 +418,10 @@ class AccountRestoreTest {
         val restored = outcome(restores.restore(riderId))
 
         assertFalse(restored.profileAdopted)
-        assertEquals(150, database.userDao().getUserById(riderId)?.ftpWatts)
+        assertEquals(200, database.userDao().getUserById(riderId)?.ftpWatts)
         assertEquals("Local Name", database.userDao().getUserById(riderId)?.name)
+        assertEquals(1, profileWrites)
+        assertEquals(200, cloudProfile?.ftpWatts)
         // The rides still came down; only the profile was left alone.
         assertEquals(1, restored.rides)
     }

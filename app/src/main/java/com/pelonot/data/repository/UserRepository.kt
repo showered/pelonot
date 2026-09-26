@@ -25,6 +25,7 @@ class UserRepository(
     private val ftpHistoryDao: FtpHistoryDao,
     private val syncRepository: SupabaseSyncRepository,
     private val syncProfile: suspend (UserEntity) -> SyncOutcome<Unit> = syncRepository::syncProfile,
+    private val scheduleProfileRetry: (Int) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis
 ) {
 
@@ -91,7 +92,15 @@ class UserRepository(
     ): UserEntity = saveInternal(user, ftpSource, ftpWorkoutId, mirrorToCloud = false)
 
     /** Mirrors a profile after restore has established that no cloud copy exists. */
-    suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> = syncProfile.invoke(user)
+    suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> {
+        val outcome = syncProfile.invoke(user)
+        // Unlike rides, profile edits have no backlog. Preserve a failed
+        // upload as work to retry when the network returns.
+        if (outcome is SyncOutcome.Failed && user.authUserId != null) {
+            scheduleProfileRetry(user.localUserId)
+        }
+        return outcome
+    }
 
     private suspend fun saveInternal(
         user: UserEntity,

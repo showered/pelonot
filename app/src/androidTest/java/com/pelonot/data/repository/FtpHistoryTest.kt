@@ -10,6 +10,7 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.data.remote.CloudAccess
 import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.SyncOutcome
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -60,6 +61,28 @@ class FtpHistoryTest {
 
     private suspend fun newRider(ftp: Int = 200) =
         repository.save(UserEntity(name = "Test Rider", weightKg = 72.0, ftpWatts = ftp))
+
+    @Test
+    fun failedProfileUploadSchedulesRetryWithoutLosingTheFtpChange() = runBlocking {
+        val scheduled = mutableListOf<Int>()
+        repository = UserRepository(
+            database = database,
+            userDao = database.userDao(),
+            ftpHistoryDao = database.ftpHistoryDao(),
+            syncRepository = SupabaseSyncRepository(CloudAccess(database.userDao())),
+            syncProfile = { SyncOutcome.Failed(java.io.IOException("offline")) },
+            scheduleProfileRetry = { scheduled += it }
+        )
+        val rider = repository.saveLocally(
+            UserEntity(name = "Rider", ftpWatts = 200, authUserId = "account")
+        )
+        assertEquals(emptyList<Int>(), scheduled)
+
+        repository.updateFtp(rider.localUserId, 157, FtpChangeSource.AutoBreakthrough)
+
+        assertEquals(157, repository.getUser(rider.localUserId)?.ftpWatts)
+        assertEquals(listOf(rider.localUserId), scheduled)
+    }
 
     @Test
     fun reviewedChangeIsAtomicAndRecordsItsSource() = runBlocking {
