@@ -42,16 +42,9 @@ data class ClassLeaderboard(
     val entries: List<Entry> = emptyList()
 ) {
 
-    /**
-     * **A household of one sees nothing** (24.1.6).
-     *
-     * A leaderboard with a single row on it is not a comparison, it is the
-     * rider's own number with a rosette drawn on it — and the dashboard
-     * already tells that story properly (22.1). Empty is also what a household
-     * that has only ever ridden simulated rides sees, since none of those may
-     * be ranked (24.4.2).
-     */
-    val isWorthShowing: Boolean get() = entries.size >= 2
+    /** A lone rider gets records only when both class and duration bests exist. */
+    val isWorthShowing: Boolean
+        get() = entries.size >= 2 || entries.singleOrNull()?.durationBestKj != null
 
     /** Whether anybody on this board rode a different bike (18.7). */
     val crossesBikes: Boolean get() = entries.any { it.source == Source.Cloud }
@@ -161,6 +154,8 @@ data class ClassLeaderboard(
         val accountId: String?,
         val name: String,
         val outputKj: Double,
+        /** Best measured class ride of this class's authored duration. */
+        val durationBestKj: Double? = null,
         val weightKg: Double,
         /** 1-based, and shared by riders on identical output. */
         val rank: Int,
@@ -176,6 +171,7 @@ data class ClassLeaderboard(
         val accountId: String?,
         val name: String,
         val outputKj: Double,
+        val durationBestKj: Double? = null,
         val weightKg: Double,
         val source: Source = Source.Household
     )
@@ -220,6 +216,7 @@ data class ClassLeaderboard(
                         accountId = standing.accountId,
                         name = standing.name,
                         outputKj = standing.outputKj,
+                        durationBestKj = standing.durationBestKj,
                         weightKg = standing.weightKg,
                         rank = rank,
                         isYou = (standing.localUserId != null && standing.localUserId == youId) ||
@@ -253,8 +250,17 @@ data class ClassLeaderboard(
                 .mapNotNull { it.accountId }
                 .toSet()
 
+            val cloudDuration = standings.filter { it.source == Source.Cloud }
+                .associateBy { it.accountId }
             return standings.filterNot { standing ->
                 standing.source == Source.Cloud && standing.accountId in householdAccounts
+            }.map { standing ->
+                if (standing.source != Source.Household) standing else {
+                    val remote = cloudDuration[standing.accountId]
+                    standing.copy(durationBestKj = listOfNotNull(
+                        standing.durationBestKj, remote?.durationBestKj
+                    ).maxOrNull())
+                }
             }
         }
     }

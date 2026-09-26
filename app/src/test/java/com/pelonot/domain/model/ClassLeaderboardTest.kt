@@ -29,6 +29,25 @@ class ClassLeaderboardTest {
         assertEquals(CloudBoardState.Ready, empty.cloudState)
     }
 
+    @Test
+    fun `duration best from another bike augments local rider without replacing class rank`() {
+        val board = ClassLeaderboard.of(
+            "TH-01",
+            listOf(
+                standing(1, "Sam", 180.0, accountId = "sam")
+                    .copy(durationBestKj = 210.0),
+                cloudStanding("sam", "Sam", 160.0).copy(durationBestKj = 250.0),
+                cloudStanding("alex", "Alex", 200.0).copy(durationBestKj = 240.0)
+            ),
+            youId = 1
+        )
+
+        assertEquals(2, board.entries.size)
+        assertEquals("Alex", board.entries[0].name)
+        assertEquals(180.0, board.entries[1].outputKj, 0.001)
+        assertEquals(250.0, board.entries[1].durationBestKj!!, 0.001)
+    }
+
     private fun standing(
         id: Int,
         name: String,
@@ -190,8 +209,8 @@ class ClassLeaderboardTest {
     }
 
     /**
-     * 24.1.6. A leaderboard with one row on it is the rider's own number with
-     * a rosette drawn on it, and the dashboard already tells that story.
+     * 24.1.6 still hides a lone class score. 18.13 allows a lone rider's two
+     * distinct records to form a record card, with no rank rosette.
      */
     @Test
     fun `a household of one is not a leaderboard`() {
@@ -200,6 +219,9 @@ class ClassLeaderboardTest {
                 .isWorthShowing
         )
         assertFalse(ClassLeaderboard.of("TH-01", emptyList(), youId = 1).isWorthShowing)
+        assertTrue(ClassLeaderboard.of(
+            "TH-01", listOf(standing(1, "Sam", 180.0).copy(durationBestKj = 220.0)), youId = 1
+        ).isWorthShowing)
         assertTrue(
             ClassLeaderboard.of(
                 "TH-01",

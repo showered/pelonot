@@ -246,6 +246,18 @@ class SupabaseSyncRepository(
             ).decodeList<LeaderboardRowDto>()
         }
 
+    /** Narrow lifetime duration bests for live finish targets (18.13.5). */
+    suspend fun durationFinishTargets(
+        durationSec: Int,
+        forProfileId: Int?
+    ): SyncOutcome<List<com.pelonot.data.remote.dto.DurationFinishDto>> =
+        executeReturning("durationFinishTargets", forProfileId) { supabase, _ ->
+            supabase.postgrest.rpc(
+                function = "duration_finish_targets",
+                parameters = buildJsonObject { put("p_duration_sec", durationSec) }
+            ).decodeList<com.pelonot.data.remote.dto.DurationFinishDto>()
+        }
+
     /**
      * Recent rides shared by other signed-in Pelonot riders (22.8.7 / 18.2).
      *

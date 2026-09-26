@@ -1030,13 +1030,20 @@ private fun LiveLeaderboardCard(
     standings: LiveStandings?,
     elapsedSeconds: Int,
     modifier: Modifier = Modifier,
+    finishChases: List<com.pelonot.domain.social.FinishChase> = emptyList(),
     /**
      * The rider's own past ride just overtaken (24.3.18d). Raised by the
      * service, latched to fire once, and null again after six seconds.
      */
     passedOwnRide: LiveStanding? = null
 ) {
-    if (standings == null) return
+    if (standings == null && finishChases.isEmpty()) return
+    if (standings == null) {
+        Card(modifier = modifier, shape = MaterialTheme.expressiveShapes.large) {
+            FinishChaseRows(finishChases, Modifier.padding(MaterialTheme.spacing.large))
+        }
+        return
+    }
 
     Card(
         // 24.3.13's consequence, drawn rather than described: your row moves
@@ -1094,6 +1101,13 @@ private fun LiveLeaderboardCard(
         // that.
         val edge = MaterialTheme.spacing.large
 
+        if (finishChases.isNotEmpty()) {
+            FinishChaseRows(
+                finishChases,
+                Modifier.padding(start = edge, end = edge, top = edge)
+            )
+        }
+
         // 24.3.18d. **The moment, above the board rather than inside it.** The
         // owner asked for passing your own best to *"really stand out"*, and
         // the difficulty is that it has to be an *event*: the board recomputes
@@ -1134,7 +1148,7 @@ private fun LiveLeaderboardCard(
         // celebration takes its own height from that budget, leaving the
         // buttons in their measured position.
         val eventCount = (if (passedOwnRide != null) 1 else 0) +
-            (if (passedMilestone != null) 1 else 0)
+            (if (passedMilestone != null) 1 else 0) + finishChases.size
         Box(modifier = Modifier.fillMaxWidth()) {
             LazyColumn(
                 state = listState,
@@ -1192,6 +1206,48 @@ private fun LiveLeaderboardCard(
                         .fillMaxWidth()
                         .height(24.dp)
                         .background(Brush.verticalGradient(listOf(Color.Transparent, fadeColour)))
+                )
+            }
+        }
+    }
+}
+
+/** Fixed final totals, visible even when a past trace has already fallen behind. */
+@Composable
+private fun FinishChaseRows(
+    chases: List<com.pelonot.domain.social.FinishChase>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        chases.forEach { chase ->
+            val duration = chase.durationSec / 60
+            val title = if (chase.target.isYou) "Your best $duration min" else
+                "${chase.target.name}'s best $duration min"
+            Column {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        title,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        Formatters.kilojoules(chase.target.bestKj),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    if (chase.passed) "Passed this best" else
+                        "${kotlin.math.ceil(chase.remainingKj).toInt()} kJ away · " +
+                            Formatters.duration(chase.remainingSec) + " left",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
                 )
             }
         }
@@ -1997,6 +2053,7 @@ private fun UpNextColumn(
             standings = state.snapshot.standings,
             elapsedSeconds = state.snapshot.elapsedSeconds,
             modifier = Modifier.fillMaxWidth(),
+            finishChases = state.snapshot.finishChases,
             passedOwnRide = state.snapshot.passedOwnRide
         )
 

@@ -41,6 +41,7 @@ import com.pelonot.domain.social.HouseholdRider
 import com.pelonot.domain.social.HouseholdActivity
 import com.pelonot.domain.social.RaceCompetitor
 import com.pelonot.domain.social.RaceIdentity
+import com.pelonot.domain.social.DurationFinishTarget
 import com.pelonot.domain.progress.FtpEvidenceRide
 import com.pelonot.domain.progress.FtpReduction
 import com.pelonot.domain.progress.FtpReductionRule
@@ -529,6 +530,23 @@ class WorkoutRepository(
             youId = youId
         )
 
+    suspend fun durationFinishTargets(
+        classDurationSec: Int,
+        excludingWorkoutId: String,
+        youId: Int?,
+        provenance: PowerProvenance
+    ): List<DurationFinishTarget> = workoutDao.durationFinishTargets(
+        classDurationSec, excludingWorkoutId, youId, provenance
+    ).map { row ->
+        DurationFinishTarget(
+            localUserId = row.localUserId,
+            accountId = row.authUserId,
+            name = row.name,
+            bestKj = row.bestKj,
+            isYou = row.localUserId == youId
+        )
+    }
+
     /**
      * The household **and** everyone else registered, on one board (PLAN 18.5,
      * 18.9).
@@ -601,6 +619,7 @@ class WorkoutRepository(
                 accountId = row.authUserId,
                 name = row.name,
                 outputKj = row.bestOutputKj,
+                durationBestKj = row.durationBestKj,
                 weightKg = row.weightKg,
                 source = ClassLeaderboard.Source.Household
             )

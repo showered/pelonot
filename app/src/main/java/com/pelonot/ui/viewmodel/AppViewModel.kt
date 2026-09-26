@@ -806,6 +806,7 @@ class AppViewModel(
                             accountId = row.accountId,
                             name = row.name,
                             outputKj = row.outputKj,
+                            durationBestKj = row.durationBestKj,
                             weightKg = row.weightKg,
                             source = ClassLeaderboard.Source.Cloud
                         )

@@ -68,6 +68,7 @@ data class ClassLeaderboardRow(
     val name: String,
     val weightKg: Double,
     val bestOutputKj: Double,
+    val durationBestKj: Double?,
     /**
      * Their cloud account, or null for a housemate who has never signed in.
      *
@@ -76,6 +77,13 @@ data class ClassLeaderboardRow(
      * this route — the cloud already knows its own ids.
      */
     val authUserId: String?
+)
+
+data class DurationFinishRow(
+    val localUserId: Int,
+    val authUserId: String?,
+    val name: String,
+    val bestKj: Double
 )
 
 /** One of the rider's own rides of a given length — see [WorkoutDao.ridesOfLength]. */
@@ -576,22 +584,61 @@ interface WorkoutDao {
      */
     @Query(
         """
+        WITH target AS (
+            SELECT duration_sec FROM class_templates WHERE id = :classId
+        ), class_best AS (
+            SELECT user_id, MAX(total_output_kj) AS bestOutputKj
+            FROM workouts
+            WHERE class_id = :classId AND is_complete = 1
+              AND power_provenance = 'Measured'
+            GROUP BY user_id
+        ), duration_best AS (
+            SELECT w.user_id, MAX(w.total_output_kj) AS durationBestKj
+            FROM workouts w
+            JOIN class_templates c ON c.id = w.class_id
+            JOIN target ON target.duration_sec = c.duration_sec
+            WHERE w.is_complete = 1 AND w.power_provenance = 'Measured'
+            GROUP BY w.user_id
+        )
         SELECT p.local_user_id AS localUserId,
                p.name AS name,
                p.weight_kg AS weightKg,
                p.auth_user_id AS authUserId,
-               MAX(w.total_output_kj) AS bestOutputKj
-        FROM workouts w
-        JOIN profiles p ON p.local_user_id = w.user_id
-        WHERE w.class_id = :classId
-          AND w.is_complete = 1
-          AND p.household_visible = 1
-          AND w.power_provenance = 'Measured'
-        GROUP BY p.local_user_id
-        ORDER BY bestOutputKj DESC
+               class_best.bestOutputKj AS bestOutputKj,
+               duration_best.durationBestKj AS durationBestKj
+        FROM class_best
+        JOIN profiles p ON p.local_user_id = class_best.user_id
+        LEFT JOIN duration_best ON duration_best.user_id = class_best.user_id
+        WHERE p.household_visible = 1
+        ORDER BY class_best.bestOutputKj DESC
         """
     )
     suspend fun householdLeaderboard(classId: String): List<ClassLeaderboardRow>
+
+    /** Real final totals for a length, even when a rider never rode this class. */
+    @Query(
+        """
+        SELECT p.local_user_id AS localUserId,
+               p.auth_user_id AS authUserId,
+               p.name AS name,
+               MAX(w.total_output_kj) AS bestKj
+        FROM workouts w
+        JOIN class_templates c ON c.id = w.class_id
+        JOIN profiles p ON p.local_user_id = w.user_id
+        WHERE c.duration_sec = :classDurationSec
+          AND w.id != :excludingWorkoutId
+          AND w.is_complete = 1
+          AND w.power_provenance = :provenance
+          AND (p.household_visible = 1 OR p.local_user_id = :youId)
+        GROUP BY p.local_user_id
+        """
+    )
+    suspend fun durationFinishTargets(
+        classDurationSec: Int,
+        excludingWorkoutId: String,
+        youId: Int?,
+        provenance: PowerProvenance
+    ): List<DurationFinishRow>
 
     /**
      * The rider's **own** rides of one length, across classes (24.5).

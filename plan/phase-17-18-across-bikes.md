@@ -821,12 +821,30 @@ Treat “time zone” in the request as the existing 24.5 exact-duration bucket
 Do not sum rides or compare a partial ride to a completed class. Use measured
 power, completed rides and the same hidden-ride rules as the existing board.
 
-- [ ] **18.13.1** Extend the Room result to carry each visible local rider's
+**The owner's clarification makes the live target the priority.** At 29:00 of
+a 30-minute ride, if the rider has 401 kJ and Tom's lifetime best 30-minute
+finish is 420 kJ, the screen must plainly say that Tom's 420 is 19 kJ away with
+one minute left. The current `YourBestAtLength` row is a past ride's *trace at
+the current second*; passing it at 29:00 does not mean the rider has beaten its
+final total. The finish target and remaining gap must be a separate, explicit
+claim, for both the rider's own best and other riders'. The best of this exact
+class remains useful, but the duration best has priority when space is tight.
+Since 18.11 chose no friend graph, “friends” here means the existing small
+group of signed-in riders on the shared board; offline households work from
+Room without an account.
+
+- [x] **18.13.1** Extend the Room result to carry each visible local rider's
       best measured ride of the selected class *and* best measured class ride of
       that authored duration. Keep one person on one row; rank on *this class*
       and label the overall-duration figure separately so a sprint does not
       masquerade as a recovery-class win. A rider without a class attempt does
       not enter this class's ranking.
+
+      **26 September:** the Room query returns both bests and the DAO's 44
+      tests pass on the 1920 × 1080, 240 dpi tablet emulator. The class rank
+      still uses the class value. The board shows both values on one rider row.
+      One rider with both records sees a record card without a rank badge;
+      this is 24.1.6's single-score rule meeting the owner's newer request.
 - [ ] **18.13.2** Extend the narrow `class_leaderboard` RPC and DTO with only
       the same duration-best number for each returned account. The server must
       use the selected class's authored duration, apply hidden and measured
@@ -836,6 +854,25 @@ power, completed rides and the same hidden-ride rules as the existing board.
       housemates and other-bike riders, including a length best from a
       different class. Check one, two and many riders at 1280 × 720 dp and
       larger text; keep the existing bounded board window and failure state.
+- [ ] **18.13.4** At ride start, load **lifetime best final totals** at the
+      class's authored duration for the rider and visible housemates, including
+      riders who have never ridden this particular class. Show the final target,
+      the gap from current output and the remaining class time while riding.
+      A trace row alone cannot answer the 401 → 420 example above. Keep the
+      rider's duration target visually ahead of their exact-class target.
+- [ ] **18.13.5** Add a narrow authenticated RPC for each visible account's
+      best measured, non-hidden *class* ride at the requested authored
+      duration, even without a ride of the selected class. Fetch it after the
+      local live board is ready; cloud delay or failure cannot postpone or
+      remove Room targets. For a remote total without samples, show a **finish
+      target**, never a fabricated second-by-second human trace. Deduplicate a
+      housemate signed into the same account, keeping the higher recorded
+      duration best. Verify the two-account 401/420 case and a cloud failure.
+- [ ] **18.13.6** Check the live target at normal and larger type on the bike
+      size, including one minute remaining, a target already beaten, multiple
+      friends, and a rider with no measured history. Preserve the screen's
+      six-row ceiling, do not put this board back on the overlay (24.3.16),
+      and keep a passed target visible long enough to notice (24.3.18d.2).
 
 ---
 

@@ -37,6 +37,7 @@ degraded one.
 | `007_everyone_leaderboard.sql` | **Leaderboards and ghosts across bikes**, as two narrow `SECURITY DEFINER` functions rather than relaxed policies. Adds `workouts.power_provenance`. Drops the `friendships` table that was written for 17.5 and never needed — read the header for the owner's reasoning |
 | `008_companion_web.sql` | **What the companion web app needs** (Phase 17): a bio, units, a maximum heart rate and a sharing switch on `profiles`; a title and `hidden` on `workouts`; `kudos` and `ride_comments` with the functions that reach them |
 | `009_activity_sharing_opt_out.sql` | Changes the owner’s activity-sharing decision to **opt-out**: new and existing cloud profiles share ordinary rides, while `hidden` remains the per-ride escape hatch |
+| `010_class_duration_bests.sql` | Adds each rider's best measured class ride of the same authored duration to the class leaderboard RPC and a narrow live finish-target RPC; run after `009` |
 
 Run them in that order in the SQL Editor. `002` is non-destructive; **`003` is
 not** — it clears `profiles`, deliberately, because every row in it was written

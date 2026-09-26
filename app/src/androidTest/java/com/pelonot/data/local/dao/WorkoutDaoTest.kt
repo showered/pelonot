@@ -445,6 +445,51 @@ class WorkoutDaoTest {
         assertEquals(190.0, board.first { it.localUserId == USER_ID }.bestOutputKj, 0.001)
     }
 
+    @Test
+    fun classBoardCarriesEachRidersBestOfTheSameAuthoredLength() = runBlocking {
+        database.classTemplateDao().upsertAll(listOf(
+            ClassTemplateEntity(
+                id = "SHORT", title = "Short", category = "Threshold",
+                durationSec = 1200, intervalsJson = "[]"
+            )
+        ))
+        listOf(
+            workout("mine-class", classId = CLASS_ID, outputKj = 180.0),
+            workout("mine-other", classId = "SS-04", outputKj = 230.0),
+            workout("mine-short", classId = "SHORT", outputKj = 500.0),
+            workout("theirs-class", userId = OTHER_USER_ID, classId = CLASS_ID, outputKj = 170.0),
+            workout("theirs-other", userId = OTHER_USER_ID, classId = "SS-04", outputKj = 260.0)
+        ).forEach {
+            workoutDao.insertWorkout(it)
+            samplesFor(it.id, measured = true)
+        }
+
+        val board = settled().householdLeaderboard(CLASS_ID)
+        assertEquals(180.0, board.first { it.localUserId == USER_ID }.bestOutputKj, 0.001)
+        assertEquals(230.0, board.first { it.localUserId == USER_ID }.durationBestKj!!, 0.001)
+        assertEquals(170.0, board.first { it.localUserId == OTHER_USER_ID }.bestOutputKj, 0.001)
+        assertEquals(260.0, board.first { it.localUserId == OTHER_USER_ID }.durationBestKj!!, 0.001)
+    }
+
+    @Test
+    fun liveDurationTargetsIncludeHousemateWithoutThisClass() = runBlocking {
+        workoutDao.insertWorkout(workout("mine", classId = CLASS_ID, outputKj = 401.0))
+        samplesFor("mine", measured = true)
+        workoutDao.insertWorkout(workout("tom", userId = OTHER_USER_ID,
+            classId = "SS-04", outputKj = 420.0))
+        samplesFor("tom", measured = true)
+
+        val targets = settled().durationFinishTargets(
+            classDurationSec = 1800,
+            excludingWorkoutId = "current",
+            youId = USER_ID,
+            provenance = PowerProvenance.Measured
+        )
+
+        assertEquals(2, targets.size)
+        assertEquals(420.0, targets.first { it.localUserId == OTHER_USER_ID }.bestKj, 0.001)
+    }
+
     /** 24.1.4: a guest ride has no owner, so there is nobody to place. */
     @Test
     fun theHouseholdBoardExcludesGuestRides() = runBlocking {

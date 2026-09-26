@@ -14,6 +14,7 @@ import com.pelonot.domain.model.TargetBand
 import com.pelonot.domain.model.TargetEmphasis
 import com.pelonot.domain.model.cadenceBand
 import com.pelonot.domain.model.powerBand
+import com.pelonot.domain.social.FinishChase
 
 /**
  * Everything about a ride that is *not* a live sensor value, published as one
@@ -91,6 +92,8 @@ data class RideSnapshot(
      * and it belongs to the next sixty seconds of pedalling.
      */
     val standings: LiveStandings? = null,
+    /** Final duration bests for the rider and a nearby other rider. Ride screen only. */
+    val finishChases: List<FinishChase> = emptyList(),
     /**
      * The rider's own past ride just overtaken, latched to fire once (24.3.18d).
      *

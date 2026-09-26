@@ -310,7 +310,17 @@ data class LeaderboardRowDto(
     @SerialName("account_id") val accountId: String,
     val name: String,
     @SerialName("output_kj") val outputKj: Double,
+    @SerialName("duration_best_kj") val durationBestKj: Double? = null,
     @SerialName("weight_kg") val weightKg: Double,
+    @SerialName("is_you") val isYou: Boolean
+)
+
+/** One real final total per account at a class's authored duration. */
+@Serializable
+data class DurationFinishDto(
+    @SerialName("account_id") val accountId: String,
+    val name: String,
+    @SerialName("best_kj") val bestKj: Double,
     @SerialName("is_you") val isYou: Boolean
 )
 

@@ -5,9 +5,11 @@ now reloads after account attachment, distinguishes an empty feed from a failed
 request, and offers kudos on cloud rides. It keeps household activity available
 when the cloud fails. Class detail now shows its local leaderboard before the
 cloud responds and distinguishes an empty cloud board from an unavailable one.
-The debug build and JVM suite pass; signed-in tablet observation remains open
-for these social items. The plan now covers each rider's class and duration
-bests, including other bikes, and a dedicated 20-minute FTP test. Version **1.0.5** has a live
+The class board now shows each rider's best in that class and at its duration;
+the live ride screen shows final lifetime bests and the remaining gap for the
+rider and another rider. The full ride and class-detail layouts were checked at
+bike dimensions with seeded scores. The cloud RPC migration and signed-in two-bike observation
+remain open. A dedicated 20-minute FTP test is planned. Version **1.0.5** has a live
 update manifest and reachable APK. The overlay's strap battery layout and the
 owner's reported leaderboard milestone still need device checks.
 [PLAN.md](PLAN.md) is the current index.
@@ -17,8 +19,8 @@ owner's reported leaderboard milestone still need device checks.
 
 | Measured | |
 |---|---|
-| JVM tests | **1010**, 0 failures |
-| Plan boxes ticked | **763 of 986** — 77% |
+| JVM tests | **1016**, 0 failures |
+| Plan boxes ticked | **764 of 989** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a

@@ -24,6 +24,22 @@ import java.util.TimeZone
  */
 class WorkoutDtoTest {
 
+    @Test
+    fun `class board reads the duration best and tolerates an unmigrated endpoint`() {
+        val old = """{"account_id":"a","name":"Sam","output_kj":180.0,"weight_kg":70.0,"is_you":true}"""
+        val updated = """{"account_id":"a","name":"Sam","output_kj":180.0,"duration_best_kj":230.0,"weight_kg":70.0,"is_you":true}"""
+        assertNull(json.decodeFromString(LeaderboardRowDto.serializer(), old).durationBestKj)
+        assertEquals(230.0, json.decodeFromString(LeaderboardRowDto.serializer(), updated).durationBestKj!!, 0.001)
+    }
+
+    @Test
+    fun `live duration target decodes only a final score and identity`() {
+        val wire = """{"account_id":"tom","name":"Tom","best_kj":420.0,"is_you":false}"""
+        val target = json.decodeFromString(DurationFinishDto.serializer(), wire)
+        assertEquals("Tom", target.name)
+        assertEquals(420.0, target.bestKj, 0.001)
+    }
+
     private val json = Json { encodeDefaults = true }
 
     /** An auth user id — what `profiles.id` is in the cloud (14.2.1). */

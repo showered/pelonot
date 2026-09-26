@@ -705,19 +705,25 @@ async function loadBoard() {
       : row.weight_kg > 0 ? row.output_kj / row.weight_kg : 0;
   }
 
-  board.innerHTML = rows.map((row, index) => `
+  board.innerHTML = rows.map((row, index) => {
+    const classScore = boardBasis === 'kj'
+      ? `${Math.round(row.output_kj)} kJ`
+      : `${value(row).toFixed(1)} kJ/kg`;
+    const scores = row.duration_best_kj == null
+      ? `<span class="caption muted">This class</span><br>${classScore}`
+      : `<span class="caption muted">Best same length</span><br>` +
+        `${Math.round(row.duration_best_kj)} kJ<br>` +
+        `<span class="caption muted">This class · ${classScore}</span>`;
+    return `
     <div class="board-row${row.is_you ? ' you' : ''}">
       <span class="rank">${index + 1}</span>
       ${avatarHtml(row.name, row.account_id)}
       <span class="spacer"><strong>${escapeHtml(row.name)}</strong>${
         row.is_you ? ' <span class="caption muted">you</span>' : ''
       }</span>
-      <span class="figure">${
-        boardBasis === 'kj'
-          ? `${Math.round(row.output_kj)} kJ`
-          : `${value(row).toFixed(1)} kJ/kg`
-      }</span>
-    </div>`).join('');
+      <span class="figure">${scores}</span>
+    </div>`;
+  }).join('');
 
   el('board-note').textContent = rows.length === 1
     ? 'Only your own effort so far. Everyone with an account appears here as ' +

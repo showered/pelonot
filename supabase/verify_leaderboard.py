@@ -38,6 +38,7 @@ OTHER = "CLB-02"
 RIDE_A = "d0000000-0000-4000-8000-00000000000a"
 RIDE_B = "d0000000-0000-4000-8000-00000000000b"
 RIDE_MODELLED = "d0000000-0000-4000-8000-00000000000c"
+RIDE_SAME_LENGTH = "d0000000-0000-4000-8000-00000000000d"
 
 passed = failed = 0
 
@@ -103,8 +104,8 @@ check("A is marked as you and B is not",
       all(r["is_you"] == (r["account_id"] == A_ID) for r in board), t)
 check("it carries a name and a weight, so a board can be drawn",
       board and all(r["name"] and r["weight_kg"] is not None for r in board), t)
-check("and nothing else at all",
-      board and set(board[0]) == {"account_id", "name", "output_kj", "weight_kg", "is_you"},
+check("and only the duration best besides the existing board columns",
+      board and set(board[0]) == {"account_id", "name", "output_kj", "duration_best_kj", "weight_kg", "is_you"},
       f"{sorted(board[0]) if board else board}")
 
 s, t = rest(B, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
@@ -116,6 +117,24 @@ rest(B, "POST", "workouts", ride(RIDE_MODELLED, B_ID, OTHER, 999.0, "Modelled"))
 s, t = rest(A, "POST", "rpc/class_leaderboard", {"p_class_id": OTHER})
 check("a modelled ride is on nobody's board", B_ID not in {r["account_id"] for r in rows(t)},
       f"{s} {t}")
+
+print("== best at the same authored length is separate from this class ==")
+rest(B, "DELETE", f"workouts?id=eq.{RIDE_SAME_LENGTH}")
+s, t = rest(B, "POST", "workouts", ride(RIDE_SAME_LENGTH, B_ID, OTHER, 350.0, "Measured"))
+check("same-length ride recorded", s in (200, 201), f"{s} {t}")
+s, t = rest(A, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
+length_board = {r["account_id"]: r for r in rows(t)}
+check("B keeps this-class rank while same-length best comes from another class",
+      B_ID in length_board and length_board[B_ID]["output_kj"] == 200.0 and
+      length_board[B_ID]["duration_best_kj"] == 350.0, f"{s} {t}")
+s, t = rest(A, "POST", "rpc/duration_finish_targets", {"p_duration_sec": 1200})
+finish = {r["account_id"]: r for r in rows(t)}
+check("live finish targets include both accounts at this authored length",
+      A_ID in finish and B_ID in finish and finish[B_ID]["best_kj"] == 350.0,
+      f"{s} {t}")
+check("live target exposes only identity and final output",
+      finish and set(next(iter(finish.values()))) ==
+      {"account_id", "name", "best_kj", "is_you"}, f"{s} {t}")
 
 print("== the ghost ==")
 s, t = rest(A, "POST", "rpc/class_ghost", {"p_class_id": CLASS, "p_account_id": B_ID})
@@ -136,8 +155,11 @@ s, t = rest(None, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
 check("the anon key gets no board", refused(s, t) or rows(t) == [], f"{s} {t}")
 s, t = rest(None, "POST", "rpc/class_ghost", {"p_class_id": CLASS, "p_account_id": B_ID})
 check("the anon key gets no ghost", refused(s, t) or rows(t) == [], f"{s} {t}")
+s, t = rest(None, "POST", "rpc/duration_finish_targets", {"p_duration_sec": 1200})
+check("the anon key gets no duration targets", refused(s, t) or rows(t) == [], f"{s} {t}")
 
-for token, rid in ((A, RIDE_A), (B, RIDE_B), (B, RIDE_MODELLED)):
+for token, rid in ((A, RIDE_A), (B, RIDE_B), (B, RIDE_MODELLED),
+                   (B, RIDE_SAME_LENGTH)):
     rest(token, "DELETE", f"workouts?id=eq.{rid}")
 
 print(f"\n{passed} passed, {failed} failed")

@@ -311,9 +311,8 @@ fun ClassDetailScreen(
                 // must not lose a third of the panel on a night nobody has
                 // ridden this — which is why the whole column is absent when
                 // there is nothing on it (24.1.6's rule, one level up).
-                // 24.5 joins the same column, and it is the reason the column
-                // now appears at all on a bike with one rider: the board needs
-                // two people and this needs two rides.
+                // 24.5 joins the same column. Since 18.13, one measured rider
+                // can also see their class and duration records here.
                 val yourLength = ridesOfThisLength?.takeIf { it.isWorthShowing }
                 val showCloudStatus = cloudBoardState == CloudBoardState.Unavailable ||
                     (cloudBoardState == CloudBoardState.Ready && leaderboard?.isWorthShowing == false)
@@ -321,7 +320,7 @@ fun ClassDetailScreen(
                     rivals.isNotEmpty() ||
                     yourLength != null || showCloudStatus
                 if (showPeople) {
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .width(PEOPLE_COLUMN_WIDTH)
                             .fillMaxHeight()
@@ -334,25 +333,35 @@ fun ClassDetailScreen(
                         )
                     ) {
                         leaderboard?.takeIf { it.isWorthShowing }?.let {
-                            ClassLeaderboardCard(leaderboard = it, modifier = Modifier.fillMaxWidth())
+                            item {
+                                ClassLeaderboardCard(
+                                    leaderboard = it,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    durationMinutes = plan.durationSec / 60
+                                )
+                            }
                         }
 
                         if (cloudBoardState == CloudBoardState.Unavailable) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "Other bikes unavailable",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = onRetryLeaderboard) { Text("Retry") }
+                            item {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "Other bikes unavailable",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(onClick = onRetryLeaderboard) { Text("Retry") }
+                                }
                             }
                         } else if (showCloudStatus) {
-                            Text(
-                                "No other riders on this class yet",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            item {
+                                Text(
+                                    "No other riders on this class yet",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         // Under the household board when there is one: a
@@ -360,7 +369,9 @@ fun ClassDetailScreen(
                         // already lived through, and their own history is the
                         // thing they have.
                         yourLength?.let {
-                            RidesOfThisLengthCard(board = it, modifier = Modifier.fillMaxWidth())
+                            item {
+                                RidesOfThisLengthCard(board = it, modifier = Modifier.fillMaxWidth())
+                            }
                         }
 
                         // 24.3.3. Under the board, because the board is what
@@ -370,12 +381,14 @@ fun ClassDetailScreen(
                         // mid-ride: a menu over somebody who is already
                         // pedalling is 15.1.6's rule.
                         if (rivals.isNotEmpty()) {
-                            RivalPicker(
-                                rivals = rivals,
-                                selectedId = selectedRivalId,
-                                onPick = onPickRival,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            item {
+                                RivalPicker(
+                                    rivals = rivals,
+                                    selectedId = selectedRivalId,
+                                    onPick = onPickRival,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }

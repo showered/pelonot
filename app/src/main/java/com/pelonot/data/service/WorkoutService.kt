@@ -27,6 +27,7 @@ import com.pelonot.data.repository.SettingsRepository
 import com.pelonot.data.repository.UserRepository
 import com.pelonot.data.repository.ResumedRide
 import com.pelonot.data.repository.WorkoutRepository
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.data.sensor.PowerModel
 import com.pelonot.data.sensor.SensorReading
 import com.pelonot.data.sensor.SensorRepository
@@ -49,6 +50,8 @@ import com.pelonot.domain.model.LiveStanding
 import com.pelonot.domain.model.LiveStandings
 import com.pelonot.domain.social.RacePassTracker
 import com.pelonot.domain.social.RaceIdentity
+import com.pelonot.domain.social.DurationFinishTarget
+import com.pelonot.domain.social.DurationFinishTargets
 import com.pelonot.domain.identity.Avatar
 import com.pelonot.domain.model.MaxHeartRate
 import com.pelonot.domain.model.MetricSample
@@ -196,6 +199,8 @@ class WorkoutService : Service() {
      * ordinary case and draws nothing at all.
      */
     private var raceBoard: LiveLeaderboard? = null
+    @Volatile private var finishTargets: List<DurationFinishTarget> = emptyList()
+    @Volatile private var finishDurationSec: Int = 0
 
     /**
      * Latches the moment the rider goes past one of their own past rides
@@ -684,13 +689,14 @@ class WorkoutService : Service() {
      * absent one — 24.1.6's rule, applied per row.
      */
     private suspend fun loadRaceBoard(classId: String, youId: Int?, workoutId: String) {
+        val durationSec = classLengthSec(classId)
         val ridden = runCatching {
             workoutRepository.raceBoardFor(
                 classId = classId,
                 // 24.5.7. The class's own authored length, so the board can
                 // also ask *what is your best half-hour* rather than only
                 // *what is your best of this class*.
-                classDurationSec = classLengthSec(classId),
+                classDurationSec = durationSec,
                 youId = youId,
                 excludingWorkoutId = workoutId,
                 nowMs = System.currentTimeMillis(),
@@ -729,7 +735,6 @@ class WorkoutService : Service() {
         val field = ghosts + generated
         if (field.isEmpty()) {
             Log.i(TAG, "Nothing to race on $classId; no leaderboard")
-            return
         }
 
         val built = LiveLeaderboard(
@@ -754,6 +759,37 @@ class WorkoutService : Service() {
         // than trusting the sample to come round again.
         raceBoard = (if (raceDiscredited) built.generatedOnly() else built)
             .takeUnless { it.isEmpty }
+
+        // A past trace says who was ahead at this second, not whether today's
+        // finish will beat their lifetime total. Read real final totals as a
+        // separate target; the cloud may join later without holding the ride.
+        finishDurationSec = durationSec
+        val localTargets = runCatching {
+            workoutRepository.durationFinishTargets(
+                durationSec, workoutId, youId, RaceDebug.raceProvenance
+            )
+        }.onFailure { Log.w(TAG, "Could not read duration bests for $classId", it) }
+            .getOrDefault(emptyList())
+        finishTargets = if (raceDiscredited) emptyList() else localTargets
+        if (durationSec > 0 && youId != null) {
+            serviceScope.launch {
+                val outcome = ServiceLocator.syncRepository.durationFinishTargets(durationSec, youId)
+                if (outcome is SyncOutcome.Success &&
+                    _currentSession.value?.workoutId == workoutId && !raceDiscredited
+                ) {
+                    val remote = outcome.value.map { row ->
+                        DurationFinishTarget(
+                            localUserId = null,
+                            accountId = row.accountId,
+                            name = row.name,
+                            bestKj = row.bestKj,
+                            isYou = row.isYou
+                        )
+                    }
+                    finishTargets = DurationFinishTargets.merge(localTargets, remote)
+                }
+            }
+        }
 
         Log.i(
             TAG,
@@ -868,6 +904,8 @@ class WorkoutService : Service() {
         rivalTrace = null
         rivalName = null
         raceBoard = null
+        finishTargets = emptyList()
+        finishDurationSec = 0
         passTracker.reset()
         passedAtSec = -1
         raceDiscredited = false
@@ -1176,6 +1214,10 @@ class WorkoutService : Service() {
                     session?.distanceKm ?: current.distanceKm
                 ),
                 standings = board,
+                finishChases = if (raceDiscredited) emptyList() else
+                    DurationFinishTargets.chases(
+                        finishTargets, outputKj, elapsedSec, finishDurationSec
+                    ),
                 heartRateZones = heartRateZones,
                 passedOwnRide = pass
             )
@@ -1342,6 +1384,7 @@ class WorkoutService : Service() {
                 )
             }
             raceBoard = raceBoard?.generatedOnly()?.takeUnless { it.isEmpty }
+            finishTargets = emptyList()
         }
 
         // 2.2a.1: the ride is already the calibration dataset. Kept in memory

@@ -31,7 +31,9 @@ differences. This one carries none, because there is nothing to caveat.
 - [x] **24.1.4** Guests excluded by the join onto `profiles`
 - [x] **24.1.5** Nothing was added to the overlay, and nothing may be
 - [x] **24.1.6** A household of one draws no card at all — seen by marking one
-      of the two rides simulated and watching the whole card vanish
+      of the two rides simulated and watching the whole card vanish. **18.13
+      later adds an exception:** a lone rider with both a best in this class
+      and a best at its duration sees those as records, without a rank badge.
 - [x] **24.1.7** Falls out of the join rather than needing a decision: a
       deleted profile's rides are `SET NULL`, so they leave the board rather
       than sitting on it attributed to nobody. Their rides survive in history,

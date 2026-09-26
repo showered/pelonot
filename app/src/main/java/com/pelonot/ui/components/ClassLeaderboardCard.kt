@@ -31,10 +31,8 @@ import java.util.Locale
 /**
  * The household's board for one class (24.1).
  *
- * Draws nothing at all when there is nothing worth drawing — a household of
- * one, or a household whose rides were all simulated. That is
- * [ClassLeaderboard.isWorthShowing]'s rule and the caller does not repeat
- * it.
+ * Draws nothing when no measured record exists. A lone rider's two records
+ * now make a useful card without pretending there is a race (18.13).
  *
  * **No caveat, deliberately** (24.4.1). Every ride on here came off the same
  * board and the same knob, usually within the same week, so there is nothing
@@ -44,7 +42,8 @@ import java.util.Locale
 @Composable
 fun ClassLeaderboardCard(
     leaderboard: ClassLeaderboard,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    durationMinutes: Int? = null
 ) {
     if (!leaderboard.isWorthShowing) return
 
@@ -61,19 +60,15 @@ fun ClassLeaderboardCard(
             // got before, still saying "On this bike" — which is true, and is
             // the whole reason the household half never touches the network.
             Text(
-                text = if (leaderboard.crossesBikes) "Everyone riding this" else "On this bike",
+                text = when {
+                    leaderboard.entries.size == 1 && leaderboard.entries[0].isYou -> "Your records"
+                    leaderboard.entries.size == 1 -> "Class record"
+                    leaderboard.crossesBikes -> "Everyone riding this"
+                    else -> "On this bike"
+                },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = if (leaderboard.crossesBikes) {
-                    "Everyone who has ridden this class, best ride first"
-                } else {
-                    "Everyone here who has ridden this class, best ride first"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
 
@@ -82,7 +77,7 @@ fun ClassLeaderboardCard(
             // how many people happen to use the app.
             val visible = leaderboard.visible
             visible.rows.forEachIndexed { index, entry ->
-                LeaderboardRow(entry)
+                LeaderboardRow(entry, durationMinutes, showRank = leaderboard.entries.size > 1)
                 // Where the board skips ranks, and it has to be visible: two
                 // adjacent rows reading 3 and 9 with nothing between them
                 // would look like a ranking bug rather than a window.
@@ -127,7 +122,7 @@ fun ClassLeaderboardCard(
 }
 
 @Composable
-private fun LeaderboardRow(entry: ClassLeaderboard.Entry) {
+private fun LeaderboardRow(entry: ClassLeaderboard.Entry, durationMinutes: Int?, showRank: Boolean) {
     // Output per kilogram is offered beside the ranking, never as it: raw
     // output is the work actually done, and w/kg is the number a lighter rider
     // will want (24.1.3). Nothing here is ranked on anything FTP-relative —
@@ -148,42 +143,39 @@ private fun LeaderboardRow(entry: ClassLeaderboard.Entry) {
             .padding(vertical = MaterialTheme.spacing.small)
             .clearAndSetSemantics {
                 contentDescription = buildString {
-                    append("${entry.rank}. ${entry.name}")
+                    if (showRank) append("${entry.rank}. ")
+                    append(entry.name)
                     if (entry.isYou) append(", you")
                     if (entry.source == ClassLeaderboard.Source.Cloud && !entry.isYou) {
                         append(", on another bike")
                     }
-                    append(", ${Formatters.kilojoules(entry.outputKj)}")
+                    append(", this class ${Formatters.kilojoules(entry.outputKj)}")
                     perKg?.let { append(", $it") }
+                    entry.durationBestKj?.let { append(", best of same length ${Formatters.kilojoules(it)}") }
                 }
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .background(
-                    color = if (entry.isYou) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "${entry.rank}",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (entry.isYou) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
+        if (showRank) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(
+                        color = if (entry.isYou) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${entry.rank}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (entry.isYou) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
         }
-
-        Spacer(Modifier.width(MaterialTheme.spacing.medium))
 
         Text(
             // A small ring after the name marks a rider on another bike, and
@@ -208,11 +200,22 @@ private fun LeaderboardRow(entry: ClassLeaderboard.Entry) {
         )
 
         Column(horizontalAlignment = Alignment.End) {
+            entry.durationBestKj?.let { best ->
+                Text(
+                    text = "Best ${durationMinutes?.let { "$it min" } ?: "same length"}: " +
+                        Formatters.kilojoules(best),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
-                text = Formatters.kilojoules(entry.outputKj),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
+                text = "This class ${Formatters.kilojoules(entry.outputKj)}",
+                style = if (entry.durationBestKj == null) MaterialTheme.typography.bodyLarge
+                    else MaterialTheme.typography.bodySmall,
+                color = if (entry.durationBestKj == null) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (entry.durationBestKj == null) FontWeight.Bold else FontWeight.Normal
             )
             if (perKg != null) {
                 Text(
