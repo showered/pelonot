@@ -16,6 +16,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -38,6 +39,9 @@ import kotlinx.serialization.json.put
 /** One id off `workouts`, for the cheap half of a restore — see [SupabaseSyncRepository.fetchWorkoutIds]. */
 @Serializable
 private data class WorkoutIdDto(val id: String)
+
+@Serializable
+private data class ShareActivityDto(@SerialName("share_activity") val enabled: Boolean)
 
 class SupabaseSyncRepository(
     private val cloudAccess: CloudAccess
@@ -91,6 +95,22 @@ class SupabaseSyncRepository(
             supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user, accountId)) {
                 onConflict = "id"
             }
+        }
+
+    /** The signed-in rider controls whether their rides appear in the shared feed. */
+    suspend fun shareActivity(localUserId: Int): SyncOutcome<Boolean> =
+        executeReturning("shareActivity", localUserId, accountPreference = true) { supabase, accountId ->
+            supabase.from(TABLE_PROFILES)
+                .select(Columns.list("share_activity")) { filter { eq("id", accountId) } }
+                .decodeSingle<ShareActivityDto>().enabled
+        }
+
+    suspend fun setShareActivity(localUserId: Int, enabled: Boolean): SyncOutcome<Unit> =
+        execute("setShareActivity", localUserId, accountPreference = true) { supabase, accountId ->
+            supabase.from(TABLE_PROFILES).update(buildJsonObject { put("share_activity", enabled) }) {
+                select(Columns.list("share_activity"))
+                filter { eq("id", accountId) }
+            }.decodeSingle<ShareActivityDto>()
         }
 
     /**
@@ -284,8 +304,9 @@ class SupabaseSyncRepository(
     private suspend inline fun execute(
         operation: String,
         localUserId: Int?,
+        accountPreference: Boolean = false,
         crossinline block: suspend (io.github.jan.supabase.SupabaseClient, String) -> Unit
-    ): SyncOutcome<Unit> = executeReturning(operation, localUserId) { c, id -> block(c, id) }
+    ): SyncOutcome<Unit> = executeReturning(operation, localUserId, accountPreference) { c, id -> block(c, id) }
 
     /**
      * The one door out to the network. The gate is checked here, before the
@@ -300,9 +321,12 @@ class SupabaseSyncRepository(
     private suspend inline fun <T> executeReturning(
         operation: String,
         localUserId: Int?,
+        accountPreference: Boolean = false,
         crossinline block: suspend (io.github.jan.supabase.SupabaseClient, String) -> T
     ): SyncOutcome<T> {
-        val accountId = cloudAccess.accountIdFor(localUserId) ?: return SyncOutcome.Disabled
+        val accountId = if (accountPreference) cloudAccess.accountIdForPreferences(localUserId)
+                        else cloudAccess.accountIdFor(localUserId)
+        if (accountId == null) return SyncOutcome.Disabled
         val supabase = client ?: return SyncOutcome.Disabled
         return try {
             SyncOutcome.Success(block(supabase, accountId))

@@ -88,11 +88,24 @@ class CloudAccess(
      *   deleted.
      */
     suspend fun accountIdFor(localUserId: Int?): String? {
+        return accountIdFor(localUserId, requireBackup = true)
+    }
+
+    /**
+     * A rider can hide rides already in the cloud after turning backup off.
+     * This still requires their own live session; only the upload preference
+     * is bypassed, because otherwise the privacy control would disappear at
+     * the moment it may matter most.
+     */
+    suspend fun accountIdForPreferences(localUserId: Int?): String? =
+        accountIdFor(localUserId, requireBackup = false)
+
+    private suspend fun accountIdFor(localUserId: Int?, requireBackup: Boolean): String? {
         val id = localUserId ?: return null
         if (!credentialsPresent()) return null
         val user = userDao.getUserById(id) ?: return null
         val authUserId = user.authUserId ?: return null
-        if (!backupPreference()) {
+        if (requireBackup && !backupPreference()) {
             Log.i(TAG, "Profile $id has an account but backup is switched off")
             return null
         }

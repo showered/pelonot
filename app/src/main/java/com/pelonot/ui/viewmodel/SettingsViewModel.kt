@@ -36,6 +36,8 @@ import com.pelonot.domain.retention.RetentionAge
 import com.pelonot.domain.update.UpdateManifest
 import kotlinx.coroutines.flow.SharingStarted
 import com.pelonot.data.remote.CloudAccess
+import com.pelonot.data.remote.SupabaseSyncRepository
+import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.data.repository.WorkoutRepository
 import com.pelonot.domain.cloud.CloudSyncStatus
 import com.pelonot.domain.model.MaxHeartRate
@@ -75,6 +77,11 @@ data class SettingsUiState(
      * housemate's, has an `auth_user_id` on the row and can send nothing.
      */
     val sessionMatchesProfile: Boolean = false,
+
+    /** Null until the signed-in rider's cloud choice has been read. */
+    val shareActivity: Boolean? = null,
+    val shareActivityBusy: Boolean = false,
+    val shareActivityError: String? = null,
 
     /** Rides this profile has that the cloud has not — for the signed-out line. */
     val ridesWaiting: Int = 0,
@@ -167,6 +174,7 @@ class SettingsViewModel(
     private val retentionRepository: RetentionRepository,
     private val cloudAccess: CloudAccess,
     private val accountRepository: AccountRepository,
+    private val syncRepository: SupabaseSyncRepository,
     private val updateRepository: UpdateRepository,
     private val updateInstallCoordinator: UpdateInstallCoordinator,
     /** Whether this build has an endpoint at all — see [SettingsUiState]. */
@@ -299,6 +307,13 @@ class SettingsViewModel(
     /** *Check for updates now* (30.4), asked for rather than observed like the rest of this group. */
     private val _manualUpdateCheck = MutableStateFlow<UpdateCheck?>(null)
     private val _checkingForUpdates = MutableStateFlow(false)
+    private data class SharingState(
+        val profileId: Int? = null,
+        val enabled: Boolean? = null,
+        val busy: Boolean = false,
+        val error: String? = null
+    )
+    private val _sharing = MutableStateFlow(SharingState())
     val checkingForUpdates: StateFlow<Boolean> = _checkingForUpdates
     val activeRide = com.pelonot.data.service.RideInProgress.active
 
@@ -308,7 +323,8 @@ class SettingsViewModel(
         val volumeError: String?,
         val highestHr: Int?,
         val storage: StorageFacts?,
-        val manualUpdateCheck: UpdateCheck?
+        val manualUpdateCheck: UpdateCheck?,
+        val sharing: SharingState = SharingState()
     )
 
     private val volume = combine(
@@ -320,14 +336,18 @@ class SettingsViewModel(
     ) { level, error, highestHr, storage, manualUpdateCheck ->
         OnDemand(level, error, highestHr, storage, manualUpdateCheck)
     }
+    private val onDemand = combine(volume, _sharing) { demand, sharing ->
+        demand.copy(sharing = sharing)
+    }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
         profile,
         sensors,
-        volume,
+        onDemand,
         calibrationRepository.state
-    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), (mediaVolume, volumeError, highestHr, storage, manualUpdateCheck), calibration ->
+    ) { settings, (user, ftpHistory), (hrStatus, hrDevices, cloudSync), demand, calibration ->
+        val sharing = demand.sharing.takeIf { it.profileId == user?.localUserId }
         SettingsUiState(
             settings = settings,
             profile = user,
@@ -335,16 +355,19 @@ class SettingsViewModel(
             heartRateStatus = hrStatus.first,
             strapBatteryPercent = hrStatus.second,
             heartRateDevices = hrDevices,
-            mediaVolume = mediaVolume,
-            volumeError = volumeError,
+            mediaVolume = demand.mediaVolume,
+            volumeError = demand.volumeError,
             calibration = calibration,
             cloudSync = cloudSync.status,
             sessionMatchesProfile = cloudSync.sessionMatchesProfile,
+            shareActivity = sharing?.enabled,
+            shareActivityBusy = sharing?.busy == true,
+            shareActivityError = sharing?.error,
             ridesWaiting = cloudSync.ridesWaiting,
             cloudConfigured = cloudConfigured,
-            highestRecordedHr = highestHr,
-            storage = storage,
-            manualUpdateCheck = manualUpdateCheck
+            highestRecordedHr = demand.highestHr,
+            storage = demand.storage,
+            manualUpdateCheck = demand.manualUpdateCheck
         )
     }.stateIn(
         scope = viewModelScope,
@@ -457,6 +480,30 @@ class SettingsViewModel(
 
     fun setCloudSyncEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setCloudSyncEnabled(enabled) }
+    }
+
+    fun refreshShareActivity(localUserId: Int) {
+        _sharing.value = SharingState(profileId = localUserId, busy = true)
+        viewModelScope.launch {
+            val next = when (val result = syncRepository.shareActivity(localUserId)) {
+                is SyncOutcome.Success -> SharingState(localUserId, enabled = result.value)
+                else -> SharingState(localUserId, error = "Couldn't load sharing. Try again.")
+            }
+            if (_sharing.value.profileId == localUserId) _sharing.value = next
+        }
+    }
+
+    fun setShareActivity(localUserId: Int, enabled: Boolean) {
+        val current = _sharing.value
+        if (current.profileId != localUserId || current.enabled == null || current.busy) return
+        _sharing.value = current.copy(busy = true, error = null)
+        viewModelScope.launch {
+            val next = when (syncRepository.setShareActivity(localUserId, enabled)) {
+                is SyncOutcome.Success -> SharingState(localUserId, enabled = enabled)
+                else -> current.copy(error = "Couldn't save sharing. Try again.")
+            }
+            if (_sharing.value.profileId == localUserId) _sharing.value = next
+        }
     }
 
     fun setUpdateChecksEnabled(enabled: Boolean) {
@@ -673,6 +720,7 @@ class SettingsViewModel(
                 retentionRepository = ServiceLocator.retentionRepository,
                 cloudAccess = ServiceLocator.cloudAccess,
                 accountRepository = ServiceLocator.accountRepository,
+                syncRepository = ServiceLocator.syncRepository,
                 updateRepository = ServiceLocator.updateRepository,
                 updateInstallCoordinator = ServiceLocator.updateInstallCoordinator,
                 cloudConfigured = ServiceLocator.authRepository.cloudConfigured

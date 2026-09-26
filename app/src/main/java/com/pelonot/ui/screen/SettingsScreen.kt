@@ -147,6 +147,11 @@ fun SettingsScreen(
         viewModel.refreshStorage()
     }
 
+    LaunchedEffect(state.profile?.localUserId, state.sessionMatchesProfile) {
+        val id = state.profile?.localUserId
+        if (id != null && state.sessionMatchesProfile) viewModel.refreshShareActivity(id)
+    }
+
     val scanForHeartRate = rememberHeartRateScan(viewModel)
 
     // 19.1.3 / 12.4.4. Through the system's own pickers, like the ride export
@@ -343,7 +348,16 @@ fun SettingsScreen(
                 ridesWaiting = state.ridesWaiting,
                 backupEnabled = state.settings.cloudSyncEnabled,
                 onBackupEnabledChange = viewModel::setCloudSyncEnabled,
-                syncStatus = state.cloudSync
+                syncStatus = state.cloudSync,
+                shareActivity = state.shareActivity,
+                shareActivityBusy = state.shareActivityBusy,
+                shareActivityError = state.shareActivityError,
+                onShareActivityChange = { enabled ->
+                    state.profile?.localUserId?.let { viewModel.setShareActivity(it, enabled) }
+                },
+                onRetrySharing = {
+                    state.profile?.localUserId?.let(viewModel::refreshShareActivity)
+                }
             )
 
             BackupSection(
@@ -1179,7 +1193,12 @@ private fun CloudSection(
     ridesWaiting: Int,
     backupEnabled: Boolean,
     onBackupEnabledChange: (Boolean) -> Unit,
-    syncStatus: CloudSyncStatus
+    syncStatus: CloudSyncStatus,
+    shareActivity: Boolean?,
+    shareActivityBusy: Boolean,
+    shareActivityError: String?,
+    onShareActivityChange: (Boolean) -> Unit,
+    onRetrySharing: () -> Unit
 ) {
     SettingsSection("Your rides") {
         if (!hasAccount) {
@@ -1238,6 +1257,22 @@ private fun CloudSection(
                 checked = backupEnabled,
                 onCheckedChange = onBackupEnabledChange
             )
+            Spacer(Modifier.size(MaterialTheme.spacing.medium))
+            if (shareActivity != null) {
+                SettingsToggle(
+                    title = "Share rides with everyone here",
+                    description = "Shows your rides in Recent rides on signed-in bikes.",
+                    checked = shareActivity,
+                    enabled = !shareActivityBusy,
+                    onCheckedChange = onShareActivityChange
+                )
+            } else if (shareActivityBusy) {
+                Text("Loading sharing…", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (shareActivityError != null) {
+                Text(shareActivityError, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = onRetrySharing) { Text("Retry") }
+            }
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
             SyncStatusLine(syncStatus)
             Spacer(Modifier.size(MaterialTheme.spacing.medium))
@@ -1996,6 +2031,7 @@ private fun SettingsToggle(
     title: String,
     description: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -2015,7 +2051,7 @@ private fun SettingsToggle(
             )
         }
         Spacer(Modifier.size(MaterialTheme.spacing.medium))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, enabled = enabled, onCheckedChange = onCheckedChange)
     }
 }
 

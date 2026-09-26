@@ -104,6 +104,20 @@ class CloudAccessTest {
         assertFalse(gate(signedInRider, backup = false).isAllowedFor(signedInRider.localUserId))
     }
 
+    @Test
+    fun `sharing remains editable when backup is off`() = runBlocking {
+        val access = gate(signedInRider, backup = false)
+        assertNull(access.accountIdFor(signedInRider.localUserId))
+        assertEquals(SIGNED_IN_ACCOUNT, access.accountIdForPreferences(signedInRider.localUserId))
+    }
+
+    @Test
+    fun `sharing never borrows another rider's session`() = runBlocking {
+        val access = gate(signedInRider, housemateWithAccount, session = SIGNED_IN_ACCOUNT)
+        assertNull(access.accountIdForPreferences(housemateWithAccount.localUserId))
+        assertNull(access.accountIdForPreferences(offlineRider.localUserId))
+    }
+
     /**
      * **The gate names the rider as well as admitting them** (PLAN 14.2.1).
      *
