@@ -266,6 +266,13 @@ fun RideScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        // Re-entering a live ride can compose this screen after ON_START has
+        // already happened. Without an immediate answer the service keeps the
+        // overlay up over Pelonot's own ride screen until the next lifecycle
+        // transition, which may never come.
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.setScreenVisible(true)
+        }
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             viewModel.setScreenVisible(false)

@@ -27,6 +27,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
@@ -133,26 +134,26 @@ fun PelonotNavGraph(
     // it runs.
     val cloudConfigured = remember { ServiceLocator.accountRepository.cloudConfigured }
 
-    // 11.1a.5. Opening the app while a class is already recording — from the
-    // ride notification, from the launcher, or from the strip after the task
-    // was swiped away — used to land on "Who's riding?" with the ride running
-    // behind it and no route back to it. Nothing outside WorkoutService knew a
-    // ride existed.
-    //
-    // Only from the start destination, which is what makes this a cold-start
-    // door and not a trap: a ride begun the ordinary way also sets this, and
-    // the rider is already on the ride screen by then. Dashboard is pushed
-    // underneath so the back stack matches the ordinary path exactly —
-    // otherwise the summary's own popUpTo(Dashboard) has nothing to pop to and
-    // the rider finishes the ride into a dead end.
+    // The service can outlive the ride destination. System back can pop that
+    // destination while the overlay keeps recording, then opening Pelonot
+    // resumes its old Dashboard with no route back to the class. Observe the
+    // destination as well as the ride, so that path returns to the live screen.
+    // Re-entry carries the live workout id: it skips the countdown and binds to
+    // the existing service instead of trying to start another ride.
     val activeRide = uiState.activeRide
-    LaunchedEffect(activeRide) {
-        if (activeRide != null &&
-            navController.currentDestination?.route == Destination.ProfileSelector.route
+    val currentEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentEntry?.destination?.route
+    LaunchedEffect(activeRide?.workoutId, currentRoute) {
+        if (activeRide != null && currentRoute != null &&
+            currentRoute != Destination.Ride.route &&
+            currentRoute != Destination.PostRide.route
         ) {
-            navController.navigate(Destination.Dashboard.route)
+            navController.navigate(Destination.Dashboard.route) {
+                popUpTo(Destination.ProfileSelector.route) { inclusive = false }
+                launchSingleTop = true
+            }
             navController.navigate(
-                Destination.Ride.of(activeRide.classId, activeRide.intentId)
+                Destination.Ride.resuming(activeRide.workoutId, activeRide.classId)
             )
         }
     }
