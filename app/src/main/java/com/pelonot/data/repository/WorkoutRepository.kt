@@ -21,6 +21,9 @@ import com.pelonot.domain.chart.RideDistributions
 import com.pelonot.domain.chart.TimeInZone
 import com.pelonot.domain.model.AutoPausePolicy
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.ClassBoardLoad
+import com.pelonot.domain.model.CloudBoardState
+import com.pelonot.domain.model.CloudStandings
 import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.model.MetricSample
 import com.pelonot.domain.model.RoadSpeed
@@ -30,6 +33,7 @@ import com.pelonot.domain.model.RideInterruption
 import com.pelonot.domain.model.WorkoutAggregates
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.identity.Avatar
@@ -543,17 +547,16 @@ class WorkoutRepository(
      *   which matters on a second bike where their local profile id is
      *   different (14.2.1's whole argument).
      */
-    suspend fun classLeaderboard(
+    fun classLeaderboard(
         classId: String,
         youId: Int?,
         yourAccountId: String?,
-        cloudStandings: suspend () -> List<ClassLeaderboard.Standing>
-    ): ClassLeaderboard = ClassLeaderboard.of(
-        classId = classId,
-        standings = householdStandings(classId) + cloudStandings(),
-        youId = youId,
-        yourAccountId = yourAccountId
-    )
+        cloudStandings: suspend () -> CloudStandings
+    ): Flow<ClassBoardLoad> = flow {
+        val local = householdStandings(classId)
+        emit(ClassBoardLoad.of(classId, local, CloudStandings(state = CloudBoardState.Checking), youId, yourAccountId))
+        emit(ClassBoardLoad.of(classId, local, cloudStandings(), youId, yourAccountId))
+    }
 
     /**
      * The rider's own rides of one length, best first (24.5).

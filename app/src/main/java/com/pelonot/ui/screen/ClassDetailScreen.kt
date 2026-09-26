@@ -55,6 +55,7 @@ import com.pelonot.core.Formatters
 import com.pelonot.data.repository.ClassPlan
 import com.pelonot.domain.chart.ClassProfile
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.CloudBoardState
 import com.pelonot.domain.model.GovernedBy
 import com.pelonot.domain.model.Interval
 import com.pelonot.domain.model.RideIntent
@@ -95,6 +96,8 @@ fun ClassDetailScreen(
      * read, and drawn as nothing when there is nothing worth drawing.
      */
     leaderboard: ClassLeaderboard? = null,
+    cloudBoardState: CloudBoardState = CloudBoardState.Offline,
+    onRetryLeaderboard: () -> Unit = {},
     /** The rider's own rides of this length, across classes (24.5). */
     ridesOfThisLength: RidesOfThisLength? = null,
     /**
@@ -312,9 +315,11 @@ fun ClassDetailScreen(
                 // now appears at all on a bike with one rider: the board needs
                 // two people and this needs two rides.
                 val yourLength = ridesOfThisLength?.takeIf { it.isWorthShowing }
+                val showCloudStatus = cloudBoardState == CloudBoardState.Unavailable ||
+                    (cloudBoardState == CloudBoardState.Ready && leaderboard?.isWorthShowing == false)
                 val showPeople = leaderboard?.isWorthShowing == true ||
                     rivals.isNotEmpty() ||
-                    yourLength != null
+                    yourLength != null || showCloudStatus
                 if (showPeople) {
                     Column(
                         modifier = Modifier
@@ -328,8 +333,26 @@ fun ClassDetailScreen(
                             Alignment.CenterVertically
                         )
                     ) {
-                        leaderboard?.let {
+                        leaderboard?.takeIf { it.isWorthShowing }?.let {
                             ClassLeaderboardCard(leaderboard = it, modifier = Modifier.fillMaxWidth())
+                        }
+
+                        if (cloudBoardState == CloudBoardState.Unavailable) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Other bikes unavailable",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = onRetryLeaderboard) { Text("Retry") }
+                            }
+                        } else if (showCloudStatus) {
+                            Text(
+                                "No other riders on this class yet",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
                         // Under the household board when there is one: a

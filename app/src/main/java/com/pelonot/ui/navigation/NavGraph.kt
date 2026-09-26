@@ -51,6 +51,8 @@ import com.pelonot.ui.screen.RidingScreen
 import com.pelonot.ui.screen.SettingsScreen
 import com.pelonot.ui.screen.UpdateOfferDialog
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.ClassBoardLoad
+import com.pelonot.domain.model.CloudBoardState
 import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.core.Features
 import com.pelonot.data.repository.UpdateInstallState
@@ -61,6 +63,8 @@ import com.pelonot.ui.viewmodel.AppUiState
 import com.pelonot.ui.viewmodel.InterruptedRide
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 private const val TRANSITION_MS = 300
 
@@ -103,8 +107,8 @@ fun PelonotNavGraph(
     /** The household's board for one class (24.1.2). A Room read, never a network one. */
     onLoadRidesOfThisLength: suspend (classDurationSec: Int, youId: Int?) -> RidesOfThisLength =
         { _, _ -> RidesOfThisLength(0) },
-    onLoadLeaderboard: suspend (classId: String, youId: Int?) -> ClassLeaderboard =
-        { classId, _ -> ClassLeaderboard(classId) },
+    onLoadLeaderboard: (classId: String, youId: Int?) -> Flow<ClassBoardLoad> =
+        { classId, _ -> flowOf(ClassBoardLoad(ClassLeaderboard(classId), CloudBoardState.Offline)) },
     /** Rides of this class that can be raced live (24.3.3). Always a Room read. */
     onLoadRivals: suspend (classId: String, youId: Int?) -> List<ClassRival> =
         { _, _ -> emptyList() },
@@ -453,8 +457,10 @@ fun PelonotNavGraph(
             // 24.1.2. Read once per class rather than held in AppUiState:
             // it belongs to the class on screen, not to the app.
             val youId = uiState.selectedProfile?.localUserId
-            val leaderboard by produceState<ClassLeaderboard?>(null, classId, youId) {
-                value = classId?.let { onLoadLeaderboard(it, youId) }
+            val accountId = uiState.selectedProfile?.authUserId
+            var boardRefresh by rememberSaveable(classId) { mutableStateOf(0) }
+            val boardLoad by produceState<ClassBoardLoad?>(null, classId, youId, accountId, boardRefresh) {
+                classId?.let { onLoadLeaderboard(it, youId).collect { load -> value = load } }
             }
 
             // 24.5, read the same way. Keyed on the class's **length** rather
@@ -494,7 +500,9 @@ fun PelonotNavGraph(
                     pendingRivalId = selectedRivalId
                     showIntentPrompt = true
                 },
-                leaderboard = leaderboard,
+                leaderboard = boardLoad?.board,
+                cloudBoardState = boardLoad?.cloudState ?: CloudBoardState.Checking,
+                onRetryLeaderboard = { boardRefresh++ },
                 ridesOfThisLength = ridesOfThisLength,
                 rivals = rivals,
                 selectedRivalId = selectedRivalId,

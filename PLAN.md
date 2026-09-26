@@ -253,7 +253,18 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 25 September 2026: social activity and kudos on the bike
+### Latest session — 26 September 2026: class board failure state and new social requests
+
+**18.10's class screen is implemented, awaiting two-account tablet observation.**
+The local Room board appears before the cloud answers. A successful empty
+response and an unavailable service have separate messages; the latter keeps
+local rows and offers Retry. The debug build and JVM suite pass. The owner's
+new requests are written as 18.13 (each rider's best in this class and best at
+this class's duration, including other-bike riders) and an expanded 19.2.3
+(a dedicated 20-minute FTP test and immediate ×0.95 offer). The earlier 24.5.8
+decision against shared duration bests is superseded by this request.
+
+### Previous session — 25 September 2026: social activity and kudos on the bike
 
 **18.2 and 18.3 are implemented, pending device observation.** The dashboard's
 Activity card already had a narrow cloud feed, but attaching an account to the
@@ -547,8 +558,12 @@ records re-fire at their new values.
 **Social follow-up:** observe 18.2 and 18.3 on a signed-in tablet with a shared
 ride from another account. Confirm a newly attached account loads its feed
 without switching profiles, kudos gives and removes once per tap, and a failed
-request leaves household activity in place. Then check 18.10's class
-leaderboard failure state; its dashboard half is now explicit. Do not build a
+request leaves household activity in place. Check 18.10's class leaderboard
+empty, unavailable and retry states on the same tablet; they are now built.
+Then build 18.13's two labelled personal bests per rider (this class and any
+class of the same authored duration), including other-bike riders. The owner's
+20-minute FTP test request is expanded under 19.2.3 and follows that social
+work. Do not build a
 friend-request graph while 18.11's small-group decision stands, or put the
 leaderboard back on the overlay after the owner removed it (24.3.16).
 

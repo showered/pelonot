@@ -1637,6 +1637,12 @@ comparable and what makes them not.
       The rider's own rows survive that because they are labelled as history
       rather than as opponents, and because the rider knows what they did
 
+      **Superseded for the class-detail board by the owner's 26 September
+      request (18.13).** The new duration best is a separately labelled fact
+      beside each rider's best *in this class*; it does not change who enters or
+      wins this class board, and it does not broaden `householdRivals` into a
+      live race against a different class.
+
 ***All six done and observed on the tablet AVD***, on the 55-ride
 five-profile fixture, restored byte-for-byte afterwards.
 

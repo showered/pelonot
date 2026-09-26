@@ -1,5 +1,31 @@
 package com.pelonot.domain.model
 
+/** Whether the other-bike half of a class board answered (PLAN 18.10). */
+enum class CloudBoardState { Checking, Offline, Ready, Unavailable }
+
+data class CloudStandings(
+    val rows: List<ClassLeaderboard.Standing> = emptyList(),
+    val state: CloudBoardState
+)
+
+data class ClassBoardLoad(
+    val board: ClassLeaderboard,
+    val cloudState: CloudBoardState
+) {
+    companion object {
+        fun of(
+            classId: String,
+            local: List<ClassLeaderboard.Standing>,
+            cloud: CloudStandings,
+            youId: Int?,
+            yourAccountId: String?
+        ) = ClassBoardLoad(
+            ClassLeaderboard.of(classId, local + cloud.rows, youId, yourAccountId),
+            cloud.state
+        )
+    }
+}
+
 /**
  * Everyone on this tablet who has ridden one class, ranked (PLAN 24.1).
  *

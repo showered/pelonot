@@ -520,7 +520,20 @@ has simply never been written down.
 ### 19.2 High value, medium
 - [ ] **19.2.1** **Custom class builder** — build your own intervals in the app. The class library is the subscription's core product and the interval model is already a plain list; this is the feature that makes the app stop needing Peloton at all
 - [ ] **19.2.2** **Community class library** — share and import classes. `class_templates` is already a cloud table and already world-readable
-- [ ] **19.2.3** **Guided FTP test** — a proper 20-minute protocol with pacing cues, rather than inferring FTP from whatever the rider happened to ride. `PostWorkoutAnalyzer` already does the maths
+- [ ] **19.2.3** **Guided FTP test** — a distinct 20-minute class type with
+      pacing cues and a full 20-minute measured effort. On completion, offer
+      that test's average power × 0.95 as the new FTP immediately, whether it
+      raises or lowers the current setting; the rider accepts or declines, and
+      `ftp_history` records `GuidedTest` with the workout. Peloton describes
+      exactly this 20-minute correction at
+      https://www.onepeloton.com/blog/ftp-cycling. Do not reuse the ordinary
+      auto-breakthrough threshold, which intentionally suppresses lower and
+      small changes on normal rides. A guest, simulated/modelled watts, an
+      interrupted or incomplete 20-minute effort, or missing samples cannot
+      produce a measured FTP offer. Keep a warm-up recommendation outside the
+      20-minute test rather than counting warm-up minutes in its average.
+      Plan the authored class and post-ride decision together; build after the
+      current social verification and duration-board work.
 - [ ] **19.2.4** **Strava upload**, following the `.tcx` export in 12.4.3
 - [ ] **19.2.5** **Training load and freshness** over weeks. Flag it hard: built on estimated watts, this is a *relative* trend for one rider and nothing more
 

@@ -801,9 +801,41 @@ Two shapes to keep straight, because they will otherwise be built twice:
 - [x] **18.9** Every screen in this phase is built on top of its Phase 24 equivalent rather than beside it. If 18.5 and 24.1 are two implementations of a leaderboard row, one of them will drift and it will be the one nobody rides against
 - [ ] **18.10** A friend's numbers arrive over the network, so this phase inherits every rule in the *Corrections* table about failures that are caught and shown nowhere. An empty friend leaderboard must say whether it is empty or unreachable
 
-      **25 September:** the dashboard's shared activity now makes this
-      distinction. The class leaderboard still needs its own failure-state
-      check, so the phase-wide item remains open.
+      **26 September implementation:** the dashboard's shared activity and
+      class leaderboard both carry this distinction. Class detail now emits
+      the Room board before requesting the cloud, keeps those rows on failure,
+      and shows *Other bikes unavailable* with Retry or *No other riders on
+      this class yet* after a successful empty answer. An account attached to
+      the selected profile triggers a fresh read. The JVM suite and debug build
+      pass. **Open until the class states and the dashboard feed are observed
+      with two signed-in accounts on the tablet.**
+
+### 18.13 Best of class and best of length, for every rider — owner request, 26 September 2026
+
+The owner wants each rider's best for **this class** and their best **overall
+at the same class duration**, including riders on another bike. This supersedes
+24.5.8's earlier deliberate omission of a household or cloud length best; its
+warning remains valid, so the two numbers must say which comparison each makes.
+Treat “time zone” in the request as the existing 24.5 exact-duration bucket
+(15, 20, 30, 45 or 60 minutes), not a geographic time zone or a rolling window.
+Do not sum rides or compare a partial ride to a completed class. Use measured
+power, completed rides and the same hidden-ride rules as the existing board.
+
+- [ ] **18.13.1** Extend the Room result to carry each visible local rider's
+      best measured ride of the selected class *and* best measured class ride of
+      that authored duration. Keep one person on one row; rank on *this class*
+      and label the overall-duration figure separately so a sprint does not
+      masquerade as a recovery-class win. A rider without a class attempt does
+      not enter this class's ranking.
+- [ ] **18.13.2** Extend the narrow `class_leaderboard` RPC and DTO with only
+      the same duration-best number for each returned account. The server must
+      use the selected class's authored duration, apply hidden and measured
+      filters to both values, and preserve one row per account. No full workout
+      records become readable to other accounts. Verify from two accounts.
+- [ ] **18.13.3** Show both labelled values in the class board for the rider,
+      housemates and other-bike riders, including a length best from a
+      different class. Check one, two and many riders at 1280 × 720 dp and
+      larger text; keep the existing bounded board window and failure state.
 
 ---
 

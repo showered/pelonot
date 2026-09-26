@@ -15,6 +15,20 @@ import org.junit.Test
  */
 class ClassLeaderboardTest {
 
+    @Test
+    fun `cloud failure preserves household comparison and its status`() {
+        val local = listOf(standing(1, "Sam", 180.0), standing(2, "Alex", 160.0))
+        val checking = ClassBoardLoad.of("TH-01", local, CloudStandings(state = CloudBoardState.Checking), 1, null)
+        val failed = ClassBoardLoad.of("TH-01", local, CloudStandings(state = CloudBoardState.Unavailable), 1, null)
+        val empty = ClassBoardLoad.of("TH-01", local, CloudStandings(state = CloudBoardState.Ready), 1, null)
+
+        assertEquals(checking.board, failed.board)
+        assertEquals(empty.board, failed.board)
+        assertTrue(failed.board.isWorthShowing)
+        assertEquals(CloudBoardState.Unavailable, failed.cloudState)
+        assertEquals(CloudBoardState.Ready, empty.cloudState)
+    }
+
     private fun standing(
         id: Int,
         name: String,

@@ -46,10 +46,14 @@ import com.pelonot.data.remote.SupabaseSyncRepository
 import com.pelonot.data.remote.SyncOutcome
 import com.pelonot.data.remote.dto.fromIso8601
 import com.pelonot.domain.model.ClassLeaderboard
+import com.pelonot.domain.model.ClassBoardLoad
+import com.pelonot.domain.model.CloudBoardState
+import com.pelonot.domain.model.CloudStandings
 import com.pelonot.domain.model.RidesOfThisLength
 import com.pelonot.domain.social.ClassRival
 import com.pelonot.domain.model.RideInterruption
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -786,14 +790,14 @@ class AppViewModel(
             classDurationSec = classDurationSec
         )
 
-    suspend fun householdLeaderboard(classId: String, youId: Int?): ClassLeaderboard =
+    fun householdLeaderboard(classId: String, youId: Int?): Flow<ClassBoardLoad> =
         workoutRepository.classLeaderboard(
             classId = classId,
             youId = youId,
             yourAccountId = ServiceLocator.authRepository.currentAccountId(),
             cloudStandings = {
-                syncRepository.classLeaderboard(classId, youId).valueOrNull().orEmpty()
-                    .map { row ->
+                when (val result = syncRepository.classLeaderboard(classId, youId)) {
+                    is SyncOutcome.Success -> CloudStandings(result.value.map { row ->
                         ClassLeaderboard.Standing(
                             // A cloud rider has no local profile, and saying so
                             // with null is what lets the merge in
@@ -805,7 +809,11 @@ class AppViewModel(
                             weightKg = row.weightKg,
                             source = ClassLeaderboard.Source.Cloud
                         )
-                    }
+                    }, CloudBoardState.Ready)
+                    SyncOutcome.Disabled -> CloudStandings(state = CloudBoardState.Offline)
+                    is SyncOutcome.Failed, is SyncOutcome.Rejected ->
+                        CloudStandings(state = CloudBoardState.Unavailable)
+                }
             }
         )
 
