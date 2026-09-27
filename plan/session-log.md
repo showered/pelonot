@@ -1,5 +1,46 @@
 > Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
 
+### Session — 27 September 2026: class board shipped and pairing plan corrected
+
+The 18.13 class-board revision is committed and pushed as `c464747`; the
+tracked web files match the deployed site. The static board now shows one
+selected-class score per rider with the local avatar, while the live ride shows
+the class best beside the duration finish target. The debug build and 1,016 JVM
+tests pass. The refreshed token let `010_class_duration_bests.sql` reach the
+live project. Two confirmed accounts passed all 24 endpoint checks, including
+the 401 → 420 kJ finish, distinct class and duration bests, measured-only
+results, anonymous refusal and cross-account privacy. The temporary rides were
+removed. The signed-in bike UI and cloud-failure checks remain open.
+**15.6.16b is closed as already
+fixed:** the fallback's refresh token was redeemed against the live project
+after `stopAutoRefresh()` replaced both server-side sign-out variants. The
+original QR report still needs a complete real pairing to settle it.
+
+**15.3.7 is now built and tested at both boundaries.** Migration `011` is live;
+the profile wire carries a rider-entered maximum, birth year and original
+riding-level answer. Fifteen restore tests pass on the bike-size emulator, and
+authenticated writes, reads, omitted-field saves and explicit clears passed
+against the live endpoint with the original profile values restored. The
+plan's proposed profile `max_hr_source` column was moot: the source follows
+from which input the rider gave. A signed-in new-device UI restore remains the
+observation before ticking the box. This took priority over 19.2.3 because
+restore was already dropping a rider's heart-rate setup; the guided FTP test
+adds a new route once the current social/device checks are settled.
+
+**30.2.3 is closed on the bike-size emulator.** A temporary code 7 debug build
+checked the live code 6 update manifest and showed the older-update refusal
+without an install offer. The temporary version bump was removed.
+
+**30.7.3 is closed on two fresh tablet AVDs.** A temporary code 5 build signed
+with the permanent key followed the live manifest through Android's install
+permission, system confirmation and Play Protect's new-developer warning to
+code 6. On the second AVD, cancelling the system confirmation returned to the
+offer with a retry button and left code 5 installed. The existing emulator's
+app data was left intact; the temporary version change was restored.
+
+**30.7.5 is closed against the live manifest.** A code 5 rider said *Not now*;
+relaunch stayed quiet, while a manual check in Settings offered 1.0.5 again.
+
 ### Session — 23 September 2026: a stretch target that stays ahead
 
 The owner's live-board report reproduced directly: **Your best 56**, but

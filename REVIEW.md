@@ -1,3 +1,30 @@
+# Release 1.0.6 regression — 27 September 2026
+
+The 1.0.6 APK is signed with the same certificate as 1.0.5 (SHA-256
+`57629bba78380be866d885aa4d1174af9e23dacb7a52d0a1d0a990b0d139a970`).
+`apksigner` verified the minified APK, `aapt` reported `com.pelonot` version
+code 7 / name 1.0.6, and its SHA-256 is
+`60b7814c35b4859105b9f6956d8cbb5a329c7113e83a0a142c64ba81f24035a8`.
+Android installed it over signed 1.0.5 on the 1920 × 1080, 240 dpi tablet AVD
+without an uninstall. The install timestamp remained the original one, the
+updated app launched, and its dashboard and bundled class library rendered.
+
+`assembleDebug`, `lintDebug`, the release build, **1,018 JVM tests**, **143
+instrumented tests**, five release-tool tests, and syntax checks for every web
+JavaScript file passed. The instrumented suite used the tablet AVD after its
+existing app data was archived; the debug app and database were restored
+afterward, with the database and WAL byte-identical to the archive. This pass
+did not exercise the physical sensor board or strap, nor
+the signed-in two-bike screens listed under *What to do next* in `PLAN.md`.
+
+The GitHub release is [v1.0.6](https://github.com/showered/pelonot/releases/tag/v1.0.6).
+The update manifest advertises the verified APK hash. `web/check-deployed.sh`
+confirmed every tracked web file, including `update.json`, matches the live
+site. The host still serves an ignored `config.js` with the legacy JWT key;
+that separate hosting issue remains open under 17.16.3.
+
+---
+
 # Recovery dialog expiry — 23 September 2026
 
 A prompt left open beyond the 30-minute resume window kept a stale Carry on

@@ -253,46 +253,19 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 27 September 2026: class board shipped and pairing plan corrected
+### Latest session — 27 September 2026: 1.0.6 release regression and publication
 
-The 18.13 class-board revision is committed and pushed as `c464747`; the
-tracked web files match the deployed site. The static board now shows one
-selected-class score per rider with the local avatar, while the live ride shows
-the class best beside the duration finish target. The debug build and 1,016 JVM
-tests pass. The refreshed token let `010_class_duration_bests.sql` reach the
-live project. Two confirmed accounts passed all 24 endpoint checks, including
-the 401 → 420 kJ finish, distinct class and duration bests, measured-only
-results, anonymous refusal and cross-account privacy. The temporary rides were
-removed. The signed-in bike UI and cloud-failure checks remain open.
-**15.6.16b is closed as already
-fixed:** the fallback's refresh token was redeemed against the live project
-after `stopAutoRefresh()` replaced both server-side sign-out variants. The
-original QR report still needs a complete real pairing to settle it.
-
-**15.3.7 is now built and tested at both boundaries.** Migration `011` is live;
-the profile wire carries a rider-entered maximum, birth year and original
-riding-level answer. Fifteen restore tests pass on the bike-size emulator, and
-authenticated writes, reads, omitted-field saves and explicit clears passed
-against the live endpoint with the original profile values restored. The
-plan's proposed profile `max_hr_source` column was moot: the source follows
-from which input the rider gave. A signed-in new-device UI restore remains the
-observation before ticking the box. This took priority over 19.2.3 because
-restore was already dropping a rider's heart-rate setup; the guided FTP test
-adds a new route once the current social/device checks are settled.
-
-**30.2.3 is closed on the bike-size emulator.** A temporary code 7 debug build
-checked the live code 6 update manifest and showed the older-update refusal
-without an install offer. The temporary version bump was removed.
-
-**30.7.3 is closed on two fresh tablet AVDs.** A temporary code 5 build signed
-with the permanent key followed the live manifest through Android's install
-permission, system confirmation and Play Protect's new-developer warning to
-code 6. On the second AVD, cancelling the system confirmation returned to the
-offer with a retry button and left code 5 installed. The existing emulator's
-app data was left intact; the temporary version change was restored.
-
-**30.7.5 is closed against the live manifest.** A code 5 rider said *Not now*;
-relaunch stayed quiet, while a manual check in Settings offered 1.0.5 again.
+Version **1.0.6 (code 7)** is signed with the same certificate as 1.0.5,
+published on GitHub, and advertised by the live `update.json`. The tracked
+web files match the deployed site. The release build and lint pass; **1,018
+JVM tests**, **143 tablet-AVD instrumented tests** and five release-tool tests
+pass. Android installed 1.0.6 over signed 1.0.5 on the bike-size emulator;
+the app launched, and its dashboard and class library rendered. The emulator's
+original debug app and database were restored after the rehearsal, with the
+database and WAL byte-identical to the pre-test archive. `REVIEW.md` has the
+artifact hash and verification limits. No physical bike or strap, or signed-in
+two-bike UI, was tested in this release pass. The hosting-side `config.js`
+legacy key remains the separate open fact at 17.16.3.
 
 ### Previous session — 26 September 2026: duration records and live finish targets
 
@@ -688,7 +661,7 @@ owner's own bike is the first honest instance** — the class record and the
 twenty-minute window are the two most likely to arrive first, and *Your records*
 on the dashboard is where they will show up.
 
-**The release signing key exists and has shipped 1.0.5.** The remaining part
+**The release signing key exists and has shipped 1.0.6.** The remaining part
 of **30.1.1** is the owner's confirmation that a separate backup exists; do
 not generate a second key. **30.1.4** is the time-sensitive trip: back up the
 friend's debug-signed installation through 19.1.3, uninstall it, install the
@@ -1840,4 +1813,4 @@ Two notes worth carrying into the next bike session:
 | 27 | Being told something worth knowing | 🔶 **The offline half is built and watched (29 August 2026).** `rider_alerts` is the memory this app did not have — every other number here is recomputed from the whole history on every load, which is right for a chart and useless for an alert, because an alert is a claim about a *change*. Your own record and your own consistency both fire: five families, ranked by what the claim is rather than by arithmetic (8 weeks and 412 kJ do not compare), at most one told per ride and the rest on *Your records*. **The floors are the design** — five prior rides for a whole-history claim, two for a class record, and a 2% margin, so a rider's first ten rides say nothing. `PowerProvenance` gates every watt and lets a clock reading through, which is why the streak was observable on the emulator and no record was. **What is left is the two families that need somebody else**: 27.2.3 is the owner's own first example and is waiting on a decision rather than on code, 27.2.4 belongs behind 24.3.3's choice to race. Originally filed as ⬜, and the owner's weighting was and is *"definitely nice-to-have and low priority for now"*. Promoted out of 19.3.2's one line the way Phase 21 was promoted out of 19.3.3's, because the one line is not one job: nothing in this app *remembers* anything, and an alert is a claim about a change, so 27.1.1's table is what everything else waits on. Three families that are not the same feature — your own record, your own consistency, and somebody else beating you, which is the only one needing the network. The rules were the point of writing it: `PowerProvenance` gates every power record (**no alert can fire on the emulator**, and that cost is worth paying); records are built on absolutes rather than on anything relative to a moving FTP or maximum heart rate (7.8, 21.2.3); **the first ten rides are all records**, which is the design problem rather than a detail; one per ride; nothing on the overlay and nothing spoken; and 16.3.3a is a hard prerequisite because retention would otherwise congratulate a rider for beating a record that only fell because its ride was trimmed |
 | 28 | Achievements | ⬜ **Not started, at the owner's own weighting** — *"one for the backlog"* — and written at length for Phase 27's reason: the one sentence is not one job. **The opening section is the part that matters most and it is not a badge list.** An alert is an *event* and fails on frequency; an achievement is a *possession* and fails on meaning — which makes Phase 27 the delivery mechanism and this phase forbidden from building a second one, or it grows its own toast, its own dashboard card and its own one-per-ride rule before 27 arrives. It is also **the honest form of the thing 26.4 was right to refuse**: the owner asked to *"gamify it all even further"* and separately agreed to leave a game-style score, and those two only disagree if a score is what gamifying means — an achievement is a discrete, nameable, **true sentence about something the rider actually did**, with nothing in it to round off. Six rules underneath it, and the sharp ones are: **never revoked** (7.11 lets auto-FTP fall, 23.4 trims old rides, and a badge derived live would un-earn itself — the award is *recorded*, not derived); `PowerProvenance` gates anything from watts and **most of the catalogue is on the free side of that line**, since a count of rides and a duration are the same quantity whoever measured them; **no achievement may reward what a coach would advise against**, which rules out day-streaks and rode-twice-today and is 22.5's weekly-streak decision arriving as a rule; the set is finite and the unearned ones are visible, so nothing may depend on equipment the rider does not own; offline throughout, with the across-bikes family **absent** rather than greyed out (rule 3, not a trial of the paid tier); and prose names with no points, no levels, no total. The catalogue is ordered by how much already exists — volume and consistency need no new data, and **breadth is the family this app is unusually well placed for**, because 72 authored classes make *every class in this collection* and *the same class five times* joins onto `class_templates`; that last one rewards the behaviour that makes 24.1's per-class ranking work at all. Also settled in advance: the back-fill awards a year of history but **announces none of it** (forty badges through 27.3's path would poison the feature on day one), two devices earning one badge resolve to the **earlier** date, and the dashboard's share is one line — the nearest *unearned* badge, because **three rides to fifty** is the only thing in the phase that answers *should I ride today* (22.8.8, 28.5.2) |
 | 29 | Health Connect and Apple Health | ⬜ **Written up, nothing built, and the owner's question answered.** Their note: *"Is that something we can integrate with? If so it's REALLY HIGH importance. But i wonder if we need to register an app."* **Health Connect: yes, and it needs nothing from them** — no account, no registration, no API key, no fee; the Play declaration form binds an app distributed on Play and this is not one. What it needs is the **bike**: Health Connect is in the platform only from Android 14 and the tablet is Android 11, so 29.1.1's three adb commands decide whether the phase is a feature or an essay, and 29.1.2 is a real decision about minSdk (`connect-client` floors at 26; this app claims 24). **Apple Health: no, and not for want of effort** — HealthKit has no Android SDK and no server API, because the data lives on the rider's iPhone; the honest route is the `.tcx` already written (12.4.3) carried across once, which is 29.2.2. Two of this project's rules carry straight over: **never write a modelled watt into a health record as measured** (`PowerProvenance` gates it) and **a trimmed ride cannot write seconds it no longer has** (23.4) |
-| 30 | Getting a version onto somebody else's bike | 🔶 **The signed release and update channel are live:** version 1.0.5 has a checked-in and deployed manifest and a reachable GitHub APK (30.3.1–30.3.2, 30.7.4). The revised installer callbacks passed a signed in-place install and cancellation on fresh tablet AVDs (30.7.3), and a declined version was manually re-offered from Settings (30.7.5). The friend's debug-to-release changeover needs their history backed up and restored (30.1.4). The signing key is in use, but its separate backup remains the owner's to confirm (30.1.1). Account-free update checks are an allowed exception to offline-by-default because the request carries no rider data (30.5.1) |
+| 30 | Getting a version onto somebody else's bike | 🔶 **The signed release and update channel are live:** version 1.0.6 has a checked-in and deployed manifest and a reachable GitHub APK (30.3.1–30.3.2, 30.7.4). Android installed it over signed 1.0.5 on the tablet AVD; the earlier installer callbacks passed a signed in-place install and cancellation on fresh AVDs (30.7.3), and a declined version was manually re-offered from Settings (30.7.5). The friend's debug-to-release changeover needs their history backed up and restored (30.1.4). The signing key is in use, but its separate backup remains the owner's to confirm (30.1.1). Account-free update checks are an allowed exception to offline-by-default because the request carries no rider data (30.5.1) |

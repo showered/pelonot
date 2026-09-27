@@ -1,6 +1,11 @@
 # Where Pelonot is
 
-**Latest verification: 27 September 2026.** The dashboard's shared activity
+**Latest verification: 27 September 2026.** Version **1.0.6** is published with
+a signed APK and an update manifest. The debug build, lint, 1,018 JVM tests and
+143 tablet-AVD instrumented tests pass. The signed APK's certificate matches
+1.0.5; Android installed it over that version, and the updated dashboard and
+class library rendered. Physical bike and signed-in two-bike checks remain.
+The dashboard's shared activity
 now reloads after account attachment, distinguishes an empty feed from a failed
 request, and offers kudos on cloud rides. It keeps household activity available
 when the cloud fails. Class detail now shows its local leaderboard before the
@@ -12,8 +17,7 @@ ride and class-detail layouts were checked at bike dimensions with seeded
 scores, including 130% text. The cloud RPC migration is applied, and two
 accounts passed 24 endpoint checks, including separate class and duration
 records, privacy and the 401 → 420 kJ finish. The signed-in bike display still
-needs observation. A dedicated 20-minute FTP test is planned. Version **1.0.5** has a live
-update manifest and reachable APK. The overlay's strap battery layout and the
+needs observation. A dedicated 20-minute FTP test is planned. The overlay's strap battery layout and the
 owner's reported leaderboard milestone still need device checks.
 New-device restore now carries the rider's heart-rate inputs and original
 riding-level answer. Migration `011`, live profile round trips and 15 emulator
@@ -33,16 +37,9 @@ sub-items included. Read the percentage as an inventory count and never as a
 completion estimate — the paragraph at the end of this page says why.*
 <!-- figures:end -->
 
-> **The prose below is seven sittings behind these numbers**, and that is
-> 19.1.7's third rule showing its cost rather than a lapse: this page is
-> *regenerated*, not maintained, so a sitting that only moves the measurements
-> moves the measurements. **The file has now gone stale once, which is exactly
-> the condition 19.1.7a set** before a script that emits these figures is worth
-> building. Sittings 58–64 are in [PLAN.md](PLAN.md) and are not summarised
-> here yet. It is a summary —
-every claim below belongs to a phase file and
-names the item, so the reasoning is one hop away in [PLAN.md](PLAN.md) and
-[plan/](plan/). Nothing is decided here.
+> The detailed sections below are a historical snapshot and may lag the latest
+> verification above. Current priorities and the evidence behind them are in
+> [PLAN.md](PLAN.md) and [plan/](plan/).
 
 > **There is a demo recording as of 5 August**, driven on the tablet AVD at the
 > bike's own 1280 × 720 dp: the profile picker, the dashboard and its

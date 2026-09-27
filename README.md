@@ -76,6 +76,10 @@ The tablet takes `adb` over the network like any other Android device, and
 the setting to test under — Pelonot will never quietly substitute made-up
 telemetry for a ride you are recording.
 
+A bike already running a signed release must receive the next signed release;
+`installDebug` cannot update it because Android requires the same signing
+certificate. See [RELEASE.md](RELEASE.md) before changing channels.
+
 `HARDWARE.md` documents the tablet as measured: display, system bars, input
 devices, and which packages matter.
 
