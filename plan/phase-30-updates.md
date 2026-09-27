@@ -448,12 +448,21 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       cancellation is checked at the same boundary. Two more coordinator tests
       cover preparation-time interruption, cache cleanup and retry. The ride
       regression fails when the final guard is removed. These use a suspended
-      fake installer; real platform abandonment remains part of 30.7.3.
-- [ ] **30.7.3 Rehearse the revised system installer callbacks with the permanent
+      fake installer; real platform cancellation was observed under 30.7.3.
+- [x] **30.7.3 Rehearse the revised system installer callbacks with the permanent
       signing key.** The earlier 30.4.6 rehearsal predates these changes. This
-      pass compiled both variants and tested coordinator failures but did not
-      publish or install a new production release. API 24–25 permission calls
-      are now guarded; that older platform was not available for this pass.
+      pass compiled both variants and tested coordinator failures. **Observed
+      27 September on two fresh 1920 × 1080, 240 dpi tablet AVDs:** a temporary
+      code 5 release signed with the permanent key offered the live 1.0.5
+      (code 6) manifest. The rider granted install permission, accepted
+      Android's update prompt, passed Play Protect's new-developer warning,
+      and `dumpsys package` then reported code 6; the updated app relaunched.
+      On the second AVD, cancelling Android's prompt returned to the offer with
+      *"Installation cancelled. You can try again when you're ready"* and an
+      enabled Install button; code 5 remained installed. The temporary version
+      change was restored and neither AVD touched the owner's existing app
+      data. API 24–25 permission calls are guarded but those platforms were not
+      available for this observation.
 - [x] **30.7.4 Finish the publishing rehearsal.** `tools/release.sh prepare`
       now bumps the version, builds and verifies a release APK, rejects the
       debug certificate and prepares its checksum and manifest locally.
@@ -462,12 +471,13 @@ into it — and the confirmation is a `PendingIntent` the system raises.
       ordering and failure paths; the real debug APK was rejected by certificate.
       **Observed 25 September:** version 1.0.5 is in `version.properties` and
       the live `update.json`; the APK URL resolves to a GitHub release asset.
-      This settles the publishing path. The in-place platform install remains
-      30.7.3. See `RELEASE.md` for the commands.
-- [ ] **30.7.5 Manual checks can retry a declined update.** Automatic checks
+      This settles the publishing path. The in-place platform install was
+      observed under 30.7.3. See `RELEASE.md` for the commands.
+- [x] **30.7.5 Manual checks can retry a declined update.** Automatic checks
       still respect the declined version. Settings now has a real in-flight
       flag, blocks repeated taps and checks during a ride, and says “Checking…”.
       The disabled-switch copy no longer promises the entire app is offline
       while account backup may still be enabled. Build and source checks pass;
-      the no-manifest production endpoint remains an unavailable-check case.
-      Re-offering a declined production version awaits a real manifest.
+      **Observed 27 September:** a code 5 signed release declined the live
+      1.0.5 offer on the tablet AVD; force-stop and relaunch showed no automatic
+      dialog, then Settings → *Check for updates now* offered 1.0.5 again.

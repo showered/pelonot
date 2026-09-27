@@ -284,6 +284,16 @@ adds a new route once the current social/device checks are settled.
 checked the live code 6 update manifest and showed the older-update refusal
 without an install offer. The temporary version bump was removed.
 
+**30.7.3 is closed on two fresh tablet AVDs.** A temporary code 5 build signed
+with the permanent key followed the live manifest through Android's install
+permission, system confirmation and Play Protect's new-developer warning to
+code 6. On the second AVD, cancelling the system confirmation returned to the
+offer with a retry button and left code 5 installed. The existing emulator's
+app data was left intact; the temporary version change was restored.
+
+**30.7.5 is closed against the live manifest.** A code 5 rider said *Not now*;
+relaunch stayed quiet, while a manual check in Settings offered 1.0.5 again.
+
 ### Previous session — 26 September 2026: duration records and live finish targets
 
 **18.13 is implemented locally and prepared for the cloud.** Class detail now
@@ -326,8 +336,8 @@ closed by the release already published:** live `update.json` serves 1.0.5
 (code 6), matches this checkout, and its GitHub APK URL resolves to the release
 asset. `web/check-deployed.sh` now includes `update.json`, so the next publish
 cannot leave the update channel out of its drift check. Its existing
-`config.js` legacy-key finding remains open. **30.7.3** still needs the revised
-installer callbacks watched in place; a live manifest alone cannot settle it.
+`config.js` legacy-key finding remains open. **30.7.3 was subsequently closed**
+with an in-place signed install and a separate cancellation on fresh tablet AVDs.
 
 ### Previous session — 24 September 2026: ride progress and class records
 
@@ -612,8 +622,8 @@ leaderboard back on the overlay after the owner removed it (24.3.16).
 
 **25 September update:** the live update manifest and APK URL are verified;
 30.3.1, 30.3.2 and 30.7.4 are closed. The release keystore's backup is still
-the owner's to confirm (30.1.1), and 30.7.3 needs an in-place install with the
-permanent certificate. For **21.9.1**, check the overlay's four layouts at
+the owner's to confirm (30.1.1); 30.7.3's in-place signed install was observed
+on 27 September. For **21.9.1**, check the overlay's four layouts at
 normal and larger text and connect a physical strap, including a model without
 Battery Service. **24.3.18d.2 remains the open rider report**: watch the real
 250 → 300 pass and inspect the installed bike version and target roster. These
@@ -627,8 +637,8 @@ the complete target roster, despite the earlier item being marked done.
 
 
 **Release preparation now has a command:** read `RELEASE.md`, supply the
-permanent signing configuration locally, and rehearse **30.7.3–30.7.4** on an
-emulator before distributing the first APK. The code-side pass and its limits
+permanent signing configuration locally, and follow **30.7.4** for publishing.
+The code-side pass and its limits
 are in `REVIEW.md`. The older priorities below remain the feature backlog.
 
 
@@ -678,28 +688,17 @@ owner's own bike is the first honest instance** — the class record and the
 twenty-minute window are the two most likely to arrive first, and *Your records*
 on the dashboard is where they will show up.
 
-**The top of this list is still one item and it still has a deadline.**
-**30.1.1** — the release keystore — is the owner's to run, because it needs a
-password a session must not handle, and everything in Phase 30 that still
-needs a *real* release sits behind it. It is one `keytool -genkeypair` with a
-30-year validity, kept somewhere that is not the laptop, and the gitignore is
-already waiting for it (`*.jks`, `*.keystore`, `/keystore.properties`).
-Nothing breaks by not doing it today, except that the cost of 30.1.4 grows
-with every ride the friend takes on a debug-signed build that no release can
-replace — and that argument is stronger now than it was, because 30.1.4a and
-30.4 are both done and rehearsed, so the only thing left between here and
-offering the friend a real update is the key itself.
+**The release signing key exists and has shipped 1.0.5.** The remaining part
+of **30.1.1** is the owner's confirmation that a separate backup exists; do
+not generate a second key. **30.1.4** is the time-sensitive trip: back up the
+friend's debug-signed installation through 19.1.3, uninstall it, install the
+release-signed APK and restore. 30.1.4a rehearsed the route on this tablet;
+the friend's own history is the part only the owner can check.
 
-**With 30.1.1 done, 30.1.4 is next and it is the owner's trip rather than a
-session's task** — sign in to the friend's bike, back it up through 19.1.3,
-uninstall, install the first release-signed APK, restore. 30.1.4a rehearsed
-the *route* on this tablet this sitting; what only the owner can rehearse is
-the tablet itself.
-
-**30.2.3, 30.3.1 and 30.3.2 are done.** The downgrade refusal was observed on
-the tablet AVD against the live manifest; the release script and first real
-manifest have already shipped. The next Phase 30 work needing a real release
-still depends on 30.1.1 and the owner's keystore.
+**30.2.3, 30.3.1, 30.3.2, 30.7.3 and 30.7.5 are done.** The tablet AVD refused
+an older live manifest, installed a newer signed release, handled a cancelled
+system prompt, and allowed a declined release to be retried manually. The
+release script and first real manifest have already shipped.
 
 **This sitting left one small thing open and it is a look rather than a job.**
 **24.5.7** is ticked on everything except the `PAST YOUR BEST` banner firing on
@@ -1841,4 +1840,4 @@ Two notes worth carrying into the next bike session:
 | 27 | Being told something worth knowing | 🔶 **The offline half is built and watched (29 August 2026).** `rider_alerts` is the memory this app did not have — every other number here is recomputed from the whole history on every load, which is right for a chart and useless for an alert, because an alert is a claim about a *change*. Your own record and your own consistency both fire: five families, ranked by what the claim is rather than by arithmetic (8 weeks and 412 kJ do not compare), at most one told per ride and the rest on *Your records*. **The floors are the design** — five prior rides for a whole-history claim, two for a class record, and a 2% margin, so a rider's first ten rides say nothing. `PowerProvenance` gates every watt and lets a clock reading through, which is why the streak was observable on the emulator and no record was. **What is left is the two families that need somebody else**: 27.2.3 is the owner's own first example and is waiting on a decision rather than on code, 27.2.4 belongs behind 24.3.3's choice to race. Originally filed as ⬜, and the owner's weighting was and is *"definitely nice-to-have and low priority for now"*. Promoted out of 19.3.2's one line the way Phase 21 was promoted out of 19.3.3's, because the one line is not one job: nothing in this app *remembers* anything, and an alert is a claim about a change, so 27.1.1's table is what everything else waits on. Three families that are not the same feature — your own record, your own consistency, and somebody else beating you, which is the only one needing the network. The rules were the point of writing it: `PowerProvenance` gates every power record (**no alert can fire on the emulator**, and that cost is worth paying); records are built on absolutes rather than on anything relative to a moving FTP or maximum heart rate (7.8, 21.2.3); **the first ten rides are all records**, which is the design problem rather than a detail; one per ride; nothing on the overlay and nothing spoken; and 16.3.3a is a hard prerequisite because retention would otherwise congratulate a rider for beating a record that only fell because its ride was trimmed |
 | 28 | Achievements | ⬜ **Not started, at the owner's own weighting** — *"one for the backlog"* — and written at length for Phase 27's reason: the one sentence is not one job. **The opening section is the part that matters most and it is not a badge list.** An alert is an *event* and fails on frequency; an achievement is a *possession* and fails on meaning — which makes Phase 27 the delivery mechanism and this phase forbidden from building a second one, or it grows its own toast, its own dashboard card and its own one-per-ride rule before 27 arrives. It is also **the honest form of the thing 26.4 was right to refuse**: the owner asked to *"gamify it all even further"* and separately agreed to leave a game-style score, and those two only disagree if a score is what gamifying means — an achievement is a discrete, nameable, **true sentence about something the rider actually did**, with nothing in it to round off. Six rules underneath it, and the sharp ones are: **never revoked** (7.11 lets auto-FTP fall, 23.4 trims old rides, and a badge derived live would un-earn itself — the award is *recorded*, not derived); `PowerProvenance` gates anything from watts and **most of the catalogue is on the free side of that line**, since a count of rides and a duration are the same quantity whoever measured them; **no achievement may reward what a coach would advise against**, which rules out day-streaks and rode-twice-today and is 22.5's weekly-streak decision arriving as a rule; the set is finite and the unearned ones are visible, so nothing may depend on equipment the rider does not own; offline throughout, with the across-bikes family **absent** rather than greyed out (rule 3, not a trial of the paid tier); and prose names with no points, no levels, no total. The catalogue is ordered by how much already exists — volume and consistency need no new data, and **breadth is the family this app is unusually well placed for**, because 72 authored classes make *every class in this collection* and *the same class five times* joins onto `class_templates`; that last one rewards the behaviour that makes 24.1's per-class ranking work at all. Also settled in advance: the back-fill awards a year of history but **announces none of it** (forty badges through 27.3's path would poison the feature on day one), two devices earning one badge resolve to the **earlier** date, and the dashboard's share is one line — the nearest *unearned* badge, because **three rides to fifty** is the only thing in the phase that answers *should I ride today* (22.8.8, 28.5.2) |
 | 29 | Health Connect and Apple Health | ⬜ **Written up, nothing built, and the owner's question answered.** Their note: *"Is that something we can integrate with? If so it's REALLY HIGH importance. But i wonder if we need to register an app."* **Health Connect: yes, and it needs nothing from them** — no account, no registration, no API key, no fee; the Play declaration form binds an app distributed on Play and this is not one. What it needs is the **bike**: Health Connect is in the platform only from Android 14 and the tablet is Android 11, so 29.1.1's three adb commands decide whether the phase is a feature or an essay, and 29.1.2 is a real decision about minSdk (`connect-client` floors at 26; this app claims 24). **Apple Health: no, and not for want of effort** — HealthKit has no Android SDK and no server API, because the data lives on the rider's iPhone; the honest route is the `.tcx` already written (12.4.3) carried across once, which is 29.2.2. Two of this project's rules carry straight over: **never write a modelled watt into a health record as measured** (`PowerProvenance` gates it) and **a trimmed ride cannot write seconds it no longer has** (23.4) |
-| 30 | Getting a version onto somebody else's bike | 🔶 **The signed release and update channel are live:** version 1.0.5 has a checked-in and deployed manifest and a reachable GitHub APK (30.3.1–30.3.2, 30.7.4). The installer was rehearsed end to end on the AVD before the later callback changes (30.4.6); those revised callbacks still need an in-place install with the permanent certificate (30.7.3), and a manually retried declined version still needs observation (30.7.5). The friend's debug-to-release changeover needs their history backed up and restored (30.1.4). The signing key is in use, but its separate backup remains the owner's to confirm (30.1.1). Account-free update checks are an allowed exception to offline-by-default because the request carries no rider data (30.5.1) |
+| 30 | Getting a version onto somebody else's bike | 🔶 **The signed release and update channel are live:** version 1.0.5 has a checked-in and deployed manifest and a reachable GitHub APK (30.3.1–30.3.2, 30.7.4). The revised installer callbacks passed a signed in-place install and cancellation on fresh tablet AVDs (30.7.3), and a declined version was manually re-offered from Settings (30.7.5). The friend's debug-to-release changeover needs their history backed up and restored (30.1.4). The signing key is in use, but its separate backup remains the owner's to confirm (30.1.1). Account-free update checks are an allowed exception to offline-by-default because the request carries no rider data (30.5.1) |
