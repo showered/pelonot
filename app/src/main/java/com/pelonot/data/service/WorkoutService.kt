@@ -766,14 +766,16 @@ class WorkoutService : Service() {
         finishDurationSec = durationSec
         val localTargets = runCatching {
             workoutRepository.durationFinishTargets(
-                durationSec, workoutId, youId, RaceDebug.raceProvenance
+                classId, durationSec, workoutId, youId, RaceDebug.raceProvenance
             )
         }.onFailure { Log.w(TAG, "Could not read duration bests for $classId", it) }
             .getOrDefault(emptyList())
         finishTargets = if (raceDiscredited) emptyList() else localTargets
         if (durationSec > 0 && youId != null) {
             serviceScope.launch {
-                val outcome = ServiceLocator.syncRepository.durationFinishTargets(durationSec, youId)
+                val outcome = ServiceLocator.syncRepository.durationFinishTargets(
+                    classId, youId
+                )
                 if (outcome is SyncOutcome.Success &&
                     _currentSession.value?.workoutId == workoutId && !raceDiscredited
                 ) {
@@ -783,7 +785,8 @@ class WorkoutService : Service() {
                             accountId = row.accountId,
                             name = row.name,
                             bestKj = row.bestKj,
-                            isYou = row.isYou
+                            isYou = row.isYou,
+                            classBestKj = row.classBestKj
                         )
                     }
                     finishTargets = DurationFinishTargets.merge(localTargets, remote)

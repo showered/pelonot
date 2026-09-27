@@ -531,19 +531,21 @@ class WorkoutRepository(
         )
 
     suspend fun durationFinishTargets(
+        classId: String,
         classDurationSec: Int,
         excludingWorkoutId: String,
         youId: Int?,
         provenance: PowerProvenance
     ): List<DurationFinishTarget> = workoutDao.durationFinishTargets(
-        classDurationSec, excludingWorkoutId, youId, provenance
+        classId, classDurationSec, excludingWorkoutId, youId, provenance
     ).map { row ->
         DurationFinishTarget(
             localUserId = row.localUserId,
             accountId = row.authUserId,
             name = row.name,
             bestKj = row.bestKj,
-            isYou = row.localUserId == youId
+            isYou = row.localUserId == youId,
+            classBestKj = row.classBestKj
         )
     }
 
@@ -618,8 +620,8 @@ class WorkoutRepository(
                 localUserId = row.localUserId,
                 accountId = row.authUserId,
                 name = row.name,
+                avatar = Avatar.parse(row.avatar, row.localUserId),
                 outputKj = row.bestOutputKj,
-                durationBestKj = row.durationBestKj,
                 weightKg = row.weightKg,
                 source = ClassLeaderboard.Source.Household
             )

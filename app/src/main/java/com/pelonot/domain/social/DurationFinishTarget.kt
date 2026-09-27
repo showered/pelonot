@@ -8,7 +8,8 @@ data class DurationFinishTarget(
     val accountId: String?,
     val name: String,
     val bestKj: Double,
-    val isYou: Boolean
+    val isYou: Boolean,
+    val classBestKj: Double? = null
 )
 
 /** A final score to chase, distinct from a past ride's score at this second. */
@@ -31,7 +32,10 @@ object DurationFinishTargets {
         val localAccounts = local.mapNotNull { it.accountId }.toSet()
         return local.map { rider ->
             val other = byAccount[rider.accountId]
-            if (other == null) rider else rider.copy(bestKj = max(rider.bestKj, other.bestKj))
+            if (other == null) rider else rider.copy(
+                bestKj = max(rider.bestKj, other.bestKj),
+                classBestKj = listOfNotNull(rider.classBestKj, other.classBestKj).maxOrNull()
+            )
         } + cloud.filterNot { it.accountId in localAccounts }
     }
 

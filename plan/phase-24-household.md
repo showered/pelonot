@@ -24,16 +24,15 @@ differences. This one carries none, because there is nothing to caveat.
       it sits *above* the interval list — that screen is where a rider is
       choosing what to ride, and "your housemate did 240 kJ on this one" is the
       reason to pick it
-- [x] **24.1.3** Ranked on total output in kJ with kJ/kg beside it. The AVD
-      case is the one the design is for: Simon 240.0 kJ / 3.11 kJ/kg first,
-      Alex 210.0 kJ / 3.56 kJ/kg second — the two numbers disagree, and both
-      are shown
+- [x] **24.1.3** Ranked on total output in kJ. The earlier kJ/kg secondary
+      score was removed from the class screen under the owner's 26 September
+      direction to keep one class result beside each avatar; the historical AVD
+      comparison remains in the session log.
 - [x] **24.1.4** Guests excluded by the join onto `profiles`
 - [x] **24.1.5** Nothing was added to the overlay, and nothing may be
-- [x] **24.1.6** A household of one draws no card at all — seen by marking one
-      of the two rides simulated and watching the whole card vanish. **18.13
-      later adds an exception:** a lone rider with both a best in this class
-      and a best at its duration sees those as records, without a rank badge.
+- [x] **24.1.6** A household of one originally drew no card at all. **18.13
+      supersedes that:** a lone rider with a measured best in this class sees
+      their class record without a rank badge.
 - [x] **24.1.7** Falls out of the join rather than needing a decision: a
       deleted profile's rides are `SET NULL`, so they leave the board rather
       than sitting on it attributed to nobody. Their rides survive in history,
@@ -1639,11 +1638,10 @@ comparable and what makes them not.
       The rider's own rows survive that because they are labelled as history
       rather than as opponents, and because the rider knows what they did
 
-      **Superseded for the class-detail board by the owner's 26 September
-      request (18.13).** The new duration best is a separately labelled fact
-      beside each rider's best *in this class*; it does not change who enters or
-      wins this class board, and it does not broaden `householdRivals` into a
-      live race against a different class.
+      **Still the class-detail rule after the owner's 26 September clarification
+      (18.13).** The duration best belongs on the live ride beside the final
+      best in this class, not on the class-detail board. `householdRivals` still
+      never turns a different class into a human trace for this one.
 
 ***All six done and observed on the tablet AVD***, on the 55-ride
 five-profile fixture, restored byte-for-byte afterwards.

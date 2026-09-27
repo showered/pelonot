@@ -248,13 +248,13 @@ class SupabaseSyncRepository(
 
     /** Narrow lifetime duration bests for live finish targets (18.13.5). */
     suspend fun durationFinishTargets(
-        durationSec: Int,
+        classId: String,
         forProfileId: Int?
     ): SyncOutcome<List<com.pelonot.data.remote.dto.DurationFinishDto>> =
         executeReturning("durationFinishTargets", forProfileId) { supabase, _ ->
             supabase.postgrest.rpc(
                 function = "duration_finish_targets",
-                parameters = buildJsonObject { put("p_duration_sec", durationSec) }
+                parameters = buildJsonObject { put("p_class_id", classId) }
             ).decodeList<com.pelonot.data.remote.dto.DurationFinishDto>()
         }
 

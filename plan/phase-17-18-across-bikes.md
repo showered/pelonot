@@ -813,9 +813,11 @@ Two shapes to keep straight, because they will otherwise be built twice:
 ### 18.13 Best of class and best of length, for every rider — owner request, 26 September 2026
 
 The owner wants each rider's best for **this class** and their best **overall
-at the same class duration**, including riders on another bike. This supersedes
-24.5.8's earlier deliberate omission of a household or cloud length best; its
-warning remains valid, so the two numbers must say which comparison each makes.
+at the same class duration**, including riders on another bike. Their later
+direction narrows the placement: **the class summary leaderboard shows this
+class only; both records belong together on the live ride screen**. This
+supersedes 24.5.8's earlier omission of a shared length best, while keeping
+its warning against mixing unlike scores in a static ranking.
 Treat “time zone” in the request as the existing 24.5 exact-duration bucket
 (15, 20, 30, 45 or 60 minutes), not a geographic time zone or a rolling window.
 Do not sum rides or compare a partial ride to a completed class. Use measured
@@ -828,40 +830,35 @@ one minute left. The current `YourBestAtLength` row is a past ride's *trace at
 the current second*; passing it at 29:00 does not mean the rider has beaten its
 final total. The finish target and remaining gap must be a separate, explicit
 claim, for both the rider's own best and other riders'. The best of this exact
-class remains useful, but the duration best has priority when space is tight.
+class remains useful on the live screen, but the duration best has priority
+when space is tight. The class summary has one kJ score per rider, the app's
+`RiderAvatar`, and no kJ/kg line (owner clarification, 26 September).
 Since 18.11 chose no friend graph, “friends” here means the existing small
 group of signed-in riders on the shared board; offline households work from
 Room without an account.
 
-- [x] **18.13.1** Extend the Room result to carry each visible local rider's
-      best measured ride of the selected class *and* best measured class ride of
-      that authored duration. Keep one person on one row; rank on *this class*
-      and label the overall-duration figure separately so a sprint does not
-      masquerade as a recovery-class win. A rider without a class attempt does
-      not enter this class's ranking.
-
-      **26 September:** the Room query returns both bests and the DAO's 44
-      tests pass on the 1920 × 1080, 240 dpi tablet emulator. The class rank
-      still uses the class value. The board shows both values on one rider row.
-      One rider with both records sees a record card without a rank badge;
-      this is 24.1.6's single-score rule meeting the owner's newer request.
-- [ ] **18.13.2** Extend the narrow `class_leaderboard` RPC and DTO with only
-      the same duration-best number for each returned account. The server must
-      use the selected class's authored duration, apply hidden and measured
-      filters to both values, and preserve one row per account. No full workout
-      records become readable to other accounts. Verify from two accounts.
-- [ ] **18.13.3** Show both labelled values in the class board for the rider,
-      housemates and other-bike riders, including a length best from a
-      different class. Check one, two and many riders at 1280 × 720 dp and
-      larger text; keep the existing bounded board window and failure state.
+- [x] **18.13.1** Keep the static Room class board on the selected class's
+      best measured result, one person per row. A lone rider may see their
+      class record without a rank badge. The separate duration query serves
+      the live ride, not this class card.
+- [ ] **18.13.2** Carry each local profile's stored avatar into the class board
+      and use the existing `RiderAvatar` component. Other-bike rows use its
+      stable fallback initial until avatar choices are shared across bikes.
+      Verify the chosen local face and remote fallback on signed-in tablets.
+- [ ] **18.13.3** Show one kJ score per rider on the class screen, with no
+      duration or kJ/kg secondary line. Check one, two and many riders at
+      1280 × 720 dp and larger text, including a long name; keep the bounded
+      window and failure state. The six-rider, 130% text emulator check passes;
+      a signed-in other-bike row still needs observation.
 - [ ] **18.13.4** At ride start, load **lifetime best final totals** at the
-      class's authored duration for the rider and visible housemates, including
-      riders who have never ridden this particular class. Show the final target,
-      the gap from current output and the remaining class time while riding.
+      class's authored duration and the selected class's best for the rider and
+      visible housemates, including riders who never rode this particular class
+      (their class best is absent). Show the duration target, gap from current
+      output and remaining class time while riding, with class best secondary.
       A trace row alone cannot answer the 401 → 420 example above. Keep the
       rider's duration target visually ahead of their exact-class target.
 - [ ] **18.13.5** Add a narrow authenticated RPC for each visible account's
-      best measured, non-hidden *class* ride at the requested authored
+      best measured, non-hidden ride in the selected class and at its authored
       duration, even without a ride of the selected class. Fetch it after the
       local live board is ready; cloud delay or failure cannot postpone or
       remove Room targets. For a remote total without samples, show a **finish

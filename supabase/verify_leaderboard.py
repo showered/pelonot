@@ -104,8 +104,8 @@ check("A is marked as you and B is not",
       all(r["is_you"] == (r["account_id"] == A_ID) for r in board), t)
 check("it carries a name and a weight, so a board can be drawn",
       board and all(r["name"] and r["weight_kg"] is not None for r in board), t)
-check("and only the duration best besides the existing board columns",
-      board and set(board[0]) == {"account_id", "name", "output_kj", "duration_best_kj", "weight_kg", "is_you"},
+check("the class board returns only the agreed class columns",
+      board and set(board[0]) == {"account_id", "name", "output_kj", "weight_kg", "is_you"},
       f"{sorted(board[0]) if board else board}")
 
 s, t = rest(B, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
@@ -124,17 +124,20 @@ s, t = rest(B, "POST", "workouts", ride(RIDE_SAME_LENGTH, B_ID, OTHER, 350.0, "M
 check("same-length ride recorded", s in (200, 201), f"{s} {t}")
 s, t = rest(A, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
 length_board = {r["account_id"]: r for r in rows(t)}
-check("B keeps this-class rank while same-length best comes from another class",
-      B_ID in length_board and length_board[B_ID]["output_kj"] == 200.0 and
-      length_board[B_ID]["duration_best_kj"] == 350.0, f"{s} {t}")
-s, t = rest(A, "POST", "rpc/duration_finish_targets", {"p_duration_sec": 1200})
+check("B's class score does not turn into their best from the other class",
+      B_ID in length_board and length_board[B_ID]["output_kj"] == 200.0,
+      f"{s} {t}")
+s, t = rest(A, "POST", "rpc/duration_finish_targets", {"p_class_id": CLASS})
 finish = {r["account_id"]: r for r in rows(t)}
 check("live finish targets include both accounts at this authored length",
       A_ID in finish and B_ID in finish and finish[B_ID]["best_kj"] == 350.0,
       f"{s} {t}")
+check("live finish target separates B's class best from duration best",
+      B_ID in finish and finish[B_ID]["class_best_kj"] == 200.0,
+      f"{s} {t}")
 check("live target exposes only identity and final output",
       finish and set(next(iter(finish.values()))) ==
-      {"account_id", "name", "best_kj", "is_you"}, f"{s} {t}")
+      {"account_id", "name", "best_kj", "class_best_kj", "is_you"}, f"{s} {t}")
 
 print("== the ghost ==")
 s, t = rest(A, "POST", "rpc/class_ghost", {"p_class_id": CLASS, "p_account_id": B_ID})
@@ -155,7 +158,7 @@ s, t = rest(None, "POST", "rpc/class_leaderboard", {"p_class_id": CLASS})
 check("the anon key gets no board", refused(s, t) or rows(t) == [], f"{s} {t}")
 s, t = rest(None, "POST", "rpc/class_ghost", {"p_class_id": CLASS, "p_account_id": B_ID})
 check("the anon key gets no ghost", refused(s, t) or rows(t) == [], f"{s} {t}")
-s, t = rest(None, "POST", "rpc/duration_finish_targets", {"p_duration_sec": 1200})
+s, t = rest(None, "POST", "rpc/duration_finish_targets", {"p_class_id": CLASS})
 check("the anon key gets no duration targets", refused(s, t) or rows(t) == [], f"{s} {t}")
 
 for token, rid in ((A, RIDE_A), (B, RIDE_B), (B, RIDE_MODELLED),

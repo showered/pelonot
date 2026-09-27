@@ -25,19 +25,18 @@ import java.util.TimeZone
 class WorkoutDtoTest {
 
     @Test
-    fun `class board reads the duration best and tolerates an unmigrated endpoint`() {
-        val old = """{"account_id":"a","name":"Sam","output_kj":180.0,"weight_kg":70.0,"is_you":true}"""
-        val updated = """{"account_id":"a","name":"Sam","output_kj":180.0,"duration_best_kj":230.0,"weight_kg":70.0,"is_you":true}"""
-        assertNull(json.decodeFromString(LeaderboardRowDto.serializer(), old).durationBestKj)
-        assertEquals(230.0, json.decodeFromString(LeaderboardRowDto.serializer(), updated).durationBestKj!!, 0.001)
+    fun `class board carries only this class score`() {
+        val wire = """{"account_id":"a","name":"Sam","output_kj":180.0,"weight_kg":70.0,"is_you":true}"""
+        assertEquals(180.0, json.decodeFromString(LeaderboardRowDto.serializer(), wire).outputKj, 0.001)
     }
 
     @Test
-    fun `live duration target decodes only a final score and identity`() {
-        val wire = """{"account_id":"tom","name":"Tom","best_kj":420.0,"is_you":false}"""
+    fun `live target decodes class and duration finals`() {
+        val wire = """{"account_id":"tom","name":"Tom","best_kj":420.0,"class_best_kj":350.0,"is_you":false}"""
         val target = json.decodeFromString(DurationFinishDto.serializer(), wire)
         assertEquals("Tom", target.name)
         assertEquals(420.0, target.bestKj, 0.001)
+        assertEquals(350.0, target.classBestKj!!, 0.001)
     }
 
     private val json = Json { encodeDefaults = true }

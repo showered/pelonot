@@ -340,8 +340,7 @@ fun ClassDetailScreen(
                             item {
                                 ClassLeaderboardCard(
                                     leaderboard = it,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    durationMinutes = plan.durationSec / 60
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }

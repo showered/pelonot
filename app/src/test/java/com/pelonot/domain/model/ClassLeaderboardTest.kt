@@ -1,5 +1,6 @@
 package com.pelonot.domain.model
 
+import com.pelonot.domain.identity.Avatar
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -30,14 +31,14 @@ class ClassLeaderboardTest {
     }
 
     @Test
-    fun `duration best from another bike augments local rider without replacing class rank`() {
+    fun `class board keeps the household avatar and class score when a cloud copy arrives`() {
+        val face = Avatar.defaultFor(1)
         val board = ClassLeaderboard.of(
             "TH-01",
             listOf(
-                standing(1, "Sam", 180.0, accountId = "sam")
-                    .copy(durationBestKj = 210.0),
-                cloudStanding("sam", "Sam", 160.0).copy(durationBestKj = 250.0),
-                cloudStanding("alex", "Alex", 200.0).copy(durationBestKj = 240.0)
+                standing(1, "Sam", 180.0, accountId = "sam").copy(avatar = face),
+                cloudStanding("sam", "Sam", 160.0),
+                cloudStanding("alex", "Alex", 200.0)
             ),
             youId = 1
         )
@@ -45,7 +46,7 @@ class ClassLeaderboardTest {
         assertEquals(2, board.entries.size)
         assertEquals("Alex", board.entries[0].name)
         assertEquals(180.0, board.entries[1].outputKj, 0.001)
-        assertEquals(250.0, board.entries[1].durationBestKj!!, 0.001)
+        assertEquals(face, board.entries[1].avatar)
     }
 
     private fun standing(
@@ -209,19 +210,15 @@ class ClassLeaderboardTest {
     }
 
     /**
-     * 24.1.6 still hides a lone class score. 18.13 allows a lone rider's two
-     * distinct records to form a record card, with no rank rosette.
+     * A lone rider sees their class record without a rank rosette.
      */
     @Test
-    fun `a household of one is not a leaderboard`() {
-        assertFalse(
+    fun `a household of one can see the class record`() {
+        assertTrue(
             ClassLeaderboard.of("TH-01", listOf(standing(1, "Sam", 180.0)), youId = 1)
                 .isWorthShowing
         )
         assertFalse(ClassLeaderboard.of("TH-01", emptyList(), youId = 1).isWorthShowing)
-        assertTrue(ClassLeaderboard.of(
-            "TH-01", listOf(standing(1, "Sam", 180.0).copy(durationBestKj = 220.0)), youId = 1
-        ).isWorthShowing)
         assertTrue(
             ClassLeaderboard.of(
                 "TH-01",

@@ -32,11 +32,12 @@ class DurationFinishTargetsTest {
 
     @Test
     fun `same account on two bikes has one target with the higher total`() {
-        val local = DurationFinishTarget(2, "tom", "Tom", 400.0, false)
-        val remote = DurationFinishTarget(null, "tom", "Tom", 420.0, false)
+        val local = DurationFinishTarget(2, "tom", "Tom", 400.0, false, 380.0)
+        val remote = DurationFinishTarget(null, "tom", "Tom", 420.0, false, 360.0)
         val merged = DurationFinishTargets.merge(listOf(local), listOf(remote))
         assertEquals(1, merged.size)
         assertEquals(2, merged.single().localUserId)
         assertEquals(420.0, merged.single().bestKj, 0.001)
+        assertEquals(380.0, merged.single().classBestKj!!, 0.001)
     }
 }

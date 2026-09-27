@@ -400,20 +400,19 @@ verdict, and only a wholly measured ride may propose an FTP change (7.10.7) or
 appear on the household leaderboard (24.4.2).
 
 The class leaderboard reads each visible rider's best measured result in the
-selected class from Room. It also reads their best measured class ride of the
-same **authored** duration from `class_templates`; that second value is labelled
-separately and never changes the class ranking. Class detail emits the Room
-rows first, then merges the narrow `class_leaderboard` RPC for signed-in riders.
-A failed RPC leaves the local board visible and has its own retryable state.
-The cloud's duration value is added by `supabase/010_class_duration_bests.sql`;
-older endpoints simply omit it until that migration is applied.
+selected class from Room. It shows that class score beside the existing
+`RiderAvatar`, with no duration or weight-normalised score on this screen.
+Class detail emits the Room rows first, then merges the narrow
+`class_leaderboard` RPC for signed-in riders. A failed RPC leaves the local
+board visible and has its own retryable state.
 
 During a class, Room also supplies final lifetime bests for that authored
 duration, including visible housemates who never rode this particular class.
-The ride snapshot carries up to two finish chases: the rider's own best and the
-nearest other rider's best, each with the remaining kJ and class time. This is
+Each target also carries that rider's best finish in this exact class when one
+exists. The ride snapshot carries up to two finish chases: the rider's own best
+and the nearest other rider's best, each with the remaining kJ and class time. This is
 separate from the second-by-second ghost trace. An authenticated rider may add
-other-bike finish totals through `duration_finish_targets`; those totals never
+other-bike finish totals through `duration_finish_targets` (migration `010`); those totals never
 pretend to be a trace. A cloud failure leaves the Room targets in place, and a
 ride with modelled power suppresses human finish targets.
 

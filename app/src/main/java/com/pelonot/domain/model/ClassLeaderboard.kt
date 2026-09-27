@@ -1,5 +1,7 @@
 package com.pelonot.domain.model
 
+import com.pelonot.domain.identity.Avatar
+
 /** Whether the other-bike half of a class board answered (PLAN 18.10). */
 enum class CloudBoardState { Checking, Offline, Ready, Unavailable }
 
@@ -42,9 +44,8 @@ data class ClassLeaderboard(
     val entries: List<Entry> = emptyList()
 ) {
 
-    /** A lone rider gets records only when both class and duration bests exist. */
-    val isWorthShowing: Boolean
-        get() = entries.size >= 2 || entries.singleOrNull()?.durationBestKj != null
+    /** A lone rider's class record still belongs on the class screen. */
+    val isWorthShowing: Boolean get() = entries.isNotEmpty()
 
     /** Whether anybody on this board rode a different bike (18.7). */
     val crossesBikes: Boolean get() = entries.any { it.source == Source.Cloud }
@@ -143,9 +144,9 @@ data class ClassLeaderboard(
     enum class Source { Household, Cloud }
 
     /**
-     * @property outputPerKg the number a lighter rider will want, offered
-     *   beside the ranking rather than as it (24.1.3). Null when the profile
-     *   carries no usable weight, which is better than dividing by a default.
+     * @property outputPerKg retained as a derived figure for callers that
+     *   explicitly ask for it; the class card now shows only the class's kJ.
+     *   Null when the profile carries no usable weight.
      */
     data class Entry(
         /** Null for a rider who is not on this tablet. */
@@ -154,13 +155,12 @@ data class ClassLeaderboard(
         val accountId: String?,
         val name: String,
         val outputKj: Double,
-        /** Best measured class ride of this class's authored duration. */
-        val durationBestKj: Double? = null,
         val weightKg: Double,
         /** 1-based, and shared by riders on identical output. */
         val rank: Int,
         val isYou: Boolean,
-        val source: Source = Source.Household
+        val source: Source = Source.Household,
+        val avatar: Avatar? = null
     ) {
         val outputPerKg: Double? get() = if (weightKg > 0) outputKj / weightKg else null
     }
@@ -171,9 +171,9 @@ data class ClassLeaderboard(
         val accountId: String?,
         val name: String,
         val outputKj: Double,
-        val durationBestKj: Double? = null,
         val weightKg: Double,
-        val source: Source = Source.Household
+        val source: Source = Source.Household,
+        val avatar: Avatar? = null
     )
 
     companion object {
@@ -216,12 +216,12 @@ data class ClassLeaderboard(
                         accountId = standing.accountId,
                         name = standing.name,
                         outputKj = standing.outputKj,
-                        durationBestKj = standing.durationBestKj,
                         weightKg = standing.weightKg,
                         rank = rank,
                         isYou = (standing.localUserId != null && standing.localUserId == youId) ||
                             (standing.accountId != null && standing.accountId == yourAccountId),
-                        source = standing.source
+                        source = standing.source,
+                        avatar = standing.avatar
                     )
                 }
             return ClassLeaderboard(classId = classId, entries = entries)
@@ -250,17 +250,8 @@ data class ClassLeaderboard(
                 .mapNotNull { it.accountId }
                 .toSet()
 
-            val cloudDuration = standings.filter { it.source == Source.Cloud }
-                .associateBy { it.accountId }
             return standings.filterNot { standing ->
                 standing.source == Source.Cloud && standing.accountId in householdAccounts
-            }.map { standing ->
-                if (standing.source != Source.Household) standing else {
-                    val remote = cloudDuration[standing.accountId]
-                    standing.copy(durationBestKj = listOfNotNull(
-                        standing.durationBestKj, remote?.durationBestKj
-                    ).maxOrNull())
-                }
             }
         }
     }

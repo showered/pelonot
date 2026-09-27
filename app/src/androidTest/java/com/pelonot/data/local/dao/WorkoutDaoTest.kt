@@ -446,7 +446,8 @@ class WorkoutDaoTest {
     }
 
     @Test
-    fun classBoardCarriesEachRidersBestOfTheSameAuthoredLength() = runBlocking {
+    fun classBoardStaysOnTheSelectedClass() = runBlocking {
+        userDao.updateUser(userDao.getUserById(USER_ID)!!.copy(avatar = "leaf"))
         database.classTemplateDao().upsertAll(listOf(
             ClassTemplateEntity(
                 id = "SHORT", title = "Short", category = "Threshold",
@@ -466,9 +467,8 @@ class WorkoutDaoTest {
 
         val board = settled().householdLeaderboard(CLASS_ID)
         assertEquals(180.0, board.first { it.localUserId == USER_ID }.bestOutputKj, 0.001)
-        assertEquals(230.0, board.first { it.localUserId == USER_ID }.durationBestKj!!, 0.001)
+        assertEquals("leaf", board.first { it.localUserId == USER_ID }.avatar)
         assertEquals(170.0, board.first { it.localUserId == OTHER_USER_ID }.bestOutputKj, 0.001)
-        assertEquals(260.0, board.first { it.localUserId == OTHER_USER_ID }.durationBestKj!!, 0.001)
     }
 
     @Test
@@ -478,8 +478,12 @@ class WorkoutDaoTest {
         workoutDao.insertWorkout(workout("tom", userId = OTHER_USER_ID,
             classId = "SS-04", outputKj = 420.0))
         samplesFor("tom", measured = true)
+        workoutDao.insertWorkout(workout("tom-class", userId = OTHER_USER_ID,
+            classId = CLASS_ID, outputKj = 350.0))
+        samplesFor("tom-class", measured = true)
 
         val targets = settled().durationFinishTargets(
+            classId = CLASS_ID,
             classDurationSec = 1800,
             excludingWorkoutId = "current",
             youId = USER_ID,
@@ -488,6 +492,7 @@ class WorkoutDaoTest {
 
         assertEquals(2, targets.size)
         assertEquals(420.0, targets.first { it.localUserId == OTHER_USER_ID }.bestKj, 0.001)
+        assertEquals(350.0, targets.first { it.localUserId == OTHER_USER_ID }.classBestKj!!, 0.001)
     }
 
     /** 24.1.4: a guest ride has no owner, so there is nobody to place. */

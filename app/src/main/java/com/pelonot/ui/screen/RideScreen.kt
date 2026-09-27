@@ -1148,7 +1148,8 @@ private fun LiveLeaderboardCard(
         // celebration takes its own height from that budget, leaving the
         // buttons in their measured position.
         val eventCount = (if (passedOwnRide != null) 1 else 0) +
-            (if (passedMilestone != null) 1 else 0) + finishChases.size
+            (if (passedMilestone != null) 1 else 0) +
+            finishChases.size + finishChases.count { it.target.classBestKj != null }
         Box(modifier = Modifier.fillMaxWidth()) {
             LazyColumn(
                 state = listState,
@@ -1249,6 +1250,14 @@ private fun FinishChaseRows(
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1
                 )
+                chase.target.classBestKj?.let { classBest ->
+                    Text(
+                        "This class ${Formatters.kilojoules(classBest)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

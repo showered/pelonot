@@ -66,9 +66,9 @@ data class AchievementTotalsRow(
 data class ClassLeaderboardRow(
     val localUserId: Int,
     val name: String,
+    val avatar: String?,
     val weightKg: Double,
     val bestOutputKj: Double,
-    val durationBestKj: Double?,
     /**
      * Their cloud account, or null for a housemate who has never signed in.
      *
@@ -83,7 +83,8 @@ data class DurationFinishRow(
     val localUserId: Int,
     val authUserId: String?,
     val name: String,
-    val bestKj: Double
+    val bestKj: Double,
+    val classBestKj: Double?
 )
 
 /** One of the rider's own rides of a given length — see [WorkoutDao.ridesOfLength]. */
@@ -584,31 +585,21 @@ interface WorkoutDao {
      */
     @Query(
         """
-        WITH target AS (
-            SELECT duration_sec FROM class_templates WHERE id = :classId
-        ), class_best AS (
+        WITH class_best AS (
             SELECT user_id, MAX(total_output_kj) AS bestOutputKj
             FROM workouts
             WHERE class_id = :classId AND is_complete = 1
               AND power_provenance = 'Measured'
             GROUP BY user_id
-        ), duration_best AS (
-            SELECT w.user_id, MAX(w.total_output_kj) AS durationBestKj
-            FROM workouts w
-            JOIN class_templates c ON c.id = w.class_id
-            JOIN target ON target.duration_sec = c.duration_sec
-            WHERE w.is_complete = 1 AND w.power_provenance = 'Measured'
-            GROUP BY w.user_id
         )
         SELECT p.local_user_id AS localUserId,
                p.name AS name,
+               p.avatar AS avatar,
                p.weight_kg AS weightKg,
                p.auth_user_id AS authUserId,
-               class_best.bestOutputKj AS bestOutputKj,
-               duration_best.durationBestKj AS durationBestKj
+               class_best.bestOutputKj AS bestOutputKj
         FROM class_best
         JOIN profiles p ON p.local_user_id = class_best.user_id
-        LEFT JOIN duration_best ON duration_best.user_id = class_best.user_id
         WHERE p.household_visible = 1
         ORDER BY class_best.bestOutputKj DESC
         """
@@ -621,7 +612,8 @@ interface WorkoutDao {
         SELECT p.local_user_id AS localUserId,
                p.auth_user_id AS authUserId,
                p.name AS name,
-               MAX(w.total_output_kj) AS bestKj
+               MAX(w.total_output_kj) AS bestKj,
+               MAX(CASE WHEN w.class_id = :classId THEN w.total_output_kj END) AS classBestKj
         FROM workouts w
         JOIN class_templates c ON c.id = w.class_id
         JOIN profiles p ON p.local_user_id = w.user_id
@@ -634,6 +626,7 @@ interface WorkoutDao {
         """
     )
     suspend fun durationFinishTargets(
+        classId: String,
         classDurationSec: Int,
         excludingWorkoutId: String,
         youId: Int?,
