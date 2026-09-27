@@ -446,8 +446,8 @@ private fun RideContent(
                 Brush.verticalGradient(
                     listOf(
                         accent.copy(alpha = 0.16f),
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background
+                        Color.Transparent,
+                        Color.Transparent
                     )
                 )
             )

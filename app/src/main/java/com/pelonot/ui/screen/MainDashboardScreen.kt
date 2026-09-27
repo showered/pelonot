@@ -25,7 +25,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -207,7 +206,6 @@ fun MainDashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .dashboardBackdrop()
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.TopCenter
         ) {
@@ -1612,19 +1610,5 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDashboardTrack(
                 size.width * 0.64f + offset, size.height * 1.2f)
         }
         drawPath(track, color, style = Stroke(width = (if (lane == 1) 12 else 1).dp.toPx()))
-    }
-}
-
-@Composable
-private fun Modifier.dashboardBackdrop(): Modifier {
-    val background = MaterialTheme.colorScheme.background
-    val glow = MaterialTheme.colorScheme.primary.copy(alpha = 0.075f)
-    return drawBehind {
-        drawRect(background)
-        drawRect(Brush.radialGradient(
-            colors = listOf(glow, Color.Transparent),
-            center = Offset(size.width * 0.65f, 0f),
-            radius = size.width * 0.6f
-        ))
     }
 }

@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
@@ -108,8 +109,10 @@ fun FtpProgressScreen(
     val bests by bestsViewModel.bests.collectAsStateWithLifecycle()
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text("Your FTP") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

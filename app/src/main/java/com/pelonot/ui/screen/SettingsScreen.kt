@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -51,6 +54,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -125,7 +129,7 @@ import kotlin.math.roundToInt
  * the navigation graph and wrote them back through callbacks that updated
  * those same transient variables, so nothing survived leaving the screen.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
@@ -155,6 +159,9 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
     var pendingRestore by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.Rider) }
+    val contentScroll = rememberScrollState()
+    LaunchedEffect(selectedCategory) { contentScroll.scrollTo(0) }
 
     val say: (String) -> Unit = { message -> scope.launch { snackbarHost.showSnackbar(message) } }
 
@@ -211,9 +218,11 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -226,172 +235,226 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(padding)
-                // 22.2.6. A form field 1200 dp wide with a two-word label on it
-                // is not easier to use than the same field at 700.
-                .readableColumn()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize().padding(padding)
         ) {
-            if (state.isGuest) {
-                SettingsSection("Profile") {
+            val wide = maxWidth >= 800.dp
+            val content: @Composable () -> Unit = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .readableColumn()
+                        .verticalScroll(contentScroll)
+                        .padding(horizontal = MaterialTheme.spacing.large),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
                     Text(
-                        text = "You're riding as a guest, so FTP and weight can't be " +
-                            "saved. Create a profile to track them.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        selectedCategory.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.semantics { heading() }
                     )
+                    when (selectedCategory) {
+                        SettingsCategory.Rider -> {
+                            if (state.isGuest) {
+                                SettingsSection("Profile") {
+                                    Text(
+                                        text = "You're riding as a guest, so FTP and weight can't be " +
+                                            "saved. Create a profile to track them.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else {
+                                RiderSection(
+                                    ftp = state.ftpWatts,
+                                    weightKg = state.weightKg,
+                                    units = state.settings.unitSystem,
+                                    lastFtpChange = state.lastFtpChange,
+                                    previousFtpWatts = state.previousFtpWatts,
+                                    onSave = viewModel::saveRider
+                                )
+                            }
+
+                            if (!state.isGuest) {
+                                HouseholdSection(
+                                    visible = state.profile?.householdVisible ?: true,
+                                    onVisibleChange = viewModel::setHouseholdVisible
+                                )
+                            }
+
+                            UnitsSection(
+                                units = state.settings.unitSystem,
+                                onUnitsChange = viewModel::setUnitSystem
+                            )
+
+                            HeartRateZonesSection(
+                                maxHrBpm = state.profile?.maxHrBpm,
+                                birthDate = state.profile?.birthDate,
+                                highestRecorded = state.highestRecordedHr,
+                                resolved = state.maxHeartRate,
+                                onAskForHighest = viewModel::loadHighestRecordedHeartRate,
+                                onSave = viewModel::saveHeartRateBasis
+                            )
+                        }
+                        SettingsCategory.Ride -> {
+                            RecordsSection(
+                                enabled = state.settings.alertsEnabled,
+                                onEnabledChange = viewModel::setAlertsEnabled
+                            )
+
+                            RideHudSection(
+                                hudEnabled = state.settings.hudEnabled,
+                                dock = state.settings.hudDock,
+                                hudOpacity = state.settings.hudOpacity,
+                                coachStyle = state.settings.coachStyle,
+                                overlayGranted = OverlayPermissionHelper.canDrawOverlays(context),
+                                onHudEnabledChange = viewModel::setHudEnabled,
+                                onDockChange = viewModel::setHudDock,
+                                onHudOpacityChange = viewModel::setHudOpacity,
+                                onCoachStyleChange = viewModel::setCoachStyle,
+                                onRequestPermission = {
+                                    OverlayPermissionHelper.requestOverlayPermission(context)
+                                }
+                            )
+
+                            VolumeSection(
+                                mediaVolume = state.mediaVolume,
+                                coachVolume = state.settings.coachVolume,
+                                error = state.volumeError,
+                                captionsEnabled = state.settings.rideCaptionsEnabled,
+                                coachStyle = state.settings.coachStyle,
+                                onMediaVolumeChange = viewModel::setMediaVolume,
+                                onCoachVolumeChange = viewModel::setCoachVolume,
+                                onCaptionsChange = viewModel::setRideCaptionsEnabled
+                            )
+                        }
+                        SettingsCategory.Devices -> {
+                            SensorSection(
+                                sensorMode = state.settings.sensorMode,
+                                onSensorModeChange = viewModel::setSensorMode
+                            )
+
+                            CalibrationSection(
+                                calibration = state.calibration,
+                                onReset = viewModel::resetCalibration
+                            )
+
+                            HeartRateSection(
+                                status = state.heartRateStatus,
+                                batteryPercent = state.strapBatteryPercent,
+                                deviceCount = state.heartRateDevices.size,
+                                selectedAddress = state.settings.heartRateDeviceAddress,
+                                onScan = scanForHeartRate,
+                                onForget = { viewModel.selectHeartRateDevice(null) }
+                            )
+                        }
+                        SettingsCategory.App -> {
+                            AppearanceSection(
+                                themeMode = state.settings.themeMode,
+                                useDynamicColor = state.settings.useDynamicColor,
+                                onThemeModeChange = viewModel::setThemeMode,
+                                onDynamicColorChange = viewModel::setDynamicColor
+                            )
+
+                            CloudSection(
+                                onOpenAccount = onOpenAccount,
+                                cloudConfigured = state.cloudConfigured,
+                                hasAccount = state.profile?.hasAccount == true,
+                                signedInHere = state.sessionMatchesProfile,
+                                ridesWaiting = state.ridesWaiting,
+                                backupEnabled = state.settings.cloudSyncEnabled,
+                                onBackupEnabledChange = viewModel::setCloudSyncEnabled,
+                                syncStatus = state.cloudSync
+                            )
+
+                            BackupSection(
+                                ridesAreLocalOnly = state.profile?.hasAccount != true,
+                                onBackup = { backupLauncher.launch(viewModel.backupFileName()) },
+                                onRestore = { restoreLauncher.launch(arrayOf("*/*")) }
+                            )
+
+                            // Under Backup deliberately (23.4.5): the offer to keep a copy is
+                            // the sentence before the offer to throw one away.
+                            StorageSection(
+                                storage = state.storage,
+                                age = state.settings.retentionAge,
+                                hasAccount = state.profile?.hasAccount == true,
+                                onAgeChange = { viewModel.setRetentionAge(it, say) },
+                                onBackupFirst = { backupLauncher.launch(viewModel.backupFileName()) }
+                            )
+
+                            // Last but one, immediately above the version it is about (30.5.1).
+                            // A switch whose whole subject is "which build is this" reads
+                            // better beside the answer than three sections away from it.
+                            UpdatesSection(
+                                enabled = state.settings.updateChecksEnabled,
+                                onEnabledChange = viewModel::setUpdateChecksEnabled,
+                                manualCheck = state.manualUpdateCheck,
+                                checking = checkingForUpdates,
+                                riding = activeRide != null,
+                                onCheckNow = viewModel::checkForUpdatesNow
+                            )
+
+                            AboutLine()
+                        }
+                    }
+                    Spacer(Modifier.size(MaterialTheme.spacing.large))
+                }
+            }
+            if (wide) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = MaterialTheme.spacing.large),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large)
+                ) {
+                    Column(
+                        modifier = Modifier.width(220.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        SettingsCategory.entries.forEach { category ->
+                            NavigationDrawerItem(
+                                label = { Text(category.title) },
+                                selected = selectedCategory == category,
+                                onClick = { selectedCategory = category }
+                            )
+                        }
+                    }
+                    Box(Modifier.weight(1f)) { content() }
                 }
             } else {
-                RiderSection(
-                    ftp = state.ftpWatts,
-                    weightKg = state.weightKg,
-                    units = state.settings.unitSystem,
-                    lastFtpChange = state.lastFtpChange,
-                    previousFtpWatts = state.previousFtpWatts,
-                    onSave = viewModel::saveRider
-                )
-            }
-
-            if (!state.isGuest) {
-                HouseholdSection(
-                    visible = state.profile?.householdVisible ?: true,
-                    onVisibleChange = viewModel::setHouseholdVisible
-                )
-            }
-
-            UnitsSection(
-                units = state.settings.unitSystem,
-                onUnitsChange = viewModel::setUnitSystem
-            )
-
-            AppearanceSection(
-                themeMode = state.settings.themeMode,
-                useDynamicColor = state.settings.useDynamicColor,
-                onThemeModeChange = viewModel::setThemeMode,
-                onDynamicColorChange = viewModel::setDynamicColor
-            )
-
-            RecordsSection(
-                enabled = state.settings.alertsEnabled,
-                onEnabledChange = viewModel::setAlertsEnabled
-            )
-
-            RideHudSection(
-                hudEnabled = state.settings.hudEnabled,
-                dock = state.settings.hudDock,
-                hudOpacity = state.settings.hudOpacity,
-                coachStyle = state.settings.coachStyle,
-                overlayGranted = OverlayPermissionHelper.canDrawOverlays(context),
-                onHudEnabledChange = viewModel::setHudEnabled,
-                onDockChange = viewModel::setHudDock,
-                onHudOpacityChange = viewModel::setHudOpacity,
-                onCoachStyleChange = viewModel::setCoachStyle,
-                onRequestPermission = {
-                    OverlayPermissionHelper.requestOverlayPermission(context)
-                }
-            )
-
-            VolumeSection(
-                mediaVolume = state.mediaVolume,
-                coachVolume = state.settings.coachVolume,
-                error = state.volumeError,
-                captionsEnabled = state.settings.rideCaptionsEnabled,
-                coachStyle = state.settings.coachStyle,
-                onMediaVolumeChange = viewModel::setMediaVolume,
-                onCoachVolumeChange = viewModel::setCoachVolume,
-                onCaptionsChange = viewModel::setRideCaptionsEnabled
-            )
-
-            SensorSection(
-                sensorMode = state.settings.sensorMode,
-                onSensorModeChange = viewModel::setSensorMode
-            )
-
-            CalibrationSection(
-                calibration = state.calibration,
-                onReset = viewModel::resetCalibration
-            )
-
-            HeartRateSection(
-                status = state.heartRateStatus,
-                batteryPercent = state.strapBatteryPercent,
-                deviceCount = state.heartRateDevices.size,
-                selectedAddress = state.settings.heartRateDeviceAddress,
-                onScan = scanForHeartRate,
-                onForget = { viewModel.selectHeartRateDevice(null) }
-            )
-
-            HeartRateZonesSection(
-                maxHrBpm = state.profile?.maxHrBpm,
-                birthDate = state.profile?.birthDate,
-                highestRecorded = state.highestRecordedHr,
-                resolved = state.maxHeartRate,
-                onAskForHighest = viewModel::loadHighestRecordedHeartRate,
-                onSave = viewModel::saveHeartRateBasis
-            )
-
-            CloudSection(
-                onOpenAccount = onOpenAccount,
-                cloudConfigured = state.cloudConfigured,
-                hasAccount = state.profile?.hasAccount == true,
-                signedInHere = state.sessionMatchesProfile,
-                ridesWaiting = state.ridesWaiting,
-                backupEnabled = state.settings.cloudSyncEnabled,
-                onBackupEnabledChange = viewModel::setCloudSyncEnabled,
-                syncStatus = state.cloudSync
-            )
-
-            BackupSection(
-                ridesAreLocalOnly = state.profile?.hasAccount != true,
-                onBackup = { backupLauncher.launch(viewModel.backupFileName()) },
-                onRestore = { restoreLauncher.launch(arrayOf("*/*")) }
-            )
-
-            // Under Backup deliberately (23.4.5): the offer to keep a copy is
-            // the sentence before the offer to throw one away.
-            StorageSection(
-                storage = state.storage,
-                age = state.settings.retentionAge,
-                hasAccount = state.profile?.hasAccount == true,
-                onAgeChange = { viewModel.setRetentionAge(it, say) },
-                onBackupFirst = { backupLauncher.launch(viewModel.backupFileName()) }
-            )
-
-            // Last but one, immediately above the version it is about (30.5.1).
-            // A switch whose whole subject is "which build is this" reads
-            // better beside the answer than three sections away from it.
-            UpdatesSection(
-                enabled = state.settings.updateChecksEnabled,
-                onEnabledChange = viewModel::setUpdateChecksEnabled,
-                manualCheck = state.manualUpdateCheck,
-                checking = checkingForUpdates,
-                riding = activeRide != null,
-                onCheckNow = viewModel::checkForUpdatesNow
-            )
-
-            AboutLine()
-
-            state.manualUpdateCheck?.let { check ->
-                val offer = (check as? UpdateCheck.Decided)?.decision as? UpdateDecision.Offer
-                if (offer != null && activeRide == null) {
-                    UpdateOfferDialog(
-                        manifest = offer.manifest,
-                        installState = updateInstallState,
-                        onInstall = { viewModel.installUpdate(offer.manifest) },
-                        onNotNow = { viewModel.declineUpdate(offer.manifest) },
-                        unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
-                    )
+                Column {
+                    FlowRow(
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                    ) {
+                        SettingsCategory.entries.forEach { category ->
+                            FilterChip(
+                                selected = selectedCategory == category,
+                                onClick = { selectedCategory = category },
+                                label = { Text(category.title) }
+                            )
+                        }
+                    }
+                    Box(Modifier.weight(1f)) { content() }
                 }
             }
-
-            Spacer(Modifier.size(MaterialTheme.spacing.large))
+        }
+        state.manualUpdateCheck?.let { check ->
+            val offer = (check as? UpdateCheck.Decided)?.decision as? UpdateDecision.Offer
+            if (offer != null && activeRide == null) {
+                UpdateOfferDialog(
+                    manifest = offer.manifest,
+                    installState = updateInstallState,
+                    onInstall = { viewModel.installUpdate(offer.manifest) },
+                    onNotNow = { viewModel.declineUpdate(offer.manifest) },
+                    unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
+                )
+            }
         }
     }
+}
+
+private enum class SettingsCategory(val title: String) {
+    Rider("Rider"), Ride("Ride"), Devices("Devices"), App("App")
 }
 
 /**

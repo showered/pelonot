@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -13,6 +14,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
@@ -51,35 +54,46 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (uiState.isLoading) {
-                        LoadingIndicator()
-                    } else {
-                        PelonotNavGraph(
-                            navController = rememberNavController(),
-                            uiState = uiState,
-                            onCreateProfile = viewModel::createProfile,
-                            onSelectProfile = viewModel::selectProfile,
-                            onRecoverWorkout = viewModel::recoverWorkout,
-                            onResumeWorkout = viewModel::resumeWorkout,
-                            onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout,
-                            onSaveProfile = { user, name, avatar ->
-                                viewModel.saveProfileIdentity(user.localUserId, name, avatar)
-                            },
-                            onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) },
-                            onDismissBackupReminder = viewModel::snoozeBackupReminder,
-                            onDismissAccountOffer = viewModel::dismissAccountOffer,
-                            onToggleKudos = viewModel::toggleKudos,
-                            onRetrySocial = viewModel::refreshSocialActivity,
-                            onRevertFtpChange = viewModel::revertFtpChange,
-                            onApplyFtpAssessment = viewModel::applyFtpAssessment,
-                            onLoadLeaderboard = viewModel::householdLeaderboard,
-                            onLoadRidesOfThisLength = viewModel::ridesOfThisLength,
-                            onLoadRivals = viewModel::classRivals,
-                            updateInstallState = updateInstallState,
-                            onInstallUpdate = viewModel::installUpdate,
-                            onDeclineUpdate = viewModel::declineUpdate,
-                            unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
+                    Box(Modifier.fillMaxSize()) {
+                        Image(
+                            painter = painterResource(
+                                if (darkTheme) R.drawable.dashboard_background_dark
+                                else R.drawable.dashboard_background_light
+                            ),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
+                        if (uiState.isLoading) {
+                            LoadingIndicator()
+                        } else {
+                            PelonotNavGraph(
+                                navController = rememberNavController(),
+                                uiState = uiState,
+                                onCreateProfile = viewModel::createProfile,
+                                onSelectProfile = viewModel::selectProfile,
+                                onRecoverWorkout = viewModel::recoverWorkout,
+                                onResumeWorkout = viewModel::resumeWorkout,
+                                onDiscardRecoverableWorkout = viewModel::discardRecoverableWorkout,
+                                onSaveProfile = { user, name, avatar ->
+                                    viewModel.saveProfileIdentity(user.localUserId, name, avatar)
+                                },
+                                onDeleteProfile = { user -> viewModel.deleteProfile(user.localUserId) },
+                                onDismissBackupReminder = viewModel::snoozeBackupReminder,
+                                onDismissAccountOffer = viewModel::dismissAccountOffer,
+                                onToggleKudos = viewModel::toggleKudos,
+                                onRetrySocial = viewModel::refreshSocialActivity,
+                                onRevertFtpChange = viewModel::revertFtpChange,
+                                onApplyFtpAssessment = viewModel::applyFtpAssessment,
+                                onLoadLeaderboard = viewModel::householdLeaderboard,
+                                onLoadRidesOfThisLength = viewModel::ridesOfThisLength,
+                                onLoadRivals = viewModel::classRivals,
+                                updateInstallState = updateInstallState,
+                                onInstallUpdate = viewModel::installUpdate,
+                                onDeclineUpdate = viewModel::declineUpdate,
+                                unknownSourcesSettingsIntent = viewModel::unknownSourcesSettingsIntent
+                            )
+                        }
                     }
                 }
             }
