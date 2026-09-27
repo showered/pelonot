@@ -280,6 +280,10 @@ observation before ticking the box. This took priority over 19.2.3 because
 restore was already dropping a rider's heart-rate setup; the guided FTP test
 adds a new route once the current social/device checks are settled.
 
+**30.2.3 is closed on the bike-size emulator.** A temporary code 7 debug build
+checked the live code 6 update manifest and showed the older-update refusal
+without an install offer. The temporary version bump was removed.
+
 ### Previous session — 26 September 2026: duration records and live finish targets
 
 **18.13 is implemented locally and prepared for the cloud.** Class detail now
@@ -692,18 +696,10 @@ uninstall, install the first release-signed APK, restore. 30.1.4a rehearsed
 the *route* on this tablet this sitting; what only the owner can rehearse is
 the tablet itself.
 
-**Two small, cheap, AVD-observable items are worth picking before 30.1.1
-lands, because neither needs the keystore.** **30.2.3** is built —
-`UpdatePolicy.decide` already refuses a manifest offering a lower
-`versionCode` — and unticked, because nobody has watched it refuse one on the
-device rather than in a JVM test; a manifest hand-edited to offer `versionCode
-1` while `2` is installed is a five-minute check with this sitting's local
-HTTPS rig, if it is kept around, or rebuilt. **30.3.1 / 30.3.2** are the
-release script and the first real manifest — `tools/release.sh` is what keeps
-a published `web/update.json` honest, and **it must not be built as a
-convenience before 30.1.1**, because a script that signs with nothing signs
-with the debug key by accident, which is the one certificate this phase
-exists to stop shipping to the friend.
+**30.2.3, 30.3.1 and 30.3.2 are done.** The downgrade refusal was observed on
+the tablet AVD against the live manifest; the release script and first real
+manifest have already shipped. The next Phase 30 work needing a real release
+still depends on 30.1.1 and the owner's keystore.
 
 **This sitting left one small thing open and it is a look rather than a job.**
 **24.5.7** is ticked on everything except the `PAST YOUR BEST` banner firing on

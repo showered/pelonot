@@ -26,7 +26,7 @@ restore tests pass; a signed-in new-device screen check remains.
 | Measured | |
 |---|---|
 | JVM tests | **1018**, 0 failures |
-| Plan boxes ticked | **765 of 989** — 77% |
+| Plan boxes ticked | **766 of 989** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a

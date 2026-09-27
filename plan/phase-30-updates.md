@@ -198,7 +198,7 @@ being cosmetic.
       suffix appears on debug builds only and earns its place from 30.1.5: when
       a debug copy and a release copy start refusing to replace each other, this
       is the line that tells them apart from across a room
-- [ ] **30.2.3 A downgrade is refused, and this project already knows why.**
+- [x] **30.2.3 A downgrade is refused, and this project already knows why.**
       12.5.1 kept `fallbackToDestructiveMigration` on **downgrade** on the
       argument that it only ever happens on a development device. An OTA channel
       that could offer an older APK makes that false and would wipe a rider's
@@ -211,7 +211,10 @@ being cosmetic.
       checksum have their own messages too. The automatic path remains silent:
       only the rider who asked Settings to check is told, which is 30.3.4's
       boundary. JVM tests cover the decision and all three messages; the
-      remaining observation is the on-device check against a lower manifest.
+      on-device check is complete: on the 1920 × 1080, 240 dpi tablet AVD, a
+      temporary debug build at code 7 checked the live code 6 manifest and
+      displayed *"That update is older than the app installed here"* without
+      an install offer. The temporary version bump was then removed.
 
 ### 30.3 The manifest — what the bike asks, and who answers
 
