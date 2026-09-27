@@ -269,6 +269,17 @@ fixed:** the fallback's refresh token was redeemed against the live project
 after `stopAutoRefresh()` replaced both server-side sign-out variants. The
 original QR report still needs a complete real pairing to settle it.
 
+**15.3.7 is now built and tested at both boundaries.** Migration `011` is live;
+the profile wire carries a rider-entered maximum, birth year and original
+riding-level answer. Fifteen restore tests pass on the bike-size emulator, and
+authenticated writes, reads, omitted-field saves and explicit clears passed
+against the live endpoint with the original profile values restored. The
+plan's proposed profile `max_hr_source` column was moot: the source follows
+from which input the rider gave. A signed-in new-device UI restore remains the
+observation before ticking the box. This took priority over 19.2.3 because
+restore was already dropping a rider's heart-rate setup; the guided FTP test
+adds a new route once the current social/device checks are settled.
+
 ### Previous session — 26 September 2026: duration records and live finish targets
 
 **18.13 is implemented locally and prepared for the cloud.** Class detail now
@@ -582,6 +593,9 @@ ride from another account. Confirm a newly attached account loads its feed
 without switching profiles, kudos gives and removes once per tap, and a failed
 request leaves household activity in place. Check 18.10's class leaderboard
 empty, unavailable and retry states on the same tablet; they are now built.
+On that same signed-in tablet, restore a profile onto a fresh local shell and
+confirm its maximum or birth-year-based zones return (15.3.7); the cloud
+migration and both boundary checks are complete.
 `010_class_duration_bests.sql` is applied and its two-account 401 → 420 kJ
 endpoint check passed (24/24). Next, observe 18.13's live finish targets on a
 signed-in tablet, including a target already passed, cloud failure and larger

@@ -13,6 +13,8 @@ import com.pelonot.data.remote.dto.WorkoutDto
 import com.pelonot.data.remote.dto.fromIso8601
 import com.pelonot.domain.cloud.RestoreOutcome
 import com.pelonot.domain.cloud.RestoreSurvey
+import com.pelonot.domain.model.FitnessLevel
+import com.pelonot.domain.model.MaxHeartRate
 
 /**
  * Bringing a rider's history back down (PLAN 15.3.2).
@@ -170,7 +172,7 @@ class RestoreRepository(
     }
 
     /**
-     * Takes the account's name, weight and FTP for a profile that has never
+     * Takes the account's riding inputs for a profile that has never
      * ridden on this bike.
      *
      * A failure here is not a failure of the restore: the rides are what the
@@ -190,19 +192,20 @@ class RestoreRepository(
             userRepository.syncProfile(local)
             return false
         }
-        if (local.name == cloud.name &&
-            local.ftpWatts == cloud.ftpWatts &&
-            local.weightKg == cloud.weightKg
-        ) {
-            return false
-        }
+        val adopted = local.copy(
+            name = cloud.name,
+            ftpWatts = cloud.ftpWatts,
+            weightKg = cloud.weightKg,
+            maxHrBpm = cloud.maxHrBpm?.takeIf(MaxHeartRate::isPlausible)
+                ?: local.maxHrBpm,
+            birthDate = cloud.birthDateMs ?: local.birthDate,
+            fitnessLevel = FitnessLevel.fromId(cloud.fitnessLevel)?.id
+                ?: local.fitnessLevel
+        )
+        if (adopted == local) return false
 
         userRepository.save(
-            local.copy(
-                name = cloud.name,
-                ftpWatts = cloud.ftpWatts,
-                weightKg = cloud.weightKg
-            ),
+            adopted,
             // 7.9.4's funnel writes the history row; naming the source is what
             // keeps *Your FTP* able to say where the number came from.
             ftpSource = FtpChangeSource.PulledFromCloud

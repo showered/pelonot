@@ -38,6 +38,7 @@ degraded one.
 | `008_companion_web.sql` | **What the companion web app needs** (Phase 17): a bio, units, a maximum heart rate and a sharing switch on `profiles`; a title and `hidden` on `workouts`; `kudos` and `ride_comments` with the functions that reach them |
 | `009_activity_sharing_opt_out.sql` | Changes the owner’s activity-sharing decision to **opt-out**: new and existing cloud profiles share ordinary rides, while `hidden` remains the per-ride escape hatch |
 | `010_class_duration_bests.sql` | Adds a narrow live RPC for each rider's best in the selected class and at its authored duration; the static class leaderboard stays class-only. Run after `009` |
+| `011_profile_riding_inputs.sql` | Carries the maximum heart rate, birth year and original riding-level answer through a new-device restore; aligns the cloud's maximum-heart-rate bounds with the bike. Run after `010` |
 
 Run them in that order in the SQL Editor. `002` is non-destructive; **`003` is
 not** — it clears `profiles`, deliberately, because every row in it was written

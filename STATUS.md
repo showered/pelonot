@@ -15,6 +15,9 @@ records, privacy and the 401 → 420 kJ finish. The signed-in bike display still
 needs observation. A dedicated 20-minute FTP test is planned. Version **1.0.5** has a live
 update manifest and reachable APK. The overlay's strap battery layout and the
 owner's reported leaderboard milestone still need device checks.
+New-device restore now carries the rider's heart-rate inputs and original
+riding-level answer. Migration `011`, live profile round trips and 15 emulator
+restore tests pass; a signed-in new-device screen check remains.
 [PLAN.md](PLAN.md) is the current index.
 
 <!-- figures:begin -->
@@ -22,7 +25,7 @@ owner's reported leaderboard milestone still need device checks.
 
 | Measured | |
 |---|---|
-| JVM tests | **1016**, 0 failures |
+| JVM tests | **1018**, 0 failures |
 | Plan boxes ticked | **765 of 989** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented

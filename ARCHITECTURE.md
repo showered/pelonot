@@ -543,6 +543,14 @@ skips an unreadable record whole, and adopts the account's profile only for a
 rider who has never ridden on this tablet. A ride's id is the primary key in both
 places, so "already here" is the whole conflict rule.
 
+The cloud profile also carries the inputs for heart-rate zones: a rider-entered
+maximum and, when given, only the **birth year** rather than a full date.
+Restoring a new profile brings those inputs and the original riding-level
+answer back. The heart-rate source follows from the input: a supplied maximum
+is measured, while a maximum derived from the year is estimated. An ordinary
+profile upload omits absent riding inputs so it cannot clear a value entered
+on the web; an explicit edit of the heart-rate form may clear them.
+
 The wire carries more than the cloud has columns for. `workouts` in Postgres has
 the twelve columns of PLAN 14.4; the FTP a ride was ridden at, the maximum heart
 rate its zones were judged against, its resume count and **what its seconds

@@ -228,17 +228,12 @@ something they could have had offline.**
       the sentence to be honest about before a second one exists
 - [ ] **15.3.5** Metric series are large — a 45-minute ride is ~2,700 samples. Decide deliberately whether the full series goes up or only the aggregates plus a downsampled trace, and record the reasoning
 - [ ] **15.3.6** Sync never runs on the ride's critical path and never blocks the HUD
-- [ ] **15.3.7** **A restored profile comes back without its heart-rate zones,
-      and nothing says so.** Read out of the code in the fifty-first sitting
-      while closing 21.1.1a, not reported by anybody. `ProfileDto` carries
-      `name`, `ftp_watts` and `weight_kg`; the cloud `profiles` table has those
-      three and `theme_preference`. So `RestoreRepository.adoptProfile` puts
-      back everything it was given, and a rider who restores onto a new tablet
-      finds **`birth_date`, `max_hr_bpm`, `max_hr_source` and `fitness_level`
-      all null**: no maximum, therefore no zones (21.2.4), therefore no
-      heart-rate zone bands on any chart and no time-in-heart-rate-zone card on
-      any ride — including the rides that have just come back down carrying
-      their own `max_hr_bpm`.
+- [ ] **15.3.7** **A restored profile must bring its heart-rate zones back.**
+      Before this work `ProfileDto` carried only the name, FTP and weight. A
+      rider restoring onto a new tablet lost the maximum they had entered or
+      the birth year used to estimate one, and therefore lost their zone bands.
+      Their rides kept their own recorded maximum, which made the missing
+      profile basis especially misleading.
 
       **The shape of the loss is worse than the loss.** 21.2.4's rule is that no
       maximum means no zones, said plainly, and that is right for a rider who
@@ -248,34 +243,23 @@ something they could have had offline.**
       the app's own recovery path lands them back at the first question they
       ever answered.
 
-      **It is deliberately not built here**, on 15.4.3's precedent: it needs a
-      column on the cloud `profiles` table, which is a migration only the owner
-      can apply, and writing the app half against a schema nobody has deployed
-      fails in the way that reads exactly like a broken feature. Two things to
-      settle when it is:
-
-      - **`fitness_level` and `theme_preference` are not the same question.**
-        A theme is a preference about this tablet; a maximum heart rate is a
-        fact about the rider. Only the second has any business travelling, and
-        21.1.1a's argument applies unchanged — the *year*, never the date.
-      - **`max_hr_source` has to travel with `max_hr_bpm` or not at all.**
-        21.4.2c's rule is that the source follows the number, and a restored
-        maximum arriving without its provenance would be presented with an
-        authority it has not earned — the exact defect 21.4.2c closed, rebuilt
-        on the way down instead of at the finalise
-
-      ***The blocker named above is gone.*** `008_companion_web.sql` adds
-      `profiles.max_hr_bpm` and it is applied, so the column this item was
-      waiting on exists — and the web app already reads and writes it, which
-      means a rider who has set a maximum on the web has one in the cloud
-      today. What is still missing is the Android half: `ProfileDto` does not
-      carry it in either direction. `max_hr_source` is still not a column, so
-      the second bullet above is still the open decision rather than a
-      formality — send both or send neither
-- [ ] **15.3.7a** **Four cloud profile columns the bike cannot see.** `008` gave
+      **27 September:** `011_profile_riding_inputs.sql` is applied. The bike
+      sends and restores `max_hr_bpm`, `birth_year` and `fitness_level`; only
+      the year leaves the tablet, never a full date. The earlier proposed
+      `max_hr_source` profile column was a false requirement: a rider-entered
+      maximum is measured and a year-derived maximum is estimated, so the two
+      inputs already preserve the source. A ride still records its own resolved
+      maximum and source separately (21.4.2c). An ordinary bike profile save
+      omits absent riding inputs so it cannot erase values entered on the web;
+      explicitly clearing the heart-rate form sends nulls. Both behaviors and
+      an authenticated profile round trip were checked against the live API,
+      with the original profile restored. All 15 account-restore device tests
+      pass on the bike-size AVD. **A signed-in new-device UI restore is the
+      remaining observation**, so the box stays open.
+- [ ] **15.3.7a** **Web-only profile fields and a ride title.** `008` gave
       `profiles` a `bio`, `units`, `max_hr_bpm` and `share_activity`, and
-      `workouts` a `title`; `ProfileDto` carries `id`, `name`, `ftp_watts` and
-      `weight_kg`, and `WorkoutDto` carries no title. So a rider who names a
+      `workouts` a `title`. `max_hr_bpm` now travels under 15.3.7; the other
+      three remain web-only, and `WorkoutDto` carries no title. A rider who names a
       ride or writes a bio on the web sees neither on the bike.
 
       **Nothing is lost, and that is worth stating because it is the failure
@@ -285,9 +269,8 @@ something they could have had offline.**
       reverting a column the session did not carry, avoided here by the wire
       format rather than by care.
 
-      Two of the five are worth carrying and three probably are not:
-      `max_hr_bpm` is 15.3.7's whole subject; a ride's `title` is the thing a
-      rider would most expect to see on the bike having just typed it. `bio`
+      Of the remaining four, a ride's `title` is the one a rider would most
+      expect to see on the bike having just typed it. `bio`
       and `share_activity` are about a surface the bike does not have, and
       `units` duplicates a preference the tablet already keeps locally — a
       second copy of a setting is a thing that disagrees with itself

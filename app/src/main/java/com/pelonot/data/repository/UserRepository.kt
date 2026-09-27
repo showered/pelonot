@@ -25,6 +25,8 @@ class UserRepository(
     private val ftpHistoryDao: FtpHistoryDao,
     private val syncRepository: SupabaseSyncRepository,
     private val syncProfile: suspend (UserEntity) -> SyncOutcome<Unit> = syncRepository::syncProfile,
+    private val syncHeartRateBasis: suspend (UserEntity) -> SyncOutcome<Unit> =
+        syncRepository::syncHeartRateBasis,
     private val clock: () -> Long = System::currentTimeMillis
 ) {
 
@@ -92,6 +94,13 @@ class UserRepository(
 
     /** Mirrors a profile after restore has established that no cloud copy exists. */
     suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> = syncProfile.invoke(user)
+
+    /** The heart-rate form is the one edit that can deliberately clear cloud inputs. */
+    suspend fun saveHeartRateBasis(user: UserEntity): UserEntity {
+        val saved = saveLocally(user)
+        syncHeartRateBasis(saved)
+        return saved
+    }
 
     private suspend fun saveInternal(
         user: UserEntity,

@@ -405,7 +405,9 @@ class SettingsViewModel(
     fun saveHeartRateBasis(maxHrBpm: Int?, birthDate: Long?) {
         val profile = uiState.value.profile ?: return
         viewModelScope.launch {
-            userRepository.save(profile.copy(maxHrBpm = maxHrBpm, birthDate = birthDate))
+            userRepository.saveHeartRateBasis(
+                profile.copy(maxHrBpm = maxHrBpm, birthDate = birthDate)
+            )
         }
     }
 

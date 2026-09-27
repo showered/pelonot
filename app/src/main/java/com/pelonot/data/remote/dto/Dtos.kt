@@ -5,10 +5,16 @@ import com.pelonot.data.local.entity.UserEntity
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.data.local.entity.WorkoutMetricEntity
 import com.pelonot.domain.model.MaxHeartRate
+import com.pelonot.domain.model.FitnessLevel
 import com.pelonot.domain.model.PowerProvenance
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -363,8 +369,32 @@ data class ProfileDto(
     val id: String,
     val name: String,
     @SerialName("ftp_watts") val ftpWatts: Int,
-    @SerialName("weight_kg") val weightKg: Double
+    @SerialName("weight_kg") val weightKg: Double,
+    @SerialName("max_hr_bpm") val maxHrBpm: Int? = null,
+    @SerialName("birth_year") val birthYear: Int? = null,
+    @SerialName("fitness_level") val fitnessLevel: String? = null
 ) {
+    /** A profile only sends the year; the tablet reconstructs 1 January UTC. */
+    val birthDateMs: Long? get() = birthYear?.takeIf { it in 1900..2100 }?.let { year ->
+        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(year, Calendar.JANUARY, 1)
+        }.timeInMillis
+    }
+
+    /** Omit absent new fields on ordinary saves so they cannot erase web edits. */
+    fun upsertFields(includeEmptyHeartRate: Boolean = false): JsonObject = buildJsonObject {
+        put("id", id)
+        put("name", name)
+        put("ftp_watts", ftpWatts)
+        put("weight_kg", weightKg)
+        if (maxHrBpm != null) put("max_hr_bpm", maxHrBpm)
+        else if (includeEmptyHeartRate) put("max_hr_bpm", JsonNull)
+        if (birthYear != null) put("birth_year", birthYear)
+        else if (includeEmptyHeartRate) put("birth_year", JsonNull)
+        fitnessLevel?.let { put("fitness_level", it) }
+    }
+
     companion object {
         /**
          * @param ownerAuthUserId the account id the gate just approved, passed
@@ -378,7 +408,14 @@ data class ProfileDto(
             id = ownerAuthUserId,
             name = user.name,
             ftpWatts = user.ftpWatts,
-            weightKg = user.weightKg
+            weightKg = user.weightKg,
+            maxHrBpm = user.maxHrBpm,
+            birthYear = user.birthDate?.let {
+                Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                    .apply { timeInMillis = it }.get(Calendar.YEAR)
+                    .takeIf { year -> year in 1900..2100 }
+            },
+            fitnessLevel = FitnessLevel.fromId(user.fitnessLevel)?.id
         )
     }
 }

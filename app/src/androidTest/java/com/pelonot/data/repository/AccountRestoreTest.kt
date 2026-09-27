@@ -17,6 +17,7 @@ import com.pelonot.data.remote.dto.ProfileDto
 import com.pelonot.data.remote.dto.RideFacts
 import com.pelonot.data.remote.dto.WorkoutDto
 import com.pelonot.domain.chart.RideDistributions
+import com.pelonot.domain.model.MaxHeartRate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -351,7 +352,9 @@ class AccountRestoreTest {
      */
     @Test
     fun aProfileThatHasNeverRiddenHereAdoptsTheAccountsOwn() = runBlocking {
-        cloudProfile = ProfileDto(id = ACCOUNT, name = "Simon", ftpWatts = 214, weightKg = 78.0)
+        cloudProfile = ProfileDto(id = ACCOUNT, name = "Simon", ftpWatts = 214,
+            weightKg = 78.0, maxHrBpm = 183, birthYear = 1986,
+            fitnessLevel = "regular")
         cloudRides = listOf(cloudRide("a"))
 
         val restored = outcome(restores.restore(riderId))
@@ -360,12 +363,30 @@ class AccountRestoreTest {
         val user = database.userDao().getUserById(riderId)
         assertEquals("Simon", user?.name)
         assertEquals(214, user?.ftpWatts)
+        assertEquals(183, user?.maxHrBpm)
+        assertEquals(1986, cloudProfile?.birthYear)
+        assertEquals("regular", user?.fitnessLevel)
+        assertEquals(MaxHeartRate.Source.Measured,
+            MaxHeartRate.resolve(user?.maxHrBpm, user?.birthDate)?.source)
         // 7.9.4's funnel: the change is on the trend with a reason on it, not
         // an FTP that moved while nobody was looking.
         assertEquals(
             "PulledFromCloud",
             database.ftpHistoryDao().forUser(riderId).last().source
         )
+    }
+
+    @Test
+    fun aRestoredBirthYearBringsBackEstimatedHeartRateZones() = runBlocking {
+        cloudProfile = ProfileDto(id = ACCOUNT, name = "Simon", ftpWatts = 214,
+            weightKg = 78.0, birthYear = 1986)
+
+        assertTrue(outcome(restores.restore(riderId)).profileAdopted)
+        val user = database.userDao().getUserById(riderId)
+        assertNull(user?.maxHrBpm)
+        assertEquals(cloudProfile?.birthDateMs, user?.birthDate)
+        assertEquals(MaxHeartRate.Source.Estimated,
+            MaxHeartRate.resolve(user?.maxHrBpm, user?.birthDate)?.source)
     }
 
     @Test

@@ -88,7 +88,19 @@ class SupabaseSyncRepository(
      */
     suspend fun syncProfile(user: UserEntity): SyncOutcome<Unit> =
         execute("syncProfile", user.localUserId) { supabase, accountId ->
-            supabase.from(TABLE_PROFILES).upsert(ProfileDto.from(user, accountId)) {
+            supabase.from(TABLE_PROFILES).upsert(
+                ProfileDto.from(user, accountId).upsertFields()
+            ) {
+                onConflict = "id"
+            }
+        }
+
+    /** An explicit edit may clear either heart-rate input; send those nulls. */
+    suspend fun syncHeartRateBasis(user: UserEntity): SyncOutcome<Unit> =
+        execute("syncHeartRateBasis", user.localUserId) { supabase, accountId ->
+            supabase.from(TABLE_PROFILES).upsert(
+                ProfileDto.from(user, accountId).upsertFields(includeEmptyHeartRate = true)
+            ) {
                 onConflict = "id"
             }
         }
