@@ -865,6 +865,14 @@ Room without an account.
       target**, never a fabricated second-by-second human trace. Deduplicate a
       housemate signed into the same account, keeping the higher recorded
       duration best. Verify the two-account 401/420 case and a cloud failure.
+
+      **27 September:** `010_class_duration_bests.sql` is applied. Against two
+      confirmed accounts, `verify_leaderboard.py` passed 24 checks: 401 kJ
+      against a 420 kJ duration finish returns a 19 kJ gap, while that rider's
+      selected-class best remains a separate 200 kJ; modelled and hidden rides
+      are excluded, other-account workout rows stay private, and the anonymous
+      key gets no target. All temporary rides were removed. The box remains
+      open for the signed-in bike UI and cloud-failure observation.
 - [ ] **18.13.6** Check the live target at normal and larger type on the bike
       size, including one minute remaining, a target already beaten, multiple
       friends, and a rider with no measured history. Preserve the screen's

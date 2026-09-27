@@ -1,6 +1,6 @@
 # Where Pelonot is
 
-**Latest verification: 26 September 2026.** The dashboard's shared activity
+**Latest verification: 27 September 2026.** The dashboard's shared activity
 now reloads after account attachment, distinguishes an empty feed from a failed
 request, and offers kudos on cloud rides. It keeps household activity available
 when the cloud fails. Class detail now shows its local leaderboard before the
@@ -9,8 +9,10 @@ The class board shows one measured best per rider in the selected class, with
 the app's rider avatars. During a ride, class and duration finish bests are
 separate; the lifetime duration gap and time left remain prominent. The full
 ride and class-detail layouts were checked at bike dimensions with seeded
-scores, including 130% text. The cloud RPC migration and signed-in two-bike observation
-remain open. A dedicated 20-minute FTP test is planned. Version **1.0.5** has a live
+scores, including 130% text. The cloud RPC migration is applied, and two
+accounts passed 24 endpoint checks, including separate class and duration
+records, privacy and the 401 → 420 kJ finish. The signed-in bike display still
+needs observation. A dedicated 20-minute FTP test is planned. Version **1.0.5** has a live
 update manifest and reachable APK. The overlay's strap battery layout and the
 owner's reported leaderboard milestone still need device checks.
 [PLAN.md](PLAN.md) is the current index.

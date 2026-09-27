@@ -259,9 +259,12 @@ The 18.13 class-board revision is committed and pushed as `c464747`; the
 tracked web files match the deployed site. The static board now shows one
 selected-class score per rider with the local avatar, while the live ride shows
 the class best beside the duration finish target. The debug build and 1,016 JVM
-tests pass. `010_class_duration_bests.sql` is still unapplied: the configured
-Supabase Management API token returned 401 on a read-only catalog query. The
-two-account cloud and bike checks remain open. **15.6.16b is closed as already
+tests pass. The refreshed token let `010_class_duration_bests.sql` reach the
+live project. Two confirmed accounts passed all 24 endpoint checks, including
+the 401 → 420 kJ finish, distinct class and duration bests, measured-only
+results, anonymous refusal and cross-account privacy. The temporary rides were
+removed. The signed-in bike UI and cloud-failure checks remain open.
+**15.6.16b is closed as already
 fixed:** the fallback's refresh token was redeemed against the live project
 after `stopAutoRefresh()` replaced both server-side sign-out variants. The
 original QR report still needs a complete real pairing to settle it.
@@ -579,14 +582,11 @@ ride from another account. Confirm a newly attached account loads its feed
 without switching profiles, kudos gives and removes once per tap, and a failed
 request leaves household activity in place. Check 18.10's class leaderboard
 empty, unavailable and retry states on the same tablet; they are now built.
-Apply and verify `supabase/010_class_duration_bests.sql` with two signed-in
-accounts once the Management API token is refreshed (the configured token
-returned 401 on a read-only catalog query on 27 September), then observe
-18.13's live finish targets on a
-signed-in tablet. Check the 401 → 420 kJ example, a target already passed and
-larger system text in the complete ride screen. The class screen was checked
-at 130% text with avatars and stays class-only. The local queries and UI are
-built; the cloud migration and real endpoint checks remain. The owner's
+`010_class_duration_bests.sql` is applied and its two-account 401 → 420 kJ
+endpoint check passed (24/24). Next, observe 18.13's live finish targets on a
+signed-in tablet, including a target already passed, cloud failure and larger
+system text in the complete ride screen. The class screen was checked at 130%
+text with avatars and stays class-only. The owner's
 20-minute FTP test request is expanded under 19.2.3 and follows that social
 work. Do not build a
 friend-request graph while 18.11's small-group decision stands, or put the
