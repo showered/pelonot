@@ -21,7 +21,7 @@ owner's reported leaderboard milestone still need device checks.
 | Measured | |
 |---|---|
 | JVM tests | **1016**, 0 failures |
-| Plan boxes ticked | **764 of 989** — 77% |
+| Plan boxes ticked | **765 of 989** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a

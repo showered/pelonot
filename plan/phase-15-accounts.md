@@ -797,30 +797,22 @@ own**, minted for it, not a copy of the phone's.
       `PairingHandover` kind it adopted, and the phone should say which route it
       used when it fails
 
-      *Both written in the sixty-eighth sitting and both unticked for the same
-      reason as 15.6.16b — reaching `adopt` at all needs a real pairing. Note
+      *Both written in the sixty-eighth sitting and still unticked because
+      reaching `adopt` at all needs a real pairing. Note
       the bike's line is `Log.i`, so `log.tag.PelonotDeviceLink` has to be
       raised on the tablet first (CLAUDE.md).*
-- [ ] **15.6.16b The strong candidate, and it is a real defect whether or not it
-      is this one.** On the fallback route `web/link.js` calls
-      `client.auth.signOut()` immediately after handing the token over. **supabase-js
-      defaults `signOut` to global scope, which revokes every refresh token in
-      the family** — including the one the phone has just given the bike, and
-      before the bike's two-second poll has necessarily collected it. The
-      comment above that line says it is there to avoid *"racing the bike for it
-      and having the server revoke both"*, and what it does instead is perform
-      the revocation itself. It should be `signOut({ scope: 'local' })`: the
-      phone forgets its session, the family survives, and the bike's
-      `refreshSession` has something to refresh.
-
-      **This is a one-line fix and it deploys on push**, so it is worth doing
-      whether or not the fallback was the route taken — an untested fallback
-      that cannot work is a fallback that does not exist (15.6.9)
-
-      *Written in the sixty-eighth sitting — `signOut({ scope: 'local' })` — and
-      **left unticked because it cannot be observed without a real account and a
-      404 from the Edge Function**. It is also not deployed: the push is the
-      owner's.*
+- [x] **15.6.16b The fallback must not revoke the token it hands to the bike.**
+      The original `signOut()` revoked the refresh-token family. The first fix,
+      `signOut({ scope: 'local' })`, also called `/logout` on the server and
+      revoked *this session*: exactly the token the bike needed. The live
+      hand-off failed on every run with that call inserted. `web/link.js` now
+      calls `stopAutoRefresh()`, which makes no logout request. The same
+      `device_link_begin` → `device_link_claim` → `device_link_poll` → refresh
+      redemption passed against the live project without the sign-out call;
+      `supabase/verify_device_link_handoff.py` preserves the check. Commits
+      `5b3548d` and `3303f1f` contain the two iterations. This settles the
+      token revocation defect; the owner's original end-to-end report remains
+      open under 15.6.16 and 15.6.16e.
 - [ ] **15.6.16c The second candidate is the purge the owner names, and it is
       the one their own guess points at.** `SupabaseModule` installs Auth with
       `autoLoadFromStorage` and `alwaysAutoRefresh`, so a tablet holding a
@@ -834,13 +826,11 @@ own**, minted for it, not a copy of the phone's.
       Worth checking with `pm clear` before believing anything else about this
       journey: a tablet that has never held a purged session cannot reproduce it
 - [ ] **15.6.16d Wherever it comes from, the wording is wrong for a rider.**
-      *"Invalid Refresh Token"* is the server's phrase and `AuthAttempt.Failed`
-      passes `e.message` through untouched (`DeviceLinkRepository.adopt`).
-      Nothing a rider standing at a bike can do with it. It should say what
-      happened and what to do — *"That link expired before the bike could use
-      it. Show a new code and scan it again."* — and the raw text belongs in
-      logcat. Same rule `SyncOutcome.Rejected` already follows for the sync
-      messages
+      *"Invalid Refresh Token"* is the server's phrase and gives a rider
+      nothing to do. `DeviceLinkRepository.adopt` now logs the raw exception and
+      returns *"That link expired before the bike could use it. Show a new code
+      and scan it again."* This is built but still needs observation during a
+      failed real pairing before the box can be ticked.
 
       *Written in the sixty-eighth sitting, that sentence exactly, and unticked
       for the same reason as the two above.*

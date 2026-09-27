@@ -173,8 +173,8 @@ the web app rather than the bike** (**20.7** — one instruction that a session 
 build and four questions that cross the cloud, and the note lands on **20.2.8**,
 an item this plan wrote before any of it was built), and **the four notes of 19
 August** — the QR journey ending in *"refresh token invalid"* (**15.6.16**, with
-a one-line defect found underneath it at **15.6.16b** that makes the fallback
-route unable to work at all), the distance being *"surely WAY off"* (**2.5a** —
+a token-revocation defect found underneath it at **15.6.16b**, since fixed and
+verified against the live hand-off), the distance being *"surely WAY off"* (**2.5a** —
 checked, and it is out by about two and a half times, because the model
 integrates cadence and has never once looked at how hard the rider is pushing),
 the cadence target's numbers not being shown (**11.7.5**, which is 11.7.3's own
@@ -253,7 +253,20 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 26 September 2026: duration records and live finish targets
+### Latest session — 27 September 2026: class board shipped and pairing plan corrected
+
+The 18.13 class-board revision is committed and pushed as `c464747`; the
+tracked web files match the deployed site. The static board now shows one
+selected-class score per rider with the local avatar, while the live ride shows
+the class best beside the duration finish target. The debug build and 1,016 JVM
+tests pass. `010_class_duration_bests.sql` is still unapplied: the configured
+Supabase Management API token returned 401 on a read-only catalog query. The
+two-account cloud and bike checks remain open. **15.6.16b is closed as already
+fixed:** the fallback's refresh token was redeemed against the live project
+after `stopAutoRefresh()` replaced both server-side sign-out variants. The
+original QR report still needs a complete real pairing to settle it.
+
+### Previous session — 26 September 2026: duration records and live finish targets
 
 **18.13 is implemented locally and prepared for the cloud.** Class detail now
 shows only each rider's best in the selected class, using `RiderAvatar` and one
@@ -567,7 +580,9 @@ without switching profiles, kudos gives and removes once per tap, and a failed
 request leaves household activity in place. Check 18.10's class leaderboard
 empty, unavailable and retry states on the same tablet; they are now built.
 Apply and verify `supabase/010_class_duration_bests.sql` with two signed-in
-accounts, then observe 18.13's live finish targets on a
+accounts once the Management API token is refreshed (the configured token
+returned 401 on a read-only catalog query on 27 September), then observe
+18.13's live finish targets on a
 signed-in tablet. Check the 401 → 420 kJ example, a target already passed and
 larger system text in the complete ride screen. The class screen was checked
 at 130% text with avatars and stays class-only. The local queries and UI are
