@@ -89,8 +89,9 @@ third appears.
 
 The build reads them from the environment first (`SUPABASE_URL`,
 `SUPABASE_ANON_KEY`), then `local.properties`, then the checked-in
-`cloud.properties` — which ships empty and should stay that way while every RLS
-policy is `USING (true)`. The root `README.md` has the table.
+`cloud.properties` — which ships empty so a clean clone stays offline and does
+not use this project's hosted quota. Migration `003` replaced the original open
+policies with rider-scoped RLS. The root `README.md` has the table.
 
 ### Do not put an access token in a build
 

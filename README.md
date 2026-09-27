@@ -1,6 +1,6 @@
 # Pelonot
 
-A subscription-free Android client for the Peloton Bike and Bike+ (Gen 1/Gen 2)
+A subscription-free Android client for Peloton bikes (Gen 1/Gen 2)
 that runs **on the bike's own tablet**, reads its real sensors, and keeps your
 rides on your own device.
 
@@ -8,10 +8,10 @@ rides on your own device.
 sensor service, which any app is allowed to bind. Nothing here needs root, a
 modified bootloader, or a hardware mod.
 
-> **Status: it works, and it is not finished.** A ride records, the HUD runs over
+> **Status: it works, and it is not finished.** A ride records, the overlay runs over
 > whatever you are watching, heart-rate straps pair, and the whole history is
 > yours to export. Accounts, cloud backup and a companion web app arrived in
-> August 2026 and are a fortnight old rather than weathered. The exits are open
+> August 2026 and still need broader use on real bikes. The exits are open
 > too — signing out and deleting your cloud copy are built and watched against
 > the real endpoint, and a restore back down onto a fresh device is built and
 > has not yet been watched end to end. Deleting the **account** itself is not
@@ -29,7 +29,7 @@ modified bootloader, or a hardware mod.
   the board* — not estimated.
 - **Runs a structured class.** Interval targets, a countdown into each change,
   and a spoken coach that ducks under your film rather than shouting over it.
-- **Stays out of the way.** The HUD is a handful of translucent chips docked to
+- **Stays out of the way.** The overlay is a handful of translucent chips docked to
   one screen edge, over Netflix or anything else. It collapses to a single pill
   when you want the picture back.
 - **Shows you the ride afterwards.** Power against your own zone bands, heart
@@ -107,8 +107,8 @@ through rather than blanking the build.
 
 `cloud.properties` is in the repository so that a fresh clone has an in-repo
 record of what the cloud even is; it ships with no endpoint and no key, and its
-comments say why (short version: every RLS policy is still `USING (true)`, and
-a shared endpoint is a bill somebody has to pay). A test fails the build if it
+comments say why: production migrations scope rider data through RLS, while a
+shared endpoint is still a bill somebody has to pay. A test fails the build if it
 stops being empty. **To run your own, see [`supabase/README.md`](supabase/README.md)** —
 the schema, the migrations, and the order to apply them in.
 
@@ -125,12 +125,13 @@ Two things worth knowing before reading any code:
 - **The pure logic is deliberately free of Android imports** — `PowerModel`,
   `CadenceTracker`, `WorkoutMetricsCalculator`, `PostWorkoutAnalyzer` and
   everything under `domain/` are plain Kotlin and JVM-testable. That is why
-  there are 547 unit tests that run in a couple of seconds.
+  there are more than 1,000 unit tests that run without an Android device.
 - **`PowerModel` is not trustworthy and the code says so out loud.** Its shipped
   coefficients score RMSE 137 W against 310 measured samples from a real board.
   It never produces a recorded number: on hardware the board reports watts
-  directly, and the model only drives simulated rides and a suggested resistance
-  range. A bike can also fit its own curve from your rides — see `calibration/`.
+  directly. The model drives simulated rides and the rooted-tablet fallback;
+  its computed resistance target is not displayed. A bike can also fit its own
+  curve from your rides — see `calibration/`.
 
 ### What each top-level directory is
 
