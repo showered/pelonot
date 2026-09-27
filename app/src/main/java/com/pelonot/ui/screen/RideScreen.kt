@@ -69,7 +69,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -82,6 +81,8 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pelonot.R
@@ -150,6 +151,7 @@ fun RideScreen(
     plan: ClassPlan?,
     intent: RideIntent,
     ftp: Int,
+    hostLifecycleOwner: LifecycleOwner,
     userId: Int? = null,
     /** Non-null re-enters an interrupted ride instead of starting a new one (8.3d). */
     resumeWorkoutId: String? = null,
@@ -254,10 +256,11 @@ fun RideScreen(
         }
     }
 
-    // The overlay stands down while this screen is on top and comes back the
-    // moment the rider switches to whatever they are watching.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    // The overlay follows the Activity rather than the navigation entry.
+    // Pressing Back can STOP the old entry while the replacement ride entry
+    // is already on screen; treating that as backgrounding leaves the overlay
+    // floating over the ride screen.
+    DisposableEffect(hostLifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> viewModel.setScreenVisible(true)
@@ -265,17 +268,16 @@ fun RideScreen(
                 else -> Unit
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
+        hostLifecycleOwner.lifecycle.addObserver(observer)
         // Re-entering a live ride can compose this screen after ON_START has
         // already happened. Without an immediate answer the service keeps the
         // overlay up over Pelonot's own ride screen until the next lifecycle
         // transition, which may never come.
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+        if (hostLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             viewModel.setScreenVisible(true)
         }
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            viewModel.setScreenVisible(false)
+            hostLifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

@@ -509,7 +509,10 @@ class RideViewModel(application: Application) : AndroidViewModel(application) {
         serviceJobs.clear()
         if (bound) {
             runCatching {
-                service?.setRideScreenVisible(false)
+                // A navigation transition can clear the old ride ViewModel
+                // after the replacement screen has already hidden the overlay.
+                // Activity ON_STOP owns the move to background; unbinding does
+                // not say whether the ride screen is visible.
                 getApplication<Application>().unbindService(connection)
             }
             bound = false

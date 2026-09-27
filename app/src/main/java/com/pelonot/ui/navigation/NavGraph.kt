@@ -29,6 +29,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pelonot.data.local.entity.WorkoutEntity
 import com.pelonot.domain.model.RideIntent
 import com.pelonot.ui.screen.AccountScreen
@@ -268,6 +269,10 @@ fun PelonotNavGraph(
         )
     }
 
+    // Capture the Activity owner before NavHost supplies each destination's
+    // own lifecycle. A ride entry can STOP during a back-stack transition
+    // while the Activity and the new ride entry are still on screen.
+    val hostLifecycleOwner = LocalLifecycleOwner.current
     NavHost(
         navController = navController,
         startDestination = Destination.ProfileSelector.route,
@@ -559,6 +564,7 @@ fun PelonotNavGraph(
             RideScreen(
                 plan = plan,
                 intent = intent,
+                hostLifecycleOwner = hostLifecycleOwner,
                 ftp = uiState.selectedProfile?.ftpWatts
                     ?: com.pelonot.data.local.entity.UserEntity.DEFAULT_FTP,
                 userId = uiState.selectedProfile?.localUserId,
