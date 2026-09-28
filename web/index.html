@@ -40,9 +40,10 @@
     </p>
   </section>
 
-  <!-- Signed in. Everything below is one of five views; the nav picks one. -->
+  <!-- Signed in. The nav picks one view. -->
   <nav class="nav hidden" id="nav">
     <button data-view="rides" aria-current="page">Rides</button>
+    <button data-view="insights">Insights</button>
     <button data-view="board">Board</button>
     <button data-view="riders">Riders</button>
     <button data-view="you">You</button>
@@ -68,6 +69,107 @@
       Nothing here yet. Rides appear once the bike has backed one up — which it
       does on its own, whenever there is a network.
     </p>
+  </section>
+
+  <!-- Insights: the deliberate home for the full training record. ---------- -->
+  <section id="view-insights" class="hidden">
+    <div class="insights-intro">
+      <div>
+        <p class="figure-label">Your training record</p>
+        <h2>Insights</h2>
+        <p class="small muted">The detail behind your rides, in one place.</p>
+      </div>
+      <div class="insights-actions">
+        <div class="insights-range" role="group" aria-label="Time range">
+          <button data-insights-range="12w" aria-pressed="false">12 weeks</button>
+          <button data-insights-range="12m" aria-pressed="true">Year</button>
+          <button data-insights-range="all" aria-pressed="false">All time</button>
+        </div>
+        <button class="secondary inline" id="insights-refresh" type="button">Refresh</button>
+      </div>
+    </div>
+    <p class="small muted" id="insights-status" role="status" aria-live="polite"></p>
+    <div id="insights-content" class="hidden">
+      <div class="insights-kpis" id="insights-kpis"></div>
+
+      <div class="insights-grid">
+        <article class="card insights-span-2">
+          <div class="insights-card-head">
+            <div><p class="figure-label">Training over time</p><h3 id="insights-trend-title">Output</h3></div>
+            <div class="insights-range" role="group" aria-label="Trend metric">
+              <button data-insights-metric="output" aria-pressed="true">Output</button>
+              <button data-insights-metric="time" aria-pressed="false">Time</button>
+              <button data-insights-metric="rides" aria-pressed="false">Rides</button>
+            </div>
+          </div>
+          <div class="insights-svg-scroll"><svg id="insights-trend" class="insights-chart" role="img"></svg></div>
+          <p class="caption muted" id="insights-trend-note"></p>
+        </article>
+
+        <article class="card insights-span-2">
+          <div class="insights-card-head">
+            <div><p class="figure-label">Consistency</p><h3>Days ridden</h3></div>
+            <p class="caption muted" id="insights-calendar-caption"></p>
+          </div>
+          <div class="insights-svg-scroll"><svg id="insights-calendar" class="insights-calendar" role="img"></svg></div>
+          <div class="insights-calendar-key caption muted">Less output <span></span><span></span><span></span><span></span> More output</div>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">Measured rides</p>
+          <h3>Average power</h3>
+          <div class="insights-svg-scroll"><svg id="insights-power-trend" class="insights-chart compact" role="img"></svg></div>
+          <p class="caption muted" id="insights-power-trend-note"></p>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">The week</p>
+          <h3>When you ride</h3>
+          <div id="insights-weekdays" class="insights-weekdays"></div>
+          <p class="caption muted">Ride starts by local day of week.</p>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">Time in zone</p>
+          <h3>Power</h3>
+          <div id="insights-power-zones"></div>
+          <p class="caption muted" id="insights-power-zones-note"></p>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">Time in zone</p>
+          <h3>Heart rate</h3>
+          <div id="insights-hr-zones"></div>
+          <p class="caption muted" id="insights-hr-zones-note"></p>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">Pedalling</p>
+          <h3>Cadence spread</h3>
+          <div id="insights-cadence"></div>
+          <p class="caption muted" id="insights-cadence-note"></p>
+        </article>
+
+        <article class="card">
+          <p class="figure-label">Ride mix</p>
+          <h3>Types of ride</h3>
+          <div id="insights-categories"></div>
+          <p class="caption muted">Ride time by class category, including free rides.</p>
+        </article>
+
+        <article class="card insights-span-2">
+          <p class="figure-label">Your records</p>
+          <h3>Standout rides</h3>
+          <div id="insights-records" class="insights-records"></div>
+        </article>
+
+        <article class="card insights-span-2">
+          <p class="figure-label">What these figures include</p>
+          <h3>Record coverage</h3>
+          <div id="insights-coverage" class="insights-coverage"></div>
+        </article>
+      </div>
+    </div>
   </section>
 
   <!-- One ride --------------------------------------------------------- -->
@@ -255,5 +357,6 @@
 <script src="config.js" onerror="void 0"></script>
 <script src="lib.js"></script>
 <script src="app.js"></script>
+<script src="insights.js"></script>
 </body>
 </html>

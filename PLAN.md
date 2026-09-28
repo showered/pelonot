@@ -253,19 +253,17 @@ the latest, it goes to the top of `plan/session-log.md`.
 
 ## Where the work stands — read this first
 
-### Latest session — 27 September 2026: 1.0.6 release regression and publication
+### Latest session — 28 September 2026: detailed Insights on the companion web app
 
-Version **1.0.6 (code 7)** is signed with the same certificate as 1.0.5,
-published on GitHub, and advertised by the live `update.json`. The tracked
-web files match the deployed site. The release build and lint pass; **1,018
-JVM tests**, **143 tablet-AVD instrumented tests** and five release-tool tests
-pass. Android installed 1.0.6 over signed 1.0.5 on the bike-size emulator;
-the app launched, and its dashboard and class library rendered. The emulator's
-original debug app and database were restored after the rehearsal, with the
-database and WAL byte-identical to the pre-test archive. `REVIEW.md` has the
-artifact hash and verification limits. No physical bike or strap, or signed-in
-two-bike UI, was tested in this release pass. The hosting-side `config.js`
-legacy key remains the separate open fact at 17.16.3.
+The web companion now has a dedicated Insights view for detailed history while
+its Rides list stays concise. It has range controls, trends, a ride-day calendar,
+zone and cadence distributions, ride mix, standout rides and record coverage.
+The view fetches a signed-in rider's detailed cloud records only when opened.
+Power records require measured watts, zone comparisons use the ride's recorded
+FTP and heart-rate maximum, and condensed rides use their saved counts. Four
+focused data tests, the debug build and JVM suite pass. The page was checked
+at desktop and phone browser widths with representative rides and no overflow
+or console error. The live deployment check follows the push.
 
 ### Previous session — 26 September 2026: duration records and live finish targets
 

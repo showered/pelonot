@@ -19,7 +19,7 @@ set -eu
 
 HOST="${1:-https://pelonot.showered.workers.dev}"
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-FILES="index.html link.html app.css tokens.css lib.js link.js app.js update.json"
+FILES="index.html link.html app.css tokens.css lib.js link.js app.js insights.js update.json"
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

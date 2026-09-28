@@ -40,7 +40,7 @@ rotated.
 
 | Page | What it is |
 |------|------------|
-| `index.html` | The app: your rides, one ride, the leaderboard, the other riders, and you |
+| `index.html` | The app: your rides, Insights, one ride, the leaderboard, the other riders, and you |
 | `link.html` | The QR target: sign in on a phone, and the bike signs itself in |
 
 `link.html` expects the pairing code in the URL **fragment** —
@@ -48,8 +48,8 @@ rotated.
 lands in an access log. A rider who opens the page directly can type the code
 instead.
 
-`index.html` routes on the fragment too: `#/rides`, `#/ride/<id>`, `#/board`,
-`#/riders`, `#/you`. One document, five sections, no router and no history API
+`index.html` routes on the fragment too: `#/rides`, `#/insights`, `#/ride/<id>`,
+`#/board`, `#/riders`, `#/you`. One document, six sections, no router and no history API
 — a link to a ride survives a reload and that is the whole requirement.
 
 ### What each view is for
@@ -59,6 +59,15 @@ instead.
   somebody who rides once of them (22.5). A list row answers *which ride*, so it
   carries the time, the date, the class and the distance and not five figures
   (26.1.3).
+- **Insights** — the detailed training record: 12 weeks, the last 12 calendar
+  months or all time. It shows ride totals, output and time trends, ride days,
+  measured average power, days of the week, power and heart-rate zones, cadence,
+  class mix, standout rides and record coverage. It loads only when opened and
+  pages through the rider's own backed-up rides. Power records and zone counts
+  require measured watts; zones use each ride's recorded FTP or maximum heart
+  rate. Condensed rides use their saved distribution counts, not their sparse
+  trace as if each point were one second. Missing basis values remain missing.
+  The coverage card makes those limits visible.
 - **One ride** — the three traces with **power zones** behind the watts and
   **heart-rate zones** behind the pulse (21.4.2), time in zone, and the
   provenance sentence. It is also where a ride gets **a name** and where it can
@@ -141,7 +150,8 @@ cd web && npx wrangler deploy    # not the route; kept as a fallback
 ./web/check-deployed.sh
 ```
 
-It fetches every file, diffs it against this working tree, and now also reports
+It fetches every deployed file, including `insights.js`, diffs it against this
+working tree, and also reports
 which publishable key form the host is serving. It needs no credentials and
 deploys nothing. `config.js` is not diffed on purpose — it is git-ignored, so
 the deployed one is *meant* to differ.

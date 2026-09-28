@@ -1,6 +1,10 @@
 # Where Pelonot is
 
-**Latest verification: 27 September 2026.** Version **1.0.6** is published with
+**Latest verification: 28 September 2026.** The companion web app now has an
+Insights view for detailed training history, with charts, ride-day calendar,
+zones, cadence, ride mix, records and data coverage. It was checked at desktop
+and phone browser widths, with focused data tests; the Android debug build and
+JVM suite remain green. Version **1.0.6** is published with
 a signed APK and an update manifest. The debug build, lint, 1,018 JVM tests and
 143 tablet-AVD instrumented tests pass. The signed APK's certificate matches
 1.0.5; Android installed it over that version, and the updated dashboard and
@@ -30,7 +34,7 @@ restore tests pass; a signed-in new-device screen check remains.
 | Measured | |
 |---|---|
 | JVM tests | **1018**, 0 failures |
-| Plan boxes ticked | **768 of 989** — 77% |
+| Plan boxes ticked | **769 of 990** — 77% |
 
 *Counted as `grep -cE '^[[:space:]]*- \[x\]' PLAN.md plan/*.md`, indented
 sub-items included. Read the percentage as an inventory count and never as a

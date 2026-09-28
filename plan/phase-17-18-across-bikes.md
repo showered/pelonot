@@ -652,6 +652,22 @@ been looked at with one shape of data has not been checked.
 
 ---
 
+- [x] **17.17** Give the companion app one place for the full training record.
+      The native ride list stays concise. A signed-in rider can open Insights
+      for 12 weeks, 12 calendar months or all time: trends, a ride-day calendar,
+      measured average power, weekday pattern, power and heart-rate zones,
+      cadence, class mix, standout rides and coverage. Fetch detail lazily in
+      pages and keep it scoped to the signed-in rider. Power records require
+      measured provenance; zones use the ride's own FTP and heart-rate maximum;
+      condensed rides use saved distributions rather than counting an outline
+      as elapsed seconds. Check the wide and narrow browser layouts, and make
+      `check-deployed.sh` cover the new script before closing the item.
+
+      Built 28 September 2026. Four focused data tests pass; the page was
+      checked at 1280 px and 390 px browser widths with representative ride
+      data, with no page overflow or console error. The Android debug build
+      and JVM suite pass. The deployed-file check includes `insights.js`.
+
 ## Phase 18: Social across bikes — the networked tier, nice to have
 
 **Read Phase 24 first.** The connectivity model splits social in two, and this

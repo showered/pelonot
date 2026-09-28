@@ -1,8 +1,8 @@
 /*
  * The companion web app (PLAN Phase 17).
  *
- * Five views behind one sign-in: your rides, one ride, the leaderboard, the
- * other riders, and you. `link.html` is the other page and is deliberately
+ * Your rides, detailed insights, one ride, the leaderboard, the other riders,
+ * and you behind one sign-in. `link.html` is the other page and is deliberately
  * separate — it is opened by a QR code on a phone, once, and has nothing to do
  * with any of this.
  *
@@ -61,7 +61,7 @@ let openSamples = [];
  */
 let boardBasis = 'kj';
 
-const VIEWS = ['rides', 'ride', 'board', 'riders', 'you'];
+const VIEWS = ['rides', 'insights', 'ride', 'board', 'riders', 'you'];
 
 if (client) start();
 
@@ -82,6 +82,7 @@ function start() {
   // is given, redraws, and lets the next tick do the asking.
   client.auth.onAuthStateChange((_event, next) => {
     const changed = (next && next.user.id) !== (session && session.user.id);
+    if (changed && typeof clearInsights === 'function') clearInsights();
     session = next;
     sessionKnown = true;
     render();
@@ -239,6 +240,7 @@ async function loadEverything() {
 async function routeLoad() {
   const route = currentRoute();
   if (route.name === 'ride' && route.arg) return showRide(route.arg);
+  if (route.name === 'insights') return loadInsights();
   if (route.name === 'board') return loadBoardClasses();
   if (route.name === 'riders') return loadRiders();
   if (route.name === 'you') return fillProfileForm();

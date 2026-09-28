@@ -1,5 +1,19 @@
 > Part of the Pelonot plan — the index is [PLAN.md](../PLAN.md).
 
+### Session — 27 September 2026: 1.0.6 release regression and publication
+
+Version **1.0.6 (code 7)** is signed with the same certificate as 1.0.5,
+published on GitHub, and advertised by the live `update.json`. The tracked
+web files match the deployed site. The release build and lint pass; **1,018
+JVM tests**, **143 tablet-AVD instrumented tests** and five release-tool tests
+pass. Android installed 1.0.6 over signed 1.0.5 on the bike-size emulator;
+the app launched, and its dashboard and class library rendered. The emulator's
+original debug app and database were restored after the rehearsal, with the
+database and WAL byte-identical to the pre-test archive. `REVIEW.md` has the
+artifact hash and verification limits. No physical bike or strap, or signed-in
+two-bike UI, was tested in this release pass. The hosting-side `config.js`
+legacy key remains the separate open fact at 17.16.3.
+
 ### Session — 27 September 2026: class board shipped and pairing plan corrected
 
 The 18.13 class-board revision is committed and pushed as `c464747`; the
