@@ -26,12 +26,14 @@ trap 'rm -rf "$WORK"' EXIT
 
 drifted=0
 legacy_config=0
+first_drift=
 
 for file in $FILES; do
   # The host trims `.html` with a 307 (17.16), so follow redirects.
   if ! curl -fsSL "$HOST/$file" -o "$WORK/$file" 2>/dev/null; then
     printf 'MISSING  %s — the host did not serve it\n' "$file"
     drifted=$((drifted + 1))
+    if [ -z "$first_drift" ]; then first_drift=$file; fi
     continue
   fi
 
@@ -40,6 +42,7 @@ for file in $FILES; do
   else
     printf 'DRIFTED  %s — the deployed copy is not this one\n' "$file"
     drifted=$((drifted + 1))
+    if [ -z "$first_drift" ]; then first_drift=$file; fi
   fi
 done
 
@@ -69,5 +72,5 @@ if [ "$drifted" -eq 0 ]; then
 fi
 
 printf '\n%d file(s) differ. Redeploy, or read one:\n' "$drifted"
-printf '  curl -sL %s/link.js | diff - web/link.js\n' "$HOST"
+printf '  curl -sL %s/%s | diff - web/%s\n' "$HOST" "$first_drift" "$first_drift"
 exit 1
