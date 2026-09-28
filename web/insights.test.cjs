@@ -79,10 +79,52 @@ test('missing ride FTP and maximum do not invent zone comparisons', () => {
   assert.equal([...result.heartSeconds.values()].reduce((a, b) => a + b), 0);
 });
 
+test('an explicit Mixed provenance remains ineligible even if trace flags disagree', () => {
+  const mixed = ride({ power_provenance: 'Mixed' });
+  const result = aggregate([mixed]);
+  assert.equal(result.coverage.measured, 0);
+  assert.equal(result.biggest, null);
+  assert.equal(result.coverage.powerZones, 0);
+  assert.equal(result.powerSeconds.get('p1'), 0);
+});
+
+test('an older ride can establish measured provenance from every sample', () => {
+  const old = ride({ power_provenance: null });
+  const result = aggregate([old]);
+  assert.equal(result.coverage.measured, 1);
+  assert.equal(result.coverage.powerZones, 1);
+  assert.equal(result.buckets.reduce((count, period) =>
+    count + period.measuredPowerRides, 0), 1);
+});
+
 test('range boundaries start on Monday or the first of the twelfth month', () => {
   const today = new Date(2026, 8, 28);
   assert.equal(insightStart('12w', today).getDay(), 1);
   assert.equal(insightStart('12m', today).getFullYear(), 2025);
   assert.equal(insightStart('12m', today).getMonth(), 9);
   assert.equal(insightStart('all', today), null);
+});
+
+test('trend control changes the selected metric', () => {
+  function button(metric, pressed) {
+    const target = new EventTarget();
+    target.dataset = { insightsMetric: metric };
+    target.attributes = { 'aria-pressed': String(pressed) };
+    target.setAttribute = (key, value) => { target.attributes[key] = value; };
+    return target;
+  }
+  const output = button('output', true);
+  const time = button('time', false);
+  const refresh = new EventTarget();
+  const document = {
+    querySelectorAll: (selector) => selector === '[data-insights-metric]'
+      ? [output, time] : [],
+    getElementById: () => refresh,
+  };
+  const ui = vm.createContext({ document, module: { exports: {} } });
+  vm.runInContext('const el = (id) => document.getElementById(id);', ui);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, 'insights.js'), 'utf8'), ui);
+  time.dispatchEvent(new Event('click'));
+  assert.equal(output.attributes['aria-pressed'], 'false');
+  assert.equal(time.attributes['aria-pressed'], 'true');
 });

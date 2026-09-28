@@ -4,7 +4,8 @@
 Insights view for detailed training history, with charts, ride-day calendar,
 zones, cadence, ride mix, records and data coverage. It was checked at desktop
 and phone browser widths, with focused data tests; the Android debug build and
-JVM suite remain green. Version **1.0.6** is published with
+JVM suite remain green. The tracked site files match the Cloudflare host.
+Version **1.0.6** is published with
 a signed APK and an update manifest. The debug build, lint, 1,018 JVM tests and
 143 tablet-AVD instrumented tests pass. The signed APK's certificate matches
 1.0.5; Android installed it over that version, and the updated dashboard and

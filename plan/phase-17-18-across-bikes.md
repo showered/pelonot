@@ -663,10 +663,11 @@ been looked at with one shape of data has not been checked.
       as elapsed seconds. Check the wide and narrow browser layouts, and make
       `check-deployed.sh` cover the new script before closing the item.
 
-      Built 28 September 2026. Four focused data tests pass; the page was
+      Built 28 September 2026. Seven focused data tests pass; the page was
       checked at 1280 px and 390 px browser widths with representative ride
       data, with no page overflow or console error. The Android debug build
-      and JVM suite pass. The deployed-file check includes `insights.js`.
+      and JVM suite pass. Commit `85ce001` was pushed; the deployed-file check
+      reports every tracked file the same, including `insights.js`.
 
 ## Phase 18: Social across bikes — the networked tier, nice to have
 

@@ -260,10 +260,13 @@ its Rides list stays concise. It has range controls, trends, a ride-day calendar
 zone and cadence distributions, ride mix, standout rides and record coverage.
 The view fetches a signed-in rider's detailed cloud records only when opened.
 Power records require measured watts, zone comparisons use the ride's recorded
-FTP and heart-rate maximum, and condensed rides use their saved counts. Four
+FTP and heart-rate maximum, and condensed rides use their saved counts. Seven
 focused data tests, the debug build and JVM suite pass. The page was checked
 at desktop and phone browser widths with representative rides and no overflow
-or console error. The live deployment check follows the push.
+or console error. Commit `85ce001` was pushed, and the live deployed-file
+check reports every tracked file the same, including `insights.js`; the
+signed-out page loads without console errors. The hosting-side legacy key
+remains the open 17.16.3 issue.
 
 ### Previous session — 26 September 2026: duration records and live finish targets
 

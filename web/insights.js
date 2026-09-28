@@ -229,8 +229,9 @@ function aggregateInsights(input, range, today, decode, powerZones, heartZones) 
     if (samples.length) coverage.samples += 1;
     if (condensed) coverage.condensed += 1;
     if (samples.some((sample) => insightNumber(sample.heartRate))) coverage.heartSamples += 1;
-    const measured = ride.power_provenance === 'Measured' ||
-      (samples.length > 0 && samples.every((sample) => sample.measured === true));
+    const measured = ride.power_provenance == null
+      ? samples.length > 0 && samples.every((sample) => sample.measured === true)
+      : ride.power_provenance === 'Measured';
     if (measured) {
       measuredRides.add(ride.id);
       coverage.measured += 1;

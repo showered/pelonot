@@ -25,6 +25,12 @@ then open <http://localhost:8000>. Or just double-click `index.html` — the
 Supabase library is loaded as a classic script precisely so that a `file://`
 page works.
 
+The Insights calculations have focused regression tests with no extra package:
+
+```bash
+node --test web/insights.test.cjs
+```
+
 Copy `config.example.js` to `config.js` and put your project URL and
 **publishable** (anon) key in it. `config.js` is git-ignored, for the same
 reason `local.properties` is: an endpoint is somebody's private household
